@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+vector_store/*.index
+vector_store/metadata.json
+uploads/*.pdf
+*.log

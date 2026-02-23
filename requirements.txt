@@ -20,7 +20,8 @@ PyMuPDF==1.25.1
 sentence-transformers==3.3.1
 
 # ── Vector Store ──────────────────────────────────────────────
-faiss-cpu==1.9.0.post1
+# faiss-cpu==1.9.0.post1
+faiss-cpu
 
 # ── LLM Providers ─────────────────────────────────────────────
 openai==1.58.1

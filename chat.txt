@@ -1,0 +1,98 @@
+Hello sir Now i want to change all code 
+
+
+
+I want to code tech in Django + HTML/CSS/JS 
+
+
+
+and add new features 
+
+
+
+
+
+login/register as client (google/email)
+
+
+
+admin login
+
+Admin Dashboard:
+
+
+
+
+
+Show all client (CURD) with login/logout button if click on login then direct login on client Dashboard
+
+
+
+How much user use API 
+
+
+
+Show all premium client 
+
+
+
+Show all premium client with credit in shorting 
+
+
+
+Client Dashboard:
+
+
+
+
+
+show profile icon
+
+
+
+Dark mood/ Light mood enabled
+
+
+
+Setting icon (change password, forgate password, change profile pic, logout)
+
+
+
+Show Available Credit (new user show 5000 Credit if credit is 0 then show upgrade account)
+
+
+
+Show all API (PDF/ website/ YouTube/ Video/ JSON) in which use all API to chat 1st call use 5 credit 
+
+
+
+Docs (In which show how to use API to chat) 
+
+
+
+select chat use API/ individually upload 
+
+
+
+when client register/login then send successful register on MR ai  on mail msg using SMTP
+
+
+
+Payment integration using Cashfree payment gateway
+
+
+
+when client login/register then redirect on same Dashboard page to ask/chat 
+
+show popup use API or individually upload if use API then auto submit data source through API and when go to home page then ask only add AI API  key and ask/chat continue
+
+if client choose individually then ask same as upload source with type and add API like yet asking 
+
+
+
+on Home show how much API call show all how much data upload through API and which data upload through API
+
+
+
+Sir I want to All RAG function system run in Django, not run in Fast API 
+All in one Django + HTML/CSS/JS full project in one Django

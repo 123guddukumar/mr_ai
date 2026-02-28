@@ -53,6 +53,19 @@ class Settings(BaseSettings):
     HF_MODEL_ID: str = "mistralai/Mistral-7B-Instruct-v0.2"
     HF_API_KEY: str = ""
 
+    # API Key Management
+    API_KEY_ADMIN_SECRET: str = "change-me-admin-secret"
+    API_KEYS_ENABLED: bool = False
+
+    # PostgreSQL Database
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/mrairag"
+
+    # SMTP Email (for OTP)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "rkinstitute85@gmail.com"
+    SMTP_PASSWORD: str = "hchdlojdrkwtacnx"
+
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (
         "You are MR AI RAG. "
@@ -65,6 +78,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()

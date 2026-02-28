@@ -1,0 +1,116 @@
+# PostgreSQL + Feature Additions — Implementation Plan
+
+Six features added on top of the existing client auth system.
+
+---
+
+## Key Design Decisions
+
+> [!IMPORTANT]
+> **PostgreSQL via SQLAlchemy (sync)** — Using `SQLAlchemy 2.x` with `psycopg2-binary` (sync, no extra complexity). Since FastAPI runs in async context, we use `run_in_executor` for DB calls, keeping things simple without `asyncpg`.
+>
+> **No Django email backend** — This is a FastAPI app. We use Python's built-in `smtplib` + `ssl` with the same Gmail SMTP credentials provided.
+>
+> **OTP Flow** — OTP is a 6-digit code stored in the `email_otp` table with a 10-minute expiry. Registration is two-step: `POST /api/clients/send-otp` → `POST /api/clients/register` (with otp field).
+>
+> **Notifications** — Stored in PostgreSQL `notifications` table. Dashboard polls `GET /api/clients/me/notifications` every 30s. Unread count shown on bell icon.
+
+---
+
+## Proposed Changes
+
+### 1. Dependencies
+
+#### [MODIFY] [requirements.txt](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/requirements.txt)
+Add: `sqlalchemy==2.0.36`, `psycopg2-binary==2.9.10`
+
+#### [MODIFY] [.env](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/.env)
+Add PostgreSQL + SMTP settings.
+
+---
+
+### 2. Database Layer
+
+#### [NEW] [database.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/database.py)
+- SQLAlchemy `create_engine` + `SessionLocal`
+- `Base = declarative_base()`
+- `get_db()` dependency
+
+#### [NEW] [models.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/models.py)
+Tables:
+- [clients](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py#49-54) — id (PK), client_id, name, email, password_hash, token, is_verified, created_at, last_login
+- [api_keys](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/apikeys.py#139-155) — id, key_id, client_id (FK), name, key_hash, key_preview, is_active, created_at, request_count
+- [chat_history](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py#161-165) — id, client_id (FK), role, content, sources (JSON), timestamp
+- `notifications` — id, client_id (FK), type, message, is_read, created_at
+- `email_otp` — id, email, otp_hash, expires_at, used
+
+#### [MODIFY] [app/core/clients.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py)
+Rewrite to use SQLAlchemy instead of JSON files. Same public API ([register_client](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py#75-104), [login_client](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py#106-123), etc.) + `save_notification`, `get_notifications`, `mark_notifications_read`.
+
+#### [MODIFY] [app/core/api_keys.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/api_keys.py)
+Rewrite to use SQLAlchemy [api_keys](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/apikeys.py#139-155) table. Same public API.
+
+---
+
+### 3. Email OTP
+
+#### [NEW] [email_service.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/email_service.py)
+- `send_otp_email(email, otp)` via Gmail SMTP (smtplib)
+- `generate_otp()` and `store_otp()` / `verify_otp()`
+
+#### [MODIFY] [app/routes/clients.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/clients.py)
+- `POST /api/clients/send-otp` — generate + email OTP
+- `POST /api/clients/register` — now requires `otp` field, verifies before creating
+- `POST /api/clients/forgot-password` — send OTP to reset
+- `POST /api/clients/reset-password` — verify OTP + set new password
+
+#### [MODIFY] [app/routes/apikeys.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/apikeys.py)
+After successful key generation, save a notification: *"API key '{name}' created"*
+
+---
+
+### 4. Config
+
+#### [MODIFY] [app/core/config.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/config.py)
+Add `DATABASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`.
+
+---
+
+### 5. Frontend Changes
+
+#### [MODIFY] [dashboard.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/dashboard.html)
+- **API Keys list panel** — shows all client's generated keys (preview, name, date, status)
+- **Settings button** (gear ⚙️) → dropdown: Logout + Forgot Password
+- **Notification bell** 🔔 in header → badge with unread count → dropdown list
+
+#### [MODIFY] [login.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/login.html)
+- Register: add OTP step (Step 1: fill form + send OTP → Step 2: enter OTP → create account)
+- Forgot Password: modal to enter email → enter OTP → set new password
+
+#### [MODIFY] [index.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/index.html)
+- If not logged in → disable upload tabs and chat input, show "Login to continue" overlay with link to `/login`
+
+#### [MODIFY] [playground.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/playground.html)
+- Same auth guard — if not logged in, show auth overlay
+
+---
+
+## Verification Plan
+
+1. Install new deps: `pip install sqlalchemy psycopg2-binary`
+2. Create PostgreSQL DB + run `CREATE TABLE` migrations via SQLAlchemy `Base.metadata.create_all()`
+3. Register → get OTP email → enter OTP → create account → dashboard
+4. Generate API key → appears in dashboard keys list + notification fires
+5. Settings ⚙️ → Forgot Password flow → receive email OTP → reset
+6. Home page logged-out state → upload disabled → login → upload works
+
+---
+
+## Database Setup Required
+
+> [!CAUTION]
+> You need a running PostgreSQL instance. Set `DATABASE_URL` in [.env](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/.env):
+> ```
+> DATABASE_URL=postgresql://postgres:password@localhost:5432/mrairag
+> ```
+> Run `CREATE DATABASE mrairag;` in psql before starting the server. Tables are auto-created on startup.

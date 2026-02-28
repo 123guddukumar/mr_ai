@@ -1,132 +1,131 @@
 version: "3.9"
 
-# ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # MR AI RAG v2 — Docker Compose
-# ═══════════════════════════════════════════════════════════════
-# Usage:
-#   cp .env.example .env        ← fill in your API keys
-#   docker compose up -d        ← start
-#   docker compose down         ← stop
-#   docker compose logs -f      ← view logs
-# ═══════════════════════════════════════════════════════════════
+# Optimized for: Windows 11, Docker Desktop, i3, 8 GB RAM
+# ═══════════════════════════════════════════════════════════════════════
+#
+# QUICK START:
+#   1. cp .env.example .env   → fill your API keys
+#   2. docker compose up -d   → build + start (first run ~10 min)
+#   3. Open http://localhost:8000
+#
+# COMMON COMMANDS:
+#   docker compose up -d          start in background
+#   docker compose down           stop
+#   docker compose logs -f        live logs
+#   docker compose restart        restart app
+#   docker compose build --no-cache  full rebuild
+# ═══════════════════════════════════════════════════════════════════════
 
 services:
 
-  # ── Main RAG App ─────────────────────────────────────────────
   mr-ai-rag:
     build:
       context: .
       dockerfile: Dockerfile
+      # Use BuildKit for faster, cached builds on Windows
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
+
+    image: mr-ai-rag:latest          # local image tag
     container_name: mr-ai-rag
     restart: unless-stopped
-    ports:
-      - "${PORT:-8000}:8000"
 
-    # ── Environment (override via .env file) ──────────────────
+    # ── Port mapping ──────────────────────────────────────────────────
+    ports:
+      - "8000:8000"                  # http://localhost:8000
+
+    # ── Environment variables ─────────────────────────────────────────
+    # Values come from your .env file (copy .env.example → .env)
     environment:
       # App
-      - APP_NAME=${APP_NAME:-MR AI RAG}
-      - APP_VERSION=2.0.0
-      - DEBUG=${DEBUG:-false}
-      - PORT=8000
+      APP_NAME: "MR AI RAG"
+      DEBUG: "false"
+      PORT: "8000"
 
-      # LLM Providers (set the ones you use)
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      # LLM Providers — set in .env file
+      OPENAI_API_KEY:       ${OPENAI_API_KEY:-}
+      OPENAI_MODEL:         ${OPENAI_MODEL:-gpt-4o-mini}
 
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_API_KEY:       ${GEMINI_API_KEY:-}
+      GEMINI_MODEL:         ${GEMINI_MODEL:-gemini-1.5-flash}
 
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
-      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-3-5-haiku-20241022}
+      CLAUDE_API_KEY:       ${CLAUDE_API_KEY:-}
+      CLAUDE_MODEL:         ${CLAUDE_MODEL:-claude-3-5-haiku-20241022}
 
-      - HF_API_KEY=${HF_API_KEY:-}
-      - HF_MODEL_ID=${HF_MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.2}
+      HF_API_KEY:           ${HF_API_KEY:-}
+      HF_MODEL_ID:          ${HF_MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.2}
 
-      # Ollama (point to another container or host machine)
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+      # Ollama on host Windows machine → use special Docker Desktop DNS
+      OLLAMA_BASE_URL:      ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL:         ${OLLAMA_MODEL:-llama3}
 
-      # Embedding (local, no key needed)
-      - EMBEDDING_MODEL=all-MiniLM-L6-v2
-      - EMBEDDING_DIMENSION=384
+      # Embedding (local, no API key, downloads ~90MB on first run)
+      EMBEDDING_MODEL:      "all-MiniLM-L6-v2"
+      EMBEDDING_DIMENSION:  "384"
 
-      # Chunking
-      - CHUNK_SIZE=500
-      - CHUNK_OVERLAP=100
-      - TOP_K_RESULTS=5
+      # RAG settings
+      CHUNK_SIZE:           "500"
+      CHUNK_OVERLAP:        "100"
+      TOP_K_RESULTS:        "5"
 
-    # ── Persistent storage ────────────────────────────────────
+      # CPU-only mode (no GPU needed)
+      CUDA_VISIBLE_DEVICES: ""
+
+      # Cache dirs inside container
+      TRANSFORMERS_CACHE:   "/app/.cache/huggingface"
+      WHISPER_CACHE:        "/app/.cache/whisper"
+
+    # ── Volumes ───────────────────────────────────────────────────────
+    # Named volumes keep your data safe across container restarts/rebuilds
     volumes:
-      - rag_uploads:/app/uploads
-      - rag_vector_store:/app/vector_store
+      - rag_uploads:/app/uploads              # your uploaded PDFs
+      - rag_vector_store:/app/vector_store    # FAISS index + metadata
+      - rag_cache:/app/.cache                 # embedding + whisper models
 
-    # ── Resource limits ───────────────────────────────────────
-    # Adjust based on your server. Whisper needs more RAM.
+    # ── Resource limits ───────────────────────────────────────────────
+    # i3 dual-core + 8GB RAM system:
+    #   • Reserve 3GB for Docker / Windows
+    #   • App gets ~4GB (plenty for base Whisper + embeddings)
+    #   • CPUs limited to not freeze your desktop during transcription
     deploy:
       resources:
         limits:
-          memory: 4G          # increase to 8G if using whisper-medium/large
+          cpus: "1.5"          # leave 0.5 core for Windows
+          memory: "3500M"      # safe ceiling for 8GB system
         reservations:
-          memory: 1G
+          cpus: "0.5"
+          memory: "1G"
 
+    # ── Health check ──────────────────────────────────────────────────
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s        # extra time for model download on first run
 
-    networks:
-      - ragnet
+    # ── Logging ───────────────────────────────────────────────────────
+    # Limits log file size so it doesn't fill your disk
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ── Ollama (optional — local LLM) ────────────────────────────
-  # Uncomment this block to run Ollama alongside the app.
-  # After starting: docker exec -it ollama ollama pull llama3
-
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: ollama
-  #   restart: unless-stopped
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_models:/root/.ollama
-  #   networks:
-  #     - ragnet
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 8G
-
-  # ── Nginx reverse proxy (optional — for domain + HTTPS) ──────
-  # Uncomment and set your domain in nginx/default.conf
-
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: nginx
-  #   restart: unless-stopped
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-  #     - ./nginx/certs:/etc/nginx/certs:ro        # for HTTPS
-  #   depends_on:
-  #     - mr-ai-rag
-  #   networks:
-  #     - ragnet
-
-# ── Named Volumes (data survives container restarts) ───────────
+# ── Named Volumes ────────────────────────────────────────────────────────
+# Data persists even when you run: docker compose down
+# To fully reset: docker compose down -v
 volumes:
   rag_uploads:
     driver: local
   rag_vector_store:
     driver: local
-  # ollama_models:
-  #   driver: local
+  rag_cache:
+    driver: local             # caches embedding + whisper models (saves re-download)
 
-# ── Networks ──────────────────────────────────────────────────
+# ── Networks ─────────────────────────────────────────────────────────────
 networks:
-  ragnet:
-    driver: bridge
+  default:
+    name: ragnet

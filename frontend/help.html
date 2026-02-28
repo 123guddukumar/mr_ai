@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MR AI RAG — Help & Documentation</title>
+<meta name="description" content="Complete help guide for MR AI RAG — setup, API usage, client auth, uploads, and troubleshooting.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100%}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:260px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);
+  position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
+.main{flex:1;max-width:860px;padding:48px 40px;overflow-y:auto}
+
+/* ── Sidebar ── */
+.sidebar-logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo-text{font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.nav-section{padding:10px 18px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.nav-link{display:flex;align-items:center;gap:8px;padding:7px 18px;font-size:12px;font-weight:500;
+  color:var(--text3);cursor:pointer;transition:all .15s;text-decoration:none;border-left:2px solid transparent}
+.nav-link:hover{color:var(--text);background:rgba(108,99,255,.05)}
+.nav-link.active{color:var(--accent);background:rgba(108,99,255,.08);border-left-color:var(--accent)}
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);margin-top:auto;font-size:10px;color:var(--text3)}
+
+/* ── Content ── */
+h1{font-size:28px;font-weight:800;margin-bottom:8px;line-height:1.3}
+h2{font-size:19px;font-weight:700;margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;scroll-margin-top:20px}
+h3{font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--text2)}
+p{font-size:13px;line-height:1.8;color:var(--text2);margin-bottom:10px}
+ul,ol{padding-left:20px;margin-bottom:12px}
+li{font-size:13px;line-height:1.8;color:var(--text2)}
+li strong{color:var(--text)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.lead{font-size:14px;color:var(--text3);margin-bottom:32px;line-height:1.7}
+
+/* ── Code ── */
+code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);
+  padding:2px 6px;border-radius:4px;color:var(--accent2);border:1px solid var(--border)}
+pre{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;
+  overflow-x:auto;margin:12px 0;position:relative}
+pre code{background:none;border:none;padding:0;font-size:12px;color:var(--text2);line-height:1.7}
+.copy-pre{position:absolute;top:8px;right:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text3);cursor:pointer;font-size:10px;font-family:'Inter',sans-serif;transition:all .2s}
+.copy-pre:hover{border-color:var(--accent2);color:var(--accent2)}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:12px 0}
+.card-title{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.card p,.card li{font-size:12px}
+
+/* ── Alerts ── */
+.alert{padding:12px 16px;border-radius:9px;margin:14px 0;font-size:12px;line-height:1.7;display:flex;gap:10px}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.alert.info{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);color:#93c5fd}
+.alert.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#fde68a}
+.alert.success{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:#6ee7b7}
+.alert.danger{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#fca5a5}
+
+/* ── Step list ── */
+.steps{counter-reset:step;list-style:none;padding:0;margin:12px 0}
+.steps li{counter-increment:step;display:flex;gap:12px;margin-bottom:14px;font-size:13px;color:var(--text2);line-height:1.7}
+.steps li::before{content:counter(step);width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5b52e0);
+  color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* ── Method badges ── */
+.badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}
+.GET{background:rgba(52,211,153,.12);color:#6ee7b7;border:1px solid rgba(52,211,153,.25)}
+.POST{background:rgba(251,191,36,.12);color:#fde68a;border:1px solid rgba(251,191,36,.25)}
+.DELETE{background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.25)}
+
+/* ── Table ── */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+th{text-align:left;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);font-weight:600;font-size:11px}
+td{padding:8px 12px;border:1px solid var(--border);color:var(--text2);vertical-align:top}
+td code{font-size:10px}
+
+/* ── TOC ── */
+.toc{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:32px;}
+.toc-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
+.toc a{display:block;font-size:12px;color:var(--text3);padding:2px 0;transition:color .15s}
+.toc a:hover{color:var(--accent)}
+.toc-sub{padding-left:14px;font-size:11px}
+
+/* ── Hero ── */
+.hero{background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(0,212,170,.06));
+  border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:24px 28px;margin-bottom:32px}
+.hero h1{font-size:24px}
+
+@media(max-width:720px){.sidebar{display:none}.main{padding:24px 18px}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">MR AI RAG</div>
+    <div class="logo-sub">Help & Documentation</div>
+  </div>
+
+  <div class="nav-section">Getting Started</div>
+  <a class="nav-link active" href="#intro">🚀 Introduction</a>
+  <a class="nav-link" href="#quickstart">⚡ Quick Start</a>
+  <a class="nav-link" href="#setup">🔧 Setup & Config</a>
+
+  <div class="nav-section">Authentication</div>
+  <a class="nav-link" href="#register">👤 Register & Login</a>
+  <a class="nav-link" href="#otp">📩 Email OTP</a>
+  <a class="nav-link" href="#apikeys">🔑 API Keys</a>
+  <a class="nav-link" href="#dashboard">📊 Dashboard</a>
+
+  <div class="nav-section">Using the API</div>
+  <a class="nav-link" href="#upload">📄 Uploading Sources</a>
+  <a class="nav-link" href="#asking">💬 Asking Questions</a>
+  <a class="nav-link" href="#providers">🤖 LLM Providers</a>
+  <a class="nav-link" href="#playground">🎮 Playground</a>
+
+  <div class="nav-section">Reference</div>
+  <a class="nav-link" href="#endpoints">📋 All Endpoints</a>
+  <a class="nav-link" href="#errors">⚠️ Error Codes</a>
+  <a class="nav-link" href="#troubleshoot">🔍 Troubleshooting</a>
+  <a class="nav-link" href="#faq">❓ FAQ</a>
+
+  <div class="sidebar-footer">
+    <div style="margin-bottom:6px">Links</div>
+    <a href="/" style="display:block;color:var(--text3);font-size:11px;margin-bottom:3px;text-decoration:none">🏠 Home</a>
+    <a href="/playground" style="display:block;color:var(--text3);font-size:11px;margin-bottom:3px;text-decoration:none">🎮 Playground</a>
+    <a href="/api-docs" style="display:block;color:var(--text3);font-size:11px;margin-bottom:3px;text-decoration:none">📖 API Docs</a>
+    <a href="/dashboard" style="display:block;color:var(--text3);font-size:11px;text-decoration:none">📊 Dashboard</a>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>📚 MR AI RAG Help Center</h1>
+    <p class="lead" style="margin-bottom:0">Everything you need to upload documents, query them with AI, manage API keys, and integrate with your applications.</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">On this page</div>
+    <a href="#intro">Introduction</a>
+    <a href="#quickstart">Quick Start (5 min)</a>
+    <a href="#setup">Setup & Configuration</a>
+    <a href="#register">Register & Login</a>
+    <a href="#otp">Email OTP Verification</a>
+    <a href="#apikeys">API Keys</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#upload">Uploading Sources</a>
+    <a href="#asking">Asking Questions</a>
+    <a href="#providers">LLM Providers</a>
+    <a href="#playground">Playground</a>
+    <a href="#endpoints">All Endpoints</a>
+    <a href="#errors">Error Codes</a>
+    <a href="#troubleshoot">Troubleshooting</a>
+    <a href="#faq">FAQ</a>
+  </div>
+
+  <!-- Introduction -->
+  <section id="intro">
+    <h2>🚀 Introduction</h2>
+    <p><strong>MR AI RAG</strong> (Retrieval-Augmented Generation) is an AI document intelligence platform. Upload PDFs, YouTube videos, websites, or video files — then ask questions in natural language and get AI-powered answers with citations.</p>
+
+    <div class="card">
+      <div class="card-title">✨ Core Capabilities</div>
+      <ul>
+        <li><strong>Multi-source ingestion</strong> — PDF, YouTube, URL/website scraping, MP4/WAV transcription</li>
+        <li><strong>Local embeddings</strong> — Uses sentence-transformers locally, no embedding API key needed</li>
+        <li><strong>Multi-provider LLM</strong> — OpenAI, Google Gemini, Anthropic Claude, Ollama (local), HuggingFace</li>
+        <li><strong>Client authentication</strong> — Register, email OTP verification, personal API key management</li>
+        <li><strong>Chat history</strong> — All conversations saved to your dashboard automatically</li>
+        <li><strong>FAISS vector store</strong> — Fast semantic search across all indexed content</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section id="quickstart">
+    <h2>⚡ Quick Start (5 min)</h2>
+    <ol class="steps">
+      <li><strong>Register</strong> — Go to <a href="/login">/login</a> → Create Account → enter your name, email, password → a 6-digit OTP is emailed to you.</li>
+      <li><strong>Verify email</strong> — Enter the OTP code from your email. Your account is created and you're redirected to the Dashboard.</li>
+      <li><strong>Generate API key</strong> — In the Dashboard, find "Generate API Key", enter a label, click ⚡ Generate. <strong>Copy the key immediately</strong> — it's shown only once.</li>
+      <li><strong>Configure LLM</strong> — In the <a href="/playground">Playground</a>, select your AI provider (e.g. Gemini), paste your API key, click ⚡ Apply Provider.</li>
+      <li><strong>Upload a source</strong> — In the Playground left panel, upload a PDF or paste a YouTube URL.</li>
+      <li><strong>Ask a question</strong> — Type your question in the chat input and press Enter. AI answers with source citations.</li>
+      <li><strong>Check history</strong> — Visit your <a href="/dashboard">Dashboard</a> → Chat History tab to see all conversations.</li>
+    </ol>
+  </section>
+
+  <!-- Setup -->
+  <section id="setup">
+    <h2>🔧 Setup & Configuration</h2>
+    <h3>Environment Variables (.env)</h3>
+    <p>All settings live in the <code>.env</code> file in the project root. Key variables:</p>
+    <table>
+      <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>DATABASE_URL</code></td><td>localhost postgres</td><td>PostgreSQL connection string</td></tr>
+      <tr><td><code>LLM_PROVIDER</code></td><td><code>openai</code></td><td>openai | gemini | claude | ollama | huggingface</td></tr>
+      <tr><td><code>GEMINI_API_KEY</code></td><td>—</td><td>Google AI Studio API key</td></tr>
+      <tr><td><code>OPENAI_API_KEY</code></td><td>—</td><td>OpenAI secret key (sk-...)</td></tr>
+      <tr><td><code>API_KEY_ADMIN_SECRET</code></td><td>change-me</td><td>Global admin secret for key generation</td></tr>
+      <tr><td><code>API_KEYS_ENABLED</code></td><td><code>true</code></td><td>Require X-API-Key on protected routes</td></tr>
+      <tr><td><code>SMTP_USER</code></td><td>—</td><td>Gmail address for sending OTP emails</td></tr>
+      <tr><td><code>SMTP_PASSWORD</code></td><td>—</td><td>Gmail App Password (not your gmail password)</td></tr>
+    </table>
+
+    <h3>Render PostgreSQL Setup</h3>
+    <ol class="steps">
+      <li>Go to <a href="https://dashboard.render.com" target="_blank">dashboard.render.com</a> → New → PostgreSQL</li>
+      <li>Choose Free plan → Create Database</li>
+      <li>In the DB dashboard, click <strong>Connect</strong> → copy the <strong>External Database URL</strong></li>
+      <li>Paste it as <code>DATABASE_URL</code> in your <code>.env</code></li>
+      <li>Restart the server — tables are auto-created on startup</li>
+    </ol>
+    <div class="alert info"><span class="alert-icon">ℹ️</span><div>Render free PostgreSQL databases expire after 90 days. Upgrade to paid for production use.</div></div>
+
+    <h3>Running the Server</h3>
+    <pre><code>pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+  </section>
+
+  <!-- Register & Login -->
+  <section id="register">
+    <h2>👤 Register & Login</h2>
+    <p>MR AI RAG uses a client-based authentication system. Every client gets a unique <code>client_id</code> and a session <code>token</code>.</p>
+
+    <h3>Via Web UI (recommended)</h3>
+    <p>Visit <a href="/login">/login</a>, switch to "Create Account", fill the form, and verify your email with the OTP code sent to you.</p>
+
+    <h3>Via API</h3>
+    <pre><code># Step 1: Send OTP
+curl -X POST /api/clients/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","name":"Your Name","purpose":"register"}'
+
+# Step 2: Register with OTP
+curl -X POST /api/clients/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Your Name","email":"you@example.com","password":"secret123","otp":"123456"}'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>Login</h3>
+    <pre><code>curl -X POST /api/clients/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"secret123"}'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+    <p>The response contains <code>client_id</code> and <code>token</code>. Store these securely — <code>token</code> is your <code>X-Client-Token</code> for authenticated requests.</p>
+  </section>
+
+  <!-- OTP -->
+  <section id="otp">
+    <h2>📩 Email OTP Verification</h2>
+    <p>Email verification is required for registration and password reset. OTPs are valid for <strong>10 minutes</strong> and expire after use.</p>
+
+    <div class="alert warn"><span class="alert-icon">⚠️</span><div>Make sure your Gmail account uses an <strong>App Password</strong>, not your regular Gmail password. Go to Google Account → Security → 2-Step Verification → App Passwords.</div></div>
+
+    <h3>Forgot Password</h3>
+    <ol class="steps">
+      <li>Go to <a href="/dashboard">Dashboard</a> → click the ⚙️ gear icon → <strong>Forgot Password</strong></li>
+      <li>Enter your email address → click <strong>Send OTP</strong></li>
+      <li>Check your email, enter the 6-digit code</li>
+      <li>Enter your new password → click <strong>Reset Password</strong></li>
+    </ol>
+
+    <pre><code># Via API
+curl -X POST /api/clients/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com"}'
+
+curl -X POST /api/clients/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","otp":"123456","new_password":"newPass123"}'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+  </section>
+
+  <!-- API Keys -->
+  <section id="apikeys">
+    <h2>🔑 API Keys</h2>
+    <p>API keys authenticate requests to protected endpoints. Use the <code>X-API-Key</code> header on every upload and query request.</p>
+
+    <div class="alert danger"><span class="alert-icon">🚨</span><div><strong>The full API key is shown only once</strong> at generation time. Store it immediately in a secure place — it cannot be retrieved again.</div></div>
+
+    <h3>Generate via Dashboard</h3>
+    <ol class="steps">
+      <li>Go to <a href="/dashboard">Dashboard</a></li>
+      <li>Find <strong>⚡ Generate API Key</strong> in the left panel</li>
+      <li>Enter a label (e.g. "My App")</li>
+      <li>Click <strong>⚡ Generate</strong> — copy the key shown</li>
+    </ol>
+
+    <h3>Generate via API</h3>
+    <pre><code># Use your client token as X-Admin-Secret
+curl -X POST /api/keys/generate \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: clt-your-token-here" \
+  -d '{"name":"My App"}'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>Using API Keys</h3>
+    <pre><code># Add X-API-Key header to every request
+curl -X POST /api/upload \
+  -H "X-API-Key: mrairag-your-api-key-here" \
+  -F "file=@document.pdf"</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>Revoke Keys</h3>
+    <p>In the Dashboard → My API Keys panel, click <strong>Revoke</strong> next to any active key. Revoked keys immediately stop working.</p>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="dashboard">
+    <h2>📊 Dashboard</h2>
+    <p>The <a href="/dashboard">Dashboard</a> is your control center after logging in.</p>
+    <table>
+      <tr><th>Section</th><th>Description</th></tr>
+      <tr><td>🪪 Client ID card</td><td>Your unique ID. Use as <code>X-Admin-Secret</code> to generate API keys externally.</td></tr>
+      <tr><td>🔐 Session Token</td><td>Current login token. Use as <code>X-Client-Token</code> header for API requests.</td></tr>
+      <tr><td>⚡ Generate API Key</td><td>Create named API keys for use in your app</td></tr>
+      <tr><td>🗝 My API Keys</td><td>All generated keys (with preview, date, usage count, revoke button)</td></tr>
+      <tr><td>💬 Chat History</td><td>All conversations from the Playground, with sources cited</td></tr>
+      <tr><td>🔔 Notifications</td><td>Bell icon with real-time alerts for key creation, chat saves, etc.</td></tr>
+      <tr><td>⚙️ Settings</td><td>Gear icon → Forgot Password or Logout</td></tr>
+    </table>
+  </section>
+
+  <!-- Upload -->
+  <section id="upload">
+    <h2>📄 Uploading Sources</h2>
+    <p>Sources are split into chunks, embedded, and stored in a FAISS vector index. All queries search across all indexed chunks.</p>
+
+    <h3>PDF Upload</h3>
+    <pre><code>curl -X POST /api/upload \
+  -H "X-API-Key: mrairag-..." \
+  -F "file=@report.pdf"
+# Returns: {success, filename, total_pages, total_chunks}</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>YouTube Video</h3>
+    <pre><code>curl -X POST /api/ingest-youtube \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mrairag-..." \
+  -d '{"url":"https://youtube.com/watch?v=...","whisper_model":"base"}'
+# Returns: {success, title, total_chunks, word_count, method_used}</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>Website / URL</h3>
+    <pre><code>curl -X POST /api/ingest-url \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mrairag-..." \
+  -d '{"url":"https://example.com/article"}'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <h3>Video / Audio File</h3>
+    <pre><code>curl -X POST "/api/ingest-video?whisper_model=base" \
+  -H "X-API-Key: mrairag-..." \
+  -F "file=@lecture.mp4"</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <div class="alert info"><span class="alert-icon">ℹ️</span><div>Whisper models: <code>tiny</code> (fastest), <code>base</code>, <code>small</code>, <code>medium</code>, <code>large</code> (most accurate). Larger models require more RAM and take longer.</div></div>
+  </section>
+
+  <!-- Asking -->
+  <section id="asking">
+    <h2>💬 Asking Questions</h2>
+    <pre><code>curl -X POST /api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mrairag-..." \
+  -d '{
+    "question": "What are the main conclusions?",
+    "top_k": 5
+  }'
+# Returns: {answer, sources, context_found, model_used}</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>question</code></td><td>string</td><td>Your question (required)</td></tr>
+      <tr><td><code>top_k</code></td><td>integer</td><td>Number of context chunks to retrieve (default: 5)</td></tr>
+    </table>
+
+    <div class="alert success"><span class="alert-icon">✅</span><div>The AI only answers from indexed content. If no relevant content is found, it says so rather than hallucinating.</div></div>
+  </section>
+
+  <!-- Providers -->
+  <section id="providers">
+    <h2>🤖 LLM Providers</h2>
+    <p>Configure which AI model answers your questions. Can be changed at runtime via the Playground or API.</p>
+
+    <table>
+      <tr><th>Provider</th><th>Models</th><th>Key required</th></tr>
+      <tr><td>🟢 OpenAI</td><td>gpt-4o-mini, gpt-4o, gpt-4-turbo</td><td>sk-...</td></tr>
+      <tr><td>💎 Gemini</td><td>gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash</td><td>AIza...</td></tr>
+      <tr><td>🧠 Claude</td><td>claude-3-5-haiku, claude-3-5-sonnet, claude-3-opus</td><td>sk-ant-...</td></tr>
+      <tr><td>🦙 Ollama</td><td>llama3, mistral, phi3, gemma2</td><td>None (local URL)</td></tr>
+      <tr><td>🤗 HuggingFace</td><td>Mistral-7B, Zephyr-7B, Falcon-7B</td><td>hf_...</td></tr>
+    </table>
+
+    <h3>Change Provider via API</h3>
+    <pre><code>curl -X POST /api/provider/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "gemini",
+    "api_key": "AIza...",
+    "model": "gemini-2.5-flash"
+  }'</code><button class="copy-pre" onclick="copyBlock(this)">Copy</button></pre>
+  </section>
+
+  <!-- Playground -->
+  <section id="playground">
+    <h2>🎮 Playground</h2>
+    <p>The <a href="/playground">Playground</a> lets you test everything in a visual interface without writing any code.</p>
+    <ol class="steps">
+      <li>Select your AI provider and enter your API key in the <strong>🤖 AI Provider</strong> panel → click ⚡ Apply</li>
+      <li>Use the left panel to upload a PDF, YouTube URL, website, or video</li>
+      <li>Ask questions in the chat panel on the right</li>
+      <li>All conversations are automatically saved to your Dashboard → Chat History</li>
+    </ol>
+    <div class="alert info"><span class="alert-icon">ℹ️</span><div>You must be logged in to use the Playground. Visit <a href="/login">/login</a> to sign in or create an account.</div></div>
+  </section>
+
+  <!-- Endpoints -->
+  <section id="endpoints">
+    <h2>📋 All Endpoints</h2>
+
+    <h3>Auth (Clients)</h3>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/send-otp</code></td><td>Send OTP email</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/register</code></td><td>Register with OTP</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/login</code></td><td>Login → get token</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/forgot-password</code></td><td>Send reset OTP</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/reset-password</code></td><td>Reset password with OTP</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/clients/me</code></td><td>Get your profile</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/clients/me/keys</code></td><td>List your API keys</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/clients/me/history</code></td><td>Get chat history</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/me/history</code></td><td>Save message to history</td></tr>
+      <tr><td><span class="badge DELETE">DELETE</span></td><td><code>/api/clients/me/history</code></td><td>Clear chat history</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/clients/me/notifications</code></td><td>Get notifications</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/clients/me/notifications/read</code></td><td>Mark all read</td></tr>
+    </table>
+
+    <h3>API Keys</h3>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/keys/generate</code></td><td>X-Admin-Secret</td><td>Generate new key</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/keys</code></td><td>X-Admin-Secret</td><td>List all keys</td></tr>
+      <tr><td><span class="badge DELETE">DELETE</span></td><td><code>/api/keys/{id}</code></td><td>X-Admin-Secret</td><td>Revoke key</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/keys/validate</code></td><td>None</td><td>Check if key is valid</td></tr>
+    </table>
+
+    <h3>Documents & Query</h3>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/upload</code></td><td>Upload PDF</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/ingest-youtube</code></td><td>YouTube URL → transcript</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/ingest-url</code></td><td>Scrape website</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/ingest-video</code></td><td>Transcribe video/audio</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/ask</code></td><td>Query indexed content</td></tr>
+      <tr><td><span class="badge GET">GET</span></td><td><code>/api/health</code></td><td>System health + chunk count</td></tr>
+      <tr><td><span class="badge POST">POST</span></td><td><code>/api/provider/config</code></td><td>Set LLM provider</td></tr>
+    </table>
+  </section>
+
+  <!-- Errors -->
+  <section id="errors">
+    <h2>⚠️ Error Codes</h2>
+    <table>
+      <tr><th>Code</th><th>Meaning</th><th>Fix</th></tr>
+      <tr><td>400</td><td>Bad request / invalid OTP</td><td>Check request body or request a new OTP</td></tr>
+      <tr><td>401</td><td>Invalid or missing API key / client token</td><td>Add correct <code>X-API-Key</code> or <code>X-Client-Token</code> header</td></tr>
+      <tr><td>403</td><td>Wrong admin secret</td><td>Use your client token or the global <code>API_KEY_ADMIN_SECRET</code></td></tr>
+      <tr><td>404</td><td>Resource not found</td><td>Check endpoint URL and IDs</td></tr>
+      <tr><td>409</td><td>Email already registered</td><td>Login instead, or use forgot password</td></tr>
+      <tr><td>500</td><td>Internal server error</td><td>Check server logs, DB connection, SMTP config</td></tr>
+    </table>
+  </section>
+
+  <!-- Troubleshooting -->
+  <section id="troubleshoot">
+    <h2>🔍 Troubleshooting</h2>
+
+    <h3>Chat history not showing on dashboard</h3>
+    <p>Make sure you're logged in when using the Playground — messages are saved using your session token from <code>localStorage</code>. If you're not logged in, messages aren't saved. Log in at <a href="/login">/login</a> then use the Playground.</p>
+
+    <h3>OTP email not received</h3>
+    <ul>
+      <li>Check your spam/junk folder</li>
+      <li>Ensure <code>SMTP_PASSWORD</code> is a <strong>Gmail App Password</strong> (not your regular password)</li>
+      <li>Enable "2-Step Verification" then generate an App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a></li>
+      <li>OTP is valid for only 10 minutes — click "Resend OTP" if expired</li>
+    </ul>
+
+    <h3>Database connection error on startup</h3>
+    <ul>
+      <li>Check <code>DATABASE_URL</code> in <code>.env</code> — must use PostgreSQL format</li>
+      <li>For Render: use the <strong>External</strong> connection URL (not internal)</li>
+      <li>The server will still start even if DB fails — it logs a warning and continues</li>
+    </ul>
+
+    <h3>API key rejected (401)</h3>
+    <ul>
+      <li>Ensure header is exactly <code>X-API-Key</code></li>
+      <li>Key may have been revoked — generate a new one from Dashboard</li>
+      <li>If <code>API_KEYS_ENABLED=false</code>, no key is needed</li>
+    </ul>
+
+    <h3>Provider not responding</h3>
+    <ul>
+      <li>Verify your provider API key is correct and has credits</li>
+      <li>For Ollama: ensure <code>ollama serve</code> is running locally</li>
+      <li>Check <code>/api/health</code> to see current provider status</li>
+    </ul>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <h2>❓ FAQ</h2>
+
+    <h3>Is my data stored permanently?</h3>
+    <p>Uploaded documents are indexed in the FAISS vector store on the server. Chat history is stored in PostgreSQL. You can clear your chat history anytime from the Dashboard.</p>
+
+    <h3>Can I use multiple AI providers?</h3>
+    <p>Yes! Switch between OpenAI, Gemini, Claude, Ollama, and HuggingFace at any time via the Playground's AI Provider panel or via <code>POST /api/provider/config</code>. The change applies immediately to all subsequent queries.</p>
+
+    <h3>What's the difference between my Client ID and API Key?</h3>
+    <ul>
+      <li><strong>Client ID</strong> — your unique identity identifier (e.g. <code>client-a1b2c3d4e5</code>). Used as <code>X-Admin-Secret</code> when generating API keys.</li>
+      <li><strong>Session Token</strong> — your login credential (e.g. <code>clt-...</code>). Used as <code>X-Client-Token</code> for profile/history/notification requests. Also works as <code>X-Admin-Secret</code>.</li>
+      <li><strong>API Key</strong> — used as <code>X-API-Key</code> for all document upload and query requests.</li>
+    </ul>
+
+    <h3>Can I share my API key?</h3>
+    <p>You can share API keys for integrations, but be careful — anyone with your key can upload and query documents. Revoke keys immediately if compromised.</p>
+
+    <h3>Is there a rate limit?</h3>
+    <p>No built-in rate limits are applied by default. For production deployments, consider adding rate limiting via a reverse proxy (nginx) or FastAPI middleware.</p>
+
+    <h3>How do I delete my account?</h3>
+    <p>Account deletion is not currently available through the UI. Contact the admin or use <code>DELETE /api/clients/me</code> (coming soon).</p>
+
+    <div class="alert success" style="margin-top:28px"><span class="alert-icon">💡</span><div>Still need help? Open the <a href="/api/docs" target="_blank">Swagger UI</a> at <code>/api/docs</code> to explore and test every endpoint interactively.</div></div>
+  </section>
+
+</main>
+</div>
+
+<script>
+// Highlight active sidebar link on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const a = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if(a) a.classList.add('active');
+    }
+  });
+},{threshold:0.3});
+sections.forEach(s=>observer.observe(s));
+
+// Copy code blocks
+function copyBlock(btn) {
+  const pre = btn.parentElement;
+  const code = pre.querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(()=>{
+    btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy',2000);
+  });
+}
+</script>
+</body>
+</html>

@@ -20,8 +20,7 @@ PyMuPDF==1.25.1
 sentence-transformers==3.3.1
 
 # ── Vector Store ──────────────────────────────────────────────
-# faiss-cpu==1.9.0.post1
-faiss-cpu
+faiss-cpu==1.9.0.post1
 
 # ── LLM Providers ─────────────────────────────────────────────
 openai==1.58.1
@@ -38,3 +37,7 @@ openai-whisper>=20231117
 # ── Utilities ─────────────────────────────────────────────────
 numpy==1.26.4
 python-dotenv==1.0.1
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10

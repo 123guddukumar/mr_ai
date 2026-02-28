@@ -4,7 +4,8 @@ POST /ask
 """
 
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.core.api_keys import require_api_key
 from app.core.config import settings
 from app.models.schemas import QueryRequest, QueryResponse
 from app.services.embedder import embed_query
@@ -19,7 +20,7 @@ MIN_SIMILARITY_THRESHOLD = 0.25
 
 
 @router.post("/ask", response_model=QueryResponse, summary="Ask a question from indexed documents")
-async def ask_question(request: QueryRequest):
+async def ask_question(request: QueryRequest, _key: dict = Depends(require_api_key)):
     store = get_vector_store()
     if store.total_chunks == 0:
         raise HTTPException(status_code=404, detail="No documents indexed yet. Please upload PDF documents first.")

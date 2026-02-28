@@ -9,7 +9,8 @@ import os
 import logging
 import aiofiles
 from typing import List
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from app.core.api_keys import require_api_key
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -88,7 +89,7 @@ async def _index_pdf(content: bytes, filename: str, upload_dir: str) -> BatchUpl
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/upload", response_model=UploadResponse, summary="Upload a single PDF")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), _key: dict = Depends(require_api_key)):
     """Single PDF upload — backward compatible."""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted.")
@@ -112,7 +113,7 @@ async def upload_document(file: UploadFile = File(...)):
 
 @router.post("/upload-batch", response_model=BatchUploadResponse,
              summary="Upload multiple PDFs at once (up to 20)")
-async def upload_batch(files: List[UploadFile] = File(...)):
+async def upload_batch(files: List[UploadFile] = File(...), _key: dict = Depends(require_api_key)):
     """
     Upload and index up to 20 PDFs in one request.
     Partial success is allowed — each file is processed independently.
@@ -155,7 +156,7 @@ async def upload_batch(files: List[UploadFile] = File(...)):
 
 @router.post("/suggest-prompts", response_model=SuggestPromptsResponse,
              summary="Generate suggested questions from indexed sources")
-async def suggest_prompts(req: SuggestPromptsRequest):
+async def suggest_prompts(req: SuggestPromptsRequest, _key: dict = Depends(require_api_key)):
     """
     Sample chunks from the vector store and ask the active LLM to
     generate relevant questions the user could ask about the content.

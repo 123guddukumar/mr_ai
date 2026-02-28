@@ -1,0 +1,12 @@
+{
+  "client-5ca9210fbd": {
+    "client_id": "client-5ca9210fbd",
+    "name": "guddu kumar",
+    "email": "guddukumarbth0123@gmail.com",
+    "password_hash": "8022c8718f7bd01ce05a2a30cade0272e0f74dcc262b051cdbb5735115128664",
+    "token": "clt-7bb78260e5847594a5605e95d28dd44076b550fa88b9a876",
+    "created_at": "2026-02-28T06:10:42.627623",
+    "last_login": "2026-02-28T06:10:42.627623",
+    "chat_history": []
+  }
+}

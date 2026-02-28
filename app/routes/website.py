@@ -8,7 +8,8 @@ import re
 import uuid
 import httpx
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.core.api_keys import require_api_key
 from pydantic import BaseModel, HttpUrl
 from app.models.schemas import ChunkMetadata
 from app.services.chunker import chunk_text
@@ -80,7 +81,7 @@ def extract_text_from_html(html: str) -> tuple[str, str]:
 
 
 @router.post("/ingest-url", response_model=IngestURLResponse, summary="Scrape and index a website URL")
-async def ingest_url(req: IngestURLRequest):
+async def ingest_url(req: IngestURLRequest, _key: dict = Depends(require_api_key)):
     """
     Scrape a public webpage and index its content into FAISS.
     - Fetches HTML with browser-like headers

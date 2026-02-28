@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MR AI RAG — Admin Dashboard</title>
+<meta name="description" content="Admin dashboard for MR AI RAG — manage all clients.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080a12;--bg2:#0e1121;--bg3:#14172b;--card:#1a1d33;--border:#1e2340;
+  --accent:#f59e0b;--accent2:#ef4444;--accent3:#34d399;--text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex;flex-direction:column;min-height:100vh;
+  background-image:radial-gradient(ellipse at 10% 20%,rgba(245,158,11,.05) 0%,transparent 60%),
+                   radial-gradient(ellipse at 90% 80%,rgba(239,68,68,.04) 0%,transparent 50%);}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Header ── */
+.header{display:flex;align-items:center;gap:12px;padding:12px 24px;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.header-logo{font-size:15px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#ef4444);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.header-badge{font-size:10px;padding:2px 8px;border-radius:99px;
+  background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24;font-weight:700;letter-spacing:.06em}
+.spacer{flex:1}
+.admin-name{font-size:12px;color:var(--text2);font-weight:500}
+.nav-btn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid var(--border);
+  cursor:pointer;background:transparent;color:var(--text3);transition:all .2s;text-decoration:none}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.nav-btn.danger{border-color:rgba(239,68,68,.3);color:var(--red)}
+.nav-btn.danger:hover{background:rgba(239,68,68,.08)}
+
+/* ── Stats Bar ── */
+.stats-bar{display:flex;gap:12px;padding:16px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 18px;min-width:120px;flex:1}
+.stat-val{font-size:24px;font-weight:800;margin-bottom:2px}
+.stat-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.stat-card.amber .stat-val{color:#fbbf24}
+.stat-card.green .stat-val{color:var(--green)}
+.stat-card.blue .stat-val{color:var(--blue)}
+.stat-card.red .stat-val{color:var(--red)}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;align-items:center;gap:10px;padding:12px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.search-input{background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:7px 12px;
+  border-radius:8px;font-size:12px;font-family:'Inter',sans-serif;width:260px;transition:border-color .2s}
+.search-input:focus{outline:none;border-color:var(--accent)}
+.search-input::placeholder{color:var(--text3)}
+.filter-btn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;
+  background:var(--bg3);border:1px solid var(--border);color:var(--text3);transition:all .2s}
+.filter-btn.active,.filter-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,158,11,.06)}
+.toolbar-spacer{flex:1}
+.add-btn{padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
+  border:none;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;transition:all .2s}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(245,158,11,.3)}
+
+/* ── Table ── */
+.table-wrap{flex:1;overflow-y:auto;padding:0 24px 24px}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px}
+th{text-align:left;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text3);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+td{padding:10px 12px;border-bottom:1px solid rgba(30,35,64,.6);color:var(--text2);vertical-align:middle}
+tr:hover td{background:rgba(245,158,11,.02)}
+.client-name{color:var(--text);font-weight:600}
+.client-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.client-email{font-size:11px}
+.verified-badge{font-size:9px;padding:2px 7px;border-radius:99px;font-weight:700;white-space:nowrap}
+.verified-badge.yes{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+.verified-badge.no{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
+.action-btns{display:flex;gap:4px;flex-wrap:wrap}
+.act-btn{padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
+.act-login{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--blue)}
+.act-login:hover{background:rgba(96,165,250,.2)}
+.act-edit{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
+.act-edit:hover{background:rgba(245,158,11,.2)}
+.act-pw{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.act-pw:hover{background:rgba(52,211,153,.15)}
+.act-del{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:var(--red)}
+.act-del:hover{background:rgba(239,68,68,.16)}
+.loading-row td{text-align:center;padding:40px;color:var(--text3)}
+.count-pill{font-size:9px;padding:1px 6px;border-radius:99px;background:rgba(96,165,250,.1);
+  border:1px solid rgba(96,165,250,.2);color:var(--blue);margin-left:4px}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:26px 30px;width:100%;max-width:420px;animation:min .3s ease;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+@keyframes min{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-size:15px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--text3);margin-bottom:20px}
+.form-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.form-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);color:var(--text);
+  padding:9px 11px;border-radius:8px;font-size:12px;font-family:'Inter',sans-serif;transition:border-color .2s;margin-bottom:12px}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;margin-top:14px}
+.modal-btn{flex:1;padding:9px;border-radius:8px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;transition:all .2s}
+.modal-btn.primary{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff}
+.modal-btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(245,158,11,.3)}
+.modal-btn.secondary{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+.modal-btn.secondary:hover{border-color:var(--accent);color:var(--accent)}
+.modal-result{font-size:11px;padding:7px 10px;border-radius:6px;margin-top:8px;display:none}
+.modal-result.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:var(--red)}
+.modal-result.success{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+
+/* ── Toast ── */
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:999}
+.toast{padding:9px 14px;border-radius:9px;font-size:11px;font-weight:600;animation:tin .25s ease;max-width:300px}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:#052e16;border:1px solid #166534;color:#86efac}
+.toast.error{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5}
+.toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">MR AI RAG</div>
+  <div class="header-badge">ADMIN</div>
+  <div class="spacer"></div>
+  <span class="admin-name" id="admin-name"></span>
+  <a href="/api/docs" target="_blank" class="nav-btn" style="margin-left:10px">📖 API Docs</a>
+  <a href="/" class="nav-btn" style="margin-left:4px">🏠</a>
+  <button class="nav-btn danger" style="margin-left:4px" onclick="logout()">🚪 Logout</button>
+</header>
+
+<!-- Stats -->
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-card amber"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Clients</div></div>
+  <div class="stat-card green"><div class="stat-val" id="stat-verified">—</div><div class="stat-lbl">Verified</div></div>
+  <div class="stat-card yellow" style="--yellow:#fbbf24"><div class="stat-val" id="stat-unverified" style="color:#fbbf24">—</div><div class="stat-lbl">Unverified</div></div>
+  <div class="stat-card blue"><div class="stat-val" id="stat-keys">—</div><div class="stat-lbl">Total API Keys</div></div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <input type="search" class="search-input" id="search-input" placeholder="🔍 Search by name, email or client ID…" oninput="filterClients()">
+  <button class="filter-btn active" id="filter-all" onclick="setFilter('all',this)">All</button>
+  <button class="filter-btn" id="filter-verified" onclick="setFilter('verified',this)">✅ Verified</button>
+  <button class="filter-btn" id="filter-unverified" onclick="setFilter('unverified',this)">⏳ Pending</button>
+  <div class="toolbar-spacer"></div>
+  <button class="add-btn" onclick="openAddModal()">➕ Add Client</button>
+  <button class="nav-btn" style="margin-left:4px" onclick="loadClients()">↻ Refresh</button>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table id="clients-table">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>Email</th>
+        <th>Client ID</th>
+        <th>Status</th>
+        <th>API Keys</th>
+        <th>Chats</th>
+        <th>Joined</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="clients-tbody">
+      <tr class="loading-row"><td colspan="8">⏳ Loading clients…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Client</div>
+    <div class="modal-sub" id="edit-modal-sub">Update client details</div>
+    <input type="hidden" id="edit-client-id">
+    <label class="form-label">Name</label>
+    <input type="text" class="form-input" id="edit-name" placeholder="Client Name">
+    <label class="form-label">Email</label>
+    <input type="email" class="form-input" id="edit-email" placeholder="email@example.com">
+    <label class="form-label">Verified Status</label>
+    <select class="form-input" id="edit-verified">
+      <option value="true">✅ Verified</option>
+      <option value="false">⏳ Not Verified</option>
+    </select>
+    <div class="modal-result" id="edit-result"></div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="modal-btn primary" onclick="submitEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal">
+    <div class="modal-title">🔑 Reset Password</div>
+    <div class="modal-sub" id="pw-modal-sub">Set a new password for this client</div>
+    <input type="hidden" id="pw-client-id">
+    <label class="form-label">New Password</label>
+    <input type="password" class="form-input" id="new-password" placeholder="Min 6 characters">
+    <label class="form-label">Confirm Password</label>
+    <input type="password" class="form-input" id="confirm-password" placeholder="Repeat password">
+    <div class="modal-result" id="pw-result"></div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closeModal('pw-modal')">Cancel</button>
+      <button class="modal-btn primary" onclick="submitResetPassword()">🔑 Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Client Modal (2-step OTP) -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">➕ Add New Client</div>
+
+    <!-- Step 1: Client info -->
+    <div id="add-step1">
+      <div class="modal-sub">Fill in details — then send OTP to verify email, or create directly.</div>
+      <label class="form-label">Full Name</label>
+      <input type="text" class="form-input" id="add-s1-name" placeholder="e.g. John Smith">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="add-s1-email" placeholder="client@example.com">
+      <label class="form-label">Password (min 6 chars)</label>
+      <input type="password" class="form-input" id="add-s1-pw" placeholder="••••••••">
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="closeModal('add-modal')">Cancel</button>
+        <button class="modal-btn primary" onclick="sendAddOTP()" title="Sends OTP to the email address">📩 Send OTP</button>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <button onclick="submitAddDirect()"
+          style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:underline">
+          ⚡ Skip OTP — Create Verified Client Directly (Admin Only)
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: OTP verification -->
+    <div id="add-step2" style="display:none">
+      <div class="modal-sub" id="add-step2-sub">Enter the 6-digit OTP sent to the client's email.</div>
+      <label class="form-label">OTP Code</label>
+      <input type="text" class="form-input" id="add-s2-otp" placeholder="123456" maxlength="8"
+        onkeydown="if(event.key==='Enter')submitAddWithOTP()">
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="document.getElementById('add-step1').style.display='block';document.getElementById('add-step2').style.display='none'">← Back</button>
+        <button class="modal-btn primary" onclick="submitAddWithOTP()">✅ Verify & Create</button>
+      </div>
+    </div>
+
+    <div class="modal-result" id="add-result"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── Session ───────────────────────────────────────────────────────────────────
+let adminSession = null;
+let allClients = [];
+let activeFilter = 'all';
+
+// adminHeaders must be a function declaration (hoisted), not const, so it's
+// available when the init IIFE calls loadClients() → adminHeaders()
+function adminHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-Admin-Token': adminSession ? adminSession.token : '',
+  };
+}
+
+(function init(){
+  const raw = localStorage.getItem('mrairag_admin');
+  if(!raw) return window.location.href='/admin-login';
+  try{ adminSession = JSON.parse(raw); }catch{ return window.location.href='/admin-login'; }
+  if(!adminSession?.token) return window.location.href='/admin-login';
+  document.getElementById('admin-name').textContent = `🛡️ ${adminSession.username}`;
+  loadClients();
+})();
+
+// ── Load Clients ──────────────────────────────────────────────────────────────
+async function loadClients(){
+  document.getElementById('clients-tbody').innerHTML = '<tr class="loading-row"><td colspan="8">⏳ Loading…</td></tr>';
+  try{
+    const r = await fetch('/api/admin/clients', {headers: adminHeaders()});
+    if(r.status===401){ logout(); return; }
+    let errDetail = 'Request failed';
+    if(!r.ok){
+      try{ const e=await r.json(); errDetail=e.detail||e.message||JSON.stringify(e); }catch{}
+      throw new Error(`${r.status} ${r.statusText}: ${errDetail}`);
+    }
+    const d = await r.json();
+    allClients = d.clients || [];
+    updateStats(allClients);
+    renderClients(allClients);
+  }catch(e){
+    document.getElementById('clients-tbody').innerHTML = `<tr class="loading-row"><td colspan="8">❌ Error: ${e.message}</td></tr>`;
+    toast('❌ '+e.message,'error');
+  }
+}
+
+function updateStats(clients){
+  const verified = clients.filter(c=>c.is_verified).length;
+  const totalKeys = clients.reduce((s,c)=>s+(c.api_key_count||0),0);
+  document.getElementById('stat-total').textContent = clients.length;
+  document.getElementById('stat-verified').textContent = verified;
+  document.getElementById('stat-unverified').textContent = clients.length - verified;
+  document.getElementById('stat-keys').textContent = totalKeys;
+}
+
+// ── Filter & Search ───────────────────────────────────────────────────────────
+function setFilter(f, el){
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  filterClients();
+}
+
+function filterClients(){
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  let filtered = allClients;
+  if(activeFilter==='verified') filtered = filtered.filter(c=>c.is_verified);
+  if(activeFilter==='unverified') filtered = filtered.filter(c=>!c.is_verified);
+  if(q) filtered = filtered.filter(c=>
+    c.name?.toLowerCase().includes(q) ||
+    c.email?.toLowerCase().includes(q) ||
+    c.client_id?.toLowerCase().includes(q)
+  );
+  renderClients(filtered);
+}
+
+// ── Render Table ──────────────────────────────────────────────────────────────
+function renderClients(clients){
+  const tbody = document.getElementById('clients-tbody');
+  if(!clients.length){
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="8">🔍 No clients found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = clients.map(c=>{
+    const joined = c.created_at ? new Date(c.created_at).toLocaleDateString() : '—';
+    return `
+    <tr>
+      <td class="client-name">${esc(c.name||'—')}</td>
+      <td class="client-email">${esc(c.email||'—')}</td>
+      <td class="client-id">${esc(c.client_id)}</td>
+      <td><span class="verified-badge ${c.is_verified?'yes':'no'}">${c.is_verified?'✅ Verified':'⏳ Pending'}</span></td>
+      <td>${c.api_key_count||0} <span class="count-pill">keys</span></td>
+      <td>${c.chat_message_count||0} <span class="count-pill">msgs</span></td>
+      <td>${joined}</td>
+      <td>
+        <div class="action-btns">
+          <button class="act-btn act-login" onclick="loginAsClient('${c.client_id}','${esc(c.name)}')">🔑 Login As</button>
+          <button class="act-btn act-edit" onclick="openEditModal('${c.client_id}','${esc(c.name)}','${esc(c.email)}',${c.is_verified})">✏️ Edit</button>
+          <button class="act-btn act-pw" onclick="openPWModal('${c.client_id}','${esc(c.name)}')">🔐 PW</button>
+          <button class="act-btn act-del" onclick="deleteClient('${c.client_id}','${esc(c.name)}')">🗑 Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Login As Client ───────────────────────────────────────────────────────────
+async function loginAsClient(clientId, clientName){
+  if(!confirm(`Login as "${clientName}"? This will give you access to their dashboard.`)) return;
+  try{
+    const r=await fetch(`/api/admin/login-as/${clientId}`,{method:'POST',headers:adminHeaders()});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    // Save client session
+    localStorage.setItem('mrairag_client', JSON.stringify({
+      client_id: d.client_id,
+      token: d.token,
+      name: d.name,
+      email: d.email,
+    }));
+    toast(`✅ Logged in as ${clientName} — opening dashboard…`,'success');
+    setTimeout(()=>window.open('/dashboard','_blank'), 800);
+  }catch(e){
+    toast('❌ '+e.message,'error');
+  }
+}
+
+// ── Edit Client ───────────────────────────────────────────────────────────────
+function openEditModal(id, name, email, verified){
+  document.getElementById('edit-client-id').value = id;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-email').value = email;
+  document.getElementById('edit-verified').value = String(verified);
+  document.getElementById('edit-modal-sub').textContent = `Editing: ${id}`;
+  document.getElementById('edit-result').style.display='none';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+async function submitEdit(){
+  const id = document.getElementById('edit-client-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const email = document.getElementById('edit-email').value.trim();
+  const is_verified = document.getElementById('edit-verified').value === 'true';
+  try{
+    const r=await fetch(`/api/admin/clients/${id}`,{method:'PUT',headers:adminHeaders(),
+      body:JSON.stringify({name,email,is_verified})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showModalResult('edit-result','success','✅ Client updated!');
+    setTimeout(()=>{ closeModal('edit-modal'); loadClients(); },1000);
+  }catch(e){ showModalResult('edit-result','error','❌ '+e.message); }
+}
+
+// ── Reset Password ────────────────────────────────────────────────────────────
+function openPWModal(id, name){
+  document.getElementById('pw-client-id').value = id;
+  document.getElementById('pw-modal-sub').textContent = `Reset password for: ${name}`;
+  document.getElementById('new-password').value='';
+  document.getElementById('confirm-password').value='';
+  document.getElementById('pw-result').style.display='none';
+  document.getElementById('pw-modal').classList.add('open');
+}
+
+async function submitResetPassword(){
+  const id = document.getElementById('pw-client-id').value;
+  const pw = document.getElementById('new-password').value;
+  const conf = document.getElementById('confirm-password').value;
+  if(pw.length<6) return showModalResult('pw-result','error','❌ Password must be at least 6 characters.');
+  if(pw!==conf) return showModalResult('pw-result','error','❌ Passwords do not match.');
+  try{
+    const r=await fetch(`/api/admin/clients/${id}/reset-password`,{method:'POST',headers:adminHeaders(),
+      body:JSON.stringify({new_password:pw})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showModalResult('pw-result','success','✅ Password reset!');
+    setTimeout(()=>closeModal('pw-modal'),1200);
+  }catch(e){ showModalResult('pw-result','error','❌ '+e.message); }
+}
+
+// ── Delete Client ─────────────────────────────────────────────────────────────
+async function deleteClient(id, name){
+  const confirmed = confirm(`⚠ DELETE client "${name}" (${id})?\n\nThis will permanently delete all their data, API keys, and chat history. This cannot be undone.`);
+  if(!confirmed) return;
+  try{
+    const r=await fetch(`/api/admin/clients/${id}`,{method:'DELETE',headers:adminHeaders()});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    toast(`🗑 Client "${name}" deleted.`,'info');
+    loadClients();
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Add Client (2-step OTP flow) ──────────────────────────────────────────────
+let _addStep = 1;
+let _addEmail = '';
+let _addName = '';
+let _addPw = '';
+
+function openAddModal(){
+  _addStep = 1;
+  _addEmail=''; _addName=''; _addPw='';
+  document.getElementById('add-step1').style.display='block';
+  document.getElementById('add-step2').style.display='none';
+  document.getElementById('add-s1-name').value='';
+  document.getElementById('add-s1-email').value='';
+  document.getElementById('add-s1-pw').value='';
+  document.getElementById('add-result').style.display='none';
+  document.getElementById('add-modal').classList.add('open');
+}
+
+async function sendAddOTP(){
+  const name = document.getElementById('add-s1-name').value.trim();
+  const email = document.getElementById('add-s1-email').value.trim();
+  const pw = document.getElementById('add-s1-pw').value;
+  if(!name||!email||!pw) return showModalResult('add-result','error','⚠ Fill all fields.');
+  if(pw.length<6) return showModalResult('add-result','error','⚠ Password min 6 chars.');
+  _addName=name; _addEmail=email; _addPw=pw;
+  showModalResult('add-result','info','⏳ Sending OTP email…');
+  try{
+    const r = await fetch('/api/clients/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,name,purpose:'register'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed to send OTP');
+    showModalResult('add-result','success','📩 OTP sent to '+email+'. Enter the code below.');
+    document.getElementById('add-step1').style.display='none';
+    document.getElementById('add-step2').style.display='block';
+    document.getElementById('add-s2-otp').value='';
+    document.getElementById('add-s2-otp').focus();
+  }catch(e){ showModalResult('add-result','error','❌ '+e.message); }
+}
+
+async function submitAddWithOTP(){
+  const otp = document.getElementById('add-s2-otp').value.trim();
+  if(!otp) return showModalResult('add-result','error','⚠ Enter the OTP code.');
+  showModalResult('add-result','info','⏳ Verifying…');
+  try{
+    const r = await fetch('/api/clients/register',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:_addName,email:_addEmail,password:_addPw,otp})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Registration failed');
+    showModalResult('add-result','success','✅ Client created! ID: '+d.client_id);
+    setTimeout(()=>{ closeModal('add-modal'); loadClients(); },1500);
+  }catch(e){ showModalResult('add-result','error','❌ '+e.message); }
+}
+
+async function submitAddDirect(){
+  // Admin shortcut: create client directly without OTP
+  if(!_addName||!_addEmail||!_addPw){
+    const n=document.getElementById('add-s1-name').value.trim();
+    const e2=document.getElementById('add-s1-email').value.trim();
+    const p=document.getElementById('add-s1-pw').value;
+    if(!n||!e2||!p) return showModalResult('add-result','error','⚠ Fill name, email and password first.');
+    _addName=n;_addEmail=e2;_addPw=p;
+  }
+  showModalResult('add-result','info','⏳ Creating client…');
+  try{
+    const r = await fetch('/api/admin/clients/create-direct',{method:'POST',headers:adminHeaders(),
+      body:JSON.stringify({name:_addName,email:_addEmail,password:_addPw})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showModalResult('add-result','success','✅ Client created & verified! ID: '+d.client.client_id);
+    setTimeout(()=>{ closeModal('add-modal'); loadClients(); },1500);
+  }catch(e){ showModalResult('add-result','error','❌ '+e.message); }
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+function showModalResult(id, cls, msg){
+  const el=document.getElementById(id);
+  el.className='modal-result '+cls;el.textContent=msg;el.style.display='block';
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+function logout(){
+  localStorage.removeItem('mrairag_admin');
+  window.location.href='/admin-login';
+}
+
+// ── Toast & Utils ─────────────────────────────────────────────────────────────
+function toast(msg,cls='info'){
+  const w=document.getElementById('toasts'),el=document.createElement('div');
+  el.className=`toast ${cls}`;el.textContent=msg;w.appendChild(el);
+  setTimeout(()=>el.remove(),3800);
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>

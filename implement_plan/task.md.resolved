@@ -1,0 +1,29 @@
+# MR AI RAG v2 — Task Checklist
+
+## Issues Found During Analysis
+- [ ] API key guard ([require_api_key](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/api_keys.py#158-176) dependency) NOT applied to upload, query, youtube, website, jsondata routes — even though `API_KEYS_ENABLED=True`
+- [ ] Hardcoded Gemini API keys in [.env](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/.env) (security risk — keys are visible in plain text)
+- [ ] Stray directory `{routes,services,core,models}` in `app/` from a bad shell glob
+- [ ] api-docs.html needs complete API key management UI (generate, list, revoke) and full endpoint documentation
+- [ ] Routes `/api/keys/status` and `/api/keys/validate` come before `/api/keys/{key_id}` — potential FastAPI routing conflict
+
+## Phase 1 — Backend Fixes
+- [ ] Add [require_api_key](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/api_keys.py#158-176) dependency to all protected routes (upload, query, youtube, website, jsondata)
+- [ ] Fix routing order conflict in apikeys.py (status/validate routes before parameterized route)
+- [ ] Add delete endpoint `DELETE /api/keys/{key_id}` re-enable key re-activation: `PATCH /api/keys/{key_id}/activate`
+- [ ] Add `enable`/`disable` toggle to key management
+
+## Phase 2 — Frontend: API Docs Page
+- [ ] Build full api-docs.html with sections:
+  - [ ] Getting Started (what is MR AI RAG API)
+  - [ ] Authentication (how to use X-API-Key)
+  - [ ] API Key Management UI (generate, list, revoke in-page)
+  - [ ] Endpoint docs for: PDF Upload, Ask Question, YouTube, Video, Website, JSON
+  - [ ] Interactive "Try It" panels per endpoint
+  - [ ] Code examples (curl, Python, JS)
+
+## Phase 3 — Verification
+- [ ] Start the server and verify all routes work
+- [ ] Test API key enforcement (requests without key return 401)
+- [ ] Test API key generation via docs page
+- [ ] Test all ingestion endpoints with valid API key

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MR AI RAG — Playground</title>
+<meta name="description" content="Interactive playground to upload sources and chat with MR AI RAG API">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa;
+  --purple:#a78bfa;--pink:#f472b6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── Top Bar ── */
+.topbar{
+  display:flex;align-items:center;gap:12px;padding:10px 20px;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50;
+}
+.topbar-logo{
+  font-size:15px;font-weight:700;white-space:nowrap;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.topbar-label{font-size:11px;color:var(--text3);background:rgba(108,99,255,.15);
+  border:1px solid rgba(108,99,255,.3);padding:2px 8px;border-radius:99px;
+  -webkit-text-fill-color:var(--purple);white-space:nowrap;}
+.nav-links{display:flex;gap:8px;margin-left:auto;flex-shrink:0}
+.nav-link{font-size:12px;color:var(--text3);text-decoration:none;padding:5px 10px;
+  border-radius:5px;transition:all .2s;}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,.05)}
+
+.btn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;border:none;cursor:pointer;
+  transition:all .2s;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(108,99,255,.4)}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-danger{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+.btn-danger:hover{background:rgba(248,113,113,.2)}
+
+/* ── Main Layout ── */
+.main-layout{display:flex;flex:1;overflow:hidden}
+
+/* ── Left Panel ── */
+.left-panel{
+  width:320px;min-width:280px;max-width:380px;
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;
+}
+
+/* Section blocks */
+.section{padding:14px;border-bottom:1px solid var(--border)}
+.section-title{font-size:11px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.section-title .sdot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent)}
+
+/* API Key section */
+.key-input-wrap{display:flex;align-items:center;gap:6px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;transition:border-color .2s}
+.key-input-wrap:focus-within{border-color:var(--accent)}
+.key-input-wrap input{flex:1;background:transparent;border:none;color:var(--text);
+  font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;}
+.key-input-wrap input::placeholder{color:var(--text3)}
+.eye-btn{background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:14px;
+  padding:0 2px;transition:color .2s;flex-shrink:0}
+.eye-btn:hover{color:var(--accent)}
+.validate-btn{width:100%;margin-top:8px;padding:8px;border-radius:7px;font-size:11px;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff;border:none;cursor:pointer;transition:all .2s;}
+.validate-btn:hover{box-shadow:0 4px 14px rgba(108,99,255,.4)}
+.key-status{margin-top:6px;font-size:10px;padding:5px 9px;border-radius:5px;display:none;font-weight:500}
+.key-status.ok{display:block;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.key-status.err{display:block;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.key-status.info{display:block;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);color:var(--purple)}
+
+/* Provider pills */
+.provider-pills{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.provider-pill{flex:1;min-width:50px;padding:5px 4px;border-radius:6px;font-size:10px;font-weight:600;
+  border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;
+  transition:all .2s;text-align:center;}
+.provider-pill:hover{border-color:var(--accent2);color:var(--accent2)}
+.provider-pill.active{background:rgba(0,212,170,.12);border-color:rgba(0,212,170,.5);color:var(--accent2)}
+.form-label{font-size:10px;color:var(--text3);font-weight:500;margin-bottom:4px;display:block}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:7px 10px;border-radius:6px;font-size:11px;font-family:'Inter',sans-serif;transition:border-color .2s;}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-input::placeholder{color:var(--text3)}
+select.form-input{cursor:pointer;appearance:none}
+.apply-btn{width:100%;padding:7px;border-radius:7px;font-size:11px;font-weight:700;
+  background:linear-gradient(135deg,rgba(0,212,170,.9),rgba(0,160,130,.9));color:#fff;
+  border:none;cursor:pointer;transition:all .2s;margin-top:4px}
+.apply-btn:hover{box-shadow:0 4px 14px rgba(0,212,170,.3)}
+.provider-result{font-size:10px;padding:5px 8px;border-radius:5px;display:none;margin-top:6px}
+.provider-result.success{display:block;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.provider-result.error{display:block;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+
+/* Upload tabs */
+.upload-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tab-btn{flex:1;min-width:55px;padding:6px 4px;border-radius:6px;font-size:10px;font-weight:600;
+  border:1px solid transparent;background:transparent;color:var(--text3);cursor:pointer;
+  transition:all .2s;text-align:center;}
+.tab-btn.active{background:rgba(108,99,255,.15);border-color:rgba(108,99,255,.4);color:var(--accent)}
+.tab-btn:hover:not(.active){background:rgba(255,255,255,.04);color:var(--text2);border-color:var(--border)}
+.upload-panel{display:none;flex-direction:column;gap:8px}
+.upload-panel.visible{display:flex}
+.upload-result{font-size:11px;padding:8px 10px;border-radius:6px;display:none;line-height:1.5}
+.upload-result.success{display:block;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.upload-result.error{display:block;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.upload-result.info{display:block;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);color:#a5b4fc}
+.progress-bar{height:3px;border-radius:2px;background:var(--border);overflow:hidden;display:none}
+.progress-bar.show{display:block}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:30%;animation:progress-anim 1.2s ease-in-out infinite alternate}
+@keyframes progress-anim{0%{margin-left:0;width:30%}100%{margin-left:70%;width:30%}}
+
+/* Sources list */
+.sources-section{padding:14px}
+.sources-header{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.7px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.source-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;margin-bottom:8px;transition:border-color .2s}
+.source-card:hover{border-color:rgba(108,99,255,.4)}
+.source-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.source-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
+.badge-pdf{background:rgba(248,113,113,.12);color:var(--red)}
+.badge-yt{background:rgba(251,191,36,.12);color:var(--yellow)}
+.badge-web{background:rgba(96,165,250,.12);color:var(--blue)}
+.badge-vid{background:rgba(167,139,250,.12);color:var(--purple)}
+.badge-chunks{background:rgba(52,211,153,.1);color:var(--green)}
+.no-sources{text-align:center;color:var(--text3);font-size:12px;padding:20px 10px;line-height:1.7}
+
+/* ── Right Panel: Chat ── */
+.right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.chat-header{padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between}
+.chat-title{font-size:13px;font-weight:600}
+.chat-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.topk-select{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  font-size:11px;padding:3px 6px;border-radius:5px;cursor:pointer;outline:none}
+
+/* Messages */
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;min-height:0}
+.message{display:flex;gap:12px;max-width:90%;animation:msg-in .3s ease}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.message.user{margin-left:auto;flex-direction:row-reverse}
+.message.assistant{margin-right:auto}
+.msg-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0}
+.msg-avatar.user{background:linear-gradient(135deg,var(--accent),#5b52e0)}
+.msg-avatar.assistant{background:linear-gradient(135deg,var(--accent2),#00a085)}
+.msg-body{display:flex;flex-direction:column;gap:5px}
+.msg-bubble{padding:11px 15px;border-radius:12px;font-size:13px;line-height:1.65;word-break:break-word;white-space:pre-wrap}
+.message.user .msg-bubble{background:linear-gradient(135deg,rgba(108,99,255,.25),rgba(91,82,224,.2));
+  border:1px solid rgba(108,99,255,.3);color:var(--text);border-radius:12px 12px 4px 12px}
+.message.assistant .msg-bubble{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:12px 12px 12px 4px}
+.msg-sources{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.src-pill{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;
+  background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.25);color:#a5b4fc;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.msg-time{font-size:10px;color:var(--text3);margin-top:2px}
+.message.user .msg-time{text-align:right}
+
+/* Typing */
+.typing-dots{display:flex;gap:4px;padding:12px 15px;background:var(--card);
+  border:1px solid var(--border);border-radius:12px 12px 12px 4px;width:fit-content}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--text3);
+  animation:typing .9s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* Welcome */
+.welcome-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 20px;text-align:center}
+.welcome-icon{font-size:52px;margin-bottom:14px;filter:drop-shadow(0 4px 20px rgba(108,99,255,.4))}
+.welcome-screen h2{font-size:22px;font-weight:700;margin-bottom:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.welcome-screen p{color:var(--text2);font-size:12px;max-width:340px;line-height:1.7;margin-bottom:20px}
+.welcome-steps{display:flex;flex-direction:column;gap:8px;text-align:left;max-width:300px;width:100%}
+.step-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;transition:all .25s}
+.step-item:hover{border-color:var(--accent);transform:translateX(3px)}
+.step-num{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#5b52e0);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.step-text{font-size:11px;color:var(--text2);line-height:1.5}
+.step-text strong{color:var(--text);font-weight:600}
+
+/* Chat Input */
+.chat-input-area{padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg2)}
+.chat-input-wrap{display:flex;gap:10px;align-items:flex-end;background:var(--bg3);
+  border:1px solid var(--border);border-radius:12px;padding:10px 14px;transition:border-color .2s}
+.chat-input-wrap:focus-within{border-color:var(--accent)}
+#chat-input{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;
+  font-family:'Inter',sans-serif;resize:none;outline:none;min-height:20px;max-height:120px;line-height:1.5}
+#chat-input::placeholder{color:var(--text3)}
+.send-btn{background:linear-gradient(135deg,var(--accent),#5b52e0);border:none;
+  color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;flex-shrink:0}
+.send-btn:hover:not(:disabled){transform:scale(1.05);box-shadow:0 2px 12px rgba(108,99,255,.4)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.input-hint{font-size:10px;color:var(--text3);margin-top:6px;display:flex;justify-content:space-between}
+
+/* Toasts */
+.toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:500}
+.toast{padding:9px 14px;border-radius:9px;font-size:11px;display:flex;align-items:center;gap:8px;
+  animation:toast-in .25s ease;max-width:320px}
+@keyframes toast-in{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:#052e16;border:1px solid #166534;color:#86efac}
+.toast.error{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5}
+.toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Responsive */
+@media(max-width:700px){
+  .left-panel{width:100%;max-width:none;border-right:none;border-bottom:1px solid var(--border);max-height:55vh}
+  .main-layout{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="topbar">
+  <span class="topbar-logo">MR AI RAG</span>
+  <span class="topbar-label">🎮 Playground</span>
+  <div class="nav-links">
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/dashboard" class="nav-link" id="pg-dash-link">📊 Dashboard</a>
+    <a href="/api-docs" class="nav-link">📖 API Docs</a>
+  </div>
+</header>
+
+<!-- Auth check script (runs before render) -->
+<script>
+(function(){
+  try{
+    const adminRaw = localStorage.getItem('mrairag_admin');
+    if(adminRaw){ const a=JSON.parse(adminRaw); if(a&&a.token) return; }
+    const clientRaw = localStorage.getItem('mrairag_client');
+    if(clientRaw){ const cl=JSON.parse(clientRaw); if(cl&&cl.token) return; }
+    // Not logged in — show overlay
+    document.addEventListener('DOMContentLoaded', function(){
+      var ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;z-index:900;backdrop-filter:blur(8px);background:rgba(13,15,23,.9);display:flex;align-items:center;justify-content:center';
+      ov.innerHTML='<div style="background:#1a1e2e;border:1px solid #2a2f47;border-radius:20px;padding:40px 36px;max-width:360px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.6)">'
+        +'<div style="font-size:44px;margin-bottom:14px">🔐</div>'
+        +'<div style="font-size:19px;font-weight:800;margin-bottom:8px">Login Required</div>'
+        +'<div style="font-size:12px;color:#94a3b8;line-height:1.7;margin-bottom:22px">Sign in to use the Playground<br>and test uploads &amp; AI chat.</div>'
+        +'<button onclick="window.location.href=\'/login\'" style="width:100%;padding:11px;border-radius:9px;border:none;background:linear-gradient(135deg,#6c63ff,#5b52e0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">👤 Sign In / Register</button>'
+        +'</div>';
+      document.body.appendChild(ov);
+    });
+  }catch(e){}
+})();
+</script>
+
+<!-- Main Layout -->
+<div class="main-layout">
+
+  <!-- ════ LEFT PANEL ════ -->
+  <aside class="left-panel">
+
+    <!-- 1. API Key -->
+    <div class="section">
+      <div class="section-title"><span class="sdot"></span>🔑 Your API Key</div>
+      <div class="key-input-wrap">
+        <input type="password" id="pg-api-key" placeholder="mrairag-… paste your API key" autocomplete="off" oninput="onKeyInput()">
+        <button class="eye-btn" id="pg-eye-btn" onclick="toggleKeyEye()" title="Show / hide key">👁</button>
+      </div>
+      <button class="validate-btn" onclick="validateKey()">⚡ Validate Key</button>
+      <div class="key-status" id="pg-key-status"></div>
+      <div style="font-size:9px;color:var(--text3);margin-top:5px">
+        No key? <a href="/dashboard" style="color:var(--accent);text-decoration:none">Generate one on Dashboard →</a>
+      </div>
+    </div>
+
+    <!-- 2. AI Provider -->
+    <div class="section">
+      <div class="section-title"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 5px var(--accent2);display:inline-block"></span>🤖 AI Provider</div>
+      <div class="provider-pills">
+        <button class="provider-pill active" data-p="gemini" onclick="selectProvider('gemini',this)">💎 Gemini</button>
+        <button class="provider-pill" data-p="openai" onclick="selectProvider('openai',this)">🟢 OpenAI</button>
+        <button class="provider-pill" data-p="claude" onclick="selectProvider('claude',this)">🧠 Claude</button>
+        <button class="provider-pill" data-p="ollama" onclick="selectProvider('ollama',this)">🦙 Ollama</button>
+        <button class="provider-pill" data-p="huggingface" onclick="selectProvider('huggingface',this)">🤗 HF</button>
+      </div>
+      <div style="margin-bottom:8px">
+        <label class="form-label">Model</label>
+        <select class="form-input" id="provider-model"></select>
+      </div>
+      <div id="provider-key-wrap" style="margin-bottom:8px">
+        <label class="form-label" id="provider-key-label">Gemini API Key</label>
+        <input type="password" class="form-input" id="provider-api-key" placeholder="AIza..." autocomplete="off" style="font-family:'JetBrains Mono',monospace">
+      </div>
+      <div id="provider-ollama-wrap" style="margin-bottom:8px;display:none">
+        <label class="form-label">Ollama URL</label>
+        <input type="text" class="form-input" id="provider-ollama-url" value="http://localhost:11434" style="font-family:'JetBrains Mono',monospace">
+      </div>
+      <button class="apply-btn" onclick="applyProvider()">⚡ Apply Provider</button>
+      <div class="provider-result" id="provider-result"></div>
+    </div>
+
+    <!-- 3. Upload Source -->
+    <div class="section">
+      <div class="section-title"><span style="width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 5px var(--blue);display:inline-block"></span>📂 Upload Source</div>
+      <div class="upload-tabs">
+        <button class="tab-btn active" onclick="switchTab('pdf',this)">📄 PDF</button>
+        <button class="tab-btn" onclick="switchTab('yt',this)">📺 YouTube</button>
+        <button class="tab-btn" onclick="switchTab('web',this)">🌐 Website</button>
+        <button class="tab-btn" onclick="switchTab('vid',this)">🎬 Video</button>
+      </div>
+
+      <!-- PDF -->
+      <div class="upload-panel visible" id="panel-pdf">
+        <div>
+          <label class="form-label">PDF File (max 50MB)</label>
+          <input type="file" class="form-input" id="pdf-file" accept=".pdf">
+        </div>
+        <div class="progress-bar" id="pdf-progress"><div class="progress-fill"></div></div>
+        <button class="btn btn-primary" onclick="uploadPDF()" style="width:100%">📤 Upload &amp; Index PDF</button>
+        <div class="upload-result" id="pdf-result"></div>
+      </div>
+
+      <!-- YouTube -->
+      <div class="upload-panel" id="panel-yt">
+        <div>
+          <label class="form-label">YouTube URL</label>
+          <input type="url" class="form-input" id="yt-url" placeholder="https://youtube.com/watch?v=...">
+        </div>
+        <div>
+          <label class="form-label">Whisper Model (fallback)</label>
+          <select class="form-input" id="yt-model">
+            <option value="base" selected>base (fast)</option>
+            <option value="tiny">tiny (fastest)</option>
+            <option value="small">small (accurate)</option>
+            <option value="medium">medium (best)</option>
+          </select>
+        </div>
+        <div class="progress-bar" id="yt-progress"><div class="progress-fill"></div></div>
+        <button class="btn btn-primary" onclick="uploadYT()" style="width:100%">📥 Ingest YouTube</button>
+        <div class="upload-result" id="yt-result"></div>
+      </div>
+
+      <!-- Website -->
+      <div class="upload-panel" id="panel-web">
+        <div>
+          <label class="form-label">Website URL</label>
+          <input type="url" class="form-input" id="web-url" placeholder="https://example.com/article">
+        </div>
+        <div class="progress-bar" id="web-progress"><div class="progress-fill"></div></div>
+        <button class="btn btn-primary" onclick="uploadWeb()" style="width:100%">🔍 Scrape &amp; Index</button>
+        <div class="upload-result" id="web-result"></div>
+      </div>
+
+      <!-- Video -->
+      <div class="upload-panel" id="panel-vid">
+        <div>
+          <label class="form-label">Video / Audio File (max 500MB)</label>
+          <input type="file" class="form-input" id="vid-file" accept=".mp4,.mkv,.webm,.mov,.avi,.mp3,.wav,.m4a,.ogg,.flac">
+        </div>
+        <div>
+          <label class="form-label">Whisper Model</label>
+          <select class="form-input" id="vid-model">
+            <option value="base" selected>base (fast)</option>
+            <option value="tiny">tiny (fastest)</option>
+            <option value="small">small (accurate)</option>
+            <option value="medium">medium (best)</option>
+          </select>
+        </div>
+        <div class="progress-bar" id="vid-progress"><div class="progress-fill"></div></div>
+        <button class="btn btn-primary" onclick="uploadVideo()" style="width:100%">🎬 Transcribe &amp; Index</button>
+        <div class="upload-result" id="vid-result"></div>
+      </div>
+    </div>
+
+    <!-- 4. Indexed Sources -->
+    <div class="sources-section">
+      <div class="sources-header">
+        <span>📚 Indexed Sources</span>
+        <span id="source-count" style="color:var(--accent);font-size:11px">0</span>
+      </div>
+      <div id="sources-list">
+        <div class="no-sources">No sources yet.<br>Upload a PDF, website, or YouTube link above.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ════ RIGHT PANEL: Chat ════ -->
+  <section class="right-panel">
+    <div class="chat-header">
+      <div>
+        <div class="chat-title">💬 Chat with your Knowledge Base</div>
+        <div class="chat-meta" id="chat-meta">Add a source and start asking questions</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:11px;color:var(--text3)">Top-K:</label>
+        <select class="topk-select" id="topk-select">
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="8">8</option>
+          <option value="12">12</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="clearChat()">🗑️ Clear</button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chat-messages">
+      <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-icon">🤖</div>
+        <h2>MR AI RAG Playground</h2>
+        <p>Upload knowledge sources on the left, then ask questions here. The AI will search your documents and generate grounded answers.</p>
+        <div class="welcome-steps">
+          <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Paste your API key</strong> in the left panel and validate it</div></div>
+          <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Choose an AI provider</strong> (Gemini, OpenAI, Claude…) and apply</div></div>
+          <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Upload a source</strong> — PDF, YouTube video, website, or video file</div></div>
+          <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Ask anything</strong> below and get instant cited AI answers</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-area">
+      <div class="chat-input-wrap">
+        <textarea id="chat-input" rows="1" placeholder="Ask a question about your indexed sources… (Enter to send)" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send (Enter)">➤</button>
+      </div>
+      <div class="input-hint">
+        <span><kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Enter</kbd> send · <kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Shift+Enter</kbd> new line</span>
+        <span id="model-hint" style="color:var(--text3)">—</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+const sources = [];
+let apiKey = '';
+let isTyping = false;
+let messageCount = 0;
+let _keyVisible = false;
+
+const PROVIDER_MODELS = {
+  openai:      ['gpt-4o-mini','gpt-4o','gpt-4-turbo','gpt-3.5-turbo'],
+  gemini:      ['gemini-2.5-flash','gemini-2.5-flash-001','gemini-2.5-pro'],
+  claude:      ['claude-3-5-haiku-20241022','claude-3-5-sonnet-20241022','claude-3-opus-20240229'],
+  ollama:      ['llama3','llama3.1','mistral','phi3','gemma2','deepseek-r1'],
+  huggingface: ['mistralai/Mistral-7B-Instruct-v0.2','HuggingFaceH4/zephyr-7b-beta','tiiuae/falcon-7b-instruct']
+};
+const PROVIDER_KEY_LABELS = {
+  openai:'OpenAI API Key (sk-...)',gemini:'Gemini API Key (AIza...)',
+  claude:'Anthropic API Key (sk-ant-...)',huggingface:'HuggingFace Token (hf_...)',ollama:''
+};
+const PROVIDER_PLACEHOLDERS = {
+  openai:'sk-...',gemini:'AIza...',claude:'sk-ant-...',huggingface:'hf_...',ollama:''
+};
+let selectedProvider = 'gemini';
+let selectedModel = '';
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(function init(){
+  selectProvider('gemini', document.querySelector('.provider-pill[data-p="gemini"]'));
+  loadSources();
+  // Sync dashboard link
+  try{
+    var cl=JSON.parse(localStorage.getItem('mrairag_client')||'{}');
+    if(cl&&cl.name){ var l=document.getElementById('pg-dash-link'); if(l) l.textContent='📊 '+cl.name; }
+  }catch(e){}
+})();
+
+// ── API Key ────────────────────────────────────────────────────────────────────
+function onKeyInput(){
+  var val = document.getElementById('pg-api-key').value.trim();
+  setKeyStatus('','');
+}
+function toggleKeyEye(){
+  _keyVisible = !_keyVisible;
+  document.getElementById('pg-api-key').type = _keyVisible ? 'text' : 'password';
+  document.getElementById('pg-eye-btn').textContent = _keyVisible ? '🙈' : '👁';
+}
+function setKeyStatus(type, msg){
+  var el = document.getElementById('pg-key-status');
+  el.className = 'key-status ' + type;
+  el.textContent = msg;
+}
+async function validateKey(){
+  var val = document.getElementById('pg-api-key').value.trim();
+  if(!val){ setKeyStatus('err','⚠ Please enter your API key'); return; }
+  setKeyStatus('info','⏳ Validating…');
+  try{
+    var r = await fetch('/api/keys/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:val})});
+    var d = await r.json();
+    if(d.valid){
+      apiKey = val;
+      setKeyStatus('ok','✅ Valid — ' + (d.name||'Key active'));
+    } else {
+      setKeyStatus('err','❌ Invalid or revoked key');
+    }
+  }catch(e){ setKeyStatus('err','❌ ' + e.message); }
+}
+
+// ── Provider ───────────────────────────────────────────────────────────────────
+function selectProvider(name, btn){
+  selectedProvider = name;
+  document.querySelectorAll('.provider-pill').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  // Update model dropdown
+  var sel = document.getElementById('provider-model');
+  var models = PROVIDER_MODELS[name] || [];
+  sel.innerHTML = models.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  selectedModel = models[0] || '';
+  // Update API key label
+  var kw = document.getElementById('provider-key-wrap');
+  var ol = document.getElementById('provider-ollama-wrap');
+  if(name === 'ollama'){
+    kw.style.display = 'none'; ol.style.display = 'block';
+  } else {
+    kw.style.display = 'block'; ol.style.display = 'none';
+    document.getElementById('provider-key-label').textContent = PROVIDER_KEY_LABELS[name]||'API Key';
+    document.getElementById('provider-api-key').placeholder = PROVIDER_PLACEHOLDERS[name]||'';
+  }
+}
+async function applyProvider(){
+  var model = document.getElementById('provider-model').value;
+  var provKey = selectedProvider==='ollama' ? '' : document.getElementById('provider-api-key').value.trim();
+  var ollamaUrl = document.getElementById('provider-ollama-url').value.trim();
+  var body = {provider: selectedProvider, model};
+  if(provKey) body.api_key = provKey;
+  if(selectedProvider==='ollama') body.ollama_url = ollamaUrl;
+  var res = document.getElementById('provider-result');
+  res.className='provider-result'; res.textContent='⏳ Applying…'; res.style.display='block';
+  try{
+    var headers = {'Content-Type':'application/json'};
+    if(apiKey) headers['X-API-Key'] = apiKey;
+    var r = await fetch('/api/provider/config',{method:'POST',headers,body:JSON.stringify(body)});
+    var d = await r.json();
+    if(r.ok){
+      res.className='provider-result success';
+      res.textContent='✅ ' + (d.message||'Provider applied!');
+      selectedModel = model;
+      document.getElementById('model-hint').textContent = selectedProvider+'/'+model;
+    } else {
+      res.className='provider-result error';
+      res.textContent='❌ ' + (d.detail||'Failed');
+    }
+  }catch(e){ res.className='provider-result error'; res.textContent='❌ '+e.message; }
+}
+
+// ── Upload Tabs ────────────────────────────────────────────────────────────────
+function switchTab(name, btn){
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.upload-panel').forEach(function(p){ p.classList.remove('visible'); });
+  if(btn) btn.classList.add('active');
+  var panel = document.getElementById('panel-'+name);
+  if(panel) panel.classList.add('visible');
+}
+
+// ── Source registration ────────────────────────────────────────────────────────
+function addSource(name, type, chunks, words){
+  sources.push({name, type, chunks, words});
+  renderSources();
+  updateChatMeta();
+  // Hide welcome screen
+  var ws = document.getElementById('welcome-screen');
+  if(ws && messageCount === 0) ws.style.display = 'none';
+}
+function renderSources(){
+  var list = document.getElementById('sources-list');
+  var count = document.getElementById('source-count');
+  count.textContent = sources.length;
+  if(!sources.length){
+    list.innerHTML = '<div class="no-sources">No sources yet.<br>Upload a PDF, website, or YouTube link above.</div>';
+    return;
+  }
+  var TYPE_BADGE = {pdf:'badge-pdf',yt:'badge-yt',web:'badge-web',vid:'badge-vid'};
+  var TYPE_LABEL = {pdf:'📄 PDF',yt:'📺 YouTube',web:'🌐 Website',vid:'🎬 Video'};
+  list.innerHTML = sources.map(function(s){
+    return '<div class="source-card">'
+      + '<div class="source-name" title="'+escHtml(s.name)+'">'+escHtml(s.name)+'</div>'
+      + '<div class="source-meta">'
+      + '<span class="badge '+(TYPE_BADGE[s.type]||'')+'">'+TYPE_LABEL[s.type]+'</span>'
+      + (s.chunks ? '<span class="badge badge-chunks">'+s.chunks+' chunks</span>' : '')
+      + '</div></div>';
+  }).join('');
+}
+function updateChatMeta(){
+  var el = document.getElementById('chat-meta');
+  if(el) el.textContent = sources.length + ' source'+(sources.length!==1?'s':'')+' indexed · Ask anything';
+}
+
+// ── Upload: PDF ────────────────────────────────────────────────────────────────
+async function uploadPDF(){
+  var file = document.getElementById('pdf-file').files[0];
+  var res = document.getElementById('pdf-result');
+  var prog = document.getElementById('pdf-progress');
+  if(!file){ showUploadResult(res,'error','⚠ Select a PDF file first'); return; }
+  if(!apiKey){ showUploadResult(res,'error','⚠ Validate your API key first'); return; }
+  prog.classList.add('show'); res.style.display='none';
+  try{
+    var fd = new FormData(); fd.append('file',file);
+    var r = await fetch('/api/upload-pdf',{method:'POST',headers:{'X-API-Key':apiKey},body:fd});
+    var d = await r.json();
+    if(r.ok){
+      addSource(d.filename||file.name,'pdf',d.total_chunks,d.word_count);
+      showUploadResult(res,'success','✅ '+file.name+' indexed! '+d.total_chunks+' chunks');
+      document.getElementById('pdf-file').value='';
+      toast('✅ PDF indexed!','success');
+    } else { showUploadResult(res,'error','❌ '+(d.detail||'Upload failed')); }
+  }catch(e){ showUploadResult(res,'error','❌ '+e.message); }
+  finally{ prog.classList.remove('show'); }
+}
+
+// ── Upload: YouTube ────────────────────────────────────────────────────────────
+async function uploadYT(){
+  var url = document.getElementById('yt-url').value.trim();
+  var model = document.getElementById('yt-model').value;
+  var res = document.getElementById('yt-result');
+  var prog = document.getElementById('yt-progress');
+  if(!url){ showUploadResult(res,'error','⚠ Enter a YouTube URL'); return; }
+  if(!apiKey){ showUploadResult(res,'error','⚠ Validate your API key first'); return; }
+  prog.classList.add('show'); showUploadResult(res,'info','⏳ Processing — this may take 1-3 mins…');
+  try{
+    var r = await fetch('/api/ingest-youtube',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+      body:JSON.stringify({url,whisper_model:model})});
+    var d = await r.json();
+    if(r.ok){
+      addSource(d.title||url,'yt',d.total_chunks);
+      showUploadResult(res,'success','✅ Indexed! '+d.total_chunks+' chunks via '+(d.method||'transcript'));
+      document.getElementById('yt-url').value='';
+      toast('✅ YouTube indexed!','success');
+    } else { showUploadResult(res,'error','❌ '+(d.detail||'Failed')); }
+  }catch(e){ showUploadResult(res,'error','❌ '+e.message); }
+  finally{ prog.classList.remove('show'); }
+}
+
+// ── Upload: Website ────────────────────────────────────────────────────────────
+async function uploadWeb(){
+  var url = document.getElementById('web-url').value.trim();
+  var res = document.getElementById('web-result');
+  var prog = document.getElementById('web-progress');
+  if(!url){ showUploadResult(res,'error','⚠ Enter a URL'); return; }
+  if(!apiKey){ showUploadResult(res,'error','⚠ Validate your API key first'); return; }
+  prog.classList.add('show'); showUploadResult(res,'info','⏳ Scraping…');
+  try{
+    var r = await fetch('/api/ingest-url',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+      body:JSON.stringify({url})});
+    var d = await r.json();
+    if(r.ok){
+      addSource(d.title||url,'web',d.total_chunks);
+      showUploadResult(res,'success','✅ Indexed! '+d.total_chunks+' chunks');
+      document.getElementById('web-url').value='';
+      toast('✅ Website indexed!','success');
+    } else { showUploadResult(res,'error','❌ '+(d.detail||'Failed')); }
+  }catch(e){ showUploadResult(res,'error','❌ '+e.message); }
+  finally{ prog.classList.remove('show'); }
+}
+
+// ── Upload: Video ──────────────────────────────────────────────────────────────
+async function uploadVideo(){
+  var file = document.getElementById('vid-file').files[0];
+  var model = document.getElementById('vid-model').value;
+  var res = document.getElementById('vid-result');
+  var prog = document.getElementById('vid-progress');
+  if(!file){ showUploadResult(res,'error','⚠ Select a video/audio file'); return; }
+  if(!apiKey){ showUploadResult(res,'error','⚠ Validate your API key first'); return; }
+  prog.classList.add('show'); showUploadResult(res,'info','⏳ Transcribing (may take several minutes)…');
+  try{
+    var fd = new FormData(); fd.append('file',file); fd.append('whisper_model',model);
+    var r = await fetch('/api/upload-video',{method:'POST',headers:{'X-API-Key':apiKey},body:fd});
+    var d = await r.json();
+    if(r.ok){
+      addSource(d.filename||file.name,'vid',d.total_chunks);
+      showUploadResult(res,'success','✅ Transcribed & indexed! '+d.total_chunks+' chunks');
+      document.getElementById('vid-file').value='';
+      toast('✅ Video indexed!','success');
+    } else { showUploadResult(res,'error','❌ '+(d.detail||'Failed')); }
+  }catch(e){ showUploadResult(res,'error','❌ '+e.message); }
+  finally{ prog.classList.remove('show'); }
+}
+
+// ── Load existing sources on page load ────────────────────────────────────────
+async function loadSources(){
+  try{
+    var r = await fetch('/api/sources');
+    if(!r.ok) return;
+    var d = await r.json();
+    var srcs = d.sources || d || [];
+    if(Array.isArray(srcs) && srcs.length){
+      srcs.forEach(function(s){
+        var typemap = {pdf:'pdf',website:'web',youtube:'yt',video:'vid'};
+        var t = typemap[s.source_type]||s.type||'pdf';
+        sources.push({name:s.source_file||s.name||'Source', type:t, chunks:s.total_chunks||s.chunks||0});
+      });
+      renderSources(); updateChatMeta();
+    }
+  }catch(e){}
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────────
+function handleKey(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+}
+function autoResize(el){
+  el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+async function sendMessage(){
+  var inp = document.getElementById('chat-input');
+  var text = inp.value.trim();
+  if(!text || isTyping) return;
+  if(!apiKey){ toast('⚠ Please validate your API key first','error'); return; }
+  inp.value=''; autoResize(inp);
+  isTyping=true; messageCount++;
+  var ws = document.getElementById('welcome-screen');
+  if(ws) ws.style.display='none';
+  appendMessage('user', text);
+  var typing = appendTyping();
+  document.getElementById('send-btn').disabled=true;
+  try{
+    var r = await fetch('/api/ask',{method:'POST',
+      headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+      body:JSON.stringify({question:text, top_k:parseInt(document.getElementById('topk-select').value)||5})});
+    var d = await r.json();
+    removeTyping(typing);
+    if(r.ok){
+      appendMessage('assistant', d.answer||'No answer returned.', d.sources||[]);
+      saveChatHistory(text, d.answer||'', 'playground');
+    } else {
+      appendMessage('assistant', '❌ ' + (d.detail||'Something went wrong.'));
+    }
+  }catch(e){ removeTyping(typing); appendMessage('assistant','❌ '+e.message); }
+  finally{ isTyping=false; document.getElementById('send-btn').disabled=false; }
+}
+function appendMessage(role, text, srcs){
+  var area = document.getElementById('chat-messages');
+  var div = document.createElement('div');
+  div.className='message '+role;
+  var time = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var srcHtml='';
+  if(srcs && srcs.length){
+    srcHtml='<div class="msg-sources">'+srcs.slice(0,4).map(function(s){
+      return '<span class="src-pill">'+(s.source_file||s.file||'Source').split('/').pop()+'</span>';
+    }).join('')+'</div>';
+  }
+  div.innerHTML='<div class="msg-avatar '+role+'">'+(role==='user'?'👤':'🤖')+'</div>'
+    +'<div class="msg-body"><div class="msg-bubble">'+escHtml(text)+'</div>'+srcHtml
+    +'<div class="msg-time">'+time+'</div></div>';
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  return div;
+}
+function appendTyping(){
+  var area = document.getElementById('chat-messages');
+  var div=document.createElement('div');
+  div.className='message assistant';
+  div.innerHTML='<div class="msg-avatar assistant">🤖</div>'
+    +'<div class="typing-dots"><span></span><span></span><span></span></div>';
+  area.appendChild(div); area.scrollTop=area.scrollHeight;
+  return div;
+}
+function removeTyping(el){ if(el && el.parentNode) el.parentNode.removeChild(el); }
+function clearChat(){
+  var area=document.getElementById('chat-messages');
+  var ws=document.getElementById('welcome-screen');
+  area.innerHTML=''; messageCount=0;
+  if(ws){ ws.style.display=''; area.appendChild(ws); }
+}
+
+// ── Save chat history ──────────────────────────────────────────────────────────
+async function saveChatHistory(question, answer, category){
+  try{
+    var cl=JSON.parse(localStorage.getItem('mrairag_client')||'{}');
+    if(!cl||!cl.token) return;
+    await fetch('/api/clients/me/history',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Client-Token':cl.token},
+      body:JSON.stringify({role:'user',content:question,category:category||'playground',source_type:'playground'})});
+    await fetch('/api/clients/me/history',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Client-Token':cl.token},
+      body:JSON.stringify({role:'assistant',content:answer,category:category||'playground',source_type:'playground'})});
+  }catch(e){}
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showUploadResult(el, type, msg){ el.className='upload-result '+type; el.textContent=msg; el.style.display='block'; }
+function toast(msg, type){
+  var tc=document.getElementById('toasts');
+  var t=document.createElement('div'); t.className='toast '+(type||'info'); t.textContent=msg;
+  tc.appendChild(t); setTimeout(function(){ if(t.parentNode) tc.removeChild(t); }, 3500);
+}
+</script>
+</body>
+</html>

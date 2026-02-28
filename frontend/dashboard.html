@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MR AI RAG — Dashboard</title>
+<meta name="description" content="Client dashboard — manage API keys, chat history, notifications.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa;
+  --sb-w:240px;--sb-collapsed:60px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex;min-height:100vh;overflow:hidden;
+  background-image:radial-gradient(ellipse at 15% 30%,rgba(108,99,255,.07) 0%,transparent 60%),
+                   radial-gradient(ellipse at 85% 70%,rgba(0,212,170,.05) 0%,transparent 50%);}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:var(--sb-w);min-width:var(--sb-w);height:100vh;overflow:hidden;flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;transition:width .25s,min-width .25s;position:relative;z-index:200;
+}
+.sidebar.collapsed{width:var(--sb-collapsed);min-width:var(--sb-collapsed)}
+.sidebar.collapsed .sb-label,.sidebar.collapsed .sb-section-title,.sidebar.collapsed .sb-logo-text{display:none}
+.sidebar.collapsed .sb-item{justify-content:center;padding:10px 0}
+.sidebar.collapsed .sb-logo{padding:14px 0;justify-content:center}
+
+/* Logo area */
+.sb-logo{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;cursor:pointer}
+.sb-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sb-logo-text{font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* Nav */
+.sb-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 0}
+.sb-section-title{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:12px 18px 4px}
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;
+  border-radius:9px;cursor:pointer;transition:all .18s;color:var(--text2);font-size:12px;font-weight:500;
+  position:relative;white-space:nowrap;text-decoration:none;
+}
+.sb-item:hover{background:var(--bg3);color:var(--text)}
+.sb-item.active{background:linear-gradient(135deg,rgba(108,99,255,.18),rgba(0,212,170,.08));color:var(--accent);font-weight:600;border:1px solid rgba(108,99,255,.2)}
+.sb-item.active .sb-icon{filter:none}
+.sb-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+.sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center;display:none}
+.sb-badge.show{display:block}
+
+/* Bottom nav */
+.sb-bottom{border-top:1px solid var(--border);padding:8px 0;flex-shrink:0}
+
+/* Toggle button */
+.sb-toggle{position:absolute;top:50%;right:-12px;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:10;transition:all .2s}
+.sb-toggle:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;min-height:100vh;overflow:hidden}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:100}
+.topbar-title{font-size:14px;font-weight:700;flex:1}
+.topbar-subtitle{font-size:11px;color:var(--text3)}
+.hamburger{display:none;width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+
+/* Notif bell */
+.notif-wrap{position:relative}
+.nb{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;position:relative}
+.nb:hover{border-color:var(--accent);background:rgba(108,99,255,.08)}
+.nb-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);border-radius:99px;font-size:9px;font-weight:800;color:#fff;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg2)}
+.nb-badge.show{display:flex}
+.notif-dropdown{position:absolute;top:40px;right:0;width:300px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.5);z-index:500;display:none;overflow:hidden}
+.notif-dropdown.open{display:block}
+.nd-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.nd-title{font-size:12px;font-weight:700}
+.nd-mark{font-size:10px;color:var(--accent2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif}
+.nd-list{max-height:280px;overflow-y:auto}
+.nd-item{padding:9px 14px;border-bottom:1px solid rgba(42,47,71,.5);cursor:pointer;transition:background .15s;display:flex;align-items:flex-start;gap:8px}
+.nd-item:hover{background:var(--bg3)}
+.nd-item.unread{background:rgba(108,99,255,.04)}
+.nd-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:rgba(108,99,255,.12)}
+.nd-icon.api_key{background:rgba(0,212,170,.12)}
+.nd-icon.system{background:rgba(251,191,36,.12)}
+.nd-msg{font-size:10px;color:var(--text2);line-height:1.5;flex:1}
+.nd-msg strong{color:var(--text);font-size:10px}
+.nd-time{font-size:9px;color:var(--text3);margin-top:2px}
+.nd-empty{padding:20px;text-align:center;color:var(--text3);font-size:11px}
+
+/* Avatar / name */
+.avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto;padding:24px}
+.panel{display:none}
+.panel.active{display:block}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+.card-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.card-sub{font-size:11px;color:var(--text3);margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* Stat cards */
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left}
+.stat-val{font-size:26px;font-weight:800;margin-bottom:2px}
+.stat-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.stat-icon{font-size:24px;margin-bottom:8px}
+.c-accent{color:var(--accent)}.c-green{color:var(--green)}.c-yellow{color:var(--yellow)}.c-blue{color:var(--blue)}.c-red{color:var(--red)}
+
+/* Client ID box */
+.cid-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px}
+.cid-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);flex:1;word-break:break-all}
+.copy-btn{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.25);color:var(--accent2);padding:4px 9px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.copy-btn:hover{background:rgba(0,212,170,.18)}
+
+/* Forms */
+.form-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
+.form-input{width:100%;background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:12px;font-family:'Inter',sans-serif;transition:border-color .2s;margin-bottom:12px}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-input::placeholder{color:var(--text3)}
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(108,99,255,.35)}
+.btn-secondary{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red)}
+.btn-danger:hover{background:rgba(248,113,113,.2)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* Result boxes */
+.result-box{font-size:11px;padding:9px 12px;border-radius:8px;margin-top:8px;display:none;line-height:1.5}
+.result-box.success{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+.result-box.error{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.result-box.info{background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.25);color:#a5b4fc}
+
+/* Key cards */
+.key-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.key-name{font-size:12px;font-weight:600;flex:1}
+.key-meta{font-size:10px;color:var(--text3);margin-top:3px}
+.key-hash{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.key-value{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--accent2);word-break:break-all;margin:6px 0}
+.key-warning{font-size:10px;color:var(--yellow);margin-top:2px}
+
+/* History */
+.cat-tab{padding:4px 11px;border-radius:99px;font-size:10px;font-weight:600;cursor:pointer;background:var(--bg3);border:1px solid var(--border);color:var(--text3);transition:all .2s}
+.cat-tab.active,.cat-tab:hover{background:rgba(108,99,255,.12);border-color:rgba(108,99,255,.4);color:var(--accent)}
+.qa-header{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;user-select:none;transition:background .15s}
+.qa-header:hover{background:rgba(108,99,255,.04)}
+.history-empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.src-pill{font-size:9px;padding:2px 7px;border-radius:99px;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.2);color:#a5b4fc}
+
+/* Quick Links */
+.ql-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;text-decoration:none;color:var(--text);display:block}
+.ql-card:hover{border-color:var(--accent);background:rgba(108,99,255,.06);transform:translateY(-2px)}
+.ql-icon{font-size:28px;margin-bottom:8px}
+.ql-label{font-size:12px;font-weight:600}
+.ql-desc{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* Toasts */
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:9999}
+.toast{padding:9px 14px;border-radius:9px;font-size:11px;font-weight:600;animation:tin .25s ease;max-width:300px}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:#052e16;border:1px solid #166534;color:#86efac}
+.toast.error{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5}
+.toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
+
+/* Overlay for mobile */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;height:100%;z-index:200;transform:translateX(-100%);transition:transform .25s}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .sidebar.collapsed{width:var(--sb-w);min-width:var(--sb-w)}
+  .sidebar.collapsed .sb-label,.sidebar.collapsed .sb-section-title,.sidebar.collapsed .sb-logo-text{display:flex}
+  .sidebar.collapsed .sb-item{justify-content:flex-start;padding:9px 16px}
+  .sidebar.collapsed .sb-logo{padding:16px 18px;justify-content:flex-start}
+  .hamburger{display:flex}
+  .sb-overlay.show{display:block}
+  .sb-toggle{display:none}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .grid-3{grid-template-columns:repeat(2,1fr)}
+  .grid-2{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .grid-4,.grid-3{grid-template-columns:1fr 1fr}
+  .content{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sb-overlay" id="sb-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <!-- Logo -->
+  <div class="sb-logo" onclick="toggleSidebar()">
+    <div class="sb-logo-icon">🧠</div>
+    <span class="sb-logo-text">MR AI RAG</span>
+  </div>
+
+  <!-- Toggle btn (desktop) -->
+  <div class="sb-toggle" id="sb-toggle-btn" onclick="toggleSidebar()">◀</div>
+
+  <!-- Main nav -->
+  <div class="sb-nav">
+    <div class="sb-section-title">Main</div>
+    <div class="sb-item active" id="nav-dashboard" onclick="showPanel('dashboard')"><span class="sb-icon">🏠</span><span class="sb-label">Dashboard</span></div>
+    <a class="sb-item" href="/" target="_blank"><span class="sb-icon">🌐</span><span class="sb-label">Home</span></a>
+    <div class="sb-item" id="nav-history" onclick="showPanel('history')"><span class="sb-icon">💬</span><span class="sb-label">History</span></div>
+    <a class="sb-item" href="/playground" target="_blank"><span class="sb-icon">🎮</span><span class="sb-label">Playground</span></a>
+
+    <div class="sb-section-title">Developer</div>
+    <div class="sb-item" id="nav-api" onclick="showPanel('api')"><span class="sb-icon">🔑</span><span class="sb-label">API Keys</span></div>
+    <div class="sb-item" id="nav-notifications" onclick="showPanel('notifications')"><span class="sb-icon">🔔</span><span class="sb-label">Notifications</span><span class="sb-badge" id="sb-notif-badge">0</span></div>
+    <div class="sb-item" id="nav-quicklinks" onclick="showPanel('quicklinks')"><span class="sb-icon">⚡</span><span class="sb-label">Quick Links</span></div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="sb-bottom">
+    <div class="sb-section-title">Support</div>
+    <a class="sb-item" href="/help" target="_blank"><span class="sb-icon">❓</span><span class="sb-label">Help</span></a>
+    <div class="sb-item" id="nav-settings" onclick="showPanel('settings')"><span class="sb-icon">⚙️</span><span class="sb-label">Settings</span></div>
+    <a class="sb-item" href="/api-docs" target="_blank"><span class="sb-icon">📖</span><span class="sb-label">Docs</span></a>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="hamburger" id="hamburger" onclick="openMobileSidebar()">☰</button>
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-subtitle" id="topbar-sub">Welcome back!</div>
+    </div>
+    <div style="flex:1"></div>
+    <!-- Notification Bell -->
+    <div class="notif-wrap">
+      <div class="nb" id="notif-btn" onclick="toggleNotifDropdown()">🔔
+        <div class="nb-badge" id="nb-badge"></div>
+      </div>
+      <div class="notif-dropdown" id="notif-dropdown">
+        <div class="nd-header">
+          <span class="nd-title">Notifications</span>
+          <button class="nd-mark" onclick="markAllRead()">Mark all read</button>
+        </div>
+        <div class="nd-list" id="nd-list"><div class="nd-empty">No notifications yet.</div></div>
+      </div>
+    </div>
+    <!-- Avatar -->
+    <div class="avatar" id="topbar-avatar" title="Logged in">U</div>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="content" id="content-area">
+
+    <!-- ── DASHBOARD PANEL ── -->
+    <div class="panel active" id="panel-dashboard">
+      <!-- Stats row -->
+      <div class="grid-4" style="margin-bottom:18px">
+        <div class="stat"><div class="stat-icon">🆔</div><div class="stat-val c-accent" id="s-cid" style="font-size:13px;font-family:'JetBrains Mono',monospace">—</div><div class="stat-lbl">Client ID</div></div>
+        <div class="stat"><div class="stat-icon">🔑</div><div class="stat-val c-green" id="s-keys">—</div><div class="stat-lbl">API Keys</div></div>
+        <div class="stat"><div class="stat-icon">💬</div><div class="stat-val c-blue" id="s-msgs">—</div><div class="stat-lbl">Chats</div></div>
+        <div class="stat"><div class="stat-icon">✅</div><div class="stat-val" id="s-verified" style="font-size:16px">—</div><div class="stat-lbl">Status</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:14px">
+        <!-- Client ID -->
+        <div class="card">
+          <div class="card-title">🆔 Your Client ID</div>
+          <div class="card-sub">Share with admins or use in integrations</div>
+          <div class="cid-box">
+            <span class="cid-val" id="dash-client-id">Loading…</span>
+            <button class="copy-btn" onclick="copyText(document.getElementById('dash-client-id').textContent,'Client ID')">📋 Copy</button>
+          </div>
+        </div>
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="card-title">⚡ Quick Actions</div>
+          <div class="card-sub">Jump to common tasks</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="btn btn-primary" onclick="showPanel('api')">🔑 Generate API Key</button>
+            <button class="btn btn-secondary" onclick="showPanel('history')">💬 View History</button>
+            <a href="/playground" target="_blank" class="btn btn-secondary" style="text-decoration:none">🎮 Playground</a>
+            <a href="/" target="_blank" class="btn btn-secondary" style="text-decoration:none">🏠 Home Chat</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:14px">
+        <!-- Recent API Keys -->
+        <div class="card">
+          <div class="card-title">🔑 Recent API Keys</div>
+          <div class="card-sub">Your latest keys</div>
+          <div id="dash-keys-list"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+          <button class="btn btn-secondary" style="margin-top:12px;font-size:11px" onclick="showPanel('api')">Manage All Keys →</button>
+        </div>
+        <!-- Getting Started -->
+        <div class="card">
+          <div class="card-title">🚀 Getting Started</div>
+          <div class="card-sub">Use your API key in requests</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Example with your API key:</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);overflow-x:auto;white-space:pre">curl -X POST /api/ask \
+  -H "X-API-Key: mrairag-xxxx" \
+  -d '{"question":"Hello?"}'</div>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <a href="/api-docs" target="_blank" class="btn btn-secondary" style="text-decoration:none;font-size:11px">📖 API Docs</a>
+            <button class="btn btn-primary" style="font-size:11px" onclick="showPanel('api')">⚡ Get API Key</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity + Usage row -->
+      <div class="grid-2">
+        <!-- Recent Notifications -->
+        <div class="card">
+          <div class="card-title">🔔 Recent Activity</div>
+          <div class="card-sub">Your latest notifications</div>
+          <div id="dash-activity-list"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+          <button class="btn btn-secondary" style="margin-top:12px;font-size:11px" onclick="showPanel('notifications')">View All →</button>
+        </div>
+        <!-- Platform Status -->
+        <div class="card">
+          <div class="card-title">📊 Platform Info</div>
+          <div class="card-sub">Connection and usage details</div>
+          <div id="dash-platform-info"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HISTORY PANEL ── -->
+    <div class="panel" id="panel-history">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <div class="card-title">💬 Chat History</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px" id="history-meta">Loading…</div>
+          </div>
+          <div style="display:flex;gap:5px;margin-left:auto;flex-wrap:wrap">
+            <button class="cat-tab active" onclick="filterHistory('all',this)">· All</button>
+            <button class="cat-tab" onclick="filterHistory('home',this)">🏠 Home</button>
+            <button class="cat-tab" onclick="filterHistory('playground',this)">🎮 Playground</button>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary" onclick="loadHistory()">↻ Refresh</button>
+            <button class="btn btn-danger" onclick="clearHistory()">🗑 Clear</button>
+          </div>
+        </div>
+        <div id="history-messages"><div class="history-empty">⏳ Loading history…</div></div>
+      </div>
+    </div>
+
+    <!-- ── API PANEL ── -->
+    <div class="panel" id="panel-api">
+      <div class="grid-2">
+        <!-- Generate -->
+        <div class="card">
+          <div class="card-title">⚡ Generate API Key</div>
+          <div class="card-sub">Create a new key to use with the API</div>
+          <label class="form-label">Key Label</label>
+          <input class="form-input" id="key-name" placeholder="e.g. My App Key" onkeydown="if(event.key==='Enter')generateKey()">
+          <button class="btn btn-primary" id="gen-btn" onclick="generateKey()" style="width:100%">⚡ Generate Key</button>
+          <div class="result-box" id="key-result"></div>
+        </div>
+        <!-- My keys -->
+        <div class="card">
+          <div class="card-title">🗝 My Keys</div>
+          <div class="card-sub">All your API keys</div>
+          <div id="keys-list"><div style="color:var(--text3);font-size:12px">Loading…</div></div>
+          <button class="btn btn-secondary" style="margin-top:10px;width:100%" onclick="loadMyKeys()">↻ Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS PANEL ── -->
+    <div class="panel" id="panel-notifications">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="card-title">🔔 All Notifications</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary" onclick="loadNotifications()">↻ Refresh</button>
+            <button class="btn btn-secondary" onclick="markAllRead()">✅ Mark all read</button>
+          </div>
+        </div>
+        <div id="full-notif-list"><div class="nd-empty">Loading notifications…</div></div>
+      </div>
+    </div>
+
+    <!-- ── QUICK LINKS PANEL ── -->
+    <div class="panel" id="panel-quicklinks">
+      <div style="margin-bottom:14px"><div class="card-title" style="font-size:16px">⚡ Quick Links</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Jump to what you need</div></div>
+      <div class="grid-3">
+        <a href="/" target="_blank" class="ql-card"><div class="ql-icon">🏠</div><div class="ql-label">Home Chat</div><div class="ql-desc">Chat on the home page</div></a>
+        <a href="/playground" target="_blank" class="ql-card"><div class="ql-icon">🎮</div><div class="ql-label">Playground</div><div class="ql-desc">Test API with sources</div></a>
+        <a href="/api-docs" target="_blank" class="ql-card"><div class="ql-icon">📖</div><div class="ql-label">API Docs</div><div class="ql-desc">Full API reference</div></a>
+        <div class="ql-card" onclick="showPanel('api')"><div class="ql-icon">🔑</div><div class="ql-label">API Keys</div><div class="ql-desc">Generate & manage keys</div></div>
+        <div class="ql-card" onclick="showPanel('history')"><div class="ql-icon">💬</div><div class="ql-label">Chat History</div><div class="ql-desc">View saved conversations</div></div>
+        <a href="/help" target="_blank" class="ql-card"><div class="ql-icon">❓</div><div class="ql-label">Help Center</div><div class="ql-desc">Guides & tutorials</div></a>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS PANEL ── -->
+    <div class="panel" id="panel-settings">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">👤 My Account</div>
+          <div class="card-sub">View your profile details</div>
+          <div class="cid-box" style="margin-bottom:10px">
+            <span style="font-size:11px;color:var(--text3)">Client ID</span>
+            <span class="cid-val" id="s-cid2">—</span>
+            <button class="copy-btn" onclick="copyText(document.getElementById('s-cid2').textContent,'Client ID')">📋</button>
+          </div>
+          <div class="cid-box" style="margin-bottom:10px">
+            <span style="font-size:11px;color:var(--text3)">Name</span>
+            <span class="cid-val" id="s-name" style="color:var(--text)">—</span>
+          </div>
+          <div class="cid-box">
+            <span style="font-size:11px;color:var(--text3)">Email</span>
+            <span class="cid-val" id="s-email" style="color:var(--text)">—</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔐 Change Password</div>
+          <div class="card-sub">Update your account password</div>
+          <label class="form-label">Current Password</label>
+          <input type="password" class="form-input" id="cur-pw" placeholder="••••••••">
+          <label class="form-label">New Password</label>
+          <input type="password" class="form-input" id="new-pw" placeholder="Min 6 characters">
+          <label class="form-label">Confirm New Password</label>
+          <input type="password" class="form-input" id="conf-pw" placeholder="Repeat new password">
+          <button class="btn btn-primary" style="width:100%" onclick="changePassword()">🔐 Update Password</button>
+          <div class="result-box" id="pw-result"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🚪 Session</div>
+          <div class="card-sub">Logout from your account</div>
+          <button class="btn btn-danger" style="width:100%" onclick="logout()">🚪 Logout</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🎨 Theme</div>
+          <div class="card-sub">Dashboard appearance</div>
+          <div style="font-size:12px;color:var(--text3)">Dark mode (default). More themes coming soon.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── Session ───────────────────────────────────────────────────────────────────
+let session = null;
+(function(){
+  const raw = localStorage.getItem('mrairag_client');
+  if(!raw){ window.location.href='/login'; return; }
+  try{ session = JSON.parse(raw); }catch{ window.location.href='/login'; return; }
+  if(!session?.token){ window.location.href='/login'; return; }
+  // Fill identity
+  const name = session.name || 'User';
+  document.getElementById('topbar-sub').textContent = `Welcome back, ${name}!`;
+  document.getElementById('topbar-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('dash-client-id').textContent = session.client_id || '—';
+  document.getElementById('s-cid').textContent = session.client_id ? session.client_id.slice(0,18)+'…' : '—';
+  document.getElementById('s-cid2').textContent = session.client_id || '—';
+  document.getElementById('s-name').textContent = name;
+  document.getElementById('s-email').textContent = session.email || '—';
+  // Load data
+  loadMyKeys(); loadNotifications(); loadHistory();
+})();
+
+const hdrs = () => ({'Content-Type':'application/json','X-Client-Token':session.token});
+const escHtml = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+let sbCollapsed = false;
+function toggleSidebar(){
+  sbCollapsed = !sbCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sbCollapsed);
+  document.getElementById('sb-toggle-btn').textContent = sbCollapsed ? '▶' : '◀';
+}
+function openMobileSidebar(){
+  document.getElementById('sidebar').classList.add('mobile-open');
+  document.getElementById('sb-overlay').classList.add('show');
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sb-overlay').classList.remove('show');
+}
+
+// ── Panel Switching ───────────────────────────────────────────────────────────
+const PANEL_TITLES = {
+  dashboard:{title:'Dashboard',sub:'Your overview'},
+  history:{title:'Chat History',sub:'All your conversations'},
+  api:{title:'API Keys',sub:'Manage your access keys'},
+  notifications:{title:'Notifications',sub:'Recent activity'},
+  quicklinks:{title:'Quick Links',sub:'Jump to common tasks'},
+  settings:{title:'Settings',sub:'Account & preferences'},
+};
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('panel-'+id)?.classList.add('active');
+  document.getElementById('nav-'+id)?.classList.add('active');
+  const info = PANEL_TITLES[id] || {title:id,sub:''};
+  document.getElementById('topbar-title').textContent = info.title;
+  document.getElementById('topbar-sub').textContent = info.sub;
+  closeMobileSidebar();
+  // Lazy loads
+  if(id==='history') loadHistory();
+  if(id==='api') loadMyKeys();
+  if(id==='notifications') loadNotifications();
+}
+
+// ── Dashboard Extras ──────────────────────────────────────────────────────────
+function renderDashboardExtras(){
+  // Recent Activity from notifications
+  const actEl = document.getElementById('dash-activity-list');
+  if(actEl){
+    const recent = _notifs.slice(0,4);
+    if(!recent.length){ actEl.innerHTML='<div style="color:var(--text3);font-size:12px">No activity yet.</div>'; }
+    else {
+      const NTYPE2 = {api_key:{icon:'🔑',cls:'api_key'},chat:{icon:'💬',cls:'chat'},system:{icon:'⚙️',cls:'system'},security:{icon:'🛡️',cls:'security'}};
+      actEl.innerHTML = recent.map(n=>{
+        const t=NTYPE2[n.type]||{icon:'📢',cls:''};
+        const ts=n.created_at?new Date(n.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div class="nd-icon ${t.cls}" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px">${t.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.title||'')}</div>
+            <div style="font-size:10px;color:var(--text3)">${ts}</div>
+          </div>
+          ${!n.is_read?'<div style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></div>':''}
+        </div>`;
+      }).join('');
+    }
+  }
+  // Platform info
+  const pfEl = document.getElementById('dash-platform-info');
+  if(pfEl){
+    fetch('/api/health').then(r=>r.json()).then(d=>{
+      pfEl.innerHTML=`
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="cid-box"><span style="font-size:11px;color:var(--text3)">Status</span><span style="font-size:12px;color:var(--green)">✅ Online</span></div>
+          <div class="cid-box"><span style="font-size:11px;color:var(--text3)">Chunks</span><span style="font-size:12px;color:var(--blue)">${d.total_chunks_indexed||0} indexed</span></div>
+          <div class="cid-box"><span style="font-size:11px;color:var(--text3)">Model</span><span style="font-size:12px;color:var(--text2)">${d.llm_provider||'—'}/${d.llm_model||'—'}</span></div>
+          <div class="cid-box"><span style="font-size:11px;color:var(--text3)">Version</span><span style="font-size:12px;color:var(--text2)">${d.version||'2.0'}</span></div>
+        </div>`;
+    }).catch(()=>{ pfEl.innerHTML='<div style="color:var(--text3);font-size:11px">⚠ Could not fetch platform data.</div>'; });
+  }
+  // Verified badge
+  const vEl = document.getElementById('s-verified');
+  if(vEl) vEl.textContent = '✅ Verified';
+}
+
+let _notifs = [];
+async function loadNotifications(){
+  try{
+    const r = await fetch('/api/clients/me/notifications',{headers:hdrs()});
+    if(!r.ok) return;
+    const d = await r.json();
+    _notifs = d.notifications || [];
+    renderNotifDropdown(_notifs);
+    renderFullNotifList(_notifs);
+    renderDashboardExtras();
+    const unread = _notifs.filter(n=>!n.is_read).length;
+    ['nb-badge','sb-notif-badge'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.textContent = unread;
+      el.classList.toggle('show', unread>0);
+    });
+    // Update stats
+    const keys = _notifs.filter(n=>n.type==='api_key').length;
+    document.getElementById('s-msgs').textContent = _notifs.filter(n=>n.type==='chat').length || '—';
+  }catch{}
+}
+const NTYPE = {api_key:{icon:'🔑',cls:'api_key'},chat:{icon:'💬',cls:'chat'},system:{icon:'⚙️',cls:'system'},security:{icon:'🛡️',cls:'security'}};
+function renderNotifDropdown(notifs){
+  const list = document.getElementById('nd-list');
+  if(!notifs.length){ list.innerHTML='<div class="nd-empty">All caught up! ✨</div>'; return; }
+  list.innerHTML = notifs.slice(0,8).map(n=>{
+    const t = NTYPE[n.type]||{icon:'📢',cls:''};
+    const ts = n.created_at ? new Date(n.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="nd-item ${n.is_read?'':'unread'}" onclick="markRead('${n.id}')">
+      <div class="nd-icon ${t.cls}">${t.icon}</div>
+      <div class="nd-msg"><strong>${escHtml(n.title||'')}</strong><br>${escHtml(n.message||'')}<div class="nd-time">${ts}</div></div>
+    </div>`;
+  }).join('');
+}
+function renderFullNotifList(notifs){
+  const el = document.getElementById('full-notif-list');
+  if(!notifs.length){ el.innerHTML='<div class="nd-empty">No notifications yet.</div>'; return; }
+  el.innerHTML = notifs.map(n=>{
+    const t = NTYPE[n.type]||{icon:'📢',cls:''};
+    const ts = n.created_at ? new Date(n.created_at).toLocaleString() : '';
+    return `<div class="nd-item ${n.is_read?'':'unread'}" onclick="markRead('${n.id}')" style="border-radius:9px;margin-bottom:5px;border:1px solid var(--border)">
+      <div class="nd-icon ${t.cls}">${t.icon}</div>
+      <div class="nd-msg"><strong>${escHtml(n.title||'')}</strong><br>${escHtml(n.message||'')}<div class="nd-time">${ts}</div></div>
+    </div>`;
+  }).join('');
+}
+async function markRead(id){
+  try{ await fetch(`/api/clients/me/notifications/${id}/read`,{method:'POST',headers:hdrs()}); } catch{}
+  await loadNotifications();
+}
+async function markAllRead(){
+  try{ await fetch('/api/clients/me/notifications/read-all',{method:'POST',headers:hdrs()}); }catch{}
+  await loadNotifications();
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.notif-wrap')) document.getElementById('notif-dropdown').classList.remove('open');
+});
+function toggleNotifDropdown(){ document.getElementById('notif-dropdown').classList.toggle('open'); }
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+let _keyVisible = false;
+let _lastGeneratedKey = '';  // store full key safely in a variable
+
+async function generateKey(){
+  const name = document.getElementById('key-name').value.trim();
+  if(!name){ showResult('key-result','error','⚠ Enter a key label.'); return; }
+  const btn = document.getElementById('gen-btn');
+  btn.disabled=true; btn.textContent='⏳…';
+  try{
+    // Client token is used as X-Admin-Secret (per existing auth logic)
+    const r = await fetch('/api/keys/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Secret':session.token},
+      body:JSON.stringify({name,created_by:session.client_id})
+    });
+    const d = await r.json();
+    if(r.ok){
+      const fullKey = d.key;
+      _lastGeneratedKey = fullKey;  // store in module var
+      const box = document.getElementById('key-result');
+      box.className='result-box success'; box.style.display='block';
+      _keyVisible = false;
+      box.innerHTML = '<div style="font-weight:700;margin-bottom:6px">✅ <strong>'+escHtml(d.name)+'</strong> — key generated!</div>'
+        + '<div style="font-size:9px;color:var(--text3);margin-bottom:8px">⚠ This is the ONLY time the full key is shown. Copy and store it safely.</div>'
+        + '<div style="display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid rgba(0,212,170,.35);border-radius:8px;padding:9px 12px;margin-bottom:8px">'
+        +   '<span id="rawKey" style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--accent2);flex:1;word-break:break-all;user-select:all">'
+        +     escHtml(fullKey.substring(0,8))+'••••••••••••••••••••••••••••••••'
+        +   '</span>'
+        +   '<button id="toggleKeyBtn" onclick="toggleKeyVisibility()" title="Show / hide full key" '
+        +     'style="flex-shrink:0;background:transparent;border:1px solid rgba(0,212,170,.3);border-radius:6px;'
+        +     'color:var(--accent2);cursor:pointer;padding:4px 9px;font-size:15px">👁</button>'
+        + '</div>'
+        + '<button onclick="copyGeneratedKey()" '
+        +   'style="width:100%;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;'
+        +   'background:linear-gradient(135deg,rgba(0,212,170,.2),rgba(0,212,170,.1));'
+        +   'border:1px solid rgba(0,212,170,.4);color:var(--accent2);font-family:Inter,sans-serif">'
+        +   '📋 Copy Full API Key'
+        + '</button>';
+      document.getElementById('key-name').value='';
+      toast('✅ API key generated!','success');
+      setTimeout(()=>{ loadMyKeys(); }, 800);
+    } else { showResult('key-result','error','❌ '+(d.detail||'Failed')); }
+  }catch(e){ showResult('key-result','error','❌ '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='⚡ Generate Key'; }
+}
+function toggleKeyVisibility(){
+  _keyVisible = !_keyVisible;
+  const el=document.getElementById('rawKey'), btn=document.getElementById('toggleKeyBtn');
+  if(!el||!btn||!_lastGeneratedKey) return;
+  if(_keyVisible){
+    el.textContent = _lastGeneratedKey;   // show FULL key
+    el.style.wordBreak = 'break-all';
+    btn.textContent = '🙈';
+    btn.title = 'Hide key';
+  } else {
+    el.textContent = _lastGeneratedKey.substring(0,8) + '••••••••••••••••••••••••••••••••';
+    btn.textContent = '👁';
+    btn.title = 'Show full key';
+  }
+}
+function copyGeneratedKey(){
+  if(!_lastGeneratedKey){ toast('No key to copy','error'); return; }
+  navigator.clipboard.writeText(_lastGeneratedKey)
+    .then(function(){ toast('✅ Full key copied!','success'); })
+    .catch(function(){ toast('Copy failed — select the key manually','error'); });
+}
+function buildKeyCard(k, compact) {
+  var preview  = k.key_preview || '(preview unavailable)';
+  var rawKey   = k.raw_key || preview; // fallback
+  var keyId    = (k.key_id || k.id || '');
+  var rawName  = k.name || 'Untitled';
+  var name     = rawName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var date     = k.created_at ? new Date(k.created_at).toLocaleDateString() : '';
+  var clr      = k.is_active ? 'var(--green)' : 'var(--red)';
+  var lbl      = k.is_active ? '&#x2705; Active' : '&#x274C; Inactive';
+  
+  var pSafe    = preview.replace(/['"\\]/g,'');
+  var nSafe    = rawName.replace(/['"\\]/g,'');
+  var idSafe   = keyId.replace(/['"\\]/g,'');
+  var rSafe    = rawKey.replace(/['"\\]/g,'');
+
+  var header =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text)">' + name + '</div>' +
+        (compact ? '' :
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + date +
+            ' &middot; <span style="color:' + clr + '">' + lbl + '</span></div>') +
+      '</div>' +
+      (compact ? '' :
+        '<button onclick="revokeKey(\'' + idSafe + '\',\'' + nSafe + '\')" ' +
+          'class="btn btn-danger" style="font-size:10px;padding:4px 9px">' +
+          '&#x1F5D1; Revoke</button>') +
+    '</div>';
+
+  var keyRow =
+    '<div style="display:flex;align-items:center;gap:7px;background:var(--bg2);' +
+      'border:1px solid var(--border);border-radius:7px;padding:7px 10px">' +
+      '<span id="key-val-' + idSafe + '" style="font-family:JetBrains Mono,monospace;font-size:11px;' +
+        'color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-preview="' + pSafe + '" data-raw="' + rSafe + '">' +
+        rawKey  + '</span>' +
+      '<button onclick="toggleKeyRaw(\'' + idSafe + '\')" ' +
+        'style="flex-shrink:0;padding:3px 8px;border-radius:5px;background:transparent;border:none;' +
+        'color:var(--muted);cursor:pointer;font-size:12px;">&#x1F441;&#xFE0F;</button>' +
+      '<button onclick="navigator.clipboard.writeText(document.getElementById(\'key-val-' + idSafe + '\').textContent).then(function(){toast(\'&#x1F4CB; Copied!\',\'success\')})" ' +
+        'style="flex-shrink:0;padding:3px 10px;border-radius:5px;' +
+          'border:1px solid rgba(0,212,170,.35);background:rgba(0,212,170,.08);' +
+          'color:var(--accent2);cursor:pointer;font-size:10px;font-weight:700;' +
+          'font-family:Inter,sans-serif">' +
+        '&#x1F4CB; Copy</button>' +
+    '</div>';
+
+  var note = compact ? '' :
+    '<div style="font-size:9px;color:var(--text3);margin-top:5px">' +
+      'Click the eye icon to reveal the full secret API key. Keep it secure!' + '</div>';
+
+  return '<div style="background:var(--bg3);border:1px solid var(--border);' +
+    'border-radius:10px;padding:12px 14px;margin-bottom:8px">' +
+    header + keyRow + note + '</div>';
+}
+
+function toggleKeyRaw(id) {
+  var el = document.getElementById('key-val-'+id);
+  if(!el) return;
+  var isRaw = el.getAttribute('data-israw') === 'true';
+  if(isRaw) {
+    el.textContent = el.getAttribute('data-preview');
+    el.setAttribute('data-israw', 'false');
+  } else {
+    el.textContent = el.getAttribute('data-raw');
+    el.setAttribute('data-israw', 'true');
+  }
+}
+
+async function loadMyKeys(){
+  const listEl = document.getElementById('keys-list');
+  const dashEl = document.getElementById('dash-keys-list');
+  try{
+    const r = await fetch('/api/clients/me/keys',{headers:{'X-Client-Token':session.token}});
+    if(!r.ok){
+      let e='Failed to load keys';
+      try{ const j=await r.json();e=j.detail||e; }catch{}
+      if(listEl) listEl.innerHTML='<div style="color:var(--red);font-size:11px">&#x274C; '+e+'</div>';
+      return;
+    }
+    const d = await r.json();
+    const keys = d.keys || [];
+    document.getElementById('s-keys').textContent = keys.length;
+    if(listEl) listEl.innerHTML = keys.length
+      ? keys.map(function(k){ return buildKeyCard(k,false); }).join('')
+      : '<div style="color:var(--text3);font-size:12px;padding:8px 0">No API keys yet. Generate your first key!</div>';
+    if(dashEl) dashEl.innerHTML = keys.length
+      ? keys.slice(0,3).map(function(k){ return buildKeyCard(k,true); }).join('')
+      : '<div style="color:var(--text3);font-size:12px">No API keys yet.</div>';
+  }catch(err){
+    if(listEl) listEl.innerHTML='<div style="color:var(--red);font-size:11px">&#x274C; '+err.message+'</div>';
+  }
+}
+async function revokeKey(id, name){
+  if(!confirm(`Revoke key "${name}"? It will stop working immediately.`)) return;
+  try{
+    // DELETE uses X-Admin-Secret (client token as admin secret)
+    const r = await fetch(`/api/keys/${id}`,{method:'DELETE',headers:{'X-Admin-Secret':session.token}});
+    if(r.ok){ toast('Key revoked','info'); loadMyKeys(); }
+    else{ const d=await r.json(); toast('❌ '+(d.detail||'Failed'),'error'); }
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Chat History ──────────────────────────────────────────────────────────────
+let _historyAll = []; let _activeCat = 'all';
+async function loadHistory(){
+  document.getElementById('history-meta').textContent='Loading…';
+  try{
+    const r = await fetch('/api/clients/me/history',{headers:hdrs()});
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    _historyAll = d.messages || [];
+    renderHistory(_historyAll);
+  }catch{ document.getElementById('history-meta').textContent='Failed to load'; }
+}
+function filterHistory(cat, el){
+  _activeCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderHistory(_historyAll);
+}
+function renderHistory(messages){
+  const c = document.getElementById('history-messages');
+  const filtered = _activeCat==='all' ? messages : messages.filter(m=>(m.category||'home')===_activeCat);
+  const pairs = [];
+  for(let i=0;i<filtered.length;i++){
+    if(filtered[i].role==='user'){
+      const q=filtered[i], a=(filtered[i+1]&&filtered[i+1].role==='assistant')?filtered[i+1]:null;
+      if(a) i++;
+      pairs.push({q,a});
+    }
+  }
+  const hc = messages.filter(m=>(m.category||'home')==='home'&&m.role==='user').length;
+  const pc = messages.filter(m=>m.category==='playground'&&m.role==='user').length;
+  document.getElementById('s-msgs').textContent = messages.filter(m=>m.role==='user').length || '—';
+  document.getElementById('history-meta').textContent = `${messages.length} messages · 🏠 ${hc} home · 🎮 ${pc} playground`;
+  if(!pairs.length){ c.innerHTML='<div class="history-empty">💬<br>No chat history yet in this category.</div>'; return; }
+  const SICO = {pdf:'📄',yt:'📺',web:'🌐',vid:'🎬',json:'📊','':'📎'};
+  const CICO = {home:'🏠 Home',playground:'🎮 Playground'};
+  c.innerHTML = pairs.map((p,i)=>{
+    const ts = p.q.timestamp ? new Date(p.q.timestamp).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    const st = p.q.source_type||p.a?.source_type||'';
+    const si = SICO[st]||SICO[''];
+    const cl = CICO[p.q.category||'home']||'🏠 Home';
+    const srcs = (p.a?.sources||[]).map(s=>`<span class="src-pill">${si} ${escHtml(s)}</span>`).join(' ');
+    const pid = `qa-${i}`;
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:8px">
+      <div class="qa-header" onclick="toggleQA('${pid}')">
+        <div style="width:26px;height:26px;border-radius:7px;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">👤</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(p.q.content)}">${escHtml(p.q.content)}</div>
+          <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
+            <span style="font-size:9px;color:var(--text3)">${ts}</span>
+            <span style="font-size:9px;padding:1px 6px;border-radius:99px;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.2);color:#a5b4fc">${cl}</span>
+            ${st?`<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);color:var(--accent2)">${si} ${st.toUpperCase()}</span>`:''}
+          </div>
+        </div>
+        <div id="qa-arrow-${pid}" style="font-size:11px;color:var(--text3);transition:transform .2s;flex-shrink:0">▼</div>
+      </div>
+      <div id="${pid}" style="display:none;border-top:1px solid var(--border)">
+        ${p.a?`<div style="display:flex;gap:10px;padding:12px 14px;background:rgba(0,0,0,.1)">
+          <div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent2),#00a085);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🤖</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;word-break:break-word">${escHtml(p.a.content)}</div>
+            ${srcs?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px">${srcs}</div>`:''}
+          </div></div>`:'<div style="padding:10px 14px;font-size:11px;color:var(--text3)">No answer recorded.</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleQA(id){
+  const el=document.getElementById(id), ar=document.getElementById('qa-arrow-'+id);
+  if(!el) return;
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(ar) ar.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+}
+async function clearHistory(){
+  if(!confirm('Clear ALL chat history?')) return;
+  try{
+    const r=await fetch('/api/clients/me/history',{method:'DELETE',headers:hdrs()});
+    if(r.ok){ _historyAll=[]; renderHistory([]); toast('History cleared','info'); }
+    else toast('Failed','error');
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function changePassword(){
+  const cur=document.getElementById('cur-pw').value, nw=document.getElementById('new-pw').value, cf=document.getElementById('conf-pw').value;
+  if(!cur||!nw||!cf) return showResult('pw-result','error','⚠ Fill all fields.');
+  if(nw!==cf) return showResult('pw-result','error','❌ Passwords do not match.');
+  if(nw.length<6) return showResult('pw-result','error','❌ Min 6 characters.');
+  try{
+    const r=await fetch('/api/clients/me/change-password',{method:'POST',headers:hdrs(),body:JSON.stringify({current_password:cur,new_password:nw})});
+    const d=await r.json();
+    if(r.ok){ showResult('pw-result','success','✅ Password updated!'); document.getElementById('cur-pw').value=''; document.getElementById('new-pw').value=''; document.getElementById('conf-pw').value=''; }
+    else showResult('pw-result','error','❌ '+(d.detail||'Failed'));
+  }catch(e){ showResult('pw-result','error','❌ '+e.message); }
+}
+function logout(){
+  localStorage.removeItem('mrairag_client');
+  window.location.href='/login';
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function showResult(id, cls, msg){ const el=document.getElementById(id); el.className='result-box '+cls; el.textContent=msg; el.style.display='block'; }
+function toast(msg, cls='info'){ const w=document.getElementById('toasts'),el=document.createElement('div'); el.className=`toast ${cls}`; el.textContent=msg; w.appendChild(el); setTimeout(()=>el.remove(),3800); }
+function copyText(text, label='Text'){ navigator.clipboard.writeText(text).then(()=>toast(`✅ ${label} copied!`,'success')); }
+</script>
+</body>
+</html>

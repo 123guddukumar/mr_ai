@@ -34,7 +34,8 @@ import tempfile
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Depends
+from app.core.api_keys import require_api_key
 from pydantic import BaseModel
 
 from app.services.chunker import chunk_text
@@ -345,7 +346,7 @@ async def _fetch_title(video_id: str) -> str:
 
 @router.post("/ingest-youtube", response_model=VideoIngestResponse,
              summary="Ingest YouTube with timestamps + subtitles")
-async def ingest_youtube(req: YoutubeIngestRequest):
+async def ingest_youtube(req: YoutubeIngestRequest, _key: dict = Depends(require_api_key)):
     url = req.url.strip()
     video_id = extract_video_id(url)
     if not video_id:
@@ -437,7 +438,8 @@ AUDIO_EXT   = {".mp3",".wav",".m4a",".ogg",".flac",".aac"}
              summary="Upload any video/audio file → Whisper transcription")
 async def ingest_video_file(
     file: UploadFile = File(...),
-    whisper_model: str = Query("base", enum=["tiny","base","small","medium","large"])
+    whisper_model: str = Query("base", enum=["tiny","base","small","medium","large"]),
+    _key: dict = Depends(require_api_key)
 ):
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXT:
@@ -502,7 +504,7 @@ async def ingest_video_file(
 
 @router.post("/video-summary", response_model=VideoActionResponse,
              summary="Generate AI summary of a video transcript")
-async def video_summary(req: VideoActionRequest):
+async def video_summary(req: VideoActionRequest, _key: dict = Depends(require_api_key)):
     text = _transcript_store.get(req.source_id)
     if not text:
         raise HTTPException(404, f"Transcript not found for source_id '{req.source_id}'. Re-ingest the video.")
@@ -552,7 +554,7 @@ async def video_summary(req: VideoActionRequest):
 
 @router.post("/video-quiz", response_model=VideoActionResponse,
              summary="Generate quiz questions from a video transcript")
-async def video_quiz(req: VideoActionRequest):
+async def video_quiz(req: VideoActionRequest, _key: dict = Depends(require_api_key)):
     text = _transcript_store.get(req.source_id)
     if not text:
         raise HTTPException(404, f"Transcript not found for '{req.source_id}'. Re-ingest the video.")

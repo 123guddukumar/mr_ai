@@ -1,80 +1,116 @@
-# ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # MR AI RAG v2 — Dockerfile
-# ═══════════════════════════════════════════════════════════════
-# Multi-stage build:
-#   Stage 1 (builder) — install heavy Python deps
-#   Stage 2 (runtime) — lean final image
-# ═══════════════════════════════════════════════════════════════
+# Optimized for: Intel i3 dual-core, 8GB RAM, CPU-only, Windows 11
+# Build time:    ~8-12 min (first time), ~1-2 min (cached rebuild)
+# Image size:    ~1.8 GB
+# ═══════════════════════════════════════════════════════════════════════
 
-# ── Stage 1: Builder ──────────────────────────────────────────
+# ── STAGE 1: Dependency builder ─────────────────────────────────────────
+# Install all heavy Python packages here, then copy to lean runtime image.
+# This keeps the final image small and build cache efficient.
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-# System build deps
+# Install only what's needed to compile Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    git \
+        build-essential \
+        gcc \
+        g++ \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python deps into /install
+# Upgrade pip first (faster resolver)
+RUN pip install --upgrade pip setuptools wheel --no-cache-dir
+
+# ── Copy requirements and install ──────────────────────────────────────
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+# Install everything into /install prefix (copied to runtime in stage 2)
+# --no-cache-dir   → saves ~200MB during build
+# --prefix         → isolates from system Python
+RUN pip install \
+        --prefix=/install \
+        --no-cache-dir \
+        --no-warn-script-location \
+        -r requirements.txt
 
 
-# ── Stage 2: Runtime ──────────────────────────────────────────
+# ── STAGE 2: Lean runtime image ─────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 LABEL maintainer="MR AI RAG"
-LABEL description="RAG system with multi-provider LLM, PDF, Web, YouTube & Video support"
 LABEL version="2.0.0"
+LABEL description="RAG · PDF · Web · YouTube · Video · Multi-LLM"
 
-# ── System runtime dependencies ───────────────────────────────
-# ffmpeg  → audio extraction for Whisper video transcription
-# libgomp → required by faiss-cpu
+# ── System runtime deps ─────────────────────────────────────────────────
+# ffmpeg   → audio extraction for Whisper video transcription
+# libgomp1 → OpenMP, required by faiss-cpu and sentence-transformers
+# curl     → used by HEALTHCHECK
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libgomp1 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+        ffmpeg \
+        libgomp1 \
+        curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# ── Copy installed Python packages from builder ───────────────
+# ── Copy Python packages from builder ──────────────────────────────────
 COPY --from=builder /install /usr/local
 
-# ── App setup ─────────────────────────────────────────────────
+# ── Working directory ───────────────────────────────────────────────────
 WORKDIR /app
 
-# Create required directories with correct permissions
-RUN mkdir -p /app/uploads /app/vector_store /app/frontend
+# ── Create data directories ─────────────────────────────────────────────
+RUN mkdir -p /app/uploads /app/vector_store
 
-# Copy application source
-COPY app/           ./app/
-COPY frontend/      ./frontend/
-COPY requirements.txt .
+# ── Copy source code ────────────────────────────────────────────────────
+# Copy in order: least-changed first → maximises Docker layer cache
+COPY requirements.txt        ./requirements.txt
+COPY app/                    ./app/
+COPY frontend/               ./frontend/
 
-# Optional: copy .env if present (override via docker run -e or docker-compose)
-COPY .env* ./
+# Copy .env if it exists (silently skip if not found)
+# Real secrets should be passed via docker-compose env: or -e flags
+COPY .env.example            ./.env.example
+# COPY .env                  ./.env   ← uncomment only for local dev
 
-# ── Runtime settings ──────────────────────────────────────────
+# ── Environment variables ───────────────────────────────────────────────
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
+    # Torch CPU-only — disables GPU detection warnings
+    CUDA_VISIBLE_DEVICES="" \
+    # Sentence-transformers cache inside container
+    TRANSFORMERS_CACHE=/app/.cache/huggingface \
+    # Whisper model cache
+    WHISPER_CACHE=/app/.cache/whisper \
     PORT=8000
 
-# Persist uploads and vector store across restarts
-VOLUME ["/app/uploads", "/app/vector_store"]
+# Create cache dirs
+RUN mkdir -p /app/.cache/huggingface /app/.cache/whisper
 
-# ── Health check ──────────────────────────────────────────────
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/api/health || exit 1
+# ── Persistent data volumes ─────────────────────────────────────────────
+# These directories survive container restarts via named volumes
+VOLUME ["/app/uploads", "/app/vector_store", "/app/.cache"]
 
-# ── Expose port ───────────────────────────────────────────────
-EXPOSE ${PORT}
+# ── Port ────────────────────────────────────────────────────────────────
+EXPOSE 8000
 
-# ── Entrypoint ────────────────────────────────────────────────
-# Using gunicorn + uvicorn workers for production
-# Adjust --workers based on your CPU count (2 × CPU + 1 is recommended)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2 --proxy-headers --forwarded-allow-ips='*'"]
+# ── Health check ────────────────────────────────────────────────────────
+# --start-period 90s gives time for embedding model to load on first start
+HEALTHCHECK \
+    --interval=30s \
+    --timeout=10s \
+    --start-period=90s \
+    --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# ── Start command ───────────────────────────────────────────────────────
+# i3 dual-core → 1 worker is safest to avoid OOM on 8GB RAM
+# Increase to 2 only if you have RAM available after other apps
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "1", \
+     "--timeout-keep-alive", "30", \
+     "--log-level", "info"]

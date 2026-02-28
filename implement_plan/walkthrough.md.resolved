@@ -1,0 +1,62 @@
+# 🎮 Playground Page — Walkthrough
+
+## What Was Built
+
+A fully interactive API playground at `/playground` where users can test the MR AI RAG API directly in the browser — no curl or Postman needed.
+
+## Files Changed
+
+| File | Change |
+|---|---|
+| [frontend/playground.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/playground.html) | **[NEW]** Complete playground page |
+| [app/main.py](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/main.py) | Added `GET /playground` route |
+| [frontend/api-docs.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/api-docs.html) | Added 🎮 Playground sidebar link |
+| [frontend/index.html](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/index.html) | Added 🎮 Playground header button |
+
+---
+
+## Playground Features
+
+### 🔑 API Key Bar (top)
+- Paste your `mrairag-...` key and click **Validate** — calls `POST /api/keys/validate`
+- Key is persisted to `sessionStorage` so it survives page refreshes in the same tab
+
+### 📥 Upload Panel (left)
+Four tabbed source types, each wired to the correct backend endpoint:
+
+| Tab | Endpoint |
+|---|---|
+| 📄 PDF | `POST /api/upload` (multipart) |
+| 📺 YouTube | `POST /api/ingest-youtube` (JSON) |
+| 🌐 Website | `POST /api/ingest-url` (JSON) |
+| 🎬 Video/Audio | `POST /api/ingest-video` (multipart + query param) |
+
+Each tab shows an animated progress bar while the request is in-flight and a success/error result card when done.
+
+### 📚 Indexed Sources List
+- Automatically updated after every successful upload
+- Shows source name, type badge, and chunk count
+
+### 💬 Chat Panel (right)
+- Full conversation history with smooth slide-in animations
+- Typing indicator (bouncing dots) while the AI is generating
+- Each AI answer shows **source citation pills** (the document names retrieved)
+- Yellow warning shown if no matching context was found
+- Top-K selector (3 / 5 / 8 / 12) in the header
+- Auto-resize textarea; **Enter** to send, **Shift+Enter** for new line
+- Clear chat button with confirmation (restores welcome screen)
+- Live model info fetched from `GET /api/health`
+
+---
+
+## How to Test
+
+1. Start the server:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+2. Open **http://localhost:8000/playground**
+3. Enter your API key in the top bar and click **✅ Validate**
+4. Switch to **📄 PDF** tab → select a PDF → click **Upload & Index PDF**
+5. Type a question in the chat and press **Enter**
+6. Observe the AI answer with cited sources below the bubble

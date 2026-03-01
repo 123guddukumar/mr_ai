@@ -15,6 +15,7 @@ class ChunkMetadata(BaseModel):
     text: str
     char_start: int = 0
     char_end: int = 0
+    memory_id: Optional[str] = None   # None = global; set = belongs to a personal Memory bot
 
 
 class UploadResponse(BaseModel):

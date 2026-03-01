@@ -159,3 +159,94 @@ def send_otp_email(to_email: str, otp: str, purpose: str = "register", name: str
     except Exception as e:
         logger.error(f"Failed to send OTP email to {to_email}: {e}")
         return False
+
+
+def send_api_key_email(to_email: str, key_name: str, full_key: str, name: str = "") -> bool:
+    """
+    Send the newly generated API key to the client's registered email.
+    The full raw key is delivered once — they must save it.
+    Returns True on success, False on failure (non-blocking).
+    """
+    from app.core.config import settings
+
+    greeting = f"Hi {name}," if name else "Hello,"
+    subject = "🔑 Your New MR AI RAG API Key"
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0d0f17;font-family:Inter,Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:40px 20px">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#1a1e2e;border-radius:16px;border:1px solid #2a2f47;overflow:hidden">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#6c63ff,#00d4aa);padding:28px 32px;text-align:center">
+          <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px">MR AI RAG</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:4px">API Intelligence Platform</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:32px 36px">
+          <p style="color:#e2e8f0;font-size:15px;margin-bottom:12px">{greeting}</p>
+          <p style="color:#94a3b8;font-size:13px;line-height:1.7;margin-bottom:8px">
+            Your new API key <strong style="color:#e2e8f0">"{key_name}"</strong> has been generated successfully.
+          </p>
+          <p style="color:#f87171;font-size:12px;font-weight:700;margin-bottom:20px">
+            ⚠ This is the ONLY time your full key will be shown. Copy and store it securely now.
+          </p>
+          <!-- Key Box -->
+          <div style="background:#0d0f17;border:2px solid #00d4aa;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+            <div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Your API Key</div>
+            <div style="font-size:14px;font-weight:700;letter-spacing:1px;color:#00d4aa;font-family:'Courier New',monospace;word-break:break-all;padding:0 8px">{full_key}</div>
+            <div style="color:#64748b;font-size:11px;margin-top:12px">Key label: <strong style="color:#94a3b8">{key_name}</strong></div>
+          </div>
+          <!-- Usage hint -->
+          <div style="background:#131722;border:1px solid #2a2f47;border-radius:8px;padding:16px;margin-bottom:20px">
+            <div style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">How to use</div>
+            <div style="color:#94a3b8;font-size:12px;font-family:'Courier New',monospace">
+              X-API-Key: {full_key}
+            </div>
+          </div>
+          <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0">
+            If you didn't generate this key, contact support immediately.<br>
+            Never share your API key publicly.
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:16px 36px;border-top:1px solid #2a2f47;text-align:center">
+          <p style="color:#475569;font-size:11px;margin:0">© 2024 MR AI RAG Platform · <a href="http://127.0.0.1:8000/dashboard" style="color:#6c63ff;text-decoration:none">Go to Dashboard</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+    text_body = (
+        f"{greeting}\n\n"
+        f"Your new API key '{key_name}' has been generated.\n\n"
+        f"KEY: {full_key}\n\n"
+        f"⚠ Store this securely — it won't be shown again.\n\n"
+        f"Usage: add header  X-API-Key: {full_key}"
+    )
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = settings.SMTP_USER
+        msg["To"] = to_email
+        msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls(context=ctx)
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+
+        logger.info(f"API key email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send API key email to {to_email}: {e}")
+        return False

@@ -165,3 +165,91 @@ class Admin(Base):
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "last_login": self.last_login.isoformat() if self.last_login else "",
         }
+
+
+# ── Personal Memory Models ────────────────────────────────────────────────────
+
+class Memory(Base):
+    """A per-client personal RAG chatbot configuration."""
+    __tablename__ = "memories"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    memory_id  = Column(String(64), unique=True, index=True, nullable=False)  # short slug
+    client_id  = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    name        = Column(String(200), nullable=False)
+    description = Column(Text, default="")
+    # Stored provider config (provider api key is stored plain — user's own key)
+    mrairag_api_key  = Column(String(200), nullable=True)   # MR AI RAG API key for this memory
+    provider          = Column(String(50), default="gemini")
+    provider_model    = Column(String(100), default="gemini-2.5-flash")
+    provider_api_key  = Column(String(500), nullable=True)  # AI provider API key
+    ollama_url        = Column(String(300), nullable=True)
+    is_active  = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    sources     = relationship("MemorySource", back_populates="memory", cascade="all, delete-orphan")
+    chat_msgs   = relationship("MemoryChat",   back_populates="memory", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "memory_id":   self.memory_id,
+            "name":         self.name,
+            "description":  self.description or "",
+            "provider":     self.provider,
+            "provider_model": self.provider_model,
+            "is_active":   self.is_active,
+            "created_at":  self.created_at.isoformat() if self.created_at else "",
+            "source_count": len(self.sources),
+        }
+
+
+class MemorySource(Base):
+    """A document/URL/video indexed into a Memory."""
+    __tablename__ = "memory_sources"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    memory_id    = Column(String(64), ForeignKey("memories.memory_id", ondelete="CASCADE"), nullable=False, index=True)
+    source_type  = Column(String(30), nullable=False)   # pdf | url | youtube | video | json
+    source_name  = Column(String(500), nullable=False)
+    chunk_count  = Column(Integer, default=0)
+    indexed_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    memory = relationship("Memory", back_populates="sources")
+
+    def to_dict(self):
+        return {
+            "id":          self.id,
+            "source_type": self.source_type,
+            "source_name": self.source_name,
+            "chunk_count": self.chunk_count,
+            "indexed_at":  self.indexed_at.isoformat() if self.indexed_at else "",
+        }
+
+
+class MemoryChat(Base):
+    """A chat message within a Memory chatbot session."""
+    __tablename__ = "memory_chats"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    memory_id   = Column(String(64), ForeignKey("memories.memory_id", ondelete="CASCADE"), nullable=False, index=True)
+    role        = Column(String(20), nullable=False)    # user | assistant
+    content     = Column(Text, nullable=False)
+    sources_json = Column(Text, default="[]")
+    timestamp   = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    memory = relationship("Memory", back_populates="chat_msgs")
+
+    @property
+    def sources(self):
+        try:
+            return json.loads(self.sources_json or "[]")
+        except Exception:
+            return []
+
+    def to_dict(self):
+        return {
+            "role":      self.role,
+            "content":   self.content,
+            "sources":   self.sources,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else "",
+        }

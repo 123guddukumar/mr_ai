@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.routes import upload, query, health, provider, website, youtube, jsondata, apikeys, clients, admin as admin_routes
+from app.routes import upload, query, health, provider, website, youtube, jsondata, apikeys, clients, admin as admin_routes, memory as memory_routes
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
 
@@ -73,6 +73,7 @@ app.include_router(query.router, prefix="/api", tags=["Query"])
 app.include_router(apikeys.router, prefix="/api", tags=["API Keys"])
 app.include_router(clients.router, prefix="/api", tags=["Clients"])
 app.include_router(admin_routes.router, prefix="/api", tags=["Admin"])
+app.include_router(memory_routes.router, prefix="/api", tags=["Memory"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────
@@ -107,6 +108,18 @@ if os.path.exists(frontend_path):
     @app.get("/admin", include_in_schema=False)
     async def admin_dashboard_page():
         return FileResponse(os.path.join(frontend_path, "admin.html"))
+
+    @app.get("/memory", include_in_schema=False)
+    async def memory_page():
+        return FileResponse(os.path.join(frontend_path, "memory.html"))
+
+    @app.get("/memory-chat", include_in_schema=False)
+    async def memory_chat_page():
+        return FileResponse(os.path.join(frontend_path, "memory-chat.html"))
+
+    @app.get("/embed/{memory_id}", include_in_schema=False)
+    async def embed_page(memory_id: str):
+        return FileResponse(os.path.join(frontend_path, "embed.html"))
 
     @app.get("/", include_in_schema=False)
     async def root():

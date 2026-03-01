@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Memory Bots — MR AI RAG</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{margin-left:auto;display:flex;gap:8px}
+.nav-link{font-size:12px;color:var(--text3);text-decoration:none;padding:5px 10px;border-radius:5px;transition:all .2s}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.page{max-width:1100px;margin:0 auto;padding:32px 24px}
+.page-header{margin-bottom:28px}
+.page-title{font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.page-sub{font-size:13px;color:var(--text2)}
+.layout{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px}
+.panel-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.form-row{margin-bottom:12px}
+.form-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:12px;font-family:'Inter',sans-serif;transition:border-color .2s}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.form-input::placeholder{color:var(--text3)}
+select.form-input{cursor:pointer;appearance:none}
+.form-hint{font-size:10px;color:var(--text3);margin-top:3px}
+.provider-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.ppill{padding:5px 10px;border-radius:99px;font-size:10px;font-weight:700;border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;transition:all .2s}
+.ppill:hover{border-color:var(--accent2);color:var(--accent2)}
+.ppill.active{background:rgba(0,212,170,.12);border-color:rgba(0,212,170,.5);color:var(--accent2)}
+.btn{padding:9px 18px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff;width:100%;justify-content:center;padding:12px}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(108,99,255,.35)}
+/* Memory cards */
+.memories-grid{display:flex;flex-direction:column;gap:14px}
+.mem-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;transition:all .25s}
+.mem-card:hover{border-color:var(--accent);box-shadow:0 4px 24px rgba(108,99,255,.12)}
+.mem-card-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.mem-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#5b52e0);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.mem-name{font-size:15px;font-weight:700;margin-bottom:3px}
+.mem-desc{font-size:11px;color:var(--text2);line-height:1.5}
+.mem-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.badge{padding:3px 9px;border-radius:99px;font-size:10px;font-weight:600}
+.badge-provider{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:var(--accent2)}
+.badge-sources{background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.25);color:var(--purple)}
+.badge-date{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+.mem-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mem-btn{flex:1;min-width:60px;padding:8px 6px;border-radius:7px;font-size:10px;font-weight:700;border:none;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.mem-btn-chat{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff}
+.mem-btn-chat:hover{box-shadow:0 4px 14px rgba(108,99,255,.35)}
+.mem-btn-check{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2)}
+.mem-btn-check:hover{background:rgba(0,212,170,.18)}
+.mem-btn-embed{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);color:var(--blue)}
+.mem-btn-del{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-icon{font-size:52px;margin-bottom:14px}
+.empty-state h3{font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px}
+/* Upload */
+.upload-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.utab{padding:5px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent;color:var(--text3);transition:all .2s}
+.utab.active{background:rgba(108,99,255,.12);border-color:rgba(108,99,255,.4);color:var(--accent)}
+.upload-panel{display:none;flex-direction:column;gap:8px}
+.upload-panel.visible{display:flex}
+.upload-result{font-size:11px;padding:7px 10px;border-radius:6px;display:none}
+.upload-result.success{display:block;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+.upload-result.error{display:block;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.upload-result.info{display:block;background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.25);color:#a5b4fc}
+.btn-upload{width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,rgba(0,212,170,.8),rgba(0,160,130,.8));color:#fff;border:none;transition:all .2s}
+.btn-upload:hover{box-shadow:0 4px 12px rgba(0,212,170,.25)}
+
+/* ── Side Drawer (Check Memory) ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:400;display:none}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(600px,100vw);background:var(--bg2);border-left:1px solid var(--border);z-index:401;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-title{font-size:15px;font-weight:800;flex:1}
+.drawer-close{background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all .2s}
+.drawer-close:hover{background:rgba(255,255,255,.07);color:var(--text)}
+.drawer-tabs{display:flex;gap:4px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dtab{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent;color:var(--text3);transition:all .2s}
+.dtab.active{background:rgba(108,99,255,.12);border-color:rgba(108,99,255,.4);color:var(--accent)}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 20px}
+/* Sources tab */
+.src-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.src-type-icon{font-size:18px;flex-shrink:0}
+.src-card-info{flex:1;min-width:0}
+.src-card-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-card-meta{font-size:10px;color:var(--text3);margin-top:2px}
+/* History tab */
+.hist-msg{padding:10px 12px;border-radius:9px;margin-bottom:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.hist-msg.user{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);color:var(--text)}
+.hist-msg.assistant{background:var(--card);border:1px solid var(--border);color:var(--text2)}
+.hist-role{font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.hist-msg.user .hist-role{color:var(--accent)}
+.hist-msg.assistant .hist-role{color:var(--accent2)}
+.hist-time{font-size:9px;color:var(--text3);margin-top:3px}
+/* Embed modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:580px;width:100%;position:relative}
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);word-break:break-all;line-height:1.6;margin-bottom:10px;white-space:pre-wrap}
+/* Toast */
+.toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:600}
+.toast{padding:9px 14px;border-radius:9px;font-size:11px;font-weight:600;animation:tin .25s ease;max-width:280px}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:#052e16;border:1px solid #166534;color:#86efac}
+.toast.error{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5}
+.toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
+textarea.form-input{resize:vertical;min-height:80px}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-logo">MR AI RAG</span>
+  <span style="font-size:11px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);padding:2px 9px;border-radius:99px;color:var(--purple)">🧠 Memory Bots</span>
+  <nav class="nav-links">
+    <a href="/dashboard" class="nav-link">📊 Dashboard</a>
+    <a href="/playground" class="nav-link">🎮 Playground</a>
+  </nav>
+</header>
+
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">🧠 My Memory Bots</div>
+    <div class="page-sub">Create personal RAG chatbots from your documents, websites, videos and JSON. Each bot gets an embeddable widget.</div>
+  </div>
+
+  <div class="layout">
+    <!-- Left: list -->
+    <div>
+      <div id="mem-list">
+        <div class="empty-state"><div class="empty-icon">🤖</div><h3>No memory bots yet</h3><p style="font-size:12px;margin-top:4px">Create your first bot using the form →</p></div>
+      </div>
+    </div>
+
+    <!-- Right: Create form + Upload -->
+    <div>
+      <div class="panel">
+        <div class="panel-title"><span class="section-dot"></span>➕ Create New Memory Bot</div>
+        <div class="form-row">
+          <label class="form-label">Bot Name *</label>
+          <input type="text" class="form-input" id="mem-name" placeholder="e.g. Company Knowledge Base">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-input" id="mem-desc" placeholder="What is this bot for?">
+        </div>
+        <div class="form-row">
+          <label class="form-label">MR AI RAG API Key</label>
+          <input type="password" class="form-input" id="mem-apikey" placeholder="mrairag-…" style="font-family:'JetBrains Mono',monospace">
+          <div class="form-hint">Your MR AI RAG dashboard key</div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">AI Provider</label>
+          <div class="provider-pills">
+            <button class="ppill active" data-p="gemini" onclick="selectP('gemini',this)">💎 Gemini</button>
+            <button class="ppill" data-p="openai" onclick="selectP('openai',this)">🟢 OpenAI</button>
+            <button class="ppill" data-p="claude" onclick="selectP('claude',this)">🧠 Claude</button>
+            <button class="ppill" data-p="ollama" onclick="selectP('ollama',this)">🦙 Ollama</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Model</label>
+          <select class="form-input" id="mem-model"><option value="gemini-2.5-flash">gemini-2.5-flash</option></select>
+        </div>
+        <div class="form-row" id="provider-key-row">
+          <label class="form-label" id="provider-key-label">Gemini API Key</label>
+          <input type="password" class="form-input" id="mem-provider-key" placeholder="AIza..." style="font-family:'JetBrains Mono',monospace">
+        </div>
+        <button class="btn btn-primary" onclick="createMemory()">🚀 Create Memory Bot</button>
+        <div id="create-result" style="margin-top:10px;font-size:11px;display:none"></div>
+      </div>
+
+      <!-- Upload panel (active after creation) -->
+      <div class="panel" id="upload-panel" style="display:none">
+        <div class="panel-title"><span style="width:7px;height:7px;border-radius:50%;background:var(--blue);box-shadow:0 0 6px var(--blue);display:inline-block"></span>📂 Add Sources to: <span id="upload-mem-name" style="color:var(--accent2)"></span></div>
+        <div class="upload-tabs">
+          <button class="utab active" onclick="switchUtab('pdf',this)">📄 PDF</button>
+          <button class="utab" onclick="switchUtab('url',this)">🌐 URL</button>
+          <button class="utab" onclick="switchUtab('yt',this)">📺 YouTube</button>
+          <button class="utab" onclick="switchUtab('json',this)">📋 JSON</button>
+        </div>
+        <div class="upload-panel visible" id="upanel-pdf">
+          <input type="file" class="form-input" id="up-pdf" accept=".pdf">
+          <button class="btn-upload" onclick="uploadPdf()">📤 Upload & Index PDF</button>
+          <div class="upload-result" id="res-pdf"></div>
+        </div>
+        <div class="upload-panel" id="upanel-url">
+          <input type="url" class="form-input" id="up-url" placeholder="https://example.com/article">
+          <button class="btn-upload" onclick="ingestUrl()">🔍 Scrape & Index</button>
+          <div class="upload-result" id="res-url"></div>
+        </div>
+        <div class="upload-panel" id="upanel-yt">
+          <input type="url" class="form-input" id="up-yt" placeholder="https://youtube.com/watch?v=...">
+          <button class="btn-upload" onclick="ingestYt()">📥 Ingest YouTube</button>
+          <div class="upload-result" id="res-yt"></div>
+        </div>
+        <div class="upload-panel" id="upanel-json">
+          <input type="text" class="form-input" id="up-json-title" placeholder="Source title (e.g. Product Data)">
+          <textarea class="form-input" id="up-json-text" placeholder="Paste JSON text or any structured text data here…"></textarea>
+          <button class="btn-upload" onclick="ingestJson()">📋 Index JSON / Text</button>
+          <div class="upload-result" id="res-json"></div>
+        </div>
+        <div style="margin-top:12px;text-align:center">
+          <button class="btn btn-primary" onclick="goChat()" style="max-width:240px">💬 Open Chat →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Side Drawer: Check Memory ── -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="mem-icon" style="width:32px;height:32px;font-size:16px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#5b52e0);display:flex;align-items:center;justify-content:center">🧠</div>
+    <div class="drawer-title" id="drawerTitle">Memory Details</div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <button class="dtab active" onclick="switchDTab('sources',this)" id="dtab-sources">📚 Sources</button>
+    <button class="dtab" onclick="switchDTab('history',this)" id="dtab-history">💬 History</button>
+    <button class="dtab" onclick="switchDTab('add',this)" id="dtab-add">➕ Add Source</button>
+  </div>
+  <div class="drawer-body">
+    <!-- Sources -->
+    <div id="dpanel-sources">
+      <div id="d-sources-content"><div style="text-align:center;padding:40px;color:var(--text3)">Loading…</div></div>
+    </div>
+    <!-- History -->
+    <div id="dpanel-history" style="display:none">
+      <div id="d-history-content"><div style="text-align:center;padding:40px;color:var(--text3)">Loading…</div></div>
+    </div>
+    <!-- Add Source -->
+    <div id="dpanel-add" style="display:none">
+      <div class="upload-tabs" style="margin-bottom:14px">
+        <button class="utab active" onclick="switchDrawerUpload('pdf',this)">📄 PDF</button>
+        <button class="utab" onclick="switchDrawerUpload('url',this)">🌐 URL</button>
+        <button class="utab" onclick="switchDrawerUpload('yt',this)">📺 YouTube</button>
+        <button class="utab" onclick="switchDrawerUpload('json',this)">📋 JSON</button>
+      </div>
+      <div class="upload-panel visible" id="d-upanel-pdf">
+        <input type="file" class="form-input" id="d-up-pdf" accept=".pdf">
+        <button class="btn-upload" onclick="dUploadPdf()">📤 Upload & Index PDF</button>
+        <div class="upload-result" id="d-res-pdf"></div>
+      </div>
+      <div class="upload-panel" id="d-upanel-url">
+        <input type="url" class="form-input" id="d-up-url" placeholder="https://example.com">
+        <button class="btn-upload" onclick="dIngestUrl()">🔍 Scrape & Index</button>
+        <div class="upload-result" id="d-res-url"></div>
+      </div>
+      <div class="upload-panel" id="d-upanel-yt">
+        <input type="url" class="form-input" id="d-up-yt" placeholder="https://youtube.com/watch?v=...">
+        <button class="btn-upload" onclick="dIngestYt()">📥 Ingest YouTube</button>
+        <div class="upload-result" id="d-res-yt"></div>
+      </div>
+      <div class="upload-panel" id="d-upanel-json">
+        <input type="text" class="form-input" id="d-up-json-title" placeholder="Source title">
+        <textarea class="form-input" id="d-up-json-text" placeholder="Paste JSON or text data…"></textarea>
+        <button class="btn-upload" onclick="dIngestJson()">📋 Index JSON / Text</button>
+        <div class="upload-result" id="d-res-json"></div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn-upload" onclick="switchDTab('sources',document.getElementById('dtab-sources'))" style="background:var(--bg3);color:var(--accent)">← View Sources</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Embed Modal -->
+<div class="modal-overlay" id="embed-modal" style="display:none" onclick="if(event.target===this)document.getElementById('embed-modal').style.display='none'">
+  <div class="modal">
+    <button onclick="document.getElementById('embed-modal').style.display='none'" style="position:absolute;right:16px;top:16px;background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">🔗 Embed Your Bot</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Paste this into any webpage to add your chatbot</div>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">iFrame code</div>
+    <div class="code-block" id="embed-iframe"></div>
+    <button onclick="copyText(document.getElementById('embed-iframe').textContent,'iFrame code')" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.4);color:var(--accent);font-family:Inter,sans-serif;margin-bottom:14px">📋 Copy iFrame</button>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Direct link</div>
+    <div class="code-block" id="embed-url"></div>
+    <button onclick="copyText(document.getElementById('embed-url').textContent,'Link')" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);font-family:Inter,sans-serif">📋 Copy Link</button>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// Auth
+let session = {};
+try{ session = JSON.parse(localStorage.getItem('mrairag_client') || '{}'); }catch(e){}
+if(!session || !session.token) window.location.href = '/login';
+function hdrs(){ return {'Content-Type':'application/json','X-Client-Token':session.token}; }
+
+// State
+let selectedProvider = 'gemini';
+let activeMemoryId = null;   // for create-flow upload
+let drawerMemId = null;       // for drawer upload
+let embedData = {};
+
+const MODELS = {
+  gemini:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash-001'],
+  openai:['gpt-4o-mini','gpt-4o','gpt-3.5-turbo'],
+  claude:['claude-3-5-haiku-20241022','claude-3-5-sonnet-20241022'],
+  ollama:['llama3','llama3.1','mistral','phi3'],
+};
+const KEY_LABELS = {gemini:'Gemini API Key',openai:'OpenAI API Key',claude:'Anthropic API Key',ollama:'(no key needed)'};
+
+function selectP(name, btn){
+  selectedProvider = name;
+  document.querySelectorAll('.ppill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mem-model').innerHTML = (MODELS[name]||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('provider-key-label').textContent = KEY_LABELS[name]||'API Key';
+  document.getElementById('provider-key-row').style.display = name==='ollama' ? 'none' : 'block';
+}
+
+// ── Create memory ──────────────────────────────────────────────────────────────
+async function createMemory(){
+  const name = document.getElementById('mem-name').value.trim();
+  if(!name){ toast('Enter a bot name','error'); return; }
+  const res = document.getElementById('create-result');
+  res.style.display='none';
+  try{
+    const r = await fetch('/api/memory',{method:'POST',headers:hdrs(),body:JSON.stringify({
+      name, description: document.getElementById('mem-desc').value.trim(),
+      mrairag_api_key: document.getElementById('mem-apikey').value.trim(),
+      provider: selectedProvider,
+      provider_model: document.getElementById('mem-model').value,
+      provider_api_key: document.getElementById('mem-provider-key').value.trim(),
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    activeMemoryId = d.memory_id;
+    toast('✅ Memory bot created!','success');
+    document.getElementById('upload-panel').style.display='block';
+    document.getElementById('upload-mem-name').textContent = name;
+    document.getElementById('mem-name').value='';
+    document.getElementById('mem-desc').value='';
+    loadMemories();
+  }catch(e){ res.style.cssText='display:block;color:#f87171;font-size:11px;margin-top:6px'; res.textContent='❌ '+e.message; }
+}
+
+// ── Load memories list ─────────────────────────────────────────────────────────
+async function loadMemories(){
+  try{
+    const r = await fetch('/api/memory',{headers:hdrs()});
+    const d = await r.json();
+    const list = document.getElementById('mem-list');
+    if(!d.memories||!d.memories.length){
+      list.innerHTML='<div class="empty-state"><div class="empty-icon">🤖</div><h3>No memory bots yet</h3><p style="font-size:12px;margin-top:4px">Create your first bot using the form →</p></div>';
+      return;
+    }
+    list.innerHTML = '<div class="memories-grid">'+d.memories.map(memCard).join('')+'</div>';
+  }catch(e){ console.error(e); }
+}
+
+function memCard(m){
+  var created = m.created_at ? new Date(m.created_at).toLocaleDateString() : '—';
+  return `<div class="mem-card">
+    <div class="mem-card-header">
+      <div class="mem-icon">🧠</div>
+      <div><div class="mem-name">${esc(m.name)}</div><div class="mem-desc">${esc(m.description||'No description')}</div></div>
+    </div>
+    <div class="mem-meta">
+      <span class="badge badge-provider">🤖 ${esc(m.provider||'gemini')}</span>
+      <span class="badge badge-sources">📚 ${m.source_count||0} source${m.source_count!==1?'s':''}</span>
+      <span class="badge badge-date">📅 ${created}</span>
+    </div>
+    <div class="mem-actions">
+      <a href="/memory-chat?id=${m.memory_id}" class="mem-btn mem-btn-chat">💬 Chat</a>
+      <button class="mem-btn mem-btn-check" onclick="openDrawer('${m.memory_id}','${esc(m.name)}')">📋 Check Memory</button>
+      <button class="mem-btn mem-btn-embed" onclick="showEmbed('${m.memory_id}')">🔗 Embed</button>
+      <button class="mem-btn mem-btn-del" onclick="deleteMemory('${m.memory_id}','${esc(m.name)}')">🗑</button>
+    </div>
+  </div>`;
+}
+
+// ── Create-flow upload tabs ────────────────────────────────────────────────────
+function switchUtab(name, btn){
+  document.querySelectorAll('#upload-panel .utab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#upload-panel .upload-panel').forEach(p=>p.classList.remove('visible'));
+  btn.classList.add('active');
+  document.getElementById('upanel-'+name).classList.add('visible');
+}
+async function uploadPdf(){
+  const file = document.getElementById('up-pdf').files[0];
+  if(!file){ showRes('res-pdf','error','Select a PDF'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-pdf','info','⏳ Uploading…');
+  const fd = new FormData(); fd.append('file',file);
+  try{
+    const r = await fetch(`/api/memory/${activeMemoryId}/upload-pdf`,{method:'POST',headers:{'X-Client-Token':session.token},body:fd});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-pdf','success','✅ '+file.name+' — '+d.total_chunks+' chunks');
+    loadMemories();
+  }catch(e){ showRes('res-pdf','error','❌ '+e.message); }
+}
+async function ingestUrl(){
+  const url = document.getElementById('up-url').value.trim();
+  if(!url){ showRes('res-url','error','Enter a URL'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-url','info','⏳ Scraping…');
+  try{
+    const r = await fetch(`/api/memory/${activeMemoryId}/ingest-url`,{method:'POST',headers:hdrs(),body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-url','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('up-url').value='';
+    loadMemories();
+  }catch(e){ showRes('res-url','error','❌ '+e.message); }
+}
+async function ingestYt(){
+  const url = document.getElementById('up-yt').value.trim();
+  if(!url){ showRes('res-yt','error','Enter YouTube URL'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-yt','info','⏳ Fetching transcript…');
+  try{
+    const r = await fetch(`/api/memory/${activeMemoryId}/ingest-youtube`,{method:'POST',headers:hdrs(),body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-yt','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('up-yt').value='';
+    loadMemories();
+  }catch(e){ showRes('res-yt','error','❌ '+e.message); }
+}
+async function ingestJson(){
+  const title = document.getElementById('up-json-title').value.trim() || 'JSON Data';
+  const text = document.getElementById('up-json-text').value.trim();
+  if(!text){ showRes('res-json','error','Enter JSON/text data'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-json','info','⏳ Indexing…');
+  try{
+    let body = {title, json_text: text};
+    try{ body = {title, json_data: JSON.parse(text)}; }catch(e){}
+    const r = await fetch(`/api/memory/${activeMemoryId}/ingest-json`,{method:'POST',headers:hdrs(),body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-json','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('up-json-text').value='';
+    loadMemories();
+  }catch(e){ showRes('res-json','error','❌ '+e.message); }
+}
+function goChat(){ if(activeMemoryId) window.location.href='/memory-chat?id='+activeMemoryId; }
+
+// ── Drawer ─────────────────────────────────────────────────────────────────────
+async function openDrawer(memId, name){
+  drawerMemId = memId;
+  document.getElementById('drawerTitle').textContent = '🧠 '+name;
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+  switchDTab('sources', document.getElementById('dtab-sources'));
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  drawerMemId = null;
+}
+function switchDTab(name, btn){
+  ['sources','history','add'].forEach(t=>{
+    document.getElementById('dpanel-'+t).style.display = 'none';
+    document.getElementById('dtab-'+t).classList.remove('active');
+  });
+  document.getElementById('dpanel-'+name).style.display='block';
+  btn.classList.add('active');
+  if(name==='sources') loadDrawerSources();
+  if(name==='history') loadDrawerHistory();
+}
+function switchDrawerUpload(name, btn){
+  document.querySelectorAll('#dpanel-add .utab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#dpanel-add .upload-panel').forEach(p=>p.classList.remove('visible'));
+  btn.classList.add('active');
+  document.getElementById('d-upanel-'+name).classList.add('visible');
+}
+
+async function loadDrawerSources(){
+  if(!drawerMemId) return;
+  const el = document.getElementById('d-sources-content');
+  el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)">Loading…</div>';
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}`,{headers:hdrs()});
+    const d = await r.json();
+    if(!d.sources||!d.sources.length){
+      el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No sources yet.<br><br><button onclick="switchDTab(\'add\',document.getElementById(\'dtab-add\'))" style="padding:7px 14px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);color:var(--accent);border-radius:7px;cursor:pointer;font-size:11px;font-weight:700">➕ Add Sources</button></div>';
+      return;
+    }
+    const typeIcon={pdf:'📄',url:'🌐',youtube:'📺',json:'📋'};
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);margin-bottom:10px">${d.sources.length} source${d.sources.length!==1?'s':''} indexed</div>`
+      + d.sources.map(s=>`<div class="src-card">
+        <div class="src-type-icon">${typeIcon[s.source_type]||'📁'}</div>
+        <div class="src-card-info">
+          <div class="src-card-name" title="${esc(s.source_name)}">${esc(s.source_name)}</div>
+          <div class="src-card-meta">${String(s.source_type||'').toUpperCase()} · ${s.chunk_count||0} chunks</div>
+        </div>
+      </div>`).join('')
+      + `<div style="margin-top:12px"><button onclick="switchDTab('add',document.getElementById('dtab-add'))" style="width:100%;padding:8px;background:rgba(108,99,255,.08);border:1px dashed rgba(108,99,255,.4);color:var(--accent);border-radius:7px;cursor:pointer;font-size:11px;font-weight:700">➕ Add More Sources</button></div>`;
+  }catch(e){ el.innerHTML='<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>'; }
+}
+
+async function loadDrawerHistory(){
+  if(!drawerMemId) return;
+  const el = document.getElementById('d-history-content');
+  el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)">Loading…</div>';
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/history`,{headers:hdrs()});
+    const d = await r.json();
+    if(!d.history||!d.history.length){
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);font-size:12px">No chat history yet.<br><a href="/memory-chat?id='+drawerMemId+'" style="color:var(--accent);margin-top:8px;display:inline-block">→ Start chatting</a></div>';
+      return;
+    }
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);margin-bottom:10px">${d.total} messages</div>`
+      + d.history.map(m=>{
+        var t = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
+        return `<div class="hist-msg ${m.role}">
+          <div class="hist-role">${m.role==='user'?'👤 You':'🧠 Bot'}</div>
+          ${esc(m.content)}
+          ${t?`<div class="hist-time">${t}</div>`:''}
+        </div>`;
+      }).join('');
+    el.lastElementChild && el.lastElementChild.scrollIntoView({behavior:'smooth'});
+  }catch(e){ el.innerHTML='<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>'; }
+}
+
+// Drawer upload functions
+async function dUploadPdf(){
+  const file = document.getElementById('d-up-pdf').files[0];
+  if(!file){ showRes('d-res-pdf','error','Select a PDF'); return; }
+  if(!drawerMemId) return;
+  showRes('d-res-pdf','info','⏳ Uploading…');
+  const fd = new FormData(); fd.append('file',file);
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/upload-pdf`,{method:'POST',headers:{'X-Client-Token':session.token},body:fd});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-pdf','success','✅ '+file.name+' — '+d.total_chunks+' chunks');
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-pdf','error','❌ '+e.message); }
+}
+async function dIngestUrl(){
+  const url = document.getElementById('d-up-url').value.trim();
+  if(!url||!drawerMemId){ showRes('d-res-url','error','Enter a URL'); return; }
+  showRes('d-res-url','info','⏳ Scraping…');
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/ingest-url`,{method:'POST',headers:hdrs(),body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-url','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('d-up-url').value='';
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-url','error','❌ '+e.message); }
+}
+async function dIngestYt(){
+  const url = document.getElementById('d-up-yt').value.trim();
+  if(!url||!drawerMemId){ showRes('d-res-yt','error','Enter YouTube URL'); return; }
+  showRes('d-res-yt','info','⏳ Fetching transcript…');
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/ingest-youtube`,{method:'POST',headers:hdrs(),body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-yt','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('d-up-yt').value='';
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-yt','error','❌ '+e.message); }
+}
+async function dIngestJson(){
+  const title = document.getElementById('d-up-json-title').value.trim() || 'JSON Data';
+  const text = document.getElementById('d-up-json-text').value.trim();
+  if(!text||!drawerMemId){ showRes('d-res-json','error','Enter data'); return; }
+  showRes('d-res-json','info','⏳ Indexing…');
+  try{
+    let body = {title, json_text: text};
+    try{ body = {title, json_data: JSON.parse(text)}; }catch(e){}
+    const r = await fetch(`/api/memory/${drawerMemId}/ingest-json`,{method:'POST',headers:hdrs(),body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-json','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('d-up-json-text').value='';
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-json','error','❌ '+e.message); }
+}
+
+// ── Embed ──────────────────────────────────────────────────────────────────────
+async function showEmbed(memId){
+  try{
+    const r = await fetch(`/api/memory/${memId}/embed-info`,{headers:hdrs()});
+    const d = await r.json();
+    embedData = d;
+    document.getElementById('embed-iframe').textContent = d.iframe_code;
+    document.getElementById('embed-url').textContent = d.embed_url;
+    document.getElementById('embed-modal').style.display='flex';
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+async function deleteMemory(memId, name){
+  if(!confirm(`Delete "${name}" and all its data? This cannot be undone.`)) return;
+  try{
+    const r = await fetch(`/api/memory/${memId}`,{method:'DELETE',headers:hdrs()});
+    if(!r.ok){ const d=await r.json(); throw new Error(d.detail||'Failed'); }
+    toast('🗑 Deleted','info'); loadMemories();
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showRes(id, type, msg){ var el=document.getElementById(id); if(!el)return; el.className='upload-result '+type; el.textContent=msg; }
+function copyText(text, label){ navigator.clipboard.writeText(text).then(()=>toast('✅ '+label+' copied!','success')); }
+function toast(msg, type){
+  var tc=document.getElementById('toasts');
+  var t=document.createElement('div'); t.className='toast '+(type||'info'); t.textContent=msg;
+  tc.appendChild(t); setTimeout(()=>{if(t.parentNode)tc.removeChild(t);},3200);
+}
+
+// Init
+(function(){
+  selectP('gemini', document.querySelector('.ppill[data-p="gemini"]'));
+  loadMemories();
+})();
+</script>
+</body>
+</html>

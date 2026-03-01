@@ -137,13 +137,31 @@ async def create_api_key(
     )
     # Fire notification if created by a client
     if client_id:
-        from app.core.clients import save_notification
+        from app.core.clients import save_notification, get_client_by_id
         save_notification(
             client_id=client_id, type="api_key",
             title="API Key Created",
             message=f"New API key '{req.name}' created. Preview: {result['key_preview']}",
             db=db,
         )
+        # ── Send API key to client's email (non-blocking background thread) ──────
+        try:
+            import threading
+            from app.core.email_service import send_api_key_email
+            client = get_client_by_id(client_id, db)
+            if client and client.get("email"):
+                def _send():
+                    send_api_key_email(
+                        to_email=client["email"],
+                        key_name=req.name,
+                        full_key=result["key"],
+                        name=client.get("name", ""),
+                    )
+                threading.Thread(target=_send, daemon=True).start()
+                logger.info(f"API key email queued for {client['email']}")
+        except Exception as email_err:
+            logger.warning(f"Could not send API key email: {email_err}")
+
     return GenerateKeyResponse(
         **result,
         message=(

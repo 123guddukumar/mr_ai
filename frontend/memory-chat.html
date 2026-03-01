@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memory Chat — MR AI RAG</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── Top Bar ── */
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50}
+.topbar-logo{font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.mem-info{flex:1;display:flex;align-items:center;gap:10px}
+.mem-badge{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);color:#a5b4fc;
+  padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.mem-title-bar{font-size:13px;font-weight:700}
+.mem-meta-bar{font-size:10px;color:var(--text3)}
+.topbar-actions{display:flex;gap:8px;flex-shrink:0}
+.tbtn{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;
+  transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.tbtn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.tbtn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.tbtn-embed{background:rgba(0,212,170,.1);color:var(--accent2);border:1px solid rgba(0,212,170,.3)}
+
+/* ── Two-panel layout ── */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* ── Left: Sources sidebar ── */
+.sources-panel{width:260px;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sp-header{padding:14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2)}
+.sp-body{padding:12px;flex:1}
+.src-item{padding:9px 10px;border-radius:7px;border:1px solid var(--border);
+  margin-bottom:7px;background:var(--bg3);font-size:11px}
+.src-name{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.src-meta{font-size:10px;color:var(--text3)}
+.src-type-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+  padding:1px 6px;border-radius:99px;margin-right:5px}
+.src-type-pdf{background:rgba(248,113,113,.1);color:#f87171}
+.src-type-url{background:rgba(96,165,250,.1);color:#60a5fa}
+.src-type-youtube{background:rgba(251,191,36,.1);color:#fbbf24}
+.add-source-link{display:block;text-align:center;font-size:11px;color:var(--accent);text-decoration:none;
+  padding:8px;border-radius:7px;border:1px dashed rgba(108,99,255,.4);margin-top:8px;transition:all .2s}
+.add-source-link:hover{background:rgba(108,99,255,.08)}
+
+/* ── Right: Chat ── */
+.chat-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px}
+.message{display:flex;gap:11px;max-width:90%;animation:msg-in .3s ease}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.message.user{margin-left:auto;flex-direction:row-reverse}
+.message.assistant{margin-right:auto}
+.msg-avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.msg-avatar.user{background:linear-gradient(135deg,var(--accent),#5b52e0)}
+.msg-avatar.assistant{background:linear-gradient(135deg,var(--accent2),#00a085)}
+.msg-body{display:flex;flex-direction:column;gap:4px}
+.msg-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.65;word-break:break-word;white-space:pre-wrap}
+.message.user .msg-bubble{background:linear-gradient(135deg,rgba(108,99,255,.22),rgba(91,82,224,.17));border:1px solid rgba(108,99,255,.3);color:var(--text);border-radius:12px 12px 4px 12px}
+.message.assistant .msg-bubble{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:12px 12px 12px 4px}
+.msg-sources-row{display:flex;flex-wrap:wrap;gap:4px}
+.msg-src{font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(108,99,255,.1);
+  border:1px solid rgba(108,99,255,.25);color:#a5b4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.msg-time{font-size:10px;color:var(--text3)}
+.message.user .msg-time{text-align:right}
+.typing-dots{display:flex;gap:4px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px 12px 12px 4px;width:fit-content}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--text3);animation:typing .9s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* Welcome screen */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 20px}
+.welcome-icon{font-size:52px;margin-bottom:14px;filter:drop-shadow(0 4px 20px rgba(108,99,255,.4))}
+.welcome h2{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.welcome p{color:var(--text2);font-size:12px;max-width:300px;line-height:1.7}
+
+/* Chat input */
+.chat-input-area{padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg2)}
+.chat-input-wrap{display:flex;gap:10px;align-items:flex-end;background:var(--bg3);
+  border:1px solid var(--border);border-radius:12px;padding:10px 14px;transition:border-color .2s}
+.chat-input-wrap:focus-within{border-color:var(--accent)}
+#chat-input{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;
+  font-family:'Inter',sans-serif;resize:none;outline:none;min-height:20px;max-height:120px;line-height:1.5}
+#chat-input::placeholder{color:var(--text3)}
+.send-btn{background:linear-gradient(135deg,var(--accent),#5b52e0);border:none;color:#fff;
+  width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;flex-shrink:0}
+.send-btn:hover:not(:disabled){transform:scale(1.05);box-shadow:0 2px 12px rgba(108,99,255,.4)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Embed modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:500;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:560px;width:100%;position:relative}
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);word-break:break-all;line-height:1.6;margin-bottom:10px;white-space:pre-wrap}
+
+.toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:600}
+.toast{padding:9px 14px;border-radius:9px;font-size:11px;font-weight:600;animation:tin .25s ease;max-width:280px}
+@keyframes tin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:#052e16;border:1px solid #166534;color:#86efac}
+.toast.error{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5}
+.toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-logo">MR AI RAG</span>
+  <div class="mem-info">
+    <span class="mem-badge">🧠 Memory Bot</span>
+    <div>
+      <div class="mem-title-bar" id="mem-title">Loading…</div>
+      <div class="mem-meta-bar" id="mem-meta">—</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="tbtn tbtn-embed" onclick="showEmbed()">🔗 Get Embed Code</button>
+    <a href="/memory" class="tbtn tbtn-secondary">← My Bots</a>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Sources panel -->
+  <aside class="sources-panel">
+    <div class="sp-header">📚 Indexed Sources</div>
+    <div class="sp-body" id="sources-body">
+      <div style="color:var(--text3);font-size:11px;text-align:center;padding:20px 0">No sources yet</div>
+    </div>
+  </aside>
+
+  <!-- Chat panel -->
+  <section class="chat-panel">
+    <div class="chat-messages" id="chat-messages">
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome-icon">🧠</div>
+        <h2 id="welcome-title">Your Memory Bot</h2>
+        <p>Ask any question about your indexed knowledge sources. The AI will search and give you cited, grounded answers.</p>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <div class="chat-input-wrap">
+        <textarea id="chat-input" rows="1" placeholder="Ask about your knowledge sources… (Enter to send)" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMsg()" title="Send">➤</button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px;display:flex;justify-content:space-between">
+        <span><kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Enter</kbd> send · <kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Shift+Enter</kbd> new line</span>
+        <span id="model-hint" style="color:var(--text3)">—</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Embed Modal -->
+<div class="modal-overlay" id="embed-modal" style="display:none" onclick="if(event.target===this)document.getElementById('embed-modal').style.display='none'">
+  <div class="modal">
+    <button onclick="document.getElementById('embed-modal').style.display='none'" style="position:absolute;right:16px;top:16px;background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">🔗 Embed This Bot</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Add this chatbot to any website</div>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">iFrame code</div>
+    <div class="code-block" id="em-iframe"></div>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('em-iframe').textContent).then(()=>toast('✅ Copied!','success'))" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.4);color:var(--accent);font-family:Inter,sans-serif;margin-bottom:14px">📋 Copy iFrame</button>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Direct chat URL</div>
+    <div class="code-block" id="em-url"></div>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('em-url').textContent).then(()=>toast('✅ Copied!','success'))" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);font-family:Inter,sans-serif">📋 Copy URL</button>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── Auth + Setup ───────────────────────────────────────────────────────────────
+let session = {};
+try{ session = JSON.parse(localStorage.getItem('mrairag_client')||'{}'); }catch(e){}
+if(!session||!session.token) window.location.href='/login';
+
+const params = new URLSearchParams(window.location.search);
+const MEMORY_ID = params.get('id');
+if(!MEMORY_ID) window.location.href='/memory';
+
+function hdrs(){ return{'Content-Type':'application/json','X-Client-Token':session.token}; }
+
+let isTyping = false;
+let msgCount = 0;
+
+// ── Load memory info ───────────────────────────────────────────────────────────
+async function loadMemory(){
+  try{
+    const r = await fetch(`/api/memory/${MEMORY_ID}`,{headers:hdrs()});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail);
+    document.getElementById('mem-title').textContent = d.name;
+    document.getElementById('mem-meta').textContent = `${d.provider}/${d.provider_model} · ${d.source_count} source${d.source_count!==1?'s':''}`;
+    document.getElementById('welcome-title').textContent = d.name;
+    document.getElementById('model-hint').textContent = `${d.provider}/${d.provider_model}`;
+
+    // Render sources
+    var sb = document.getElementById('sources-body');
+    if(!d.sources||!d.sources.length){
+      sb.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px 0">No sources yet<br><br><a href="/memory" style="color:var(--accent)">← Add sources</a></div>';
+    } else {
+      var typeMap={pdf:'src-type-pdf',url:'src-type-url',youtube:'src-type-youtube'};
+      var typeLabel={pdf:'📄 PDF',url:'🌐 URL',youtube:'📺 YT'};
+      sb.innerHTML = d.sources.map(s=>`
+        <div class="src-item">
+          <div class="src-name" title="${esc(s.source_name)}">${esc(s.source_name)}</div>
+          <div class="src-meta">
+            <span class="src-type-badge ${typeMap[s.source_type]||''}">${typeLabel[s.source_type]||s.source_type}</span>
+            ${s.chunk_count} chunks
+          </div>
+        </div>`).join('');
+    }
+    sb.innerHTML += `<a href="/memory" class="add-source-link">+ Add more sources</a>`;
+  }catch(e){ console.error(e); }
+}
+
+// ── Load history ───────────────────────────────────────────────────────────────
+async function loadHistory(){
+  try{
+    const r = await fetch(`/api/memory/${MEMORY_ID}/history`,{headers:hdrs()});
+    const d = await r.json();
+    if(!r.ok || !d.history.length) return;
+    var ws = document.getElementById('welcome-screen');
+    if(ws) ws.style.display='none';
+    d.history.forEach(m=>appendMessage(m.role, m.content, m.sources||[], m.timestamp));
+    msgCount = d.history.length;
+  }catch(e){}
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────────
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+
+async function sendMsg(){
+  var inp = document.getElementById('chat-input');
+  var text = inp.value.trim();
+  if(!text||isTyping) return;
+  inp.value=''; autoResize(inp);
+  isTyping=true; msgCount++;
+  var ws=document.getElementById('welcome-screen');
+  if(ws) ws.style.display='none';
+  appendMessage('user',text,[]);
+  var typing=appendTyping();
+  document.getElementById('send-btn').disabled=true;
+
+  // Collect last 6 turns from the DOM for history context
+  var history = [];
+  var bubbles = document.querySelectorAll('#chat-messages .message:not(.welcome)');
+  var turns = [];
+  bubbles.forEach(function(el){
+    var role = el.classList.contains('user') ? 'user' : 'assistant';
+    var bubble = el.querySelector('.msg-bubble');
+    if(bubble && bubble.textContent.trim()) turns.push({role, content: bubble.textContent.trim()});
+  });
+  // last 6 turns (exclude the one we just added – it's the final user turn)
+  history = turns.slice(-7, -1);
+
+  try{
+    const r = await fetch(`/api/memory/${MEMORY_ID}/ask`,{
+      method:'POST', headers:hdrs(),
+      body:JSON.stringify({question:text, top_k:5, history})
+    });
+    const d = await r.json();
+    removeTyping(typing);
+    if(r.ok){
+      appendMessage('assistant', d.answer||'No answer.', d.sources||[]);
+    } else {
+      appendMessage('assistant','❌ '+(d.detail||'Something went wrong.'));
+    }
+  }catch(e){ removeTyping(typing); appendMessage('assistant','❌ '+e.message); }
+  finally{ isTyping=false; document.getElementById('send-btn').disabled=false; }
+}
+
+
+function appendMessage(role, text, srcs, timestamp){
+  var area = document.getElementById('chat-messages');
+  var div=document.createElement('div'); div.className='message '+role;
+  var time = timestamp ? new Date(timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+                       : new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var srcHtml='';
+  if(srcs&&srcs.length){
+    srcHtml='<div class="msg-sources-row">'+srcs.slice(0,4).map(s=>`<span class="msg-src">${esc(s.filename||s.file||'Source')}</span>`).join('')+'</div>';
+  }
+  div.innerHTML=`<div class="msg-avatar ${role}">${role==='user'?'👤':'🧠'}</div>`
+    +`<div class="msg-body"><div class="msg-bubble">${esc(text)}</div>${srcHtml}<div class="msg-time">${time}</div></div>`;
+  area.appendChild(div); area.scrollTop=area.scrollHeight;
+  return div;
+}
+function appendTyping(){
+  var area=document.getElementById('chat-messages');
+  var div=document.createElement('div'); div.className='message assistant';
+  div.innerHTML='<div class="msg-avatar assistant">🧠</div><div class="typing-dots"><span></span><span></span><span></span></div>';
+  area.appendChild(div); area.scrollTop=area.scrollHeight; return div;
+}
+function removeTyping(el){ if(el&&el.parentNode) el.parentNode.removeChild(el); }
+
+// ── Embed modal ────────────────────────────────────────────────────────────────
+async function showEmbed(){
+  try{
+    const r = await fetch(`/api/memory/${MEMORY_ID}/embed-info`,{headers:hdrs()});
+    const d = await r.json();
+    document.getElementById('em-iframe').textContent = d.iframe_code;
+    document.getElementById('em-url').textContent = d.embed_url;
+    document.getElementById('embed-modal').style.display='flex';
+  }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg,type){
+  var tc=document.getElementById('toasts');
+  var t=document.createElement('div'); t.className='toast '+(type||'info'); t.textContent=msg;
+  tc.appendChild(t); setTimeout(()=>{if(t.parentNode)tc.removeChild(t);},3200);
+}
+
+// Init
+(function(){ loadMemory(); loadHistory(); })();
+</script>
+</body>
+</html>

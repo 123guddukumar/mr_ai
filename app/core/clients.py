@@ -279,3 +279,17 @@ def get_unread_count(client_id: str, db=None) -> int:
     finally:
         if close_db:
             db.close()
+
+
+def get_client_by_id(client_id: str, db=None) -> Optional[dict]:
+    """Fetch a client record by client_id. Returns dict or None."""
+    from app.core.models import Client
+    close_db = db is None
+    if db is None:
+        db = _get_db()
+    try:
+        client = db.query(Client).filter(Client.client_id == client_id).first()
+        return client.to_dict() if client else None
+    finally:
+        if close_db:
+            db.close()

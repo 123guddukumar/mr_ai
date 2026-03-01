@@ -106,6 +106,89 @@ async def generate_answer(question: str, context: str) -> str:
     return await fn(question, context)
 
 
+async def generate_answer_with_config(
+    question: str, context: str,
+    provider: str, model: str, api_key: str,
+    ollama_url: str = "http://localhost:11434",
+) -> str:
+    """
+    Generate an answer using an explicit provider config (for personal memory bots).
+    Does NOT read from _runtime state.
+    """
+    prompt = build_prompt(question, context)
+    logger.info(f"Memory bot generating with {provider}/{model}")
+
+    if provider == "gemini":
+        if not api_key:
+            raise RuntimeError("Gemini API key required for memory bot")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        payload = {
+            "system_instruction": {"parts": [{"text": settings.SYSTEM_PROMPT}]},
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}
+        }
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post(url, json=payload); r.raise_for_status()
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    elif provider == "openai":
+        if not api_key:
+            raise RuntimeError("OpenAI API key required for memory bot")
+        from openai import AsyncOpenAI
+        cl = AsyncOpenAI(api_key=api_key)
+        resp = await cl.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": settings.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=settings.OPENAI_MAX_TOKENS,
+            temperature=settings.OPENAI_TEMPERATURE,
+        )
+        return resp.choices[0].message.content.strip()
+
+    elif provider == "claude":
+        if not api_key:
+            raise RuntimeError("Anthropic API key required for memory bot")
+        headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+        payload = {
+            "model": model, "max_tokens": 1024,
+            "system": settings.SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload)
+            r.raise_for_status()
+            return r.json()["content"][0]["text"].strip()
+
+    elif provider == "ollama":
+        payload = {
+            "model": model, "stream": False,
+            "messages": [
+                {"role": "system", "content": settings.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        async with httpx.AsyncClient(timeout=120.0) as hc:
+            r = await hc.post(f"{ollama_url}/api/chat", json=payload); r.raise_for_status()
+            return r.json()["message"]["content"].strip()
+
+    elif provider == "huggingface":
+        if not api_key:
+            raise RuntimeError("HuggingFace API token required for memory bot")
+        pmt = f"<s>[INST] {settings.SYSTEM_PROMPT}\n\n{prompt} [/INST]"
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post(
+                f"https://api-inference.huggingface.co/models/{model}",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"inputs": pmt, "parameters": {"max_new_tokens": 512, "temperature": 0.1, "return_full_text": False}},
+            ); r.raise_for_status()
+            return r.json()[0]["generated_text"].strip()
+
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
+
+
 # ── OpenAI ────────────────────────────────────────────────────────────────────
 
 async def _call_openai(question: str, context: str) -> str:

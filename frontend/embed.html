@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Chatbot</title>
+<style>
+:root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
+  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:Inter,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+.widget{display:flex;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;background:var(--bg2);border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.whead{padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.wlogo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.wname{font-size:13px;font-weight:700;flex:1}
+.wmeta{font-size:10px;color:var(--text3)}
+.wstatus{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green)}
+.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:8px;max-width:85%;animation:mi .25s ease}
+@keyframes mi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{margin-left:auto;flex-direction:row-reverse}
+.msg.assistant{margin-right:auto}
+.mavatar{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.mavatar.user{background:linear-gradient(135deg,var(--accent),#5b52e0)}
+.mavatar.assistant{background:linear-gradient(135deg,var(--accent2),#00a085)}
+.mbody{display:flex;flex-direction:column;gap:3px}
+.mbubble{padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+.msg.user .mbubble{background:linear-gradient(135deg,rgba(108,99,255,.22),rgba(91,82,224,.15));border:1px solid rgba(108,99,255,.3);color:var(--text);border-radius:10px 10px 4px 10px}
+.msg.assistant .mbubble{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:10px 10px 10px 4px}
+.mtime{font-size:9px;color:var(--text3)}
+.msg.user .mtime{text-align:right}
+.typing{display:flex;gap:3px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px 10px 10px 4px;width:fit-content}
+.typing span{width:5px;height:5px;border-radius:50%;background:var(--text3);animation:ty .9s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes ty{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--text2)}
+.welcome-bot{font-size:42px;margin-bottom:10px}
+.welcome h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.welcome p{font-size:11px;line-height:1.6;max-width:240px}
+.input-area{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg3)}
+.input-wrap{display:flex;gap:8px;align-items:flex-end;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;transition:border-color .2s}
+.input-wrap:focus-within{border-color:var(--accent)}
+#cinput{flex:1;background:transparent;border:none;color:var(--text);font-size:12px;font-family:inherit;resize:none;outline:none;min-height:18px;max-height:80px;line-height:1.5}
+#cinput::placeholder{color:var(--text3)}
+.sbtn{background:linear-gradient(135deg,var(--accent),#5b52e0);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .2s;flex-shrink:0}
+.sbtn:disabled{opacity:.4;cursor:not-allowed}
+.wfooter{padding:5px 12px;font-size:9px;color:var(--text3);text-align:center;border-top:1px solid rgba(255,255,255,.04)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#2a2f47;border-radius:2px}
+</style>
+</head>
+<body>
+<div class="widget">
+  <div class="whead">
+    <div class="wlogo">🧠</div>
+    <div style="flex:1"><div class="wname" id="bot-name">AI Assistant</div><div class="wmeta" id="bot-meta">Powered by MR AI RAG</div></div>
+    <div class="wstatus" title="Online"></div>
+  </div>
+
+  <div class="msgs" id="msgs">
+    <div class="welcome" id="ws">
+      <div class="welcome-bot">🧠</div>
+      <h3 id="ws-name">AI Assistant</h3>
+      <p>Ask me anything about the knowledge I've been trained on. I'll give you cited, accurate answers.</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="cinput" rows="1" placeholder="Type your question…" onkeydown="hkey(event)" oninput="ar(this)"></textarea>
+      <button class="sbtn" id="sbtn" onclick="send()" title="Send">➤</button>
+    </div>
+  </div>
+  <div class="wfooter">Powered by <strong>MR AI RAG</strong></div>
+</div>
+
+<script>
+// Get memory_id from URL path: /embed/{memory_id}
+var MEMORY_ID = window.location.pathname.split('/').pop();
+var busy = false;
+
+// Load bot info
+(async function(){
+  try{
+    var r = await fetch('/api/memory/'+MEMORY_ID+'/embed-info');
+    if(!r.ok) return;
+    var d = await r.json();
+    document.getElementById('bot-name').textContent = d.name;
+    document.getElementById('ws-name').textContent = d.name;
+    document.getElementById('bot-meta').textContent = d.source_count+' source'+(d.source_count!==1?'s':'')+' indexed';
+    document.title = d.name + ' — AI Chatbot';
+  }catch(e){}
+})();
+
+function hkey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }
+function ar(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+
+async function send(){
+  var inp=document.getElementById('cinput');
+  var text=inp.value.trim();
+  if(!text||busy) return;
+  inp.value=''; ar(inp);
+  busy=true;
+  var ws=document.getElementById('ws'); if(ws) ws.style.display='none';
+  addMsg('user',text);
+  var td=addTyping();
+  document.getElementById('sbtn').disabled=true;
+  try{
+    var r = await fetch('/api/memory/'+MEMORY_ID+'/ask',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:text,top_k:5})
+    });
+    var d = await r.json();
+    td.remove();
+    addMsg('assistant', r.ok ? (d.answer||'No answer.') : ('❌ '+(d.detail||'Error')));
+  }catch(e){ td.remove(); addMsg('assistant','❌ '+e.message); }
+  finally{ busy=false; document.getElementById('sbtn').disabled=false; }
+}
+
+function addMsg(role,text){
+  var ms=document.getElementById('msgs');
+  var d=document.createElement('div'); d.className='msg '+role;
+  var t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  d.innerHTML='<div class="mavatar '+role+'">'+(role==='user'?'👤':'🧠')+'</div>'
+    +'<div class="mbody"><div class="mbubble">'+safe+'</div><div class="mtime">'+t+'</div></div>';
+  ms.appendChild(d); ms.scrollTop=ms.scrollHeight; return d;
+}
+function addTyping(){
+  var ms=document.getElementById('msgs');
+  var d=document.createElement('div'); d.className='msg assistant';
+  d.innerHTML='<div class="mavatar assistant">🧠</div><div class="typing"><span></span><span></span><span></span></div>';
+  ms.appendChild(d); ms.scrollTop=ms.scrollHeight; return d;
+}
+</script>
+</body>
+</html>

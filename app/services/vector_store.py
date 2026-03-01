@@ -121,6 +121,57 @@ class VectorStore:
             self.metadata = keep_meta
         self.save()
 
+    def search_by_memory(
+        self, query_embedding: np.ndarray, memory_id: str, top_k: int = 5
+    ) -> List[Tuple[ChunkMetadata, float]]:
+        """
+        Search for top_k chunks filtered to a specific memory_id.
+        Strategy: over-fetch from FAISS then filter by metadata.
+        """
+        if self.index.ntotal == 0:
+            return []
+
+        # Count chunks belonging to this memory to set a sensible fetch size
+        memory_chunks = [m for m in self.metadata if m.memory_id == memory_id]
+        if not memory_chunks:
+            return []
+
+        # Over-fetch: ask for up to 4x more than top_k to account for filtering
+        fetch_k = min(max(top_k * 4, 20), self.index.ntotal)
+        scores, indices = self.index.search(query_embedding, fetch_k)
+
+        results = []
+        MIN_SCORE = 0.0
+        for score, idx in zip(scores[0], indices[0]):
+            if idx == -1:
+                continue
+            chunk = self.metadata[idx]
+            if chunk.memory_id != memory_id:
+                continue
+            similarity = float(np.clip(score, 0, 1))
+            if similarity >= MIN_SCORE:
+                results.append((chunk, similarity))
+            if len(results) >= top_k:
+                break
+
+        return results
+
+    def delete_by_memory(self, memory_id: str):
+        """Remove all chunks belonging to a given memory_id."""
+        keep_meta = [m for m in self.metadata if m.memory_id != memory_id]
+        if len(keep_meta) == len(self.metadata):
+            return
+
+        logger.info(f"Removing all chunks for memory: {memory_id}")
+        self._init_index()
+        if keep_meta:
+            from app.services.embedder import embed_texts
+            texts = [m.text for m in keep_meta]
+            embeddings = embed_texts(texts)
+            self.index.add(embeddings)
+            self.metadata = keep_meta
+        self.save()
+
 
 # Module-level singleton
 _vector_store: Optional[VectorStore] = None

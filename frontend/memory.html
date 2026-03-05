@@ -103,6 +103,22 @@ select.form-input{cursor:pointer;appearance:none}
 .hist-msg.user .hist-role{color:var(--accent)}
 .hist-msg.assistant .hist-role{color:var(--accent2)}
 .hist-time{font-size:9px;color:var(--text3);margin-top:3px}
+/* Developer tab */
+.dev-section{margin-bottom:20px}
+.dev-section-title{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.dev-code{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);word-break:break-all;
+  line-height:1.7;white-space:pre-wrap;position:relative;margin-bottom:6px}
+.dev-copy-btn{width:100%;padding:6px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;
+  background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);color:var(--accent);
+  font-family:'Inter',sans-serif;transition:all .2s;margin-bottom:14px}
+.dev-copy-btn:hover{background:rgba(108,99,255,.18)}
+.dev-info-row{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:7px;padding:8px 11px;margin-bottom:8px}
+.dev-info-label{font-size:10px;color:var(--text3);font-weight:600;min-width:90px}
+.dev-info-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent2);flex:1;word-break:break-all}
+.dev-info-copy{background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 5px;border-radius:4px;transition:all .2s;flex-shrink:0}
+.dev-info-copy:hover{color:var(--accent);background:rgba(108,99,255,.1)}
 /* Embed modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:580px;width:100%;position:relative}
@@ -231,6 +247,7 @@ textarea.form-input{resize:vertical;min-height:80px}
     <button class="dtab active" onclick="switchDTab('sources',this)" id="dtab-sources">📚 Sources</button>
     <button class="dtab" onclick="switchDTab('history',this)" id="dtab-history">💬 History</button>
     <button class="dtab" onclick="switchDTab('add',this)" id="dtab-add">➕ Add Source</button>
+    <button class="dtab" onclick="switchDTab('dev',this)" id="dtab-dev">🛠 Developer</button>
   </div>
   <div class="drawer-body">
     <!-- Sources -->
@@ -273,6 +290,10 @@ textarea.form-input{resize:vertical;min-height:80px}
       <div style="margin-top:14px">
         <button class="btn-upload" onclick="switchDTab('sources',document.getElementById('dtab-sources'))" style="background:var(--bg3);color:var(--accent)">← View Sources</button>
       </div>
+    </div>
+    <!-- Developer -->
+    <div id="dpanel-dev" style="display:none">
+      <div id="d-dev-content"><div style="text-align:center;padding:40px;color:var(--text3)">Loading…</div></div>
     </div>
   </div>
 </div>
@@ -467,7 +488,7 @@ function closeDrawer(){
   drawerMemId = null;
 }
 function switchDTab(name, btn){
-  ['sources','history','add'].forEach(t=>{
+  ['sources','history','add','dev'].forEach(t=>{
     document.getElementById('dpanel-'+t).style.display = 'none';
     document.getElementById('dtab-'+t).classList.remove('active');
   });
@@ -475,6 +496,7 @@ function switchDTab(name, btn){
   btn.classList.add('active');
   if(name==='sources') loadDrawerSources();
   if(name==='history') loadDrawerHistory();
+  if(name==='dev') loadDrawerDev();
 }
 function switchDrawerUpload(name, btn){
   document.querySelectorAll('#dpanel-add .utab').forEach(b=>b.classList.remove('active'));
@@ -505,6 +527,115 @@ async function loadDrawerSources(){
       </div>`).join('')
       + `<div style="margin-top:12px"><button onclick="switchDTab('add',document.getElementById('dtab-add'))" style="width:100%;padding:8px;background:rgba(108,99,255,.08);border:1px dashed rgba(108,99,255,.4);color:var(--accent);border-radius:7px;cursor:pointer;font-size:11px;font-weight:700">➕ Add More Sources</button></div>`;
   }catch(e){ el.innerHTML='<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>'; }
+}
+
+function loadDrawerDev(){
+  if(!drawerMemId) return;
+  const el  = document.getElementById('d-dev-content');
+  const BASE = window.location.origin;
+  const MID  = drawerMemId;
+  const TOK  = session.token || '<YOUR_CLIENT_TOKEN>';
+  const CID  = session.client_id || '<YOUR_CLIENT_ID>';
+
+  const askUrl   = `${BASE}/api/memory/${MID}/ask`;
+  const histUrl  = `${BASE}/api/memory/${MID}/history`;
+  const embedUrl = `${BASE}/embed/${MID}`;
+  const chatUrl  = `${BASE}/memory-chat?id=${MID}`;
+
+  const curlSnippet =
+`curl -X POST "${askUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Client-Token: ${TOK}" \\
+  -d '{"question": "What is this about?", "top_k": 5}'`;
+
+  const jsSnippet =
+`const res = await fetch("${askUrl}", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Client-Token": "${TOK}"
+  },
+  body: JSON.stringify({
+    question: "What is this about?",
+    top_k: 5,
+    history: []  // optional: [{role, content}]
+  })
+});
+const data = await res.json();
+console.log(data.answer);`;
+
+  const pySnippet =
+`import requests
+
+res = requests.post(
+    "${askUrl}",
+    headers={
+        "Content-Type": "application/json",
+        "X-Client-Token": "${TOK}"
+    },
+    json={"question": "What is this about?", "top_k": 5}
+)
+print(res.json()["answer"])`;
+
+  const iframeSnippet =
+`<iframe src="${embedUrl}"
+  width="400" height="600"
+  frameborder="0"
+  style="border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.3);"
+  allow="clipboard-write">
+</iframe>`;
+
+  el.innerHTML = `
+  <div class="dev-section">
+    <div class="dev-section-title">🔑 Your Credentials</div>
+    <div class="dev-info-row">
+      <span class="dev-info-label">Memory ID</span>
+      <span class="dev-info-val">${esc(MID)}</span>
+      <button class="dev-info-copy" onclick="copyText('${esc(MID)}','Memory ID')" title="Copy">📋</button>
+    </div>
+    <div class="dev-info-row">
+      <span class="dev-info-label">Client ID</span>
+      <span class="dev-info-val">${esc(CID)}</span>
+      <button class="dev-info-copy" onclick="copyText('${esc(CID)}','Client ID')" title="Copy">📋</button>
+    </div>
+    <div class="dev-info-row">
+      <span class="dev-info-label">Client Token</span>
+      <span class="dev-info-val" style="filter:blur(4px);cursor:pointer" onclick="this.style.filter='none'" title="Click to reveal">${esc(TOK)}</span>
+      <button class="dev-info-copy" onclick="copyText('${esc(TOK)}','Token')" title="Copy">📋</button>
+    </div>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">🌐 API Endpoints</div>
+    <div class="dev-info-row"><span class="dev-info-label">Ask (POST)</span><span class="dev-info-val">${esc(askUrl)}</span><button class="dev-info-copy" onclick="copyText('${esc(askUrl)}','URL')">📋</button></div>
+    <div class="dev-info-row"><span class="dev-info-label">History (GET)</span><span class="dev-info-val">${esc(histUrl)}</span><button class="dev-info-copy" onclick="copyText('${esc(histUrl)}','URL')">📋</button></div>
+    <div class="dev-info-row"><span class="dev-info-label">Chat Link</span><span class="dev-info-val">${esc(chatUrl)}</span><button class="dev-info-copy" onclick="copyText('${esc(chatUrl)}','Link')">📋</button></div>
+    <div class="dev-info-row"><span class="dev-info-label">Embed URL</span><span class="dev-info-val">${esc(embedUrl)}</span><button class="dev-info-copy" onclick="copyText('${esc(embedUrl)}','URL')">📋</button></div>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">💻 cURL</div>
+    <div class="dev-code">${esc(curlSnippet)}</div>
+    <button class="dev-copy-btn" onclick="copyText(${JSON.stringify(curlSnippet)},'cURL')">📋 Copy cURL</button>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">🟨 JavaScript (fetch)</div>
+    <div class="dev-code">${esc(jsSnippet)}</div>
+    <button class="dev-copy-btn" onclick="copyText(${JSON.stringify(jsSnippet)},'JS')">📋 Copy JavaScript</button>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">🐍 Python (requests)</div>
+    <div class="dev-code">${esc(pySnippet)}</div>
+    <button class="dev-copy-btn" onclick="copyText(${JSON.stringify(pySnippet)},'Python')">📋 Copy Python</button>
+  </div>
+
+  <div class="dev-section">
+    <div class="dev-section-title">🔗 iFrame Embed</div>
+    <div class="dev-code">${esc(iframeSnippet)}</div>
+    <button class="dev-copy-btn" onclick="copyText(${JSON.stringify(iframeSnippet)},'iFrame')">📋 Copy iFrame</button>
+  </div>`;
 }
 
 async function loadDrawerHistory(){

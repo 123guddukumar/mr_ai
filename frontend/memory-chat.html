@@ -573,6 +573,35 @@ function detectLangFromText(text){
 
 // ── Edit Bot ───────────────────────────────────────────────────────────────────
 let _editBotData = {};
+let v2vIdleTimer = null;
+
+function checkSpecialKeywords(text) {
+  const t = text.toLowerCase().trim();
+  const botName = document.getElementById('mem-title')?.textContent || 'MR AI Bot';
+
+  // Termination / Logout / Close
+  if (/\b(no thank u|ok bye|bye|stop)\b/i.test(t)) return 'STOP';
+
+  // Greeting
+  if (/\b(hello|hi|hey|helo)\b/i.test(t)) return `Hi, I am ${botName}. What can I help you with?`;
+  
+  // Identity
+  if (/\b(who are you|what is your name|who|your name)\b/i.test(t)) return `I am ${botName}.`;
+  
+  // Creator
+  if (/\b(who made you|your boss name|who created you|boss name)\b/i.test(t)) return `My boss is Divyansu Verma.`;
+  
+  // Appreciation
+  if (/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you)\b/i.test(t)) 
+    return `Thank you sir! Ask any more questions?`;
+  
+  // History placeholder
+  if (t.includes('previous history') || t.includes('pichla history')) 
+    return "After 2 days, history of questions with answers will be shown here.";
+
+  return null;
+}
+
 async function openEditBot(){
   try{
     const r=await fetch(`/api/memory/${MEMORY_ID}`,{headers:hdrs()});
@@ -706,6 +735,7 @@ function handleOrbClick(){
 // ── Continuous V2V Session ─────────────────────────────────────────────────────
 function stopV2VSession(){
   v2vRunning = false;
+  if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
   stopRec();
   stopSpeech();
   setVoS('idle');
@@ -730,7 +760,18 @@ async function listenAndRespond(){
   if(!v2vRunning) return;
   setVoS('listening');
   document.getElementById('vo-sublabel').textContent='Listening… speak now';
+  
+  // Inactivity timeout: stop mic if no speech for 1 min
+  if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
+  v2vIdleTimer = setTimeout(() => {
+    if(v2vRunning && voiceState === 'listening') {
+      toast('Ending session due to 1 minute inactivity', 'info');
+      stopV2VSession();
+    }
+  }, 60000);
+
   const text = await listenOnce();
+  if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
   if(!v2vRunning) return;
   if(!text){ listenAndRespond(); return; }  // empty — try again
   setVoS('processing');
@@ -1001,6 +1042,27 @@ async function sendMsgAuto(text){
     var bubble=el.querySelector('.msg-bubble'); if(bubble&&bubble.textContent.trim()) turns.push({role,content:bubble.textContent.trim()});
   });
   try{
+    // ─ Check special keywords first ─
+    const specialRes = checkSpecialKeywords(text);
+    if(specialRes === 'STOP') {
+      removeTyping(typing);
+      stopV2VSession();
+      return;
+    }
+    if(specialRes) {
+      removeTyping(typing);
+      appendMessage('assistant', specialRes, []);
+      if(chatMode==='v2v'){
+        setVoS('speaking');
+        document.getElementById('vo-sublabel').textContent=specialRes.substring(0,100);
+        await speakTextLang(specialRes, detectedLang);
+        if(v2vRunning) setVoS('listening');
+      } else if(chatMode==='v2t' || chatMode==='text'){
+        await speakTextLang(specialRes, detectedLang);
+      }
+      return;
+    }
+
     // ─ Translate question to English so RAG finds docs in English index ─
     const langCode = getLangCode(detectedLang);
     const ragQuestion = (langCode && langCode!=='en')
@@ -1021,8 +1083,8 @@ async function sendMsgAuto(text){
       await speakTextLang(displayAnswer, detectedLang);
       if(v2vRunning) setVoS('listening');
       else { setVoS('idle'); document.getElementById('vo-sublabel').textContent=STATE_CFG.idle.sub; }
-    } else if(chatMode==='v2t'){
-      // Also speak answer in V2T mode
+    } else if(chatMode!=='text'){
+      // Also speak answer in V2T or if not purely text
       await speakTextLang(displayAnswer, detectedLang);
     }
   }catch(e){ removeTyping(typing); appendMessage('assistant','❌ '+e.message); if(chatMode==='v2v') setVoS('idle'); }

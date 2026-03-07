@@ -499,6 +499,7 @@ function handleOrbClick(){
 // ── STT ───────────────────────────────────────────────────────────────────────
 let rec=null, isRec=false;
 let v2vRunning=false, detectedLang='';
+let v2vIdleTimer=null;
 
 // Detect actual language from spoken/typed text using Unicode script blocks
 function detectLangFromText(text){
@@ -516,6 +517,21 @@ function detectLangFromText(text){
   return localStorage.getItem('mrairag_sv_lang') || 'en-IN';
 }
 
+function checkSpecialKeywords(text){
+  const t=text.toLowerCase().trim();
+  const botName=document.getElementById('bot-name')?.textContent||'MR AI Bot';
+  if(/\b(no thank u|ok bye|bye|stop)\b/i.test(t)) return 'STOP';
+  if(/\b(hello|hi|hey|helo)\b/i.test(t)) return `Hi, I am ${botName}. What can I help you with?`;
+  if(/\b(who are you|what is your name|who|your name)\b/i.test(t)) return `I am ${botName}.`;
+  if(/\b(who made you|your boss name|who created you|boss name)\b/i.test(t)) return `My boss is Divyansu Verma.`;
+  if(/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you)\b/i.test(t))
+    return `Thank you sir! Ask any more questions?`;
+  if(t.includes('previous history') || t.includes('pichla history'))
+    return "After 2 days, history of questions with answers will be shown here.";
+  return null;
+}
+
+
 
 
 function handleMicClick(){
@@ -528,7 +544,8 @@ function handleOrbClick(){
 }
 
 function stopV2VSession(){
-  v2vRunning=false; stopRec(); stopSpeech(); setVS('idle');
+  v2vRunning=false; if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
+  stopRec(); stopSpeech(); setVS('idle');
   document.getElementById('vo-sublabel').textContent='Session ended. Tap to start again.';
   const btn=document.getElementById('vo-tap-btn');
   btn.style.display='inline-flex'; btn.className='vo-tap-btn start'; btn.innerHTML='🎤 Tap to Speak';
@@ -545,7 +562,16 @@ async function listenAndRespond(){
   if(!v2vRunning) return;
   setVS('listening');
   document.getElementById('vo-sublabel').textContent='Listening… speak now';
+  
+  if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
+  v2vIdleTimer=setTimeout(()=>{
+    if(v2vRunning && voiceState==='listening'){
+      toast('Inactivity timeout','info'); stopV2VSession();
+    }
+  }, 60000);
+
   const text=await listenOnce();
+  if(v2vIdleTimer) clearTimeout(v2vIdleTimer);
   if(!v2vRunning) return;
   if(!text){ listenAndRespond(); return; }
   setVS('processing');
@@ -726,6 +752,20 @@ async function sendMsgAuto(text){
     const b=el.querySelector('.msg-bubble'); if(b&&b.textContent.trim()) turns.push({role,content:b.textContent.trim()});
   });
   try{
+    const skres=checkSpecialKeywords(text);
+    if(skres==='STOP'){ removeTyping(typing); stopV2VSession(); return; }
+    if(skres){
+      removeTyping(typing); appendMsg('assistant',skres);
+      if(chatMode==='v2v'){
+        setVS('speaking'); document.getElementById('vo-sublabel').textContent=skres.substring(0,100);
+        await speakMRAI(skres, detectedLang);
+        if(v2vRunning) setVS('listening');
+      } else {
+        await speakMRAI(skres, detectedLang);
+      }
+      return;
+    }
+
     // ─ Translate question to English so RAG finds English-indexed docs ─
     const langCode=getLangCode(detectedLang);
     const ragQuestion=(langCode&&langCode!=='en') ? await translateToEn(text,detectedLang) : text;
@@ -743,7 +783,7 @@ async function sendMsgAuto(text){
       await speakMRAI(displayAnswer, detectedLang);
       if(v2vRunning) setVS('listening');
       else { setVS('idle'); document.getElementById('vo-sublabel').textContent=STATE_CFG.idle.sub; }
-    } else if(chatMode==='v2t'){
+    } else if(chatMode!=='text'){
       await speakMRAI(displayAnswer, detectedLang);
     }
   }catch(e){ removeTyping(typing); appendMsg('assistant','❌ '+e.message); if(chatMode==='v2v') setVS('idle'); }

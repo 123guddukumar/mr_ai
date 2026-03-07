@@ -214,6 +214,7 @@ select.vsp-input{cursor:pointer;appearance:none}
   </div>
   <div class="topbar-actions">
     <button class="tbtn tbtn-settings" onclick="openVoiceSettings()" title="Voice Settings">⚙️ Voice</button>
+    <button class="tbtn" style="background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.3)" onclick="openEditBot()">✏️ Edit Bot</button>
     <button class="tbtn tbtn-embed" onclick="showEmbed()">🔗 Embed</button>
     <a href="/memory" class="tbtn tbtn-secondary">← My Bots</a>
   </div>
@@ -230,10 +231,12 @@ select.vsp-input{cursor:pointer;appearance:none}
 </div>
 
 
-<!-- † Floating Mic (ChatGPT-style) -->
+<!-- Floating Mic (ChatGPT-style) -->
 <button class="float-mic-btn" id="float-mic-btn" onclick="handleMicClick()" title="Voice input">
   🎤
 </button>
+
+<div class="layout">
   <!-- Sources sidebar -->
   <aside class="sources-panel">
     <div class="sp-header">📚 Indexed Sources</div>
@@ -244,6 +247,10 @@ select.vsp-input{cursor:pointer;appearance:none}
 
   <!-- Chat -->
   <section class="chat-panel">
+    <div class="chat-topbar" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0">
+      <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Conversation</span>
+      <button onclick="clearChat()" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);color:var(--red);transition:all .2s" onmouseover="this.style.background='rgba(248,113,113,.18)'" onmouseout="this.style.background='rgba(248,113,113,.08)'">🗑️ Clear Chat</button>
+    </div>
     <div class="chat-messages" id="chat-messages">
       <div class="welcome" id="welcome-screen">
         <div class="welcome-icon">🧠</div>
@@ -253,16 +260,12 @@ select.vsp-input{cursor:pointer;appearance:none}
     </div>
     <div class="chat-input-area">
       <div class="chat-input-wrap">
-        <button class="mic-btn idle" id="mic-btn" onclick="toggleMic()" title="Voice Input" style="display:none">🎤</button>
         <textarea id="chat-input" rows="1" placeholder="Ask about your knowledge sources… (Enter to send)"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="send-btn" onclick="sendMsg()" title="Send">➤</button>
       </div>
       <div style="font-size:10px;color:var(--text3);margin-top:5px;display:flex;justify-content:space-between;align-items:center">
-        <span>
-          <kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Enter</kbd> send ·
-          <kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Shift+Enter</kbd> new line
-        </span>
+        <span><kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Enter</kbd> send · <kbd style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:9px">Shift+Enter</kbd> new line</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="speaking-badge" id="speaking-badge">
             <span class="speak-dot"></span><span class="speak-dot"></span><span class="speak-dot"></span>
@@ -386,19 +389,14 @@ select.vsp-input{cursor:pointer;appearance:none}
             </div>
             <div class="vsp-form-row">
               <label class="vsp-label">Speaker</label>
-              <select class="vsp-input" id="sv-speaker" onchange="saveVoiceSettings()">
-                <option value="meera">Meera (Female)</option>
-                <option value="pavithra">Pavithra (Female)</option>
-                <option value="maitreyi">Maitreyi (Female)</option>
-                <option value="arvind">Arvind (Male)</option>
-                <option value="amol">Amol (Male)</option>
-                <option value="amartya">Amartya (Male)</option>
-                <option value="diya">Diya (Female)</option>
-                <option value="neel">Neel (Male)</option>
-                <option value="misha">Misha (Female)</option>
-                <option value="vian">Vian (Male)</option>
-                <option value="arjun">Arjun (Male)</option>
-                <option value="maya">Maya (Female)</option>
+              <select class="vsp-select" id="sv-speaker" onchange="saveVoiceSettings()">
+                <option value="shubh">Shubh (M, bulbul:v3)</option>
+                <option value="meera">Meera (F)</option>
+                <option value="pavithra">Pavithra (F)</option>
+                <option value="arvind">Arvind (M)</option>
+                <option value="amol">Amol (M)</option>
+                <option value="diya">Diya (F)</option>
+                <option value="arjun">Arjun (M)</option>
               </select>
             </div>
           </div>
@@ -457,6 +455,39 @@ select.vsp-input{cursor:pointer;appearance:none}
     <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Direct chat URL</div>
     <div class="code-block" id="em-url"></div>
     <button onclick="navigator.clipboard.writeText(document.getElementById('em-url').textContent).then(()=>toast('✅ Copied!','success'))" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);font-family:Inter,sans-serif">📋 Copy URL</button>
+  </div>
+</div>
+
+<!-- Edit Bot Modal -->
+<div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEditBot()">
+  <div class="modal" style="max-width:480px">
+    <button onclick="closeEditBot()" style="position:absolute;right:16px;top:16px;background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">✏️ Edit Bot</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Update your memory bot settings</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Bot Name</label>
+        <input id="edit-name" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit" placeholder="My Memory Bot">
+      </div>
+      <div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Description</label>
+        <textarea id="edit-desc" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit;resize:vertical" placeholder="What does this bot know about?"></textarea>
+      </div>
+      <div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">AI Provider</label>
+        <select id="edit-provider" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:13px;cursor:pointer">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI ChatGPT</option>
+          <option value="anthropic">Anthropic Claude</option>
+          <option value="ollama">Ollama (Local)</option>
+        </select>
+      </div>
+      <div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Model Name</label>
+        <input id="edit-model" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit" placeholder="gemini-2.5-flash">
+      </div>
+      <div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">API Key</label>
+        <input id="edit-apikey" type="password" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:13px;font-family:inherit" placeholder="Leave blank to keep current key">
+      </div>
+      <button onclick="saveEditBot()" style="width:100%;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,var(--accent),#5b52e0);border:none;color:#fff">💾 Save Changes</button>
+    </div>
   </div>
 </div>
 
@@ -521,7 +552,63 @@ function setMode(mode){
   if(chatMode==='v2v') document.getElementById('voice-overlay')?.classList.add('active');
 })();
 
+// ── Language auto-detection from spoken/typed text ─────────────────────────────
+function detectLangFromText(text){
+  if(!text) return localStorage.getItem('mrairag_sv_lang') || 'en-IN';
+  if(/[\u0900-\u097f]/.test(text)) return 'hi-IN';   // Devanagari (Hindi/Marathi)
+  if(/[\u0980-\u09ff]/.test(text)) return 'bn-IN';   // Bengali
+  if(/[\u0b80-\u0bff]/.test(text)) return 'ta-IN';   // Tamil
+  if(/[\u0c00-\u0c7f]/.test(text)) return 'te-IN';   // Telugu
+  if(/[\u0c80-\u0cff]/.test(text)) return 'kn-IN';   // Kannada
+  if(/[\u0d00-\u0d7f]/.test(text)) return 'ml-IN';   // Malayalam
+  if(/[\u0a80-\u0aff]/.test(text)) return 'gu-IN';   // Gujarati
+  if(/[\u0a00-\u0a7f]/.test(text)) return 'pa-IN';   // Punjabi
+  if(/[\u0600-\u06ff]/.test(text)) return 'ur-IN';   // Urdu
+  // Roman-script Hinglish / Bhojpuri heuristic
+  if(/\b(kya|hai|mera|tera|kaisa|tumhara|aapka|naam|kahan|kyun|nahi|haan|bahut|accha|thik|bolo|karo|suno)\b/i.test(text))
+    return 'hi-IN';
+  // Fallback: use STT configured language (covers Bhojpuri, Roman Hindi etc.)
+  return localStorage.getItem('mrairag_sv_lang') || 'en-IN';
+}
+
+// ── Edit Bot ───────────────────────────────────────────────────────────────────
+let _editBotData = {};
+async function openEditBot(){
+  try{
+    const r=await fetch(`/api/memory/${MEMORY_ID}`,{headers:hdrs()});
+    const d=await r.json();
+    _editBotData=d;
+    document.getElementById('edit-name').value=d.name||'';
+    document.getElementById('edit-desc').value=d.description||'';
+    document.getElementById('edit-provider').value=d.provider||'gemini';
+    document.getElementById('edit-model').value=d.provider_model||'';
+    document.getElementById('edit-apikey').value='';
+    document.getElementById('edit-modal').style.display='flex';
+  }catch(e){ toast('Failed to load bot info','error'); }
+}
+function closeEditBot(){ document.getElementById('edit-modal').style.display='none'; }
+async function saveEditBot(){
+  const body={
+    name: document.getElementById('edit-name').value.trim(),
+    description: document.getElementById('edit-desc').value.trim(),
+    provider: document.getElementById('edit-provider').value,
+    provider_model: document.getElementById('edit-model').value.trim(),
+  };
+  const key=document.getElementById('edit-apikey').value.trim();
+  if(key) body.provider_api_key=key;
+  try{
+    const r=await fetch(`/api/memory/${MEMORY_ID}`,{method:'PATCH',headers:hdrs(),body:JSON.stringify(body)});
+    if(!r.ok) throw new Error((await r.json()).detail||'Save failed');
+    const d=await r.json();
+    document.getElementById('mem-title').textContent=d.memory.name||'Memory Bot';
+    document.title=d.memory.name+' — MR AI RAG';
+    closeEditBot();
+    toast('✅ Bot updated!','success');
+  }catch(e){ toast('Error: '+e.message,'error'); }
+}
+
 // ── Voice Settings ─────────────────────────────────────────────────────────────
+
 let currentTTS = localStorage.getItem('mrairag_tts_model') || 'mrai';
 
 function openVSD(){ openVoiceSettings(); }
@@ -604,53 +691,97 @@ function loadBrowserVoices(){
 }
 
 let recognition = null, isRecording = false;
+let v2vRunning = false;     // continuous V2V session flag
+let detectedLang = '';       // language detected from user's speech
 
 function handleMicClick(){
   if(chatMode==='v2t'){ if(isRecording) stopVTT(); else startVTT(); }
   else if(chatMode==='v2v') handleOrbClick();
 }
 function handleOrbClick(){
-  if(voiceState==='idle') startV2VInput();
-  else if(voiceState==='listening'){ stopRec(); setVoS('idle'); }
+  if(!v2vRunning) startV2VSession();
+  else stopV2VSession();
 }
-function stopVTT(){ stopRec(); document.getElementById('vtt-overlay').classList.remove('active'); }
 
+// ── Continuous V2V Session ─────────────────────────────────────────────────────
+function stopV2VSession(){
+  v2vRunning = false;
+  stopRec();
+  stopSpeech();
+  setVoS('idle');
+  document.getElementById('vo-sublabel').textContent = 'Session ended. Tap to start again.';
+  document.getElementById('vo-tap-btn').style.display='inline-flex';
+  document.getElementById('vo-tap-btn').className='vo-tap-btn start';
+  document.getElementById('vo-tap-btn').innerHTML='🎤 Tap to Speak';
+}
+
+function startV2VSession(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('⚠️ Voice needs Chrome or Edge','error'); return; }
+  v2vRunning = true;
+  // Show stop button
+  const btn=document.getElementById('vo-tap-btn');
+  btn.style.display='inline-flex'; btn.className='vo-tap-btn stop';
+  btn.innerHTML='⏹ Stop Session';
+  listenAndRespond();
+}
+
+async function listenAndRespond(){
+  if(!v2vRunning) return;
+  setVoS('listening');
+  document.getElementById('vo-sublabel').textContent='Listening… speak now';
+  const text = await listenOnce();
+  if(!v2vRunning) return;
+  if(!text){ listenAndRespond(); return; }  // empty — try again
+  setVoS('processing');
+  document.getElementById('vo-sublabel').textContent='“'+text+'”';
+  await sendMsgAuto(text);
+  if(v2vRunning) listenAndRespond();  // loop
+}
+
+function listenOnce(){
+  return new Promise(resolve=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    recognition=new SR(); recognition.continuous=false; recognition.interimResults=true;
+    recognition.lang=localStorage.getItem('mrairag_sv_lang')||'en-IN'; isRecording=true;
+    let finalText='';
+    recognition.onresult=(e)=>{
+      let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
+      finalText=t;
+      // Detect actual spoken language from the transcribed text
+      detectedLang = detectLangFromText(t);
+      document.getElementById('chat-input').value=t;
+      autoResize(document.getElementById('chat-input'));
+      document.getElementById('vo-sublabel').textContent='“'+t+'”';
+    };
+    recognition.onend=()=>{ isRecording=false; resolve(finalText.trim()); };
+    recognition.onerror=(e)=>{ toast('Mic: '+e.error,'error'); isRecording=false; resolve(''); };
+    recognition.start();
+  });
+}
+
+// ── VTT (Voice-to-Text) overlay ───────────────────────────────────────────────
+function stopVTT(){ stopRec(); document.getElementById('vtt-overlay').classList.remove('active'); }
 function startVTT(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toast('⚠️ Voice needs Chrome or Edge','error'); return; }
   document.getElementById('vtt-overlay').classList.add('active');
   document.getElementById('vtt-transcript').textContent='Listening…';
-  startRecCore(()=>{ document.getElementById('vtt-overlay').classList.remove('active'); });
-}
-
-function startV2VInput(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ toast('⚠️ Voice needs Chrome or Edge','error'); return; }
-  setVoS('listening'); document.getElementById('vo-sublabel').textContent='Listening… speak now';
-  startRecCore(async()=>{
-    const text=document.getElementById('chat-input').value.trim();
-    if(!text){ setVoS('idle'); return; }
-    setVoS('processing'); document.getElementById('vo-sublabel').textContent='"'+text+'"';
-    await sendMsgAuto(text);
-  });
-}
-
-function startRecCore(onEnd){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR(); recognition.continuous=false; recognition.interimResults=true;
   recognition.lang=localStorage.getItem('mrairag_sv_lang')||'en-IN'; isRecording=true;
   recognition.onresult=(e)=>{
     let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
+    detectedLang = detectLangFromText(t);   // detect actual language
     document.getElementById('chat-input').value=t; autoResize(document.getElementById('chat-input'));
-    if(chatMode==='v2v') document.getElementById('vo-sublabel').textContent='"'+t+'"';
-    if(chatMode==='v2t') document.getElementById('vtt-transcript').textContent=t;
+    document.getElementById('vtt-transcript').textContent=t;
   };
-  recognition.onend=()=>{ isRecording=false; onEnd(); };
-  recognition.onerror=(e)=>{
-    toast('Mic: '+e.error,'error'); isRecording=false;
-    if(chatMode==='v2v') setVoS('idle');
+  recognition.onend=()=>{
+    isRecording=false;
     document.getElementById('vtt-overlay').classList.remove('active');
+    const q=document.getElementById('chat-input').value.trim();
+    if(q) setTimeout(()=>sendMsg(), 150);
   };
+  recognition.onerror=(e)=>{ toast('Mic: '+e.error,'error'); isRecording=false; document.getElementById('vtt-overlay').classList.remove('active'); };
   recognition.start();
 }
 function stopRec(){ if(recognition){recognition.stop();recognition=null;} isRecording=false; }
@@ -673,14 +804,24 @@ async function speakText(text){
   if(currentTTS==='sarvam')     return speakSV(text);
 }
 
-function speakMRAI(text){
+function speakMRAI(text, lang){
   return new Promise(res=>{
     if(!window.speechSynthesis){ res(); return; }
     const u=new SpeechSynthesisUtterance(text);
     u.rate=parseFloat(localStorage.getItem('mrairag_mrai_rate')||'1');
     u.pitch=parseFloat(localStorage.getItem('mrairag_mrai_pitch')||'1');
-    const vn=localStorage.getItem('mrairag_mrai_voice');
-    if(vn){ const v=speechSynthesis.getVoices().find(v=>v.name===vn); if(v) u.voice=v; }
+    // Try to pick a voice for the detected language, else use saved voice
+    const targetLang = lang || detectedLang || localStorage.getItem('mrairag_sv_lang') || '';
+    const allVoices = speechSynthesis.getVoices();
+    const savedVoice = localStorage.getItem('mrairag_mrai_voice');
+    let picked = null;
+    if(targetLang){
+      // e.g. 'hi-IN' — try exact, then prefix match
+      picked = allVoices.find(v=>v.lang===targetLang)
+             || allVoices.find(v=>v.lang.startsWith(targetLang.split('-')[0]));
+    }
+    if(!picked && savedVoice) picked=allVoices.find(v=>v.name===savedVoice);
+    if(picked) u.voice=picked;
     document.getElementById('speaking-badge')?.classList.add('visible');
     u.onend =()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
     u.onerror=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
@@ -689,16 +830,28 @@ function speakMRAI(text){
 }
 
 function speakEL(text){
-  const key=localStorage.getItem('mrairag_el_apikey')||''; const vid=localStorage.getItem('mrairag_el_voice')||'21m00Tcm4TlvDq8ikWAM';
+  const key=localStorage.getItem('mrairag_el_apikey')||'';
+  const vid=localStorage.getItem('mrairag_el_voice')||'JBFqnCBsd6RMkjVDRZzb';
   if(!key){ toast('Enter ElevenLabs key in Voice Settings','error'); return Promise.resolve(); }
   return new Promise(async res=>{
     try{
       document.getElementById('speaking-badge')?.classList.add('visible');
-      const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`,{method:'POST',
-        headers:{'xi-api-key':key,'Content-Type':'application/json','Accept':'audio/mpeg'},
-        body:JSON.stringify({text,model_id:'eleven_multilingual_v2',voice_settings:{stability:.5,similarity_boost:.75}})});
-      if(!r.ok) throw new Error('ElevenLabs error');
-      const url=URL.createObjectURL(await r.blob()); currentAudio=new Audio(url);
+      const r=await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${vid}?output_format=mp3_44100_128`,
+        { method:'POST',
+          headers:{'xi-api-key':key,'Content-Type':'application/json'},
+          body:JSON.stringify({
+            text, model_id:'eleven_multilingual_v2',
+            voice_settings:{stability:.5,similarity_boost:.75}
+          })
+        }
+      );
+      if(!r.ok){
+        const errTxt=await r.text();
+        throw new Error(`ElevenLabs ${r.status}: ${errTxt.slice(0,120)}`);
+      }
+      const url=URL.createObjectURL(await r.blob());
+      currentAudio=new Audio(url);
       currentAudio.onended=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); URL.revokeObjectURL(url); res(); };
       currentAudio.onerror=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
       currentAudio.play();
@@ -707,17 +860,30 @@ function speakEL(text){
 }
 
 function speakSV(text){
-  const key=localStorage.getItem('mrairag_sv_apikey')||''; const lang=localStorage.getItem('mrairag_sv_lang')||'hi-IN'; const spk=localStorage.getItem('mrairag_sv_speaker')||'meera';
+  const key=localStorage.getItem('mrairag_sv_apikey')||'';
+  const lang=localStorage.getItem('mrairag_sv_lang')||'hi-IN';
+  const spk=localStorage.getItem('mrairag_sv_speaker')||'shubh';
   if(!key){ toast('Enter Sarvam key in Voice Settings','error'); return Promise.resolve(); }
   return new Promise(async res=>{
     try{
       document.getElementById('speaking-badge')?.classList.add('visible');
-      const r=await fetch('https://api.sarvam.ai/text-to-speech',{method:'POST',
+      // Using Sarvam AI streaming endpoint (bulbul:v3)
+      const r=await fetch('https://api.sarvam.ai/text-to-speech/stream',{
+        method:'POST',
         headers:{'api-subscription-key':key,'Content-Type':'application/json'},
-        body:JSON.stringify({inputs:[text],target_language_code:lang,speaker:spk,pitch:0,pace:1.0,loudness:1.5,speech_sample_rate:22050,enable_preprocessing:true,model:'bulbul:v1'})});
-      if(!r.ok) throw new Error('Sarvam error');
-      const d=await r.json(); const b64=d.audios?.[0]; if(!b64) throw new Error('No audio');
-      const url=URL.createObjectURL(new Blob([new Uint8Array([...atob(b64)].map(c=>c.charCodeAt(0)))],{type:'audio/wav'}));
+        body:JSON.stringify({
+          text, target_language_code:lang, speaker:spk,
+          model:'bulbul:v3', pace:1.1, speech_sample_rate:22050,
+          output_audio_codec:'mp3', enable_preprocessing:true
+        })
+      });
+      if(!r.ok){
+        const errTxt=await r.text();
+        throw new Error(`Sarvam ${r.status}: ${errTxt.slice(0,120)}`);
+      }
+      // The streaming endpoint returns raw audio bytes
+      const blob=await r.blob();
+      const url=URL.createObjectURL(blob);
       currentAudio=new Audio(url);
       currentAudio.onended=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); URL.revokeObjectURL(url); res(); };
       currentAudio.onerror=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
@@ -785,34 +951,97 @@ async function loadHistory(){
 function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
 function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 
+function clearChat(){
+  const area=document.getElementById('chat-messages');
+  area.innerHTML='';
+  const ws=document.createElement('div'); ws.className='welcome'; ws.id='welcome-screen';
+  ws.innerHTML='<div class="welcome-icon">🧠</div><h2 id="welcome-title">Chat Cleared</h2><p>Ask a new question to continue.</p>';
+  area.appendChild(ws);
+  document.getElementById('chat-input').value='';
+  toast('✅ Chat cleared','success');
+}
+
+// ── Translation (MyMemory free API) ───────────────────────────────────────────────
+function getLangCode(tag){ return (tag||'').split('-')[0].toLowerCase() || 'en'; }
+
+async function translateText(text, targetTag){
+  const code = getLangCode(targetTag);
+  if(!code || code==='en' || !text) return text;
+  try{
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0,500))}&langpair=en|${code}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const t = d.responseData?.translatedText;
+    return (t && t.toLowerCase()!==text.toLowerCase()) ? t : text;
+  }catch(e){ return text; }
+}
+
+// Translate any language → English for RAG lookup
+async function translateToEn(text, fromTag){
+  const code = getLangCode(fromTag);
+  if(!code || code==='en' || !text) return text;
+  try{
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0,500))}&langpair=${code}|en`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const t = d.responseData?.translatedText;
+    return (t && t.toLowerCase()!==text.toLowerCase()) ? t : text;
+  }catch(e){ return text; }
+}
+
 async function sendMsgAuto(text){
   if(!MEMORY_ID||isTyping) return;
   isTyping=true; msgCount++;
   var ws=document.getElementById('welcome-screen'); if(ws) ws.style.display='none';
-  appendMessage('user',text,[]);
+  // Show user's original question
+  appendMessage('user', text, []);
   var typing=appendTyping(); document.getElementById('send-btn').disabled=true;
   var turns=[]; document.querySelectorAll('#chat-messages .message:not(.typing-wrap)').forEach(function(el){
     var role=el.classList.contains('user')?'user':'assistant';
     var bubble=el.querySelector('.msg-bubble'); if(bubble&&bubble.textContent.trim()) turns.push({role,content:bubble.textContent.trim()});
   });
   try{
-    const r=await fetch(`/api/memory/${MEMORY_ID}/ask`,{method:'POST',headers:hdrs(),body:JSON.stringify({question:text,top_k:5,history:turns.slice(-7,-1)})});
+    // ─ Translate question to English so RAG finds docs in English index ─
+    const langCode = getLangCode(detectedLang);
+    const ragQuestion = (langCode && langCode!=='en')
+      ? await translateToEn(text, detectedLang)
+      : text;
+    const r=await fetch(`/api/memory/${MEMORY_ID}/ask`,{method:'POST',headers:hdrs(),
+      body:JSON.stringify({question:ragQuestion, top_k:3, history:turns.slice(-5,-1)})});
     const d=await r.json(); removeTyping(typing);
-    const answer=r.ok?(d.answer||'No answer.'):'❌ '+(d.detail||'Error');
-    appendMessage('assistant',answer,d.sources||[]);
+    const rawAnswer = r.ok ? (d.answer||'No answer.') : '❌ '+(d.detail||'Error');
+    // ─ Translate English answer back to user's language ─
+    const displayAnswer = (langCode && langCode!=='en' && rawAnswer.charAt(0)!=='❌')
+      ? await translateText(rawAnswer, detectedLang)
+      : rawAnswer;
+    appendMessage('assistant', displayAnswer, d.sources||[]);
     if(chatMode==='v2v'){
       setVoS('speaking');
-      document.getElementById('vo-sublabel').textContent=answer.substring(0,120)+(answer.length>120?'…':'');
-      await speakText(answer);
-      setVoS('idle'); document.getElementById('vo-sublabel').textContent=STATE_CFG.idle.sub;
+      document.getElementById('vo-sublabel').textContent=displayAnswer.substring(0,100)+(displayAnswer.length>100?'…':'');
+      await speakTextLang(displayAnswer, detectedLang);
+      if(v2vRunning) setVoS('listening');
+      else { setVoS('idle'); document.getElementById('vo-sublabel').textContent=STATE_CFG.idle.sub; }
+    } else if(chatMode==='v2t'){
+      // Also speak answer in V2T mode
+      await speakTextLang(displayAnswer, detectedLang);
     }
   }catch(e){ removeTyping(typing); appendMessage('assistant','❌ '+e.message); if(chatMode==='v2v') setVoS('idle'); }
   finally{ isTyping=false; document.getElementById('send-btn').disabled=false; document.getElementById('chat-input').value=''; }
 }
 
+// speakTextLang — like speakText but overrides lang for MRAI
+async function speakTextLang(text, lang){
+  if(!text) return; stopSpeech();
+  if(currentTTS==='mrai')       return speakMRAI(text, lang);
+  if(currentTTS==='elevenlabs') return speakEL(text);
+  if(currentTTS==='sarvam')     return speakSV(text);
+}
+
 async function sendMsg(){
   var inp=document.getElementById('chat-input'); var text=inp.value.trim();
   if(!text||isTyping) return;
+  // Detect language from typed text so translate/speak works correctly
+  detectedLang = detectLangFromText(text);
   inp.value=''; autoResize(inp);
   await sendMsgAuto(text);
 }

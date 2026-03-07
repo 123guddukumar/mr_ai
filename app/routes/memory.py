@@ -172,6 +172,37 @@ async def delete_memory(
     return {"success": True, "message": "Memory deleted"}
 
 
+# ── 4b. Update memory ─────────────────────────────────────────────────────────
+
+class UpdateMemoryReq(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    provider: Optional[str] = None
+    provider_model: Optional[str] = None
+    provider_api_key: Optional[str] = None
+    ollama_url: Optional[str] = None
+
+@router.patch("/memory/{memory_id}", tags=["Memory"])
+async def update_memory(
+    memory_id: str,
+    req: UpdateMemoryReq,
+    x_client_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    client = _get_client(x_client_token, db)
+    mem = _get_memory(memory_id, client["client_id"], db)
+    if req.name is not None:           mem.name = req.name.strip()
+    if req.description is not None:    mem.description = req.description.strip()
+    if req.provider is not None:       mem.provider = req.provider
+    if req.provider_model is not None: mem.provider_model = req.provider_model
+    if req.provider_api_key is not None: mem.provider_api_key = req.provider_api_key
+    if req.ollama_url is not None:     mem.ollama_url = req.ollama_url
+    db.commit(); db.refresh(mem)
+    return {"success": True, "memory": mem.to_dict()}
+
+
+
+
 # ── 5. Upload PDF ─────────────────────────────────────────────────────────────
 
 @router.post("/memory/{memory_id}/upload-pdf", tags=["Memory"])

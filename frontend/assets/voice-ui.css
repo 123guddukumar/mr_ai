@@ -1,0 +1,535 @@
+/* ===== VOICE UI — MR AI RAG — ChatGPT-style ===== */
+
+/* ─── Floating Mic Button (shown when NOT in V2V mode) ─── */
+.float-mic-btn {
+  position: fixed;
+  right: 24px;
+  bottom: 88px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  z-index: 90;
+  background: linear-gradient(135deg, #6c63ff, #5b52e0);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, .45), 0 0 0 0 rgba(108, 99, 255, .3);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.float-mic-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(108, 99, 255, .6);
+}
+
+.float-mic-btn.show {
+  display: flex;
+}
+
+.float-mic-btn.recording {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, .5), 0 0 0 0 rgba(239, 68, 68, .3);
+  animation: float-mic-pulse 1.4s ease infinite;
+}
+
+@keyframes float-mic-pulse {
+  0% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, .5), 0 0 0 0 rgba(239, 68, 68, .45);
+  }
+
+  70% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, .5), 0 0 0 18px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, .5), 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* ─── Voice-to-Voice Full Screen Overlay ─── */
+.voice-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, #1a1540 0%, #0d0f17 60%);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.voice-overlay.active {
+  display: flex;
+}
+
+/* Particle grid background */
+.voice-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(108, 99, 255, .06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Glow blobs */
+.voice-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(108, 99, 255, .14) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 35% at 70% 75%, rgba(0, 212, 170, .1) 0%, transparent 70%);
+}
+
+/* V2V Header */
+.vo-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(19, 22, 31, .85);
+  border-bottom: 1px solid rgba(42, 47, 71, .7);
+  flex-shrink: 0;
+  z-index: 1;
+  backdrop-filter: blur(12px);
+}
+
+.vo-header-bot {
+  flex: 1;
+  min-width: 0;
+}
+
+.vo-header-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vo-header-meta {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.vo-chat-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #94a3b8;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+
+.vo-chat-btn:hover {
+  background: rgba(108, 99, 255, .15);
+  border-color: rgba(108, 99, 255, .4);
+  color: #a5b4fc;
+}
+
+/* Main orb container */
+.vo-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  z-index: 1;
+  padding: 20px;
+  width: 100%;
+}
+
+/* The Orb */
+.vo-orb {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.vo-orb-core {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  z-index: 2;
+  position: relative;
+  transition: background .4s, box-shadow .4s;
+}
+
+.vo-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid;
+  transition: border-color .4s;
+}
+
+.vo-ring.r1 {
+  width: 116px;
+  height: 116px;
+}
+
+.vo-ring.r2 {
+  width: 154px;
+  height: 154px;
+}
+
+.vo-ring.r3 {
+  width: 192px;
+  height: 192px;
+}
+
+/* IDLE */
+.vo-orb.idle .vo-orb-core {
+  background: linear-gradient(135deg, #6c63ff, #5b52e0);
+  box-shadow: 0 0 40px rgba(108, 99, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .2);
+  animation: vo-breathe 3.5s ease infinite;
+}
+
+.vo-orb.idle .r1 {
+  border-color: rgba(108, 99, 255, .45);
+  animation: vo-ring-breathe 3.5s ease infinite;
+}
+
+.vo-orb.idle .r2 {
+  border-color: rgba(108, 99, 255, .22);
+  animation: vo-ring-breathe 3.5s ease infinite .8s;
+}
+
+.vo-orb.idle .r3 {
+  border-color: rgba(108, 99, 255, .09);
+  animation: vo-ring-breathe 3.5s ease infinite 1.6s;
+}
+
+/* LISTENING */
+.vo-orb.listening .vo-orb-core {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 48px rgba(239, 68, 68, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
+.vo-orb.listening .r1 {
+  border-color: rgba(239, 68, 68, .7);
+  animation: vo-ring-pop 1.1s ease infinite;
+}
+
+.vo-orb.listening .r2 {
+  border-color: rgba(239, 68, 68, .35);
+  animation: vo-ring-pop 1.1s ease infinite .32s;
+}
+
+.vo-orb.listening .r3 {
+  border-color: rgba(239, 68, 68, .12);
+  animation: vo-ring-pop 1.1s ease infinite .64s;
+}
+
+/* PROCESSING */
+.vo-orb.processing .vo-orb-core {
+  background: linear-gradient(135deg, #8b5cf6, #6c63ff);
+  box-shadow: 0 0 48px rgba(139, 92, 246, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+  animation: vo-breathe 1.2s ease infinite;
+}
+
+.vo-orb.processing .r1 {
+  border-color: rgba(139, 92, 246, .7);
+  border-style: dashed;
+  animation: vo-spin 1.8s linear infinite;
+}
+
+.vo-orb.processing .r2 {
+  border-color: rgba(108, 99, 255, .4);
+  border-style: dashed;
+  animation: vo-spin 2.8s linear infinite reverse;
+}
+
+.vo-orb.processing .r3 {
+  border-color: rgba(139, 92, 246, .18);
+  animation: vo-spin 4s linear infinite;
+}
+
+/* SPEAKING */
+.vo-orb.speaking .vo-orb-core {
+  background: linear-gradient(135deg, #00d4aa, #00a085);
+  box-shadow: 0 0 48px rgba(0, 212, 170, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
+.vo-orb.speaking .r1 {
+  border-color: rgba(0, 212, 170, .7);
+  animation: vo-ring-wave .65s ease infinite;
+}
+
+.vo-orb.speaking .r2 {
+  border-color: rgba(0, 212, 170, .35);
+  animation: vo-ring-wave .65s ease infinite .18s;
+}
+
+.vo-orb.speaking .r3 {
+  border-color: rgba(0, 212, 170, .12);
+  animation: vo-ring-wave .65s ease infinite .36s;
+}
+
+@keyframes vo-breathe {
+
+  0%,
+  100% {
+    box-shadow: 0 0 40px rgba(108, 99, 255, .5)
+  }
+
+  50% {
+    box-shadow: 0 0 64px rgba(108, 99, 255, .8)
+  }
+}
+
+@keyframes vo-ring-breathe {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: .45
+  }
+}
+
+@keyframes vo-ring-pop {
+  0% {
+    transform: scale(1);
+    opacity: 1
+  }
+
+  100% {
+    transform: scale(1.7);
+    opacity: 0
+  }
+}
+
+@keyframes vo-ring-wave {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: .85
+  }
+
+  50% {
+    transform: scale(1.14);
+    opacity: .22
+  }
+}
+
+@keyframes vo-spin {
+  from {
+    transform: rotate(0deg)
+  }
+
+  to {
+    transform: rotate(360deg)
+  }
+}
+
+/* Labels */
+.vo-label {
+  font-size: 22px;
+  font-weight: 800;
+  color: #f1f5f9;
+  text-align: center;
+  letter-spacing: -.02em;
+}
+
+.vo-sublabel {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.65;
+  min-height: 44px;
+  word-break: break-word;
+}
+
+/* Bottom buttons */
+.vo-bottom {
+  display: flex;
+  gap: 12px;
+  padding: 24px 20px;
+  z-index: 1;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.vo-tap-btn {
+  padding: 14px 38px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all .25s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vo-tap-btn.start {
+  background: linear-gradient(135deg, #6c63ff, #5b52e0);
+  color: #fff;
+  box-shadow: 0 4px 24px rgba(108, 99, 255, .45);
+}
+
+.vo-tap-btn.start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(108, 99, 255, .6);
+}
+
+.vo-tap-btn.stop {
+  background: rgba(239, 68, 68, .12);
+  border: 1.5px solid rgba(239, 68, 68, .45);
+  color: #f87171;
+}
+
+.vo-tap-btn.stop:hover {
+  background: rgba(239, 68, 68, .22);
+}
+
+.vo-tap-btn.hidden {
+  display: none;
+}
+
+/* ─── Voice-to-Text Fullscreen Overlay ─── */
+.vtt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 15, 23, .96);
+  backdrop-filter: blur(28px);
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+}
+
+.vtt-overlay.active {
+  display: flex;
+}
+
+.vtt-orb {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vtt-orb-core {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  box-shadow: 0 0 52px rgba(239, 68, 68, .6),
+    inset 0 1px 0 rgba(255, 255, 255, .2);
+  z-index: 2;
+}
+
+.vtt-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(239, 68, 68, .45);
+  animation: vo-ring-pop 1.3s ease infinite;
+}
+
+.vtt-ring.r1 {
+  width: 112px;
+  height: 112px;
+}
+
+.vtt-ring.r2 {
+  width: 146px;
+  height: 146px;
+  animation-delay: .38s;
+}
+
+.vtt-ring.r3 {
+  width: 180px;
+  height: 180px;
+  animation-delay: .76s;
+}
+
+.vtt-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: -.01em;
+}
+
+.vtt-transcript {
+  font-size: 15px;
+  color: #e2e8f0;
+  line-height: 1.7;
+  text-align: center;
+  max-width: 320px;
+  min-height: 64px;
+  padding: 16px 22px;
+  background: rgba(30, 34, 53, .8);
+  border: 1px solid rgba(42, 47, 71, .8);
+  border-radius: 16px;
+  word-break: break-word;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .3);
+}
+
+.vtt-hint {
+  font-size: 11px;
+  color: #475569;
+}
+
+.vtt-done-btn {
+  padding: 12px 34px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .06);
+  border: 1.5px solid rgba(255, 255, 255, .12);
+  color: #94a3b8;
+  transition: all .2s;
+}
+
+.vtt-done-btn:hover {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+/* Mode pill active fix */
+.mode-pill.active {
+  background: linear-gradient(135deg, #6c63ff, #5b52e0) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}

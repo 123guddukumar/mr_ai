@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My Memory Bots — MR AI RAG</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
   --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
@@ -132,6 +133,21 @@ select.form-input{cursor:pointer;appearance:none}
 .toast.info{background:#0c1a38;border:1px solid #1e3a8a;color:#93c5fd}
 textarea.form-input{resize:vertical;min-height:80px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* QR Modal */
+.qr-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px}
+.qr-modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:380px;width:100%;position:relative;text-align:center}
+.qr-modal-title{font-size:17px;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.qr-modal-sub{font-size:12px;color:var(--text2);margin-bottom:22px}
+.qr-canvas-wrap{background:#fff;border-radius:14px;padding:16px;display:inline-block;margin-bottom:18px;box-shadow:0 4px 24px rgba(108,99,255,.18)}
+.qr-url-box{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--accent2);word-break:break-all;margin-bottom:14px;text-align:left;line-height:1.5}
+.qr-actions{display:flex;gap:8px}
+.qr-btn{flex:1;padding:9px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.qr-btn-download{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff}
+.qr-btn-download:hover{box-shadow:0 4px 14px rgba(108,99,255,.35)}
+.qr-btn-copy{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2)}
+.qr-btn-close{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.mem-btn-qr{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#fbbf24}
+.mem-btn-qr:hover{background:rgba(251,191,36,.15)}
 </style>
 </head>
 <body>
@@ -313,6 +329,22 @@ textarea.form-input{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- QR Code Modal -->
+<div class="qr-modal-overlay" id="qr-modal" style="display:none" onclick="if(event.target===this)closeQr()">
+  <div class="qr-modal">
+    <button onclick="closeQr()" style="position:absolute;right:14px;top:14px;background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
+    <div class="qr-modal-title">📱 QR Code</div>
+    <div class="qr-modal-sub" id="qr-bot-name">Scan to open this bot's chat</div>
+    <div class="qr-canvas-wrap"><div id="qr-canvas"></div></div>
+    <div class="qr-url-box" id="qr-url-display"></div>
+    <div class="qr-actions">
+      <button class="qr-btn qr-btn-download" onclick="downloadQr()">⬇️ Download PNG</button>
+      <button class="qr-btn qr-btn-copy" onclick="copyText(document.getElementById('qr-url-display').textContent,'Link')">📋 Copy Link</button>
+      <button class="qr-btn qr-btn-close" onclick="closeQr()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <script>
@@ -400,6 +432,7 @@ function memCard(m){
     <div class="mem-actions">
       <a href="/memory-chat?id=${m.memory_id}" class="mem-btn mem-btn-chat">💬 Chat</a>
       <button class="mem-btn mem-btn-check" onclick="openDrawer('${m.memory_id}','${esc(m.name)}')">📋 Check Memory</button>
+      <button class="mem-btn mem-btn-qr" onclick="showQr('${m.memory_id}','${esc(m.name)}')">📱 QR Code</button>
       <button class="mem-btn mem-btn-embed" onclick="showEmbed('${m.memory_id}')">🔗 Embed</button>
       <button class="mem-btn mem-btn-del" onclick="deleteMemory('${m.memory_id}','${esc(m.name)}')">🗑</button>
     </div>
@@ -744,6 +777,34 @@ async function deleteMemory(memId, name){
     if(!r.ok){ const d=await r.json(); throw new Error(d.detail||'Failed'); }
     toast('🗑 Deleted','info'); loadMemories();
   }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── QR Code ────────────────────────────────────────────────────────────────────
+let qrInstance = null;
+function showQr(memId, name){
+  const BASE = window.location.origin;
+  const url  = `${BASE}/memory-chat-public?id=${memId}`;
+  document.getElementById('qr-bot-name').textContent = '📱 ' + name + ' — scan to chat';
+  document.getElementById('qr-url-display').textContent = url;
+  var canvas = document.getElementById('qr-canvas');
+  canvas.innerHTML = '';
+  qrInstance = new QRCode(canvas, {
+    text: url, width: 220, height: 220,
+    colorDark: '#1a1a2e', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+  document.getElementById('qr-modal').style.display = 'flex';
+}
+function closeQr(){ document.getElementById('qr-modal').style.display='none'; }
+function downloadQr(){
+  var canvas = document.querySelector('#qr-canvas canvas') || document.querySelector('#qr-canvas img');
+  var link = document.createElement('a');
+  if(canvas && canvas.tagName==='CANVAS'){
+    link.href = canvas.toDataURL('image/png');
+  } else if(canvas && canvas.tagName==='IMG'){
+    link.href = canvas.src;
+  } else { toast('Cannot download – try right-clicking the QR','error'); return; }
+  link.download = 'mrairag_qr.png'; link.click();
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────────

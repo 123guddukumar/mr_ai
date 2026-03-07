@@ -117,6 +117,10 @@ if os.path.exists(frontend_path):
     async def memory_chat_page():
         return FileResponse(os.path.join(frontend_path, "memory-chat.html"))
 
+    @app.get("/memory-chat-public", include_in_schema=False)
+    async def memory_chat_public_page():
+        return FileResponse(os.path.join(frontend_path, "memory-chat-public.html"))
+
     @app.get("/embed/{memory_id}", include_in_schema=False)
     async def embed_page(memory_id: str):
         return FileResponse(os.path.join(frontend_path, "embed.html"))

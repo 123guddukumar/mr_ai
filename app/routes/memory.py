@@ -20,7 +20,7 @@ import secrets
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -539,3 +539,44 @@ async def memory_embed_info(
         "iframe_code": iframe_code,
         "source_count": len(mem.sources),
     }
+
+
+# ── Visitor Tracking ───────────────────────────────────────────────────────────
+import json as _json
+
+VISITS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "visits")
+
+
+@router.post("/memory/{memory_id}/log-visit", tags=["Memory"])
+async def log_visit(memory_id: str, request: Request):
+    """Public endpoint — records a visitor from the QR public chat page."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    os.makedirs(VISITS_DIR, exist_ok=True)
+    entry = {"name": str(body.get("name", "Anonymous"))[:120], "timestamp": datetime.utcnow().isoformat()}
+    visit_file = os.path.join(VISITS_DIR, f"{memory_id}.jsonl")
+    with open(visit_file, "a", encoding="utf-8") as f:
+        f.write(_json.dumps(entry) + "\n")
+    return {"success": True}
+
+
+@router.get("/memory/{memory_id}/visits", tags=["Memory"])
+async def get_visits(memory_id: str, x_client_token: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    """Authenticated — returns visitor log (most-recent 100) for a memory bot."""
+    client = _get_client(x_client_token, db)
+    _get_memory(memory_id, client["client_id"], db)
+    visit_file = os.path.join(VISITS_DIR, f"{memory_id}.jsonl")
+    visits: list = []
+    if os.path.exists(visit_file):
+        with open(visit_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        visits.append(_json.loads(line))
+                    except Exception:
+                        pass
+    visits = sorted(visits, key=lambda x: x.get("timestamp", ""), reverse=True)[:100]
+    return {"visits": visits, "total": len(visits)}

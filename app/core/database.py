@@ -67,6 +67,12 @@ def init_db():
             conn.execute(__import__('sqlalchemy').text(
                 "ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS source_type VARCHAR(30) DEFAULT ''"
             ))
+            conn.execute(__import__('sqlalchemy').text(
+                "ALTER TABLE clients ADD COLUMN IF NOT EXISTS login_method VARCHAR(20) DEFAULT 'email'"
+            ))
+            conn.execute(__import__('sqlalchemy').text(
+                "ALTER TABLE clients ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''"
+            ))
             conn.commit()
     except Exception:
         pass  # Table may not exist yet or DB may not support IF NOT EXISTS

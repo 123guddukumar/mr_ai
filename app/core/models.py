@@ -23,6 +23,8 @@ class Client(Base):
     password_hash = Column(String(128), nullable=False)
     token = Column(String(200), nullable=True, index=True)
     is_verified = Column(Boolean, default=False, nullable=False)
+    login_method = Column(String(20), default="email", nullable=False)  # "email" | "google" | "qr"
+    avatar_url = Column(String(500), nullable=True)  # Google profile picture URL
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -38,6 +40,8 @@ class Client(Base):
             "email": self.email,
             "token": self.token,
             "is_verified": self.is_verified,
+            "login_method": self.login_method or "email",
+            "avatar_url": self.avatar_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "last_login": self.last_login.isoformat() if self.last_login else "",
         }
@@ -165,6 +169,18 @@ class Admin(Base):
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "last_login": self.last_login.isoformat() if self.last_login else "",
         }
+
+
+class QRToken(Base):
+    """Short-lived token embedded in a QR code so a client can auto-login by scanning."""
+    __tablename__ = "qr_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(128), unique=True, index=True, nullable=False)
+    client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ── Personal Memory Models ────────────────────────────────────────────────────

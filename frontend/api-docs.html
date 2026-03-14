@@ -1,854 +1,339 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MR AI RAG — API Documentation</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR AI RAG — Memory Chatbot API Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;--accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--red:#f87171;--green:#34d399;--yellow:#fbbf24;--blue:#60a5fa}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
-/* Sidebar */
-.sidebar{width:260px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);position:fixed;top:0;left:0;overflow-y:auto;z-index:100;padding:24px 0}
-.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.sidebar-logo h1{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:4px}
-.nav-section{padding:8px 20px 4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
-.nav-link{display:block;padding:8px 20px;font-size:13px;color:var(--text2);text-decoration:none;border-left:2px solid transparent;transition:all .2s;cursor:pointer}
-.nav-link:hover,.nav-link.active{color:var(--text);background:rgba(108,99,255,.1);border-left-color:var(--accent)}
-.method{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-right:6px;font-family:'JetBrains Mono',monospace}
-.GET{background:rgba(96,165,250,.15);color:var(--blue)}
-.POST{background:rgba(52,211,153,.15);color:var(--green)}
-.DELETE{background:rgba(248,113,113,.15);color:var(--red)}
-/* Main content */
-.main{margin-left:260px;flex:1;padding:40px}
-section{margin-bottom:60px;scroll-margin-top:20px}
-/* Header */
-.page-header{margin-bottom:48px}
-.page-header h2{font-size:32px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.page-header p{color:var(--text2);margin-top:8px;font-size:15px;max-width:600px}
-.status-bar{display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid var(--border)}
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-/* Cards */
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
-.card-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.card-title .emoji{font-size:20px}
-/* Inputs */
-.form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.form-group{flex:1;min-width:150px}
-label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:500}
-input,select{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;transition:border-color .2s}
-input:focus,select:focus{outline:none;border-color:var(--accent)}
-input::placeholder{color:var(--text3)}
-/* Buttons */
-.btn{padding:9px 18px;border-radius:7px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#5b52e0);color:#fff}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(108,99,255,.4)}
-.btn-danger{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
-.btn-danger:hover{background:rgba(248,113,113,.25)}
-.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
-.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
-.btn-sm{padding:5px 12px;font-size:12px}
-/* Tables */
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:10px 12px;color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
-td{padding:10px 12px;border-bottom:1px solid rgba(42,47,71,.5);color:var(--text2)}
-tr:hover td{background:rgba(255,255,255,.02)}
-/* Alert / messaging */
-.msg{padding:10px 14px;border-radius:7px;font-size:13px;margin-top:10px;display:none}
-.msg.success{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--green)}
-.msg.error{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red)}
-.msg.info{background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);color:#a5b4fc}
-/* Code blocks */
-pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a5b4fc;line-height:1.7}
-.code-tabs{display:flex;gap:8px;margin-bottom:8px}
-.code-tab{background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace}
-.code-tab.active,.code-tab:hover{border-color:var(--accent);color:var(--accent)}
-/* Endpoint cards */
-.endpoint-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
-.endpoint-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;transition:background .2s}
-.endpoint-header:hover{background:rgba(255,255,255,.02)}
-.endpoint-title{font-size:14px;font-weight:600}
-.endpoint-desc{font-size:12px;color:var(--text3);margin-left:auto}
-.endpoint-body{padding:20px;border-top:1px solid var(--border);display:none}
-.endpoint-body.open{display:block}
-/* Key display */
-.key-box{background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:14px;margin-top:12px;display:none}
-.key-box code{font-family:'JetBrains Mono',monospace;color:var(--accent2);font-size:13px;word-break:break-all}
-.copy-btn{background:transparent;border:none;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:12px;margin-left:8px}
-.copy-btn:hover{color:var(--accent)}
-/* Badges */
-.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600}
-.badge-auth{background:rgba(248,113,113,.15);color:var(--red)}
-.badge-pub{background:rgba(52,211,153,.15);color:var(--green)}
-/* Warning */
-.warn-box{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:14px;font-size:13px;color:var(--yellow);margin-bottom:16px}
-/* Response preview */
-.response-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:14px;min-height:60px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);white-space:pre-wrap;display:none}
-/* Grid */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}}
-/* Separator */
-.sep{height:1px;background:var(--border);margin:32px 0}
-/* Subsection */
-h3{font-size:18px;font-weight:600;margin-bottom:16px}
-h4{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:10px}
-/* param table */
-.param-table td:first-child{font-family:'JetBrains Mono',monospace;color:var(--accent2);font-size:12px}
-.param-table td:nth-child(2){color:var(--text3);font-size:11px}
-/* Scrollbar */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:var(--bg2)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.keys-empty{text-align:center;padding:30px;color:var(--text3);font-size:13px}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; font-size: 13px; }
+  .doc { max-width: 860px; margin: 0 auto; background: #fff; padding: 48px 56px; }
+
+  .cover { padding: 48px 0 40px; border-bottom: 3px solid #7c3aed; margin-bottom: 40px; }
+  .cover-badge { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #7c3aed; text-transform: uppercase; margin-bottom: 12px; }
+  .cover-title { font-size: 36px; font-weight: 800; color: #0f172a; line-height: 1.15; margin-bottom: 8px; }
+  .cover-title span { background: linear-gradient(135deg, #7c3aed, #db2777); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .cover-sub { font-size: 15px; color: #64748b; margin-bottom: 24px; }
+  .cover-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  .cover-meta-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+  .cover-meta-val { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+
+  .toc { background: #f1f5f9; border-radius: 12px; padding: 24px 28px; margin-bottom: 36px; }
+  .toc-title { font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+  .toc-list { columns: 2; gap: 20px; }
+  .toc-item { font-size: 11px; color: #475569; padding: 3px 0; display: flex; align-items: center; gap: 6px; break-inside: avoid; }
+  .toc-num { font-weight: 700; color: #7c3aed; min-width: 20px; }
+
+  h2 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
+  h2 .sec-num { background: #7c3aed; color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+  h3 { font-size: 13px; font-weight: 700; color: #1e293b; margin: 20px 0 8px; }
+  p { color: #475569; line-height: 1.7; margin-bottom: 10px; }
+  ul { padding-left: 18px; color: #475569; }
+  ul li { margin-bottom: 5px; line-height: 1.6; }
+
+  .endpoint { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+  .ep-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+  .method { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 5px; letter-spacing: .04em; }
+  .m-get { background: #dcfce7; color: #16a34a; }
+  .m-post { background: #dbeafe; color: #1d4ed8; }
+  .m-delete { background: #fee2e2; color: #dc2626; }
+  .m-put { background: #fef3c7; color: #d97706; }
+  .ep-path { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #0f172a; }
+  .ep-desc { font-size: 11px; color: #64748b; margin-left: auto; }
+  .ep-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  .params-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .params-table th { text-align: left; padding: 6px 10px; background: #f1f5f9; font-weight: 700; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .params-table td { padding: 7px 10px; border-top: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+  .pn { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #7c3aed; }
+  .pt { font-family: 'JetBrains Mono', monospace; color: #0369a1; font-size: 10px; }
+  .pr { color: #dc2626; font-size: 9px; font-weight: 700; }
+  .po { color: #64748b; font-size: 9px; }
+
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 14px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; overflow-x: auto; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
+  .code-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .kw { color: #7dd3fc; }
+  .str { color: #86efac; }
+  .num { color: #fbbf24; }
+  .com { color: #94a3b8; font-style: italic; }
+
+  .latency-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .latency-table th { text-align: left; padding: 8px 12px; background: #0f172a; color: #e2e8f0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .latency-table td { padding: 9px 12px; border-top: 1px solid #e2e8f0; }
+  .latency-table tr:nth-child(even) { background: #f8fafc; }
+  .lat-good { color: #16a34a; font-weight: 700; }
+  .lat-ok { color: #d97706; font-weight: 700; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; }
+  .b-green { background: #dcfce7; color: #16a34a; }
+  .b-yellow { background: #fef3c7; color: #d97706; }
+  .b-red { background: #fee2e2; color: #dc2626; }
+
+  .info-box { border-left: 4px solid #7c3aed; background: #faf5ff; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .info-box.tip { border-color: #16a34a; background: #f0fdf4; }
+  .info-box p { margin: 0; color: #374151; font-size: 12px; }
+
+  .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 10px; }
+
+  @media print {
+    body { background: #fff; }
+    .doc { padding: 24px; box-shadow: none; }
+    h2 { page-break-before: auto; }
+    .endpoint { page-break-inside: avoid; }
+  }
+  @page { margin: 18mm; }
 </style>
 </head>
 <body>
+<div class="doc">
 
-<!-- Sidebar -->
-<nav class="sidebar">
-  <div class="sidebar-logo">
-    <h1>MR AI RAG</h1>
-    <p>API Documentation v2.0</p>
-  </div>
-  <div class="nav-section">Getting Started</div>
-  <a class="nav-link active" onclick="scrollTo('overview')">🚀 Overview</a>
-  <a class="nav-link" onclick="scrollTo('auth')">🔐 Authentication</a>
-  <div class="nav-section">API Key Manager</div>
-  <a class="nav-link" onclick="scrollTo('key-generate')">✨ Generate Key</a>
-  <a class="nav-link" onclick="scrollTo('key-list')">📋 Manage Keys</a>
-  <a class="nav-link" onclick="scrollTo('key-validate')">✅ Validate Key</a>
-  <div class="nav-section">Endpoints</div>
-  <a class="nav-link" onclick="scrollTo('ep-pdf')"><span class="method POST">POST</span>PDF Upload</a>
-  <a class="nav-link" onclick="scrollTo('ep-ask')"><span class="method POST">POST</span>Ask Question</a>
-  <a class="nav-link" onclick="scrollTo('ep-yt')"><span class="method POST">POST</span>YouTube</a>
-  <a class="nav-link" onclick="scrollTo('ep-video')"><span class="method POST">POST</span>Video Upload</a>
-  <a class="nav-link" onclick="scrollTo('ep-url')"><span class="method POST">POST</span>Website URL</a>
-  <a class="nav-link" onclick="scrollTo('ep-json')"><span class="method POST">POST</span>JSON Data</a>
-  <div class="nav-section">System</div>
-  <a class="nav-link" onclick="scrollTo('ep-health')"><span class="method GET">GET</span>Health</a>
-  <a class="nav-link" onclick="scrollTo('ep-provider')"><span class="method POST">POST</span>LLM Provider</a>
-  <div class="nav-section">Links</div>
-  <a class="nav-link" href="/playground">🎮 Playground</a>
-  <a class="nav-link" href="/login">👤 Login / Register</a>
-  <a class="nav-link" href="/dashboard">📊 Dashboard</a>
-  <a class="nav-link" href="/help">❓ Help & Docs</a>
-  <a class="nav-link" href="/api/docs" target="_blank">🔗 Swagger UI</a>
-  <a class="nav-link" href="/" >🏠 App Home</a>
-  <div class="nav-section">Integration</div>
-  <a class="nav-link" onclick="scrollTo('integration')">🔌 Use in Your Project</a>
-</nav>
-
-<!-- Main -->
-<main class="main">
-
-<!-- Overview -->
-<section id="overview">
-  <div class="page-header">
-    <h2>MR AI RAG API</h2>
-    <p>Production-ready Retrieval-Augmented Generation backend. Upload documents, ingest YouTube videos, scrape websites, and query everything with your preferred LLM.</p>
-    <div class="status-bar">
-      <div class="status-dot"></div>
-      <span id="status-text" style="font-size:13px;color:var(--text2)">Checking server…</span>
-      <span style="margin-left:auto;font-size:12px;color:var(--text3)">Base URL: <code style="color:var(--accent)">http://localhost:8000/api</code></span>
+  <div class="cover">
+    <div class="cover-badge">🧠 API Reference Documentation</div>
+    <div class="cover-title">MR AI RAG<br><span>Memory Chatbot API</span></div>
+    <div class="cover-sub">Complete reference for embedding AI memory chatbots, managing conversations, and measuring voice interaction latency.</div>
+    <div class="cover-meta">
+      <div><div class="cover-meta-label">Version</div><div class="cover-meta-val">v2.0</div></div>
+      <div><div class="cover-meta-label">Base URL</div><div class="cover-meta-val" id="base-url">https://your-domain.com</div></div>
+      <div><div class="cover-meta-label">Auth</div><div class="cover-meta-val">API Key or Client Token</div></div>
+      <div><div class="cover-meta-label">Format</div><div class="cover-meta-val">JSON (REST)</div></div>
     </div>
   </div>
 
-  <div class="grid2">
-    <div class="card">
-      <div class="card-title"><span class="emoji">📦</span>What's Included</div>
-      <ul style="color:var(--text2);font-size:13px;line-height:2;list-style:none">
-        <li>✅ PDF upload &amp; indexing</li>
-        <li>✅ YouTube transcript ingestion</li>
-        <li>✅ Video/audio file transcription</li>
-        <li>✅ Website scraping</li>
-        <li>✅ JSON/API data ingestion</li>
-        <li>✅ Multi-provider LLM (OpenAI, Gemini, Claude, Ollama)</li>
-        <li>✅ API key management</li>
-      </ul>
-    </div>
-    <div class="card">
-      <div class="card-title"><span class="emoji">⚡</span>Quick Start</div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">1. Generate an API key below<br>2. Add header to every request<br>3. Upload a document<br>4. Ask questions!</p>
-      <pre style="font-size:11px">curl -X POST /api/ask \
-  -H "X-API-Key: mrairag-..." \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Summarize the document"}'</pre>
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <div class="toc-list">
+      <div class="toc-item"><span class="toc-num">1</span> Authentication</div>
+      <div class="toc-item"><span class="toc-num">2</span> Memory Management</div>
+      <div class="toc-item"><span class="toc-num">3</span> Chatbot Conversations</div>
+      <div class="toc-item"><span class="toc-num">4</span> Source Uploads</div>
+      <div class="toc-item"><span class="toc-num">5</span> Reels &amp; Video Generation</div>
+      <div class="toc-item"><span class="toc-num">6</span> Voice Latency Guide</div>
+      <div class="toc-item"><span class="toc-num">7</span> Embed &amp; QR Code</div>
+      <div class="toc-item"><span class="toc-num">8</span> Error Codes</div>
     </div>
   </div>
-</section>
 
-<div class="sep"></div>
+  <!-- 1. AUTH -->
+  <h2><span class="sec-num">1</span> Authentication</h2>
+  <p>All API calls require an API key in the <code>X-API-Key</code> header, or a client session token in <code>X-Client-Token</code>. Obtain API keys from <strong>Dashboard → Settings → API Keys</strong>.</p>
+  <div class="info-box"><p><strong>Note:</strong> Client endpoints require <code>X-Client-Token</code>. Admin endpoints require <code>X-Admin-Token</code>.</p></div>
 
-<!-- Authentication -->
-<section id="auth">
-  <h3>🔐 Authentication</h3>
-  <div class="card">
-    <p style="font-size:14px;color:var(--text2);margin-bottom:16px">All data endpoints require an <strong style="color:var(--text)">X-API-Key</strong> header. Public endpoints (health, key status, key validate) do not require authentication.</p>
-    <pre>X-API-Key: mrairag-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
-    <div class="warn-box" style="margin-top:16px;margin-bottom:0">
-      ⚠️ Store your API key securely. It is shown <strong>only once</strong> when generated and cannot be retrieved again.
-    </div>
-  </div>
-  <div class="grid2">
-    <div class="card">
-      <h4>Protected Routes <span class="badge badge-auth">Requires X-API-Key</span></h4>
-      <ul style="color:var(--text2);font-size:12px;line-height:2;list-style:none;font-family:'JetBrains Mono',monospace">
-        <li>POST /api/upload</li><li>POST /api/upload-batch</li>
-        <li>POST /api/ask</li><li>POST /api/ingest-youtube</li>
-        <li>POST /api/ingest-video</li><li>POST /api/ingest-url</li>
-        <li>POST /api/ingest-json-url</li><li>POST /api/ingest-json-file</li>
-        <li>POST /api/preview-json-url</li><li>GET /api/json-records</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h4>Public Routes <span class="badge badge-pub">No Auth Required</span></h4>
-      <ul style="color:var(--text2);font-size:12px;line-height:2;list-style:none;font-family:'JetBrains Mono',monospace">
-        <li>GET /api/health</li>
-        <li>GET /api/provider</li>
-        <li>POST /api/provider/config</li>
-        <li>GET /api/keys/status</li>
-        <li>POST /api/keys/validate</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<div class="sep"></div>
-
-<!-- Key Management -->
-<section id="key-generate">
-  <h3>✨ Generate API Key</h3>
-  <div class="warn-box">🔑 Admin secret required. Default: <code>change-me-admin-secret</code> — change it in your <code>.env</code> file!</div>
-  <div class="card">
-    <div class="form-row">
-      <div class="form-group">
-        <label>Key Name / Label</label>
-        <input id="gen-name" placeholder="e.g. My App, Testing, Production" />
-      </div>
-      <div class="form-group">
-        <label>Created By</label>
-        <input id="gen-by" placeholder="admin" value="admin" />
-      </div>
-      <div class="form-group">
-        <label>Admin Secret</label>
-        <input id="gen-secret" type="password" placeholder="X-Admin-Secret value" />
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="generateKey()">✨ Generate Key</button>
-    <div class="msg" id="gen-msg"></div>
-    <div class="key-box" id="key-box">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">🔑 Your API Key (copy now — won't be shown again!)</div>
-      <code id="key-value"></code>
-      <button class="copy-btn" onclick="copyKey()">📋 Copy</button>
-    </div>
-  </div>
-</section>
-
-<section id="key-list">
-  <h3>📋 Manage Keys</h3>
-  <div class="card">
-    <div class="form-row" style="margin-bottom:16px">
-      <div class="form-group" style="max-width:300px">
-        <label>Admin Secret</label>
-        <input id="list-secret" type="password" placeholder="X-Admin-Secret value" />
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:8px">
-        <button class="btn btn-primary" onclick="listKeys()">🔄 Load Keys</button>
-      </div>
-    </div>
-    <div id="keys-table-wrap">
-      <div class="keys-empty">Enter admin secret and click Load Keys</div>
-    </div>
-    <div class="msg" id="list-msg"></div>
-  </div>
-</section>
-
-<section id="key-validate">
-  <h3>✅ Validate Key</h3>
-  <div class="card">
-    <div class="form-row">
-      <div class="form-group">
-        <label>API Key to Validate</label>
-        <input id="val-key" placeholder="mrairag-..." />
-      </div>
-      <div style="display:flex;align-items:flex-end">
-        <button class="btn btn-primary" onclick="validateKey()">✅ Validate</button>
-      </div>
-    </div>
-    <div class="msg" id="val-msg"></div>
-  </div>
-</section>
-
-<div class="sep"></div>
-
-<!-- Endpoints -->
-<section id="ep-pdf">
-  <h3>📄 PDF Upload</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('pdf-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/upload</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Upload &amp; index a single PDF</span>
-    </div>
-    <div class="endpoint-body" id="pdf-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload a PDF file (max 50MB). The file is parsed, chunked, embedded and stored in the vector database for querying.</p>
-      <h4>Parameters</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><th>Name</th><th>Type</th><th>Description</th></tr>
-        <tr><td>file</td><td>Form/File</td><td>PDF file (multipart/form-data)</td></tr>
-        <tr><td>X-API-Key</td><td>Header</td><td>Your API key</td></tr>
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/clients/login</span><span class="ep-desc">Email + password login</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">email</td><td class="pt">string</td><td class="pr">Required</td><td>User email address</td></tr>
+        <tr><td class="pn">password</td><td class="pt">string</td><td class="pr">Required</td><td>Account password</td></tr>
       </table>
-      <h4>Try It</h4>
-      <div class="form-row">
-        <div class="form-group" style="max-width:300px"><label>API Key</label><input id="pdf-key" placeholder="mrairag-..."></div>
-        <div class="form-group"><label>PDF File</label><input type="file" id="pdf-file" accept=".pdf" style="padding:7px"></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="tryUpload()">▶ Send</button></div>
-      </div>
-      <div class="response-box" id="pdf-resp"></div>
-      <h4 style="margin-top:16px">Code Examples</h4>
-      <div class="code-tabs"><span class="code-tab active" onclick="showCode('pdf','curl',this)">curl</span><span class="code-tab" onclick="showCode('pdf','python',this)">Python</span></div>
-      <pre id="pdf-curl">curl -X POST http://localhost:8000/api/upload \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -F "file=@document.pdf"</pre>
-      <pre id="pdf-python" style="display:none">import requests
-r = requests.post("http://localhost:8000/api/upload",
-    headers={"X-API-Key": "mrairag-YOUR_KEY"},
-    files={"file": open("document.pdf", "rb")})
-print(r.json())</pre>
+      <div class="code-label">Response 200</div>
+      <pre><span class="kw">{</span> <span class="str">"client_id"</span>: <span class="str">"clt-..."</span>, <span class="str">"token"</span>: <span class="str">"clt-..."</span>, <span class="str">"name"</span>: <span class="str">"John Doe"</span>, <span class="str">"email"</span>: <span class="str">"user@example.com"</span> <span class="kw">}</span></pre>
     </div>
   </div>
-</section>
 
-<section id="ep-ask">
-  <h3>🤖 Ask a Question</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('ask-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/ask</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Query indexed documents with LLM</span>
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/clients/google-login</span><span class="ep-desc">Google OAuth login</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">id_token</td><td class="pt">string</td><td class="pr">Required</td><td>Google ID token from Google Sign-In flow</td></tr>
+      </table>
     </div>
-    <div class="endpoint-body" id="ask-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Ask a natural language question. The system retrieves relevant chunks from indexed sources and generates an answer using the active LLM provider.</p>
-      <h4>Request Body (JSON)</h4>
-      <table class="param-table" style="margin-bottom:16px">
+  </div>
+
+  <!-- 2. MEMORY -->
+  <h2><span class="sec-num">2</span> Memory Management</h2>
+  <p>A <strong>Memory</strong> is an AI knowledge base that stores uploaded documents, websites, and videos. Each chatbot is backed by a distinct memory.</p>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-get">GET</span><span class="ep-path">/api/memory</span><span class="ep-desc">List all memories</span></div>
+    <div class="ep-body">
+      <p style="font-size:11px;color:#475569">Header: <code>X-Client-Token: {token}</code></p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory</span><span class="ep-desc">Create a new memory</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">name</td><td class="pt">string</td><td class="pr">Required</td><td>Chatbot memory name</td></tr>
+        <tr><td class="pn">description</td><td class="pt">string</td><td class="po">Optional</td><td>Short description</td></tr>
+        <tr><td class="pn">provider</td><td class="pt">string</td><td class="po">Optional</td><td>"gemini" (default) | "openai"</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-delete">DELETE</span><span class="ep-path">/api/memory/{memory_id}</span><span class="ep-desc">Delete a memory (irreversible)</span></div>
+    <div class="ep-body"><p style="font-size:11px;color:#dc2626">All sources and chat history will be permanently deleted.</p></div>
+  </div>
+
+  <!-- 3. CHAT -->
+  <h2><span class="sec-num">3</span> Chatbot Conversations</h2>
+  <p>Send questions to a memory chatbot. The AI answers using only the knowledge stored in that memory.</p>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/chat</span><span class="ep-desc">Ask the chatbot a question</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">message</td><td class="pt">string</td><td class="pr">Required</td><td>User's question</td></tr>
+        <tr><td class="pn">stream</td><td class="pt">boolean</td><td class="po">Optional</td><td>Stream response word-by-word via SSE</td></tr>
+        <tr><td class="pn">language</td><td class="pt">string</td><td class="po">Optional</td><td>Force reply language e.g. "hindi", "en"</td></tr>
+      </table>
+      <div class="code-label">Response 200 (non-streaming)</div>
+      <pre><span class="kw">{</span>
+  <span class="str">"answer"</span>: <span class="str">"Based on the knowledge base, ..."</span>,
+  <span class="str">"sources"</span>: [<span class="str">"document.pdf"</span>, <span class="str">"website.com"</span>],
+  <span class="str">"latency_ms"</span>: <span class="num">1240</span>
+<span class="kw">}</span></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-get">GET</span><span class="ep-path">/api/memory/{memory_id}/chat-history</span><span class="ep-desc">Get Q&amp;A pairs</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Query Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td class="pn">limit</td><td class="pt">integer</td><td>10</td><td>Max Q&amp;A pairs to return</td></tr>
+        <tr><td class="pn">offset</td><td class="pt">integer</td><td>0</td><td>Pagination offset</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. SOURCES -->
+  <h2><span class="sec-num">4</span> Source Uploads</h2>
+  <p>Add knowledge to a memory by uploading PDFs, pasting web URLs, or providing YouTube links.</p>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/upload-pdf</span><span class="ep-desc">Upload a PDF document</span></div>
+    <div class="ep-body"><p style="font-size:11px;color:#475569">Content-Type: <code>multipart/form-data</code> | Form field: <code>file</code></p></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/add-url</span><span class="ep-desc">Add a web page or YouTube video</span></div>
+    <div class="ep-body">
+      <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td>question</td><td>string</td><td>Your question (3–2000 chars)</td></tr>
-        <tr><td>top_k</td><td>int (opt)</td><td>Number of chunks to retrieve (1–20, default 5)</td></tr>
+        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL or YouTube link</td></tr>
       </table>
-      <h4>Try It</h4>
-      <div class="form-row">
-        <div class="form-group" style="max-width:250px"><label>API Key</label><input id="ask-key" placeholder="mrairag-..."></div>
-        <div class="form-group"><label>Question</label><input id="ask-q" placeholder="What is this document about?"></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="tryAsk()">▶ Send</button></div>
-      </div>
-      <div class="response-box" id="ask-resp"></div>
-      <h4 style="margin-top:16px">Code Examples</h4>
-      <pre>curl -X POST http://localhost:8000/api/ask \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What are the key findings?", "top_k": 5}'</pre>
     </div>
   </div>
-</section>
 
-<section id="ep-yt">
-  <h3>📺 YouTube Ingestion</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('yt-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/ingest-youtube</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Ingest YouTube video transcript</span>
-    </div>
-    <div class="endpoint-body" id="yt-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Provide any YouTube URL. The system fetches transcripts using a 3-stage fallback: youtube-transcript-api → yt-dlp subtitles → Whisper audio transcription.</p>
-      <h4>Request Body</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td>url</td><td>string</td><td>Full YouTube URL</td></tr>
-        <tr><td>whisper_model</td><td>string (opt)</td><td>tiny|base|small|medium|large (default: base)</td></tr>
+  <!-- 5. REELS -->
+  <h2><span class="sec-num">5</span> Reels &amp; Video Generation</h2>
+  <p>Generate short video reels from memory content or a specific answer. Placeholder videos are returned — integrate D-ID, HeyGen, or Runway ML for production use.</p>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/generate-reel</span><span class="ep-desc">Generate a video reel</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">topic</td><td class="pt">string</td><td class="po">Optional</td><td>Topic/title for the reel (default: memory name)</td></tr>
+        <tr><td class="pn">style</td><td class="pt">string</td><td class="po">Optional</td><td>"cinematic" | "minimal" | "energetic"</td></tr>
+        <tr><td class="pn">content_text</td><td class="pt">string</td><td class="po">Optional</td><td>Specific answer text to generate from (max 5000 chars)</td></tr>
       </table>
-      <h4>Try It</h4>
-      <div class="form-row">
-        <div class="form-group" style="max-width:250px"><label>API Key</label><input id="yt-key" placeholder="mrairag-..."></div>
-        <div class="form-group"><label>YouTube URL</label><input id="yt-url" placeholder="https://youtube.com/watch?v=..."></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="tryYT()">▶ Send</button></div>
-      </div>
-      <div class="response-box" id="yt-resp"></div>
-      <pre style="margin-top:12px">curl -X POST http://localhost:8000/api/ingest-youtube \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://youtu.be/dQw4w9WgXcQ"}'</pre>
-    </div>
-  </div>
-</section>
-
-<section id="ep-video">
-  <h3>🎬 Video File Upload</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('vid-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/ingest-video</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Upload video/audio → Whisper transcription</span>
-    </div>
-    <div class="endpoint-body" id="vid-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload any video or audio file (mp4, mkv, webm, mov, avi, mp3, wav, m4a, etc.) up to 500MB. Whisper AI transcribes the audio into indexed text.</p>
-      <h4>Parameters</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><th>Name</th><th>Type</th><th>Description</th></tr>
-        <tr><td>file</td><td>Form/File</td><td>Video or audio file</td></tr>
-        <tr><td>whisper_model</td><td>Query param</td><td>tiny|base|small|medium|large</td></tr>
-      </table>
-      <pre>curl -X POST "http://localhost:8000/api/ingest-video?whisper_model=base" \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -F "file=@lecture.mp4"</pre>
-    </div>
-  </div>
-</section>
-
-<section id="ep-url">
-  <h3>🌐 Website URL</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('url-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/ingest-url</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Scrape and index a webpage</span>
-    </div>
-    <div class="endpoint-body" id="url-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Provide any public URL. The system fetches the HTML, extracts clean readable text (removing scripts, nav, etc.), and indexes it for querying.</p>
-      <h4>Request Body</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td>url</td><td>string</td><td>Full URL (https://...)</td></tr>
-      </table>
-      <h4>Try It</h4>
-      <div class="form-row">
-        <div class="form-group" style="max-width:250px"><label>API Key</label><input id="url-key" placeholder="mrairag-..."></div>
-        <div class="form-group"><label>Website URL</label><input id="url-url" placeholder="https://example.com/article"></div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="tryURL()">▶ Send</button></div>
-      </div>
-      <div class="response-box" id="url-resp"></div>
-      <pre style="margin-top:12px">curl -X POST http://localhost:8000/api/ingest-url \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://en.wikipedia.org/wiki/Artificial_intelligence"}'</pre>
-    </div>
-  </div>
-</section>
-
-<section id="ep-json">
-  <h3>📊 JSON Data</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('json-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/ingest-json-file</span>
-      <span class="badge badge-auth" style="margin-left:8px">Auth</span>
-      <span class="endpoint-desc">Upload JSON file for RAG</span>
-    </div>
-    <div class="endpoint-body" id="json-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload a .json file or provide a JSON API URL. Supports arrays of objects, auto-detects the records list, and indexes all fields for natural language querying.</p>
-      <h4>Endpoints</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><td>POST /api/ingest-json-file</td><td>multipart</td><td>Upload .json file</td></tr>
-        <tr><td>POST /api/ingest-json-url</td><td>JSON body</td><td>Fetch from URL: <code>{"url":"..."}</code></td></tr>
-        <tr><td>POST /api/preview-json-url</td><td>JSON body</td><td>Preview without indexing</td></tr>
-        <tr><td>GET /api/json-records</td><td>Query ?source_id=</td><td>Get raw records</td></tr>
-      </table>
-      <pre>curl -X POST http://localhost:8000/api/ingest-json-file \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -F "file=@data.json"</pre>
-    </div>
-  </div>
-</section>
-
-<section id="ep-health">
-  <h3>💚 Health Check</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('health-body')">
-      <span class="method GET">GET</span>
-      <span class="endpoint-title">/api/health</span>
-      <span class="badge badge-pub" style="margin-left:8px">Public</span>
-      <span class="endpoint-desc">System status and stats</span>
-    </div>
-    <div class="endpoint-body" id="health-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Returns server status, total indexed chunks, embedding model, and active LLM provider.</p>
-      <button class="btn btn-secondary btn-sm" onclick="tryHealth()">▶ Try Health Check</button>
-      <div class="response-box" id="health-resp"></div>
-      <pre style="margin-top:12px">curl http://localhost:8000/api/health</pre>
-    </div>
-  </div>
-</section>
-
-<section id="ep-provider">
-  <h3>⚙️ LLM Provider</h3>
-  <div class="endpoint-card">
-    <div class="endpoint-header" onclick="toggle('prov-body')">
-      <span class="method POST">POST</span>
-      <span class="endpoint-title">/api/provider/config</span>
-      <span class="badge badge-pub" style="margin-left:8px">Public</span>
-      <span class="endpoint-desc">Switch LLM provider at runtime</span>
-    </div>
-    <div class="endpoint-body" id="prov-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Switch between OpenAI, Gemini, Claude, Ollama, or HuggingFace without restarting the server.</p>
-      <h4>Request Body</h4>
-      <table class="param-table" style="margin-bottom:16px">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td>provider</td><td>string</td><td>openai | gemini | claude | ollama | huggingface</td></tr>
-        <tr><td>api_key</td><td>string (opt)</td><td>Provider API key</td></tr>
-        <tr><td>model</td><td>string (opt)</td><td>Model name override</td></tr>
-        <tr><td>ollama_url</td><td>string (opt)</td><td>Ollama base URL</td></tr>
-      </table>
-      <pre>curl -X POST http://localhost:8000/api/provider/config \
-  -H "Content-Type: application/json" \
-  -d '{"provider":"gemini","api_key":"AIza...","model":"gemini-2.5-flash"}'</pre>
-    </div>
-  </div>
-</section>
-
-<div class="sep"></div>
-
-<!-- Integration Guide -->
-<section id="integration">
-  <h3>🔌 Use in Your Project</h3>
-  <div class="warn-box" style="margin-bottom:20px">📋 Follow these 3 steps to integrate MR AI RAG into any application.</div>
-
-  <!-- Step 1 -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title"><span class="emoji">1️⃣</span>Get Your API Key &amp; Base URL</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:14px">First, generate an API key from the <a href="#key-generate" style="color:var(--accent)" onclick="scrollTo('key-generate')">Generate Key</a> section above using your admin secret. Then note your server base URL.</div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">🌐 Your API Base URL</div>
-        <code id="base-url-display" style="font-family:'JetBrains Mono',monospace;color:var(--accent2);font-size:14px">http://localhost:8000/api</code>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('base-url-display').textContent).then(()=>alert('URL copied!'))">📋</button>
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">🔑 Your API Key Header</div>
-        <code style="font-family:'JetBrains Mono',monospace;color:var(--yellow);font-size:13px">X-API-Key: mrairag-&lt;your-key&gt;</code>
-      </div>
+      <div class="code-label">Response 200</div>
+      <pre><span class="kw">{</span> <span class="str">"success"</span>: <span class="kw">true</span>, <span class="str">"video_url"</span>: <span class="str">"https://..."</span>, <span class="str">"topic"</span>: <span class="str">"..."</span>, <span class="str">"style"</span>: <span class="str">"cinematic"</span> <span class="kw">}</span></pre>
     </div>
   </div>
 
-  <!-- Step 2: Python -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title"><span class="emoji">🐍</span>Python Integration</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Full workflow: upload PDF → ask question</p>
-    <pre>import requests
+  <!-- 6. VOICE LATENCY -->
+  <h2><span class="sec-num">6</span> Voice Latency Guide</h2>
+  <p>Voice latency is the delay between a user speaking and the chatbot starting to respond. The total is the sum of several pipeline stages:</p>
 
-BASE_URL = "http://localhost:8000/api"
-API_KEY  = "mrairag-your-key-here"
-HEADERS  = {"X-API-Key": API_KEY}
+  <table class="latency-table">
+    <thead>
+      <tr><th>Component</th><th>Typical</th><th>Range</th><th>Rating</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Speech-to-Text (STT)</strong><br><span style="font-size:10px;color:#64748b">Transcribing voice to text (e.g. Whisper, Google STT)</span></td>
+        <td class="lat-good">200–400ms</td><td>100–800ms</td><td><span class="badge b-green">Fast</span></td>
+      </tr>
+      <tr>
+        <td><strong>Vector Search (RAG)</strong><br><span style="font-size:10px;color:#64748b">Finding relevant chunks in the memory</span></td>
+        <td class="lat-good">50–150ms</td><td>30–400ms</td><td><span class="badge b-green">Fast</span></td>
+      </tr>
+      <tr>
+        <td><strong>LLM Generation — Gemini</strong><br><span style="font-size:10px;color:#64748b">Generating the AI answer (Google Gemini)</span></td>
+        <td class="lat-ok">800–1500ms</td><td>500–3000ms</td><td><span class="badge b-yellow">Moderate</span></td>
+      </tr>
+      <tr>
+        <td><strong>LLM Generation — GPT-4o</strong><br><span style="font-size:10px;color:#64748b">Generating the AI answer (OpenAI)</span></td>
+        <td class="lat-ok">600–1200ms</td><td>400–2500ms</td><td><span class="badge b-yellow">Moderate</span></td>
+      </tr>
+      <tr>
+        <td><strong>Text-to-Speech (TTS)</strong><br><span style="font-size:10px;color:#64748b">Converting answer text to audio</span></td>
+        <td class="lat-ok">300–600ms</td><td>200–1200ms</td><td><span class="badge b-yellow">Moderate</span></td>
+      </tr>
+      <tr>
+        <td><strong>Network Round-trip</strong><br><span style="font-size:10px;color:#64748b">API calls + server overhead</span></td>
+        <td class="lat-good">50–200ms</td><td>20–500ms</td><td><span class="badge b-green">Fast</span></td>
+      </tr>
+      <tr style="background:#fef3c7">
+        <td><strong>Total — Non-streaming</strong></td>
+        <td class="lat-ok">1.5–3.0s</td><td>1.0–5.0s</td><td><span class="badge b-yellow">Acceptable</span></td>
+      </tr>
+      <tr style="background:#f0fdf4">
+        <td><strong>Total — Streaming (first token)</strong></td>
+        <td class="lat-good">300–700ms</td><td>200ms–1.5s</td><td><span class="badge b-green">Excellent</span></td>
+      </tr>
+    </tbody>
+  </table>
 
-# 1. Upload a PDF
-with open("document.pdf", "rb") as f:
-    r = requests.post(f"{BASE_URL}/upload",
-                      headers=HEADERS,
-                      files={"file": f})
-    print(r.json())  # {"success": true, "total_chunks": 42, ...}
-
-# 2. Ask a question
-r = requests.post(f"{BASE_URL}/ask",
-    headers={**HEADERS, "Content-Type": "application/json"},
-    json={"question": "What are the key findings?", "top_k": 5})
-print(r.json()["answer"])
-
-# 3. Ingest a YouTube video
-r = requests.post(f"{BASE_URL}/ingest-youtube",
-    headers={**HEADERS, "Content-Type": "application/json"},
-    json={"url": "https://youtu.be/dQw4w9WgXcQ"})
-print(r.json())
-
-# 4. Scrape a website
-r = requests.post(f"{BASE_URL}/ingest-url",
-    headers={**HEADERS, "Content-Type": "application/json"},
-    json={"url": "https://en.wikipedia.org/wiki/AI"})
-print(r.json())</pre>
+  <div class="info-box tip" style="margin-top:16px">
+    <p><strong>Tip:</strong> Enable streaming (<code>"stream": true</code> in the chat request) to reduce perceived latency. The first token appears in ~300–700ms, making the response feel instant to users.</p>
   </div>
 
-  <!-- Step 3: JavaScript -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title"><span class="emoji">🌐</span>JavaScript / Node.js Integration</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Works in browser (fetch) or Node.js</p>
-    <pre>const BASE_URL = 'http://localhost:8000/api';
-const API_KEY  = 'mrairag-your-key-here';
-const headers  = { 'X-API-Key': API_KEY };
+  <h3>Benchmarks by Scenario</h3>
+  <table class="latency-table">
+    <thead><tr><th>Scenario</th><th>Total Latency</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Simple Q&amp;A (1–2 sources)</td><td class="lat-good">~800ms</td><td>Streaming + small context</td></tr>
+      <tr><td>Complex multi-document query (10+ sources)</td><td class="lat-ok">~2.5s</td><td>More chunks to process</td></tr>
+      <tr><td>Cold start / first message</td><td class="lat-ok">~1.5–2s</td><td>Model warm-up overhead</td></tr>
+      <tr><td>Subsequent messages (warm)</td><td class="lat-good">~600ms–1.2s</td><td>Embedded context cache</td></tr>
+      <tr><td>Full voice pipeline (STT + LLM + TTS)</td><td class="lat-ok">~2.0–4.0s</td><td>End-to-end voice interaction</td></tr>
+    </tbody>
+  </table>
 
-// 1. Ask a question
-async function askQuestion(question) {
-  const res = await fetch(`${BASE_URL}/ask`, {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, top_k: 5 })
-  });
-  const data = await res.json();
-  return data.answer;
-}
+  <!-- 7. EMBED -->
+  <h2><span class="sec-num">7</span> Embed &amp; QR Code</h2>
+  <p>Embed the chatbot on any website using an iframe, or share a QR code that opens the public chat interface.</p>
+  <h3>Embed iframe</h3>
+  <pre><span class="com">&lt;!-- Add to any webpage --&gt;</span>
+<span class="kw">&lt;iframe</span>
+  <span class="str">src</span>=<span class="num">"https://your-domain.com/memory-chat-public?id={memory_id}"</span>
+  <span class="str">width</span>=<span class="num">"400"</span> <span class="str">height</span>=<span class="num">"600"</span>
+  <span class="str">style</span>=<span class="num">"border:none;border-radius:16px"</span>
+  <span class="str">allow</span>=<span class="num">"microphone"</span>
+<span class="kw">&gt;&lt;/iframe&gt;</span></pre>
+  <h3>Public QR URL</h3>
+  <pre>https://your-domain.com/memory-chat-public?id=<span class="num">{memory_id}</span></pre>
 
-// 2. Upload a PDF (browser)
-async function uploadPDF(file) {
-  const form = new FormData();
-  form.append('file', file);
-  const res = await fetch(`${BASE_URL}/upload`, {
-    method: 'POST',
-    headers,     // Don't set Content-Type — let browser set boundary
-    body: form
-  });
-  return await res.json();
-}
+  <!-- 8. ERRORS -->
+  <h2><span class="sec-num">8</span> Error Codes</h2>
+  <table class="latency-table">
+    <thead><tr><th>Code</th><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge b-yellow">400</span></td><td>Bad Request</td><td>Missing or invalid body fields</td><td>Check required parameters</td></tr>
+      <tr><td><span class="badge b-red">401</span></td><td>Unauthorized</td><td>Missing or invalid API key / token</td><td>Check X-API-Key or X-Client-Token header</td></tr>
+      <tr><td><span class="badge b-red">403</span></td><td>Forbidden</td><td>Accessing another user's resource</td><td>Use the correct client token</td></tr>
+      <tr><td><span class="badge b-red">404</span></td><td>Not Found</td><td>Memory or resource doesn't exist</td><td>Verify the memory_id or resource path</td></tr>
+      <tr><td><span class="badge b-red">422</span></td><td>Validation Error</td><td>Field type or constraint mismatch</td><td>Check field types (int vs string)</td></tr>
+      <tr><td><span class="badge b-red">500</span></td><td>Server Error</td><td>Unexpected server-side failure</td><td>Check server logs; retry after moment</td></tr>
+    </tbody>
+  </table>
 
-// Usage
-askQuestion('Summarize the document').then(console.log);</pre>
+  <div class="footer">
+    MR AI RAG — Memory Chatbot API Documentation v2.0 · 
+    <strong>To export as PDF:</strong> Press Ctrl+P (Windows) or Cmd+P (Mac) → Save as PDF
   </div>
-
-  <!-- cURL cheatsheet -->
-  <div class="card">
-    <div class="card-title"><span class="emoji">⌨️</span>cURL Cheatsheet</div>
-    <pre style="font-size:11px"># Upload PDF
-curl -X POST http://localhost:8000/api/upload \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -F "file=@document.pdf"
-
-# Ask a question
-curl -X POST http://localhost:8000/api/ask \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"question":"What are the key findings?"}'
-
-# Ingest YouTube
-curl -X POST http://localhost:8000/api/ingest-youtube \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://youtu.be/VIDEO_ID"}'
-
-# Scrape website
-curl -X POST http://localhost:8000/api/ingest-url \
-  -H "X-API-Key: mrairag-YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com/article"}'
-
-# Check server health (no auth needed)
-curl http://localhost:8000/api/health
-
-# Validate your API key
-curl -X POST http://localhost:8000/api/keys/validate \
-  -H "Content-Type: application/json" \
-  -d '{"key":"mrairag-YOUR_KEY"}'</pre>
-  </div>
-</section>
-
-<div class="sep"></div>
-<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 0">
-  MR AI RAG v2.0 &nbsp;·&nbsp; Built with FastAPI &amp; FAISS &nbsp;·&nbsp; <a href="/api/docs" style="color:var(--accent);text-decoration:none">Swagger UI →</a>
 </div>
-
-</main>
-
 <script>
-const BASE = '';
-
-function scrollTo(id){
-  document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
-  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
-  event.target.classList.add('active');
-}
-
-function toggle(id){
-  const el = document.getElementById(id);
-  el.classList.toggle('open');
-}
-
-function showMsg(id, text, type){
-  const el = document.getElementById(id);
-  el.textContent = text;
-  el.className = 'msg ' + type;
-  el.style.display = 'block';
-}
-
-function showCode(section, lang, tab){
-  tab.closest('.endpoint-body').querySelectorAll('.code-tab').forEach(t=>t.classList.remove('active'));
-  tab.classList.add('active');
-  const curl = document.getElementById(section+'-curl');
-  const python = document.getElementById(section+'-python');
-  if(curl) curl.style.display = lang==='curl'?'block':'none';
-  if(python) python.style.display = lang==='python'?'block':'none';
-}
-
-function copyKey(){
-  const key = document.getElementById('key-value').textContent;
-  navigator.clipboard.writeText(key).then(()=>alert('Key copied!'));
-}
-
-// Health check on load
-async function checkStatus(){
-  try{
-    const r = await fetch(BASE+'/api/health');
-    if(r.ok){
-      const d = await r.json();
-      document.getElementById('status-text').innerHTML =
-        `<span style="color:var(--green)">● Online</span> &nbsp;|&nbsp; Provider: <b style="color:var(--accent)">${d.llm_provider}/${d.llm_model}</b> &nbsp;|&nbsp; Chunks indexed: <b>${d.total_chunks_indexed}</b>`;
-    }
-  }catch{
-    document.getElementById('status-text').innerHTML = '<span style="color:var(--red)">● Offline — server not running</span>';
-  }
-}
-checkStatus();
-
-// Generate key
-async function generateKey(){
-  const name = document.getElementById('gen-name').value.trim();
-  const by = document.getElementById('gen-by').value.trim() || 'admin';
-  const secret = document.getElementById('gen-secret').value.trim();
-  if(!name) return showMsg('gen-msg','Key name is required','error');
-  if(!secret) return showMsg('gen-msg','Admin secret is required','error');
-  showMsg('gen-msg','Generating…','info');
-  try{
-    const r = await fetch(BASE+'/api/keys/generate',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Admin-Secret':secret},
-      body:JSON.stringify({name,created_by:by})
-    });
-    const d = await r.json();
-    if(!r.ok) return showMsg('gen-msg',d.detail||'Error','error');
-    document.getElementById('gen-msg').style.display='none';
-    document.getElementById('key-value').textContent = d.key;
-    document.getElementById('key-box').style.display = 'block';
-    // Pre-fill API key fields
-    ['pdf-key','ask-key','yt-key','url-key'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) el.value = d.key;
-    });
-  }catch(e){showMsg('gen-msg','Network error: '+e.message,'error');}
-}
-
-// List keys
-async function listKeys(){
-  const secret = document.getElementById('list-secret').value.trim();
-  if(!secret) return showMsg('list-msg','Admin secret required','error');
-  showMsg('list-msg','Loading…','info');
-  try{
-    const r = await fetch(BASE+'/api/keys',{headers:{'X-Admin-Secret':secret}});
-    const d = await r.json();
-    if(!r.ok) return showMsg('list-msg',d.detail||'Error','error');
-    document.getElementById('list-msg').style.display='none';
-    renderKeysTable(d.keys, secret);
-  }catch(e){showMsg('list-msg','Network error: '+e.message,'error');}
-}
-
-function renderKeysTable(keys, secret){
-  const wrap = document.getElementById('keys-table-wrap');
-  if(!keys||!keys.length){wrap.innerHTML='<div class="keys-empty">No API keys found</div>';return;}
-  let html = `<table><tr><th>Name</th><th>Preview</th><th>Created By</th><th>Created</th><th>Last Used</th><th>Requests</th><th>Status</th><th>Action</th></tr>`;
-  for(const k of keys){
-    const active = k.is_active;
-    const status = active
-      ? `<span style="color:var(--green);font-size:11px">● Active</span>`
-      : `<span style="color:var(--red);font-size:11px">● Revoked</span>`;
-    const btn = active
-      ? `<button class="btn btn-danger btn-sm" onclick="revokeKey('${k.id}','${secret}')">Revoke</button>`
-      : `<span style="color:var(--text3);font-size:11px">Revoked</span>`;
-    const created = k.created_at?new Date(k.created_at).toLocaleString():'—';
-    const used = k.last_used_at?new Date(k.last_used_at).toLocaleString():'Never';
-    html += `<tr><td style="color:var(--text)">${k.name}</td><td><code style="font-size:11px">${k.key_preview}</code></td><td>${k.created_by}</td><td style="font-size:11px">${created}</td><td style="font-size:11px">${used}</td><td>${k.request_count||0}</td><td>${status}</td><td>${btn}</td></tr>`;
-  }
-  html += '</table>';
-  wrap.innerHTML = html;
-}
-
-async function revokeKey(id, secret){
-  if(!confirm('Revoke this key? It will stop working immediately.')) return;
-  const r = await fetch(BASE+'/api/keys/'+id,{method:'DELETE',headers:{'X-Admin-Secret':secret}});
-  if(r.ok){showMsg('list-msg','Key revoked successfully','success');listKeys();}
-  else {const d=await r.json();showMsg('list-msg',d.detail||'Error','error');}
-}
-
-// Validate key
-async function validateKey(){
-  const key = document.getElementById('val-key').value.trim();
-  if(!key) return showMsg('val-msg','Enter a key to validate','error');
-  const r = await fetch(BASE+'/api/keys/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
-  const d = await r.json();
-  if(d.valid) showMsg('val-msg','✅ '+d.message,'success');
-  else showMsg('val-msg','❌ '+d.message,'error');
-}
-
-// Try upload
-async function tryUpload(){
-  const key = document.getElementById('pdf-key').value.trim();
-  const file = document.getElementById('pdf-file').files[0];
-  if(!key||!file) return;
-  const fd = new FormData();
-  fd.append('file',file);
-  showResp('pdf-resp','Uploading…');
-  try{
-    const r = await fetch(BASE+'/api/upload',{method:'POST',headers:{'X-API-Key':key},body:fd});
-    const d = await r.json();
-    showResp('pdf-resp',JSON.stringify(d,null,2));
-  }catch(e){showResp('pdf-resp','Error: '+e.message);}
-}
-
-// Try ask
-async function tryAsk(){
-  const key = document.getElementById('ask-key').value.trim();
-  const q = document.getElementById('ask-q').value.trim();
-  if(!key||!q) return;
-  showResp('ask-resp','Asking…');
-  try{
-    const r = await fetch(BASE+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({question:q,top_k:5})});
-    const d = await r.json();
-    showResp('ask-resp',JSON.stringify(d,null,2));
-  }catch(e){showResp('ask-resp','Error: '+e.message);}
-}
-
-// Try YouTube
-async function tryYT(){
-  const key = document.getElementById('yt-key').value.trim();
-  const url = document.getElementById('yt-url').value.trim();
-  if(!key||!url) return;
-  showResp('yt-resp','Ingesting YouTube… (may take 30-60s)');
-  try{
-    const r = await fetch(BASE+'/api/ingest-youtube',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({url})});
-    const d = await r.json();
-    showResp('yt-resp',JSON.stringify({success:d.success,title:d.title,total_chunks:d.total_chunks,method_used:d.method_used,message:d.message},null,2));
-  }catch(e){showResp('yt-resp','Error: '+e.message);}
-}
-
-// Try URL
-async function tryURL(){
-  const key = document.getElementById('url-key').value.trim();
-  const url = document.getElementById('url-url').value.trim();
-  if(!key||!url) return;
-  showResp('url-resp','Scraping…');
-  try{
-    const r = await fetch(BASE+'/api/ingest-url',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({url})});
-    const d = await r.json();
-    showResp('url-resp',JSON.stringify(d,null,2));
-  }catch(e){showResp('url-resp','Error: '+e.message);}
-}
-
-// Try health
-async function tryHealth(){
-  showResp('health-resp','Checking…');
-  try{
-    const r = await fetch(BASE+'/api/health');
-    const d = await r.json();
-    showResp('health-resp',JSON.stringify(d,null,2));
-  }catch(e){showResp('health-resp','Error: '+e.message);}
-  document.getElementById('health-body').classList.add('open');
-}
-
-function showResp(id,text){
-  const el = document.getElementById(id);
-  el.textContent = text;
-  el.style.display = 'block';
-}
+  document.getElementById('base-url').textContent = window.location.origin;
 </script>
 </body>
 </html>

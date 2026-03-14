@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR AI RAG — AWS Deployment Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; font-size: 13px; line-height: 1.6; }
+  .doc { max-width: 860px; margin: 0 auto; background: #fff; padding: 48px 56px; }
+
+  .cover { padding-bottom: 36px; border-bottom: 3px solid #f97316; margin-bottom: 36px; }
+  .cover-badge { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #f97316; text-transform: uppercase; margin-bottom: 10px; }
+  .cover-title { font-size: 32px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  .cover-title span { background: linear-gradient(135deg, #f97316, #ef4444); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .cover-sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  .cover-meta { display: flex; gap: 28px; flex-wrap: wrap; }
+  .cm-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+  .cm-val { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+
+  .toc { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc-title { font-size: 11px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+  .toc-list { columns: 2; gap: 16px; }
+  .toc-item { font-size: 11px; color: #475569; padding: 2px 0; display: flex; gap: 6px; break-inside: avoid; }
+  .toc-num { font-weight: 700; color: #f97316; min-width: 20px; }
+
+  h2 { font-size: 17px; font-weight: 800; color: #0f172a; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
+  .sn { background: #f97316; color: #fff; border-radius: 5px; padding: 2px 8px; font-size: 11px; }
+  h3 { font-size: 13px; font-weight: 700; color: #1e293b; margin: 18px 0 6px; }
+  p { color: #475569; margin-bottom: 10px; }
+  ul, ol { padding-left: 20px; color: #475569; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+
+  /* Step cards */
+  .step { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; border-left: 4px solid #f97316; }
+  .step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .step-num { width: 24px; height: 24px; border-radius: 6px; background: #f97316; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+  .step-desc { font-size: 12px; color: #475569; line-height: 1.6; }
+
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; overflow-x: auto; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+  .code-lbl { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 2px; }
+  .kw { color: #7dd3fc; } .str { color: #86efac; } .cm { color: #94a3b8; font-style: italic; } .num { color: #fbbf24; }
+
+  .info { border-left: 4px solid #f97316; background: #fff7ed; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 12px; color: #374151; }
+  .tip { border-left: 4px solid #16a34a; background: #f0fdf4; }
+  .warn { border-left: 4px solid #dc2626; background: #fef2f2; }
+
+  .arch-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  .arch-table th { background: #0f172a; color: #e2e8f0; text-align: left; padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .arch-table td { padding: 8px 10px; border-top: 1px solid #e2e8f0; }
+  .arch-table tr:nth-child(even) { background: #f8fafc; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 9px; font-weight: 700; }
+  .b-green { background: #dcfce7; color: #16a34a; }
+  .b-orange { background: #fff7ed; color: #f97316; border: 1px solid #fed7aa; }
+  .b-red { background: #fee2e2; color: #dc2626; }
+
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 10px; }
+  @media print { body { background: #fff; } .doc { padding: 24px; } .step { page-break-inside: avoid; } }
+  @page { margin: 18mm; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">☁️ Deployment Guide</div>
+  <div class="cover-title">MR AI RAG — <span>AWS Deployment</span></div>
+  <div class="cover-sub">Step-by-step secure production deployment on Amazon Web Services</div>
+  <div class="cover-meta">
+    <div><div class="cm-label">Stack</div><div class="cm-val">FastAPI + PostgreSQL + React</div></div>
+    <div><div class="cm-label">Cloud</div><div class="cm-val">AWS EC2, RDS, S3, CloudFront</div></div>
+    <div><div class="cm-label">Security</div><div class="cm-val">HTTPS, IAM, Secrets Manager</div></div>
+    <div><div class="cm-label">Difficulty</div><div class="cm-val">Intermediate</div></div>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <div class="toc-list">
+    <div class="toc-item"><span class="toc-num">1</span>Architecture Overview</div>
+    <div class="toc-item"><span class="toc-num">2</span>Prerequisites</div>
+    <div class="toc-item"><span class="toc-num">3</span>RDS PostgreSQL Setup</div>
+    <div class="toc-item"><span class="toc-num">4</span>EC2 Server Setup</div>
+    <div class="toc-item"><span class="toc-num">5</span>Deploy the Application</div>
+    <div class="toc-item"><span class="toc-num">6</span>Nginx + HTTPS (SSL)</div>
+    <div class="toc-item"><span class="toc-num">7</span>Environment Variables</div>
+    <div class="toc-item"><span class="toc-num">8</span>Process Management (systemd)</div>
+    <div class="toc-item"><span class="toc-num">9</span>S3 for File Storage</div>
+    <div class="toc-item"><span class="toc-num">10</span>Security Hardening</div>
+    <div class="toc-item"><span class="toc-num">11</span>Monitoring &amp; Logs</div>
+    <div class="toc-item"><span class="toc-num">12</span>CI/CD Pipeline</div>
+  </div>
+</div>
+
+<!-- 1. ARCH -->
+<h2><span class="sn">1</span> Architecture Overview</h2>
+<table class="arch-table">
+  <thead><tr><th>Component</th><th>AWS Service</th><th>Purpose</th><th>Tier</th></tr></thead>
+  <tbody>
+    <tr><td><strong>FastAPI Backend</strong></td><td>EC2 t3.medium</td><td>API server (uvicorn + gunicorn)</td><td><span class="badge b-orange">Compute</span></td></tr>
+    <tr><td><strong>PostgreSQL DB</strong></td><td>RDS db.t3.micro</td><td>Users, memories, chat history</td><td><span class="badge b-orange">Database</span></td></tr>
+    <tr><td><strong>File Uploads</strong></td><td>S3 Bucket</td><td>PDFs, videos, knowledge files</td><td><span class="badge b-green">Storage</span></td></tr>
+    <tr><td><strong>HTTPS/CDN</strong></td><td>CloudFront + ACM</td><td>SSL termination &amp; CDN</td><td><span class="badge b-green">Network</span></td></tr>
+    <tr><td><strong>Domain</strong></td><td>Route 53</td><td>DNS management</td><td><span class="badge b-green">Network</span></td></tr>
+    <tr><td><strong>Secrets</strong></td><td>Secrets Manager</td><td>API keys, DB password</td><td><span class="badge b-red">Security</span></td></tr>
+  </tbody>
+</table>
+
+<!-- 2. PREREQ -->
+<h2><span class="sn">2</span> Prerequisites</h2>
+<ul>
+  <li>AWS Account with billing enabled</li>
+  <li>Domain name (optional but recommended, e.g. from Route 53 or GoDaddy)</li>
+  <li>AWS CLI installed and configured: <code>aws configure</code></li>
+  <li>Your project code pushed to GitHub</li>
+  <li>Gemini API key and/or OpenAI API key</li>
+</ul>
+
+<!-- 3. RDS -->
+<h2><span class="sn">3</span> Create RDS PostgreSQL Database</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Create RDS Instance</span></div>
+<div class="step-desc">Go to <strong>AWS Console → RDS → Create database</strong>. Choose:
+<ul style="margin-top:6px">
+  <li>Engine: <strong>PostgreSQL 15</strong></li>
+  <li>Template: <strong>Free Tier</strong> (or Production)</li>
+  <li>DB instance identifier: <code>mrairag-db</code></li>
+  <li>Master username: <code>mrairag</code> (save this password!)</li>
+  <li>Instance class: <strong>db.t3.micro</strong></li>
+  <li>Storage: 20 GB gp3</li>
+  <li>VPC: Default (remember which one)</li>
+  <li>Public access: <strong>No</strong> (access only from EC2)</li>
+</ul></div></div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Configure Security Group for RDS</span></div>
+<div class="step-desc">After creation, go to the RDS instance → Security Group → Add Inbound Rule:<br>
+Type: PostgreSQL (5432), Source: <strong>EC2 Security Group</strong> (not 0.0.0.0/0).</div></div>
+
+<div class="step"><div class="step-head"><span class="step-num">3</span><span class="step-title">Get the Connection Endpoint</span></div>
+<div class="step-desc">Copy the RDS endpoint (looks like: <code>mrairag-db.xxxx.us-east-1.rds.amazonaws.com</code>). You'll use this as your <code>DATABASE_URL</code>.</div></div>
+
+<!-- 4. EC2 -->
+<h2><span class="sn">4</span> Launch EC2 Server</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Launch EC2 Instance</span></div>
+<div class="step-desc">Go to <strong>EC2 → Launch Instance</strong>:
+<ul style="margin-top:6px">
+  <li>AMI: <strong>Ubuntu 22.04 LTS</strong></li>
+  <li>Instance type: <strong>t3.medium</strong> (2 vCPU, 4 GB RAM — minimum for embedding model)</li>
+  <li>Key pair: Create or select existing .pem key</li>
+  <li>Security Group: Allow ports <strong>22</strong> (SSH), <strong>80</strong> (HTTP), <strong>443</strong> (HTTPS)</li>
+  <li>Storage: 30 GB gp3</li>
+  <li>IAM Role: Create role with <strong>S3FullAccess</strong> and <strong>SecretsManagerReadWrite</strong></li>
+</ul></div></div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Connect via SSH</span></div>
+<pre><span class="cm"># Replace with your .pem file and EC2 public IP</span>
+chmod 400 your-key.pem
+ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">3</span><span class="step-title">Install System Dependencies</span></div>
+<pre>sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3.11 python3.11-venv python3-pip git nginx certbot python3-certbot-nginx postgresql-client
+</pre>
+</div>
+
+<!-- 5. DEPLOY -->
+<h2><span class="sn">5</span> Deploy the Application</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Clone the Repository</span></div>
+<pre>git clone https://github.com/YOUR_USERNAME/mr_ai_rag_v2.git /opt/mrairag
+cd /opt/mrairag</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Create Python Virtual Environment</span></div>
+<pre>python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">3</span><span class="step-title">Create .env File</span></div>
+<pre><span class="cm"># /opt/mrairag/.env  — NEVER commit this file to git!</span>
+DATABASE_URL=postgresql://mrairag:PASSWORD@mrairag-db.xxxx.us-east-1.rds.amazonaws.com/mrairag
+SECRET_KEY=your-64-char-random-secret
+GEMINI_API_KEY=AIza...
+OPENAI_API_KEY=sk-...         <span class="cm"># optional</span>
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+ADMIN_SECRET=your-admin-secret-key
+S3_BUCKET=mrairag-files
+AWS_REGION=us-east-1</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">4</span><span class="step-title">Test Run</span></div>
+<pre>cd /opt/mrairag
+source venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+<span class="cm"># Visit http://YOUR_IP:8000 to verify it works, then Ctrl+C</span></pre>
+</div>
+
+<!-- 6. NGINX -->
+<h2><span class="sn">6</span> Nginx + HTTPS with Let's Encrypt</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Configure Nginx</span></div>
+<pre>sudo nano /etc/nginx/sites-available/mrairag</pre>
+<div class="code-lbl">Paste this config:</div>
+<pre>server {
+    listen 80;
+    server_name <span class="str">yourdomain.com www.yourdomain.com</span>;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 100M;    <span class="cm"># for PDF/video uploads</span>
+        proxy_read_timeout 300s;      <span class="cm"># for long AI responses</span>
+    }
+}
+</pre>
+<pre>sudo ln -s /etc/nginx/sites-available/mrairag /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Get Free SSL Certificate</span></div>
+<pre><span class="cm"># Point your domain's A record to EC2 public IP FIRST</span>
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+<span class="cm"># Follow prompts — it auto-configures HTTPS + auto-renewal</span></pre>
+</div>
+
+<!-- 7. ENV VARS -->
+<h2><span class="sn">7</span> Environment Variables (Full Reference)</h2>
+<table class="arch-table">
+  <thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATABASE_URL</code></td><td><span class="badge b-red">Required</span></td><td>PostgreSQL connection string</td></tr>
+    <tr><td><code>SECRET_KEY</code></td><td><span class="badge b-red">Required</span></td><td>JWT signing key (64+ random chars)</td></tr>
+    <tr><td><code>GEMINI_API_KEY</code></td><td><span class="badge b-orange">If using Gemini</span></td><td>Google Gemini AI key</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td><span class="badge b-orange">If using OpenAI</span></td><td>OpenAI GPT-4 key</td></tr>
+    <tr><td><code>GOOGLE_CLIENT_ID</code></td><td><span class="badge b-orange">For Google Login</span></td><td>Google OAuth client ID</td></tr>
+    <tr><td><code>ADMIN_SECRET</code></td><td><span class="badge b-red">Required</span></td><td>Admin panel access token</td></tr>
+    <tr><td><code>S3_BUCKET</code></td><td><span class="badge b-orange">For file uploads</span></td><td>AWS S3 bucket name</td></tr>
+    <tr><td><code>AWS_REGION</code></td><td><span class="badge b-orange">For S3</span></td><td>e.g. us-east-1</td></tr>
+  </tbody>
+</table>
+
+<div class="info tip">Generate a strong SECRET_KEY: <code>python3 -c "import secrets; print(secrets.token_hex(32))"</code></div>
+
+<!-- 8. SYSTEMD -->
+<h2><span class="sn">8</span> Process Management with systemd</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Create systemd Service</span></div>
+<pre>sudo nano /etc/systemd/system/mrairag.service</pre>
+<div class="code-lbl">Paste:</div>
+<pre>[Unit]
+Description=MR AI RAG FastAPI Service
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/mrairag
+EnvironmentFile=/opt/mrairag/.env
+ExecStart=/opt/mrairag/venv/bin/gunicorn app.main:app \
+  -w 2 -k uvicorn.workers.UvicornWorker \
+  --bind 127.0.0.1:8000 \
+  --timeout 300 \
+  --access-logfile /var/log/mrairag/access.log \
+  --error-logfile /var/log/mrairag/error.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Enable &amp; Start Service</span></div>
+<pre>sudo mkdir -p /var/log/mrairag
+sudo systemctl daemon-reload
+sudo systemctl enable mrairag
+sudo systemctl start mrairag
+sudo systemctl status mrairag    <span class="cm"># check it's running</span></pre>
+</div>
+
+<!-- 9. S3 -->
+<h2><span class="sn">9</span> S3 for File Storage</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Create S3 Bucket</span></div>
+<pre>aws s3 mb s3://mrairag-files --region us-east-1</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Block Public Access (Security)</span></div>
+<pre>aws s3api put-public-access-block \
+  --bucket mrairag-files \
+  --public-access-block-configuration <span class="str">"BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"</span></pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">3</span><span class="step-title">Attach IAM Role (Preferred over Access Keys)</span></div>
+<div class="step-desc">Attach the EC2 IAM Role created in Step 4.1 that has <code>AmazonS3FullAccess</code>. This way you don't store AWS credentials in the .env file.</div></div>
+
+<!-- 10. SECURITY -->
+<h2><span class="sn">10</span> Security Hardening</h2>
+<ul>
+  <li><strong>Never</strong> expose RDS publicly (always use Private VPC)</li>
+  <li>Use <strong>AWS Secrets Manager</strong> instead of plaintext .env for production API keys</li>
+  <li>Enable <strong>AWS WAF</strong> on CloudFront to block SQL injection &amp; XSS attacks</li>
+  <li>Enable <strong>RDS encryption at rest</strong> (toggle during creation)</li>
+  <li>Use <strong>Security Groups</strong> as firewalls — only open ports 80, 443 (and 22 to your IP only)</li>
+  <li>Enable <strong>EC2 CloudWatch monitoring</strong> for CPU/memory alerts</li>
+  <li>Rotate API keys every 90 days using Secrets Manager rotation</li>
+  <li>Enable <strong>S3 versioning</strong> for backup: <code>aws s3api put-bucket-versioning --bucket mrairag-files --versioning-configuration Status=Enabled</code></li>
+</ul>
+
+<div class="info warn"><strong>⚠️ Critical:</strong> Add <code>.env</code> to your <code>.gitignore</code> immediately. Never push secrets to GitHub.</div>
+
+<!-- 11. MONITORING -->
+<h2><span class="sn">11</span> Monitoring &amp; Logs</h2>
+<pre><span class="cm"># View live app logs</span>
+sudo journalctl -u mrairag -f --no-pager
+
+<span class="cm"># View Nginx access logs</span>
+sudo tail -f /var/log/nginx/access.log
+
+<span class="cm"># View app error logs</span>
+sudo tail -f /var/log/mrairag/error.log
+
+<span class="cm"># Restart app after code update</span>
+cd /opt/mrairag && git pull
+sudo systemctl restart mrairag</pre>
+
+<!-- 12. CICD -->
+<h2><span class="sn">12</span> CI/CD Pipeline (GitHub Actions)</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Create .github/workflows/deploy.yml</span></div>
+<pre>name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/mrairag
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart mrairag</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Add GitHub Secrets</span></div>
+<div class="step-desc">In your GitHub repo → Settings → Secrets → Actions, add:
+<ul style="margin-top:6px">
+  <li><code>EC2_HOST</code> — your EC2 public IP or domain</li>
+  <li><code>EC2_SSH_KEY</code> — contents of your .pem file</li>
+</ul>
+Every push to <code>main</code> will now auto-deploy to AWS! ✅</div></div>
+
+<div class="footer">
+  MR AI RAG — AWS Deployment Guide · Press Ctrl+P → Save as PDF to export
+</div>
+</div>
+</body>
+</html>

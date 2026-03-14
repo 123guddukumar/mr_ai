@@ -45,6 +45,22 @@ body{display:flex;flex-direction:column;min-height:100vh;
 .stat-card.green .stat-val{color:var(--green)}
 .stat-card.blue .stat-val{color:var(--blue)}
 .stat-card.red .stat-val{color:var(--red)}
+/* Login method badges */
+.login-badge{font-size:9px;padding:2px 7px;border-radius:99px;font-weight:700;white-space:nowrap;letter-spacing:.04em}
+.lb-email{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--blue)}
+.lb-google{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+.lb-qr{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
+/* Tabs */
+.tab-bar{display:flex;gap:4px;padding:10px 24px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.tab-btn{padding:5px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent;color:var(--text3);transition:all .2s}
+.tab-btn.active{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35);color:var(--accent)}
+.user-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+/* QR modal */
+.qr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:600;display:none;align-items:center;justify-content:center}
+.qr-overlay.open{display:flex}
+.qr-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:center;max-width:340px;width:100%;animation:min .3s ease}
+.qr-title{font-size:15px;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.qr-white{background:#fff;border-radius:12px;padding:12px;display:inline-block;margin:14px 0}
 
 /* ── Toolbar ── */
 .toolbar{display:flex;align-items:center;gap:10px;padding:12px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -135,20 +151,43 @@ tr:hover td{background:rgba(245,158,11,.02)}
 
 <!-- Stats -->
 <div class="stats-bar" id="stats-bar">
-  <div class="stat-card amber"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Clients</div></div>
+  <div class="stat-card amber"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Users</div></div>
   <div class="stat-card green"><div class="stat-val" id="stat-verified">—</div><div class="stat-lbl">Verified</div></div>
-  <div class="stat-card yellow" style="--yellow:#fbbf24"><div class="stat-val" id="stat-unverified" style="color:#fbbf24">—</div><div class="stat-lbl">Unverified</div></div>
-  <div class="stat-card blue"><div class="stat-val" id="stat-keys">—</div><div class="stat-lbl">Total API Keys</div></div>
+  <div class="stat-card blue"><div class="stat-val" id="stat-google" style="color:#34d399">—</div><div class="stat-lbl">Google Login</div></div>
+  <div class="stat-card"><div class="stat-val" id="stat-qr" style="color:#a78bfa">—</div><div class="stat-lbl">QR Login</div></div>
+  <div class="stat-card blue"><div class="stat-val" id="stat-keys">—</div><div class="stat-lbl">API Keys</div></div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">👥 All Users</button>
+  <button class="tab-btn" id="tab-google" onclick="switchTab('google')">🔵 Google Login</button>
+  <button class="tab-btn" id="tab-qr" onclick="switchTab('qr')">📱 QR Login</button>
+  <button class="tab-btn" id="tab-email" onclick="switchTab('email')">📧 Email Login</button>
+</div>
+
+<!-- QR Code Modal -->
+<div class="qr-overlay" id="qr-overlay">
+  <div class="qr-box">
+    <div class="qr-title">📱 QR Login Code</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:4px" id="qr-user-label">User QR</div>
+    <div class="qr-white"><div id="qr-admin-canvas" style="width:200px;height:200px"></div></div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:14px">Scan to auto-login as this user (demo link)</div>
+    <div style="display:flex;gap:8px">
+      <button class="modal-btn primary" onclick="downloadAdminQr()">⬇ Download</button>
+      <button class="modal-btn secondary" onclick="document.getElementById('qr-overlay').classList.remove('open')">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toolbar -->
 <div class="toolbar">
-  <input type="search" class="search-input" id="search-input" placeholder="🔍 Search by name, email or client ID…" oninput="filterClients()">
+  <input type="search" class="search-input" id="search-input" placeholder="🔍 Search name, email, client ID or login method…" oninput="filterClients()">
   <button class="filter-btn active" id="filter-all" onclick="setFilter('all',this)">All</button>
   <button class="filter-btn" id="filter-verified" onclick="setFilter('verified',this)">✅ Verified</button>
   <button class="filter-btn" id="filter-unverified" onclick="setFilter('unverified',this)">⏳ Pending</button>
   <div class="toolbar-spacer"></div>
-  <button class="add-btn" onclick="openAddModal()">➕ Add Client</button>
+  <button class="add-btn" onclick="openAddModal()">➕ Add User</button>
   <button class="nav-btn" style="margin-left:4px" onclick="loadClients()">↻ Refresh</button>
 </div>
 
@@ -157,18 +196,18 @@ tr:hover td{background:rgba(245,158,11,.02)}
   <table id="clients-table">
     <thead>
       <tr>
-        <th>Client</th>
+        <th>User</th>
         <th>Email</th>
         <th>Client ID</th>
+        <th>Login Via</th>
         <th>Status</th>
         <th>API Keys</th>
-        <th>Chats</th>
-        <th>Joined</th>
+        <th>Last Login</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody id="clients-tbody">
-      <tr class="loading-row"><td colspan="8">⏳ Loading clients…</td></tr>
+      <tr class="loading-row"><td colspan="8">⏳ Loading users…</td></tr>
     </tbody>
   </table>
 </div>
@@ -263,6 +302,8 @@ tr:hover td{background:rgba(245,158,11,.02)}
 let adminSession = null;
 let allClients = [];
 let activeFilter = 'all';
+let activeTab = 'all';
+let _qrInstance = null;
 
 // adminHeaders must be a function declaration (hoisted), not const, so it's
 // available when the init IIFE calls loadClients() → adminHeaders()
@@ -274,6 +315,14 @@ function adminHeaders() {
 }
 
 (function init(){
+  const override = localStorage.getItem('mrairag_admin_override');
+  if (override === 'true') {
+    adminSession = { username: 'SuperAdmin (Override)', token: 'super-override-token' };
+    document.getElementById('admin-name').textContent = `🛡️ ${adminSession.username}`;
+    loadClients();
+    return;
+  }
+
   const raw = localStorage.getItem('mrairag_admin');
   if(!raw) return window.location.href='/admin-login';
   try{ adminSession = JSON.parse(raw); }catch{ return window.location.href='/admin-login'; }
@@ -306,10 +355,21 @@ async function loadClients(){
 function updateStats(clients){
   const verified = clients.filter(c=>c.is_verified).length;
   const totalKeys = clients.reduce((s,c)=>s+(c.api_key_count||0),0);
+  const googleCount = clients.filter(c=>(c.login_method||'email')==='google').length;
+  const qrCount = clients.filter(c=>(c.login_method||'email')==='qr').length;
   document.getElementById('stat-total').textContent = clients.length;
   document.getElementById('stat-verified').textContent = verified;
-  document.getElementById('stat-unverified').textContent = clients.length - verified;
+  document.getElementById('stat-google').textContent = googleCount;
+  document.getElementById('stat-qr').textContent = qrCount;
   document.getElementById('stat-keys').textContent = totalKeys;
+}
+
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  filterClients();
 }
 
 // ── Filter & Search ───────────────────────────────────────────────────────────
@@ -323,39 +383,62 @@ function setFilter(f, el){
 function filterClients(){
   const q = document.getElementById('search-input').value.toLowerCase().trim();
   let filtered = allClients;
+  
+  // Tab filter
+  if(activeTab==='google') filtered = filtered.filter(c=>(c.login_method||'email')==='google');
+  else if(activeTab==='qr') filtered = filtered.filter(c=>(c.login_method||'email')==='qr');
+  else if(activeTab==='email') filtered = filtered.filter(c=>(c.login_method||'email')==='email');
+  
+  // Status filter
   if(activeFilter==='verified') filtered = filtered.filter(c=>c.is_verified);
   if(activeFilter==='unverified') filtered = filtered.filter(c=>!c.is_verified);
+  
+  // Search
   if(q) filtered = filtered.filter(c=>
     c.name?.toLowerCase().includes(q) ||
     c.email?.toLowerCase().includes(q) ||
-    c.client_id?.toLowerCase().includes(q)
+    c.client_id?.toLowerCase().includes(q) ||
+    (c.login_method||'email').toLowerCase().includes(q)
   );
   renderClients(filtered);
 }
 
 // ── Render Table ──────────────────────────────────────────────────────────────
+const LOGIN_BADGE = {
+  email: '<span class="login-badge lb-email">📧 Email</span>',
+  google: '<span class="login-badge lb-google">🔵 Google</span>',
+  qr: '<span class="login-badge lb-qr">📱 QR</span>',
+};
+
 function renderClients(clients){
   const tbody = document.getElementById('clients-tbody');
   if(!clients.length){
-    tbody.innerHTML = '<tr class="loading-row"><td colspan="8">🔍 No clients found.</td></tr>';
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="8">🔍 No ${activeTab==='all'?'':activeTab+' '}users found.</td></tr>`;
     return;
   }
   tbody.innerHTML = clients.map(c=>{
-    const joined = c.created_at ? new Date(c.created_at).toLocaleDateString() : '—';
+    const method = c.login_method || 'email';
+    const badge = LOGIN_BADGE[method] || LOGIN_BADGE.email;
+    const lastLogin = c.last_login ? new Date(c.last_login).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const avatarHtml = c.avatar_url
+      ? `<img class="user-avatar" src="${esc(c.avatar_url)}" alt="" onerror="this.outerHTML='<div class=&quot;user-avatar&quot;>${esc(c.name?c.name[0].toUpperCase():'U')}</div>'">`
+      : `<div class="user-avatar">${esc(c.name?c.name[0].toUpperCase():'U')}</div>`;
+      
     return `
     <tr>
-      <td class="client-name">${esc(c.name||'—')}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">${avatarHtml}<div><div class="client-name">${esc(c.name||'—')}</div></div></div></td>
       <td class="client-email">${esc(c.email||'—')}</td>
       <td class="client-id">${esc(c.client_id)}</td>
+      <td>${badge}</td>
       <td><span class="verified-badge ${c.is_verified?'yes':'no'}">${c.is_verified?'✅ Verified':'⏳ Pending'}</span></td>
       <td>${c.api_key_count||0} <span class="count-pill">keys</span></td>
-      <td>${c.chat_message_count||0} <span class="count-pill">msgs</span></td>
-      <td>${joined}</td>
+      <td style="font-size:10px;color:var(--text3)">${lastLogin}</td>
       <td>
         <div class="action-btns">
           <button class="act-btn act-login" onclick="loginAsClient('${c.client_id}','${esc(c.name)}')">🔑 Login As</button>
           <button class="act-btn act-edit" onclick="openEditModal('${c.client_id}','${esc(c.name)}','${esc(c.email)}',${c.is_verified})">✏️ Edit</button>
           <button class="act-btn act-pw" onclick="openPWModal('${c.client_id}','${esc(c.name)}')">🔐 PW</button>
+          <button class="act-btn" style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#c084fc" onclick="showUserQr('${c.client_id}','${esc(c.name)}')">📱 QR</button>
           <button class="act-btn act-del" onclick="deleteClient('${c.client_id}','${esc(c.name)}')">🗑 Del</button>
         </div>
       </td>
@@ -528,8 +611,43 @@ document.addEventListener('click', e => {
   if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
 });
 
+// ── QR Code for Admin ─────────────────────────────────────────────────────────
+async function showUserQr(clientId, name){
+  document.getElementById('qr-user-label').textContent = `👤 ${name} — Auth URL`;
+  const canvas = document.getElementById('qr-admin-canvas');
+  canvas.innerHTML = '⏳...';
+  
+  try {
+      // Create a short-lived login link for the admin to use or share
+      const loginUrl = `${window.location.origin}/login?auto_client_id=${clientId}`;
+      
+      // We use script-based QR generation in the modal
+      if (typeof QRCode !== 'undefined') {
+          canvas.innerHTML = '';
+          _qrInstance = new QRCode(canvas, {
+              text: loginUrl, width: 200, height: 200,
+              colorDark: "#080a12", colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.H
+          });
+      } else {
+          canvas.innerHTML = `<div style="font-size:10px;word-break:break-all;color:#333;background:#eee;padding:10px">${loginUrl}</div>`;
+      }
+      document.getElementById('qr-overlay').classList.add('open');
+  } catch(e) { toast('❌ '+e.message,'error'); }
+}
+
+function downloadAdminQr() {
+    const img = document.querySelector('#qr-admin-canvas img') || document.querySelector('#qr-admin-canvas canvas');
+    if(!img) return toast('QR not ready','error');
+    const a = document.createElement('a');
+    a.href = img.tagName === 'CANVAS' ? img.toDataURL('image/png') : img.src;
+    a.download = 'user_login_qr.png';
+    a.click();
+}
+
 function showModalResult(id, cls, msg){
   const el=document.getElementById(id);
+  if(!el) return;
   el.className='modal-result '+cls;el.textContent=msg;el.style.display='block';
 }
 

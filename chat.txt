@@ -96,3 +96,6 @@ on Home show how much API call show all how much data upload through API and whi
 
 Sir I want to All RAG function system run in Django, not run in Fast API 
 All in one Django + HTML/CSS/JS full project in one Django
+
+
+

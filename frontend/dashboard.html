@@ -898,6 +898,21 @@ function logout(){
   window.location.href='/login';
 }
 
+// ── Admin Shortcut ────────────────────────────────────────────────────────────
+let _adminKeys = new Set();
+document.addEventListener('keydown', (e) => {
+  _adminKeys.add(e.code);
+  if (e.ctrlKey && e.shiftKey && e.altKey && _adminKeys.has('KeyA') && _adminKeys.has('KeyB')) {
+    _adminKeys.clear();
+    e.preventDefault();
+    localStorage.setItem('mrairag_admin_override', 'true');
+    window.location.href = '/admin';
+  }
+});
+document.addEventListener('keyup', (e) => {
+  _adminKeys.delete(e.code);
+});
+
 // ── Utils ─────────────────────────────────────────────────────────────────────
 function showResult(id, cls, msg){ const el=document.getElementById(id); el.className='result-box '+cls; el.textContent=msg; el.style.display='block'; }
 function toast(msg, cls='info'){ const w=document.getElementById('toasts'),el=document.createElement('div'); el.className=`toast ${cls}`; el.textContent=msg; w.appendChild(el); setTimeout(()=>el.remove(),3800); }

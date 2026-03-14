@@ -208,7 +208,7 @@ select.vsd-inp{cursor:pointer;appearance:none}
     <span class="topbar-logo">MR AI RAG</span>
     <span class="mem-badge">🧠 Memory Bot</span>
     <span id="chat-bot-name" style="font-size:13px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"></span>
-    <button class="tbtn tbtn-s" onclick="openVSD()">⚙️ Voice</button>
+    <!-- Voice settings hidden for public users — preset voice model is used -->
     <div class="user-chip" id="user-chip" style="display:none">
       <img id="user-avatar" src="" alt="">
       <span id="user-name"></span>
@@ -260,7 +260,7 @@ select.vsd-inp{cursor:pointer;appearance:none}
       <div class="vo-header-name" id="vo-bot-name">Memory Bot</div>
       <div class="vo-header-meta">Voice-to-Voice · MR AI RAG</div>
     </div>
-    <button class="tbtn tbtn-s" onclick="openVSD()" style="flex-shrink:0">⚙️</button>
+    <!-- ⚙️ voice gear hidden on public page -->
     <button class="vo-chat-btn" onclick="setMode('text')">📝 Chat View</button>
   </div>
 
@@ -441,6 +441,9 @@ async function showChat(name,pic){
       document.title=n+' — Chat';
     }catch(e){}
   }
+  // Public page: lock TTS to MRAI Model (no user override)
+  curTTS = 'mrai';
+  document.getElementById('tts-mini').textContent = 'TTS: MRAI (preset)';
   loadVS();
   if(window.speechSynthesis) speechSynthesis.getVoices();
   initMode();
@@ -520,13 +523,16 @@ function detectLangFromText(text){
 function checkSpecialKeywords(text){
   const t=text.toLowerCase().trim();
   const botName=document.getElementById('bot-name')?.textContent||'MR AI Bot';
-  if(/\b(no thank u|ok bye|bye|stop)\b/i.test(t)) return 'STOP';
-  if(/\b(hello|hi|hey|helo)\b/i.test(t)) return `Hi, I am ${botName}. What can I help you with?`;
-  if(/\b(who are you|what is your name|who|your name)\b/i.test(t)) return `I am ${botName}.`;
-  if(/\b(who made you|your boss name|who created you|boss name)\b/i.test(t)) return `My boss is Divyansu Verma.`;
-  if(/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you)\b/i.test(t))
+  if(/\b(no thank u|ok bye|bye|stop|bas|khada khatam)\b/i.test(t) || /बन्द|बस|बाय|बंद/.test(t)) return 'STOP';
+  if(/\b(hello|hi|hey|helo|namaste|kem cho)\b/i.test(t) || /नमस्ते|हैलो|हेलो|नमस्कार/.test(t)) 
+    return `Hi, I am ${botName}. What can I help you with?`;
+  if(/\b(who are you|what is your name|who|your name|naam kya|kaun ho|kaun hai)\b/i.test(t) || /नाम क्या|कौन हो|कौन है/.test(t)) 
+    return `I am ${botName}.`;
+  if(/\b(who made you|your boss name|who created you|boss name)\b/i.test(t) || /किसने बनाया|बॉस कौन|मालिक कौन/.test(t)) 
+    return `My boss is Divyansu Verma.`;
+  if(/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you|shukriya|dhanyavad|thx|thanks|thank)\b/i.test(t) || /शुक्रिया|धन्यवाद|थैंक|अच्छे|बढ़िया/.test(t))
     return `Thank you sir! Ask any more questions?`;
-  if(t.includes('previous history') || t.includes('pichla history'))
+  if(t.includes('previous history') || t.includes('pichla history') || t.includes('पुरानी हिस्ट्री'))
     return "After 2 days, history of questions with answers will be shown here.";
   return null;
 }
@@ -556,7 +562,31 @@ function startV2VSession(){
   v2vRunning=true;
   const btn=document.getElementById('vo-tap-btn');
   btn.style.display='inline-flex'; btn.className='vo-tap-btn stop'; btn.innerHTML='⏹ Stop Session';
-  listenAndRespond();
+  
+  // Greet the user in their language before listening
+  const botName = document.getElementById('chat-bot-name')?.textContent || 'Memory Bot';
+  const targetLang = localStorage.getItem('mrairag_sv_lang') || 'en-IN';
+  const baseGreeting = `Hey I am ${botName} what can help you`;
+  
+  setVS('speaking');
+  document.getElementById('vo-sublabel').textContent = baseGreeting;
+  
+  (async () => {
+    try {
+      const langCode = getLangCode(targetLang);
+      const displayGreeting = (langCode && langCode !== 'en') 
+        ? await translateText(baseGreeting, targetLang) 
+        : baseGreeting;
+      
+      document.getElementById('vo-sublabel').textContent = displayGreeting;
+      detectedLang = targetLang; // temporarily set detectedLang to trigger correct TTS voice
+      await speakMRAI(displayGreeting, targetLang);
+    } catch (e) {
+      console.error('Greeting error:', e);
+    } finally {
+      if(v2vRunning) listenAndRespond();
+    }
+  })();
 }
 async function listenAndRespond(){
   if(!v2vRunning) return;
@@ -755,13 +785,18 @@ async function sendMsgAuto(text){
     const skres=checkSpecialKeywords(text);
     if(skres==='STOP'){ removeTyping(typing); stopV2VSession(); return; }
     if(skres){
-      removeTyping(typing); appendMsg('assistant',skres);
+      removeTyping(typing);
+      const langCode = getLangCode(detectedLang);
+      const displayRes = (langCode && langCode!=='en') 
+        ? await translateText(skres, detectedLang)
+        : skres;
+      appendMsg('assistant',displayRes);
       if(chatMode==='v2v'){
-        setVS('speaking'); document.getElementById('vo-sublabel').textContent=skres.substring(0,100);
-        await speakMRAI(skres, detectedLang);
+        setVS('speaking'); document.getElementById('vo-sublabel').textContent=displayRes.substring(0,100);
+        await speakMRAI(displayRes, detectedLang);
         if(v2vRunning) setVS('listening');
       } else {
-        await speakMRAI(skres, detectedLang);
+        await speakMRAI(displayRes, detectedLang);
       }
       return;
     }

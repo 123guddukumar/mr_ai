@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Reels — MR AI RAG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080a12; --bg2: #0e1121; --bg3: #14172b; --card: #1a1d33; --border: #1e2340;
+            --accent: #a855f7; --accent2: #ec4899; --text: #e2e8f0; --text2: #94a3b8; --text3: #475569;
+            --green: #34d399; --red: #f87171; --yellow: #fbbf24;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* ── Header ── */
+        .header { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .back-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; text-decoration: none; font-size: 12px; font-weight: 600; transition: .2s; }
+        .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .title { font-size: 16px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        #bot-name { font-size: 12px; color: var(--text3); font-weight: 600; }
+
+        /* ── Layout ── */
+        .main-split { flex: 1; display: flex; overflow: hidden; }
+
+        /* ── Left Panel ── */
+        .left-panel { width: 47%; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); }
+        .panel-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+        .panel-head h2 { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+        .panel-tabs { display: flex; gap: 4px; }
+        .ptab { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text3); transition: .2s; }
+        .ptab.active { background: rgba(168,85,247,.12); border-color: rgba(168,85,247,.3); color: var(--accent); }
+
+        .qa-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+        /* Q&A Card */
+        .qa-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all .2s; }
+        .qa-question { padding: 12px 14px; font-size: 12px; color: var(--text2); font-weight: 600; display: flex; align-items: flex-start; gap: 8px; }
+        .qa-q-icon { color: var(--yellow); font-size: 11px; margin-top: 1px; flex-shrink: 0; }
+        .qa-answer { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12.5px; line-height: 1.65; color: var(--text); cursor: pointer; position: relative; transition: background .18s; }
+        .qa-answer:hover { background: rgba(168,85,247,.06); }
+        .qa-answer-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .qa-answer.expanded .qa-answer-text { -webkit-line-clamp: unset; overflow: visible; }
+        .qa-a-icon { font-size: 10px; color: var(--green); margin-right: 5px; }
+        .qa-select-bar { display: none; padding: 8px 14px; gap: 6px; border-top: 1px dashed var(--border); }
+        .qa-card.selected .qa-select-bar { display: flex; }
+        .qa-card.selected { border-color: rgba(168,85,247,.5); box-shadow: 0 0 0 2px rgba(168,85,247,.12); }
+        .qa-action-btn { flex: 1; padding: 7px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: .18s; }
+        .qa-gen-btn { background: linear-gradient(135deg,var(--accent),var(--accent2)); color: #fff; border: none; }
+        .qa-post-btn { background: rgba(251,191,36,.1); border-color: rgba(251,191,36,.35); color: var(--yellow); }
+        .qa-meta { font-size: 9px; color: var(--text3); padding: 4px 14px 10px; }
+
+        /* Show More */
+        .show-more-btn { margin: 4px auto 12px; padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text3); font-size: 11px; font-weight: 700; cursor: pointer; transition: .2s; display: block; width: fit-content; }
+        .show-more-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Skeleton */
+        .skeleton { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+        .sk-card { height: 90px; border-radius: 12px; background: linear-gradient(90deg,var(--card) 25%,var(--bg3) 50%,var(--card) 75%); background-size: 200% 100%; animation: sk 1.4s infinite; }
+        @keyframes sk { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* Right Panel */
+        .right-panel { flex: 1; padding: 30px; background: var(--bg2); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; overflow-y: auto; gap: 20px; }
+        
+        .selected-preview { width: 100%; max-width: 360px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+        .selected-preview-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+        .selected-preview-text { font-size: 12px; color: var(--text2); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+        .selected-preview.has-content { border-color: rgba(168,85,247,.4); }
+
+        .video-container { width: 100%; max-width: 240px; aspect-ratio: 9/16; background: #000; border-radius: 20px; border: 3px solid var(--border); overflow: hidden; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.6); flex-shrink: 0; }
+        .video-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--text3); }
+        .video-placeholder .vp-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.4; }
+        .video-placeholder p { font-size: 11px; line-height: 1.5; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        .controls { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; }
+        .gen-btn { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .gen-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168,85,247,.4); }
+        .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .action-row { display: flex; gap: 8px; }
+        .act-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; }
+        .act-btn:hover { border-color: var(--accent); color: var(--text); }
+        .act-btn.primary { background: var(--accent); color: #fff; border: none; }
+        .status-msg { font-size: 11px; color: var(--text3); text-align: center; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        @media (max-width: 860px) {
+            .main-split { flex-direction: column; }
+            .left-panel { width: 100%; height: 50%; border-right: none; border-bottom: 1px solid var(--border); }
+            .right-panel { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/memory" class="back-btn">← Back</a>
+        <div class="title">🎬 Reels Generator</div>
+        <div style="flex:1"></div>
+        <div id="bot-name">Memory: —</div>
+    </header>
+
+    <div class="main-split">
+        <!-- LEFT: Chat History -->
+        <div class="left-panel">
+            <div class="panel-head">
+                <h2>💬 Chat History</h2>
+                <div class="panel-tabs">
+                    <button class="ptab active" id="ptab-qa" onclick="switchTab('qa')">Q&A</button>
+                    <button class="ptab" id="ptab-sources" onclick="switchTab('sources')">Sources</button>
+                </div>
+            </div>
+            <div class="qa-list" id="qa-list">
+                <div class="skeleton">
+                    <div class="sk-card"></div>
+                    <div class="sk-card"></div>
+                    <div class="sk-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Video Generator -->
+        <div class="right-panel">
+            <!-- Selected Content Preview -->
+            <div class="selected-preview" id="selected-preview">
+                <div class="selected-preview-label">📌 Selected Content for Reel</div>
+                <div class="selected-preview-text" id="selected-text">← Click any answer to select it, or use the whole memory</div>
+            </div>
+
+            <!-- Video Player -->
+            <div class="video-container" id="video-box">
+                <div class="video-placeholder" id="placeholder">
+                    <div class="vp-icon">🎬</div>
+                    <p>Select an answer &amp; click Generate</p>
+                </div>
+                <video id="output-video" style="display:none" controls playsinline></video>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="gen-btn" id="generate-btn" onclick="generateReel()">🎬 Generate AI Reel</button>
+                <div class="action-row" id="post-actions" style="display:none">
+                    <button class="act-btn" onclick="downloadVideo()">⬇️ Download</button>
+                    <button class="act-btn primary" onclick="postVideo()">📤 Post to Social</button>
+                </div>
+                <div class="status-msg" id="status">Click an answer on the left, then Generate</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const params     = new URLSearchParams(window.location.search);
+    const memoryId   = params.get('memory_id');
+    const memoryName = decodeURIComponent(params.get('name') || '');
+    const session    = JSON.parse(localStorage.getItem('mrairag_client') || '{}');
+
+    if (!memoryId) window.location.href = '/memory';
+
+    document.getElementById('bot-name').textContent = 'Memory: ' + (memoryName || '—');
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let allQA         = [];
+    let shownCount    = 10;
+    let selectedText  = '';
+    let selectedCard  = null;
+    let activeTabKey  = 'qa';
+    let sourcesCache  = null;
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    loadChatHistory();
+
+    async function loadChatHistory() {
+        try {
+            const res  = await fetch(`/api/memory/${memoryId}/chat-history?limit=100&offset=0`, {
+                headers: { 'X-Client-Token': session.token }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to load chat history');
+            allQA = data.qa_pairs || [];
+            renderQA();
+        } catch (err) {
+            document.getElementById('qa-list').innerHTML =
+                `<div style="padding:20px;font-size:12px;color:var(--red)">❌ ${err.message}</div>`;
+        }
+    }
+
+    async function loadSources() {
+        if (sourcesCache) { renderSources(sourcesCache); return; }
+        document.getElementById('qa-list').innerHTML = '<div class="skeleton"><div class="sk-card"></div></div>';
+        try {
+            const res  = await fetch(`/api/memory/${memoryId}/sources-text`, {
+                headers: { 'X-Client-Token': session.token }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed');
+            sourcesCache = data;
+            renderSources(data);
+        } catch (err) {
+            document.getElementById('qa-list').innerHTML =
+                `<div style="padding:20px;font-size:12px;color:var(--red)">❌ ${err.message}</div>`;
+        }
+    }
+
+    // ── Tab Switch ────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+        activeTabKey = tab;
+        document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+        document.getElementById('ptab-' + tab).classList.add('active');
+        if (tab === 'qa') renderQA();
+        else loadSources();
+    }
+
+    // ── Render Q&A ────────────────────────────────────────────────────────────
+    function renderQA() {
+        const list = document.getElementById('qa-list');
+        if (!allQA.length) {
+            list.innerHTML = `<div style="padding:20px;font-size:12px;color:var(--text3);text-align:center">
+                🗨️ No chat history yet. Start chatting with this memory to see Q&A pairs here.</div>`;
+            return;
+        }
+
+        const recent = allQA.slice(Math.max(0, allQA.length - shownCount));
+        let html = '';
+
+        // Show from newest to oldest
+        [...recent].reverse().forEach((qa, i) => {
+            const ts = qa.timestamp ? new Date(qa.timestamp).toLocaleString([], {
+                month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+            }) : '';
+            const hasAnswer = qa.answer && qa.answer.trim();
+            html += `
+            <div class="qa-card" id="qa-${i}" onclick="selectAnswer(${i}, this)">
+                <div class="qa-question">
+                    <span class="qa-q-icon">Q</span>
+                    <span>${esc(qa.question)}</span>
+                </div>
+                ${hasAnswer ? `
+                <div class="qa-answer" title="Click to select this answer for Reels">
+                    <span class="qa-a-icon">A</span>
+                    <span class="qa-answer-text">${esc(qa.answer)}</span>
+                </div>
+                <div class="qa-select-bar">
+                    <button class="qa-action-btn qa-gen-btn" onclick="triggerFromCard(${i},'reel',event)">🎬 Generate Reel</button>
+                    <button class="qa-action-btn qa-post-btn" onclick="triggerFromCard(${i},'post',event)">📤 Post</button>
+                </div>
+                <div class="qa-meta">${ts}</div>
+                ` : `<div class="qa-meta" style="padding:10px 14px">No answer recorded • ${ts}</div>`}
+            </div>`;
+        });
+
+        if (allQA.length > shownCount) {
+            html += `<button class="show-more-btn" onclick="showMore()">↕ Show More (${allQA.length - shownCount} more)</button>`;
+        }
+
+        list.innerHTML = html;
+    }
+
+    // ── Render Sources ────────────────────────────────────────────────────────
+    function renderSources(data) {
+        const list = document.getElementById('qa-list');
+        if (!data.sources || !data.sources.length) {
+            list.innerHTML = `<div style="padding:20px;font-size:12px;color:var(--text3)">No sources in this memory yet.</div>`;
+            return;
+        }
+        let html = '';
+        data.sources.forEach(s => {
+            html += `<div class="qa-card" onclick="selectSourceContent('${esc(s.source_name)}')">
+                <div class="qa-question" style="flex-direction:column;gap:4px">
+                    <div style="font-size:12px;font-weight:700;color:var(--text)">📄 ${esc(s.source_name)}</div>
+                    <div style="font-size:10px;color:var(--text3)">${esc(s.source_type||'')} • ${s.chunk_count||0} chunks</div>
+                </div>
+                <div class="qa-select-bar" style="display:flex">
+                    <button class="qa-action-btn qa-gen-btn" onclick="selectSourceContent('${esc(s.source_name)}');generateReel();event.stopPropagation()">🎬 Reel This</button>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+    }
+
+    function selectSourceContent(name) {
+        selectedText = `Source: ${name}`;
+        updateSelectedPreview(selectedText);
+    }
+
+    // ── Show More ─────────────────────────────────────────────────────────────
+    function showMore() {
+        shownCount = allQA.length;
+        renderQA();
+    }
+
+    // ── Select Answer ─────────────────────────────────────────────────────────
+    function selectAnswer(i, card) {
+        const qaPairs = [...allQA].reverse();
+        const qa = qaPairs[i];
+        if (!qa || !qa.answer) return;
+
+        // Toggle selection
+        if (selectedCard === card) {
+            card.classList.remove('selected');
+            selectedCard   = null;
+            selectedText   = '';
+            updateSelectedPreview('← Click any answer to select it, or use the whole memory');
+            document.getElementById('selected-preview').classList.remove('has-content');
+            return;
+        }
+        if (selectedCard) selectedCard.classList.remove('selected');
+        selectedCard = card;
+        card.classList.add('selected');
+
+        selectedText = qa.answer;
+        updateSelectedPreview(selectedText);
+        document.getElementById('selected-preview').classList.add('has-content');
+        document.getElementById('selected-preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function updateSelectedPreview(text) {
+        document.getElementById('selected-text').textContent = text;
+    }
+
+    function triggerFromCard(i, action, event) {
+        event.stopPropagation();
+        const qaPairs  = [...allQA].reverse();
+        const qa = qaPairs[i];
+        if (!qa || !qa.answer) return;
+
+        // Mark as selected
+        const card = document.getElementById('qa-' + i);
+        if (selectedCard && selectedCard !== card) selectedCard.classList.remove('selected');
+        selectedCard = card;
+        card.classList.add('selected');
+        selectedText = qa.answer;
+        updateSelectedPreview(selectedText);
+        document.getElementById('selected-preview').classList.add('has-content');
+
+        if (action === 'reel') generateReel();
+        else postVideo();
+    }
+
+    // ── Generate Reel ─────────────────────────────────────────────────────────
+    async function generateReel() {
+        const btn     = document.getElementById('generate-btn');
+        const status  = document.getElementById('status');
+        const video   = document.getElementById('output-video');
+        const holder  = document.getElementById('placeholder');
+        const actions = document.getElementById('post-actions');
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating...';
+        status.textContent = 'Processing your content…';
+
+        try {
+            const res = await fetch(`/api/memory/${memoryId}/generate-reel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Client-Token': session.token },
+                body: JSON.stringify({
+                    topic: memoryName,
+                    style: 'cinematic',
+                    content_text: selectedText || memoryName,
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Generation failed');
+
+            video.src          = data.video_url;
+            video.style.display = 'block';
+            holder.style.display = 'none';
+            actions.style.display = 'flex';
+            btn.textContent = '✨ Regenerate Reel';
+            btn.disabled    = false;
+            status.textContent = selectedText
+                ? '✅ Reel generated from selected answer!'
+                : '✅ Reel generated from full memory!';
+        } catch (err) {
+            btn.disabled    = false;
+            btn.textContent = '🎬 Generate AI Reel';
+            status.innerHTML = `<span style="color:var(--red)">❌ ${err.message}</span>`;
+        }
+    }
+
+    // ── Download / Post ───────────────────────────────────────────────────────
+    function downloadVideo() {
+        const v = document.getElementById('output-video');
+        if (!v.src) return;
+        const a = document.createElement('a');
+        a.href     = v.src;
+        a.download = `reel_${memoryId}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function postVideo() {
+        const v = document.getElementById('output-video');
+        const shareUrl = v.src || '';
+        if (navigator.share) {
+            navigator.share({ title: '🎬 AI Reel — ' + memoryName, url: shareUrl });
+        } else {
+            navigator.clipboard.writeText(shareUrl)
+                .then(() => { document.getElementById('status').textContent = '📤 Video link copied to clipboard!'; });
+        }
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+    function esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+</body>
+</html>

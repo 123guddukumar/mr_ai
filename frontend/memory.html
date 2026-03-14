@@ -434,6 +434,8 @@ function memCard(m){
       <button class="mem-btn mem-btn-check" onclick="openDrawer('${m.memory_id}','${esc(m.name)}')">📋 Check Memory</button>
       <button class="mem-btn mem-btn-qr" onclick="showQr('${m.memory_id}','${esc(m.name)}')">📱 QR Code</button>
       <button class="mem-btn mem-btn-embed" onclick="showEmbed('${m.memory_id}')">🔗 Embed</button>
+      <button class="mem-btn" style="background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(236,72,153,.12));border:1px solid rgba(168,85,247,.4);color:#c084fc;font-weight:700" onclick="window.location.href='/reels?memory_id=${m.memory_id}&name='+encodeURIComponent('${esc(m.name)}')">🎬 Generate Reels</button>
+      <button class="mem-btn" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fbbf24" onclick="shareMemory('${m.memory_id}','${esc(m.name)}')">📤 Post</button>
       <button class="mem-btn mem-btn-del" onclick="deleteMemory('${m.memory_id}','${esc(m.name)}')">🗑</button>
     </div>
   </div>`;
@@ -777,6 +779,25 @@ async function deleteMemory(memId, name){
     if(!r.ok){ const d=await r.json(); throw new Error(d.detail||'Failed'); }
     toast('🗑 Deleted','info'); loadMemories();
   }catch(e){ toast('❌ '+e.message,'error'); }
+}
+
+// ── Share / Post ────────────────────────────────────────────────────────────────
+function shareMemory(memId, name){
+  const BASE = window.location.origin;
+  const chatUrl = `${BASE}/memory-chat-public?id=${memId}`;
+  const reelsUrl = `${BASE}/reels?memory_id=${memId}&name=${encodeURIComponent(name)}`;
+  const msg = `Share or post your memory bot "${name}":\n\n` +
+    `💬 Public chat link:\n${chatUrl}\n\n` +
+    `🎬 Generate reels:\n${reelsUrl}`;
+
+  if(navigator.share){
+    navigator.share({ title: '🧠 ' + name, text: msg, url: chatUrl })
+      .catch(()=>{ /* user cancelled */ });
+  } else {
+    navigator.clipboard.writeText(chatUrl)
+      .then(()=> toast('📤 Chat link copied! Share it anywhere.','success'))
+      .catch(()=>{ prompt('Copy and share this link:', chatUrl); });
+  }
 }
 
 // ── QR Code ────────────────────────────────────────────────────────────────────

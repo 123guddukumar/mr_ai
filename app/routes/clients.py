@@ -16,6 +16,7 @@ POST /api/clients/reset-password  → Verify OTP + set new password
 
 import logging
 from typing import List, Optional
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -258,3 +259,146 @@ async def api_get_my_keys(client: dict = Depends(_require_client), db: Session =
     """Return all API keys created by this client."""
     keys = list_api_keys(client_id=client["client_id"], db=db)
     return {"client_id": client["client_id"], "total": len(keys), "keys": keys}
+
+
+# ── Google OAuth Login ────────────────────────────────────────────────────────
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str = Field(..., min_length=10)
+    name: Optional[str] = None
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+@router.post("/clients/google-login", response_model=ClientAuthResponse, tags=["Clients"])
+async def api_google_login(req: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """Login or register with a Google id_token from the frontend."""
+    import os
+    from app.core.models import Client
+    from app.core.clients import _generate_token, _generate_client_id
+
+    client_id_env = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+    # Verify token with Google
+    name = req.name or "Google User"
+    email = req.email or ""
+    avatar = req.avatar_url or ""
+
+    if client_id_env:
+        try:
+            import urllib.request, json as _json
+            url = f"https://oauth2.googleapis.com/tokeninfo?id_token={req.id_token}"
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                payload = _json.loads(resp.read())
+            if payload.get("aud") != client_id_env:
+                raise HTTPException(401, "Invalid Google token audience.")
+            email = payload.get("email", email)
+            name = payload.get("name", name)
+            avatar = payload.get("picture", avatar)
+            if not payload.get("email_verified"):
+                raise HTTPException(400, "Google email not verified.")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(400, f"Google token verification failed: {e}")
+    else:
+        # No GOOGLE_CLIENT_ID set — accept passed email/name (dev/demo mode)
+        if not email:
+            raise HTTPException(400, "GOOGLE_CLIENT_ID not configured. Pass email directly.")
+
+    # Upsert client
+    client = db.query(Client).filter(Client.email == email.lower()).first()
+    if client:
+        client.token = _generate_token()
+        client.last_login = datetime.utcnow()
+        client.login_method = "google"
+        if avatar:
+            client.avatar_url = avatar
+        if not client.is_verified:
+            client.is_verified = True
+    else:
+        import secrets
+        cid = _generate_client_id()
+        while db.query(Client).filter(Client.client_id == cid).first():
+            cid = _generate_client_id()
+        client = Client(
+            client_id=cid, name=name, email=email.lower(),
+            password_hash=secrets.token_hex(32),  # random unusable password
+            token=_generate_token(), is_verified=True,
+            login_method="google", avatar_url=avatar,
+            created_at=datetime.utcnow(), last_login=datetime.utcnow(),
+        )
+        db.add(client)
+    db.commit()
+    db.refresh(client)
+    return ClientAuthResponse(
+        client_id=client.client_id, token=client.token,
+        name=client.name, email=client.email,
+        created_at=client.created_at.isoformat() if client.created_at else "",
+        message=f"Welcome, {client.name}! (Google Login)",
+    )
+
+
+# ── QR Code Login ─────────────────────────────────────────────────────────────
+
+@router.get("/clients/me/qr-token", tags=["Clients"])
+async def api_get_qr_token(client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """Generate a short-lived QR login token for the current user. Returns a QR image URL."""
+    import secrets
+    from app.core.models import QRToken
+
+    token_val = "qr-" + secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(minutes=15)
+
+    qt = QRToken(
+        token=token_val,
+        client_id=client["client_id"],
+        expires_at=expires,
+        used=False,
+    )
+    db.add(qt)
+    db.commit()
+
+    login_url = f"/login?qr={token_val}"
+    return {
+        "token": token_val,
+        "login_url": login_url,
+        "expires_at": expires.isoformat(),
+        "qr_data": login_url,  # frontend generates QR image from this
+    }
+
+
+class QRLoginRequest(BaseModel):
+    token: str = Field(..., min_length=5)
+
+@router.post("/clients/qr-login", response_model=ClientAuthResponse, tags=["Clients"])
+async def api_qr_login(req: QRLoginRequest, db: Session = Depends(get_db)):
+    """Authenticate using a QR token. Returns a fresh session."""
+    from app.core.models import QRToken, Client
+    from app.core.clients import _generate_token
+
+    qt = db.query(QRToken).filter(QRToken.token == req.token).first()
+    if not qt:
+        raise HTTPException(404, "QR token not found.")
+    if qt.used:
+        raise HTTPException(400, "QR token already used.")
+    if qt.expires_at < datetime.utcnow():
+        raise HTTPException(400, "QR token has expired. Please generate a new one.")
+
+    client = db.query(Client).filter(Client.client_id == qt.client_id).first()
+    if not client:
+        raise HTTPException(404, "User not found.")
+
+    # Mark used + update login
+    qt.used = True
+    client.token = _generate_token()
+    client.last_login = datetime.utcnow()
+    client.login_method = "qr"
+    db.commit()
+    db.refresh(client)
+
+    return ClientAuthResponse(
+        client_id=client.client_id, token=client.token,
+        name=client.name, email=client.email,
+        created_at=client.created_at.isoformat() if client.created_at else "",
+        message=f"Welcome, {client.name}! (QR Login)",
+    )

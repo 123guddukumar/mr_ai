@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR AI RAG — Developer Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; font-size: 13px; line-height: 1.6; }
+  .doc { max-width: 860px; margin: 0 auto; background: #fff; padding: 48px 56px; }
+
+  .cover { padding-bottom: 36px; border-bottom: 3px solid #7c3aed; margin-bottom: 36px; }
+  .cover-badge { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #7c3aed; text-transform: uppercase; margin-bottom: 10px; }
+  .cover-title { font-size: 32px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  .cover-title span { background: linear-gradient(135deg, #7c3aed, #ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .cover-sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  .cover-meta { display: flex; gap: 28px; flex-wrap: wrap; }
+  .cm-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+  .cm-val { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+
+  .toc { background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc-title { font-size: 11px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+  .toc-list { columns: 2; gap: 16px; }
+  .toc-item { font-size: 11px; color: #475569; padding: 2px 0; display: flex; gap: 6px; break-inside: avoid; }
+  .toc-num { font-weight: 700; color: #7c3aed; min-width: 20px; }
+
+  h2 { font-size: 17px; font-weight: 800; color: #0f172a; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
+  .sn { background: #7c3aed; color: #fff; border-radius: 5px; padding: 2px 8px; font-size: 11px; }
+  h3 { font-size: 13px; font-weight: 700; color: #1e293b; margin: 18px 0 6px; }
+  p { color: #475569; margin-bottom: 10px; }
+  ul, ol { padding-left: 20px; color: #475569; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+
+  .step { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; border-left: 4px solid #7c3aed; }
+  .step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .step-num { width: 24px; height: 24px; border-radius: 6px; background: #7c3aed; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+  .step-desc { font-size: 12px; color: #475569; line-height: 1.6; }
+
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; overflow-x: auto; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+  .code-lbl { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 2px; }
+  .kw { color: #7dd3fc; } .str { color: #86efac; } .cm { color: #94a3b8; font-style: italic; } .num { color: #fbbf24; }
+
+  .info { border-left: 4px solid #7c3aed; background: #faf5ff; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 12px; color: #374151; }
+  .tip { border-left: 4px solid #16a34a; background: #f0fdf4; }
+
+  .api-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  .api-table th { background: #0f172a; color: #e2e8f0; text-align: left; padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .api-table td { padding: 8px 10px; border-top: 1px solid #e2e8f0; }
+  .api-table tr:nth-child(even) { background: #f8fafc; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 9px; font-weight: 700; }
+  .b-blue { background: #dbeafe; color: #1d4ed8; }
+  .b-green { background: #dcfce7; color: #16a34a; }
+  .b-purple { background: #f3e8ff; color: #7c3aed; }
+
+  .flow-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .flow-steps { display: flex; flex-direction: column; gap: 6px; }
+  .flow-step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #334155; }
+  .flow-arrow { color: #94a3b8; font-size: 14px; margin-left: 28px; }
+
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 10px; }
+  @media print { body { background: #fff; } .doc { padding: 24px; } .step { page-break-inside: avoid; } }
+  @page { margin: 18mm; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">👨‍💻 Developer Guide</div>
+  <div class="cover-title">MR AI RAG — <span>Complete Developer Guide</span></div>
+  <div class="cover-sub">How to create chatbots, add sources, use the API, and build voice-enabled AI applications</div>
+  <div class="cover-meta">
+    <div><div class="cm-label">Audience</div><div class="cm-val">External Developers</div></div>
+    <div><div class="cm-label">Auth</div><div class="cm-val">X-API-Key header</div></div>
+    <div><div class="cm-label">Format</div><div class="cm-val">REST JSON + SSE streaming</div></div>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <div class="toc-list">
+    <div class="toc-item"><span class="toc-num">1</span>What is MR AI RAG?</div>
+    <div class="toc-item"><span class="toc-num">2</span>Quick Start (5 minutes)</div>
+    <div class="toc-item"><span class="toc-num">3</span>Authentication</div>
+    <div class="toc-item"><span class="toc-num">4</span>Create a Chatbot Memory</div>
+    <div class="toc-item"><span class="toc-num">5</span>Add Knowledge Sources</div>
+    <div class="toc-item"><span class="toc-num">6</span>Ask Questions via API</div>
+    <div class="toc-item"><span class="toc-num">7</span>Streaming Responses</div>
+    <div class="toc-item"><span class="toc-num">8</span>Voice System Integration</div>
+    <div class="toc-item"><span class="toc-num">9</span>Embed the Chatbot</div>
+    <div class="toc-item"><span class="toc-num">10</span>Chat History API</div>
+    <div class="toc-item"><span class="toc-num">11</span>Full JavaScript SDK Example</div>
+    <div class="toc-item"><span class="toc-num">12</span>Error Handling</div>
+  </div>
+</div>
+
+<!-- 1. WHAT IS -->
+<h2><span class="sn">1</span> What is MR AI RAG?</h2>
+<p><strong>MR AI RAG</strong> (My RAG AI) is a platform that lets you build AI chatbots powered by your own knowledge base. Upload PDFs, websites, YouTube videos — the AI answers questions using only your content.</p>
+<div class="flow-box">
+  <div class="flow-steps">
+    <div class="flow-step">📄 <strong>Upload sources</strong> → PDF, website URL, YouTube video, JSON</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🧠 <strong>AI indexes content</strong> → chunks text, creates embeddings in vector DB</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">❓ <strong>User asks question</strong> → system finds relevant chunks (RAG)</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🤖 <strong>LLM generates answer</strong> → using only your knowledge base content</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🔊 <strong>Optional TTS</strong> → answer spoken aloud (voice-to-voice mode)</div>
+  </div>
+</div>
+
+<!-- 2. QUICK START -->
+<h2><span class="sn">2</span> Quick Start (5 Minutes)</h2>
+
+<div class="step"><div class="step-head"><span class="step-num">1</span><span class="step-title">Get an API Key</span></div>
+<div class="step-desc">Register at <code>https://yourdomain.com</code> → Dashboard → Settings → API Keys → Generate Key.<br>
+You'll get a key like: <code>mrairag-k-xxxxxxxxxxxxxxxxxx</code></div></div>
+
+<div class="step"><div class="step-head"><span class="step-num">2</span><span class="step-title">Login &amp; Get Client Token</span></div>
+<pre><span class="cm"># Python example</span>
+import requests
+
+BASE = <span class="str">"https://yourdomain.com"</span>
+HEADERS = {<span class="str">"X-API-Key"</span>: <span class="str">"mrairag-k-YOUR_KEY"</span>}
+
+<span class="cm"># Login</span>
+r = requests.post(f<span class="str">"{BASE}/api/clients/login"</span>,
+    json={<span class="str">"email"</span>: <span class="str">"you@example.com"</span>, <span class="str">"password"</span>: <span class="str">"yourpassword"</span>},
+    headers=HEADERS)
+token = r.json()[<span class="str">"token"</span>]
+CLIENT_HEADERS = {**HEADERS, <span class="str">"X-Client-Token"</span>: token}</pre>
+</div>
+
+<div class="step"><div class="step-head"><span class="step-num">3</span><span class="step-title">Create Memory, Add PDF, Ask Question</span></div>
+<pre><span class="cm"># Create a memory (chatbot)</span>
+mem = requests.post(f<span class="str">"{BASE}/api/memory"</span>,
+    json={<span class="str">"name"</span>: <span class="str">"Product FAQ"</span>, <span class="str">"description"</span>: <span class="str">"Our product knowledge base"</span>},
+    headers=CLIENT_HEADERS).json()
+memory_id = mem[<span class="str">"memory_id"</span>]
+
+<span class="cm"># Upload a PDF</span>
+with open(<span class="str">"product_manual.pdf"</span>, <span class="str">"rb"</span>) as f:
+    requests.post(f<span class="str">"{BASE}/api/memory/{memory_id}/upload-pdf"</span>,
+        files={<span class="str">"file"</span>: f}, headers=CLIENT_HEADERS)
+
+<span class="cm"># Ask a question</span>
+answer = requests.post(f<span class="str">"{BASE}/api/memory/{memory_id}/ask"</span>,
+    json={<span class="str">"question"</span>: <span class="str">"What is the return policy?"</span>},
+    headers=CLIENT_HEADERS).json()
+print(answer[<span class="str">"answer"</span>])</pre>
+</div>
+
+<!-- 3. AUTH -->
+<h2><span class="sn">3</span> Authentication</h2>
+<p>All API requests need either:</p>
+<ul>
+  <li><strong>X-API-Key</strong> — for server-to-server calls (your API key)</li>
+  <li><strong>X-Client-Token</strong> — for user-specific endpoints (login to get this)</li>
+</ul>
+<pre><span class="cm"># Always include both headers for client requests</span>
+headers = {
+    <span class="str">"X-API-Key"</span>: <span class="str">"mrairag-k-..."</span>,
+    <span class="str">"X-Client-Token"</span>: <span class="str">"clt-..."</span>,
+    <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>
+}</pre>
+
+<!-- 4. CREATE MEMORY -->
+<h2><span class="sn">4</span> Create a Chatbot Memory</h2>
+<pre>POST /api/memory
+
+Body:
+{
+  "name": "Customer Support Bot",
+  "description": "Handles product support questions",
+  "provider": "gemini"   <span class="cm">// "gemini" | "openai"</span>
+}
+
+Response:
+{
+  "memory_id": "mem-abc123",
+  "name": "Customer Support Bot",
+  "source_count": 0,
+  "created_at": "2026-03-13T..."
+}</pre>
+
+<!-- 5. ADD SOURCES -->
+<h2><span class="sn">5</span> Add Knowledge Sources</h2>
+
+<h3>📄 Upload PDF</h3>
+<pre><span class="cm"># Python</span>
+with open(<span class="str">"manual.pdf"</span>, <span class="str">"rb"</span>) as f:
+    r = requests.post(
+        f<span class="str">"{BASE}/api/memory/{MEMORY_ID}/upload-pdf"</span>,
+        files={<span class="str">"file"</span>: (<span class="str">"manual.pdf"</span>, f, <span class="str">"application/pdf"</span>)},
+        headers=CLIENT_HEADERS
+    )
+print(r.json())  <span class="cm"># {"chunks_indexed": 47, "source_name": "manual.pdf"}</span></pre>
+
+<h3>🌐 Add a Website URL</h3>
+<pre>r = requests.post(
+    f<span class="str">"{BASE}/api/memory/{MEMORY_ID}/add-url"</span>,
+    json={<span class="str">"url"</span>: <span class="str">"https://yourcompany.com/about"</span>},
+    headers=CLIENT_HEADERS
+)</pre>
+
+<h3>▶️ Add YouTube Video</h3>
+<pre>r = requests.post(
+    f<span class="str">"{BASE}/api/memory/{MEMORY_ID}/add-url"</span>,
+    json={<span class="str">"url"</span>: <span class="str">"https://www.youtube.com/watch?v=VIDEO_ID"</span>},
+    headers=CLIENT_HEADERS
+)
+<span class="cm"># Transcribes the video and indexes the text</span></pre>
+
+<!-- 6. ASK -->
+<h2><span class="sn">6</span> Ask Questions via API</h2>
+<pre>POST /api/memory/{memory_id}/ask
+
+Body:
+{
+  "question": "What are the features?",
+  "top_k": 3,        <span class="cm">// how many source chunks to use (default: 3)</span>
+  "history": [       <span class="cm">// optional: last N turns for context</span>
+    {"role": "user", "content": "previous question"},
+    {"role": "assistant", "content": "previous answer"}
+  ]
+}
+
+Response:
+{
+  "answer": "The key features are...",
+  "sources": ["manual.pdf", "website.com"],
+  "latency_ms": 1240
+}</pre>
+
+<h3>Multi-language Support</h3>
+<pre><span class="cm"># Force a specific language in response</span>
+{
+  "question": "क्या return policy है?",  <span class="cm">// Hindi question</span>
+  "language": "hindi"                    <span class="cm">// force Hindi response</span>
+}</pre>
+
+<!-- 7. STREAMING -->
+<h2><span class="sn">7</span> Streaming Responses (SSE)</h2>
+<p>For real-time word-by-word responses, use the streaming endpoint. First token appears in ~300ms.</p>
+<pre><span class="cm"># Python with httpx (async streaming)</span>
+import httpx, asyncio
+
+async def stream_answer():
+    async with httpx.AsyncClient() as client:
+        async with client.stream(<span class="str">"POST"</span>,
+            f<span class="str">"{BASE}/api/memory/{MEMORY_ID}/ask"</span>,
+            json={<span class="str">"question"</span>: <span class="str">"Tell me everything about the product"</span>, <span class="str">"stream"</span>: <span class="kw">True</span>},
+            headers=CLIENT_HEADERS, timeout=<span class="num">120</span>) as resp:
+            async for line in resp.aiter_lines():
+                if line.startswith(<span class="str">"data: "</span>):
+                    chunk = line[<span class="num">6</span>:]
+                    if chunk != <span class="str">"[DONE]"</span>:
+                        print(chunk, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+
+asyncio.run(stream_answer())</pre>
+
+<div class="code-lbl">JavaScript (EventSource)</div>
+<pre>const evtSource = new EventSource(
+  `/api/memory/${MEMORY_ID}/stream-ask?question=Hello&token=${CLIENT_TOKEN}`
+);
+evtSource.onmessage = (e) => {
+  if (e.data === '[DONE]') { evtSource.close(); return; }
+  document.getElementById('answer').textContent += e.data;
+};</pre>
+
+<!-- 8. VOICE -->
+<h2><span class="sn">8</span> Voice System Integration</h2>
+<p>MR AI RAG supports three TTS (Text-to-Speech) engines for voice responses:</p>
+
+<table class="api-table">
+  <thead><tr><th>Engine</th><th>Key</th><th>Languages</th><th>Best For</th></tr></thead>
+  <tbody>
+    <tr><td><strong>MRAI (Browser)</strong></td><td><span class="badge b-green">Free</span></td><td>30+ via Web Speech API</td><td>Multilingual, offline</td></tr>
+    <tr><td><strong>ElevenLabs</strong></td><td><span class="badge b-purple">API key</span></td><td>English (best quality)</td><td>Ultra-realistic English voices</td></tr>
+    <tr><td><strong>Sarvam AI</strong></td><td><span class="badge b-purple">API key</span></td><td>Hindi, Tamil, Telugu, 9+ Indian</td><td>Indian languages</td></tr>
+  </tbody>
+</table>
+
+<h3>Voice-to-Voice Flow</h3>
+<div class="flow-box">
+  <div class="flow-steps">
+    <div class="flow-step">🎤 User speaks → <strong>Web Speech API (STT)</strong> transcribes to text <em>(~200-400ms)</em></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🔍 Text sent to <strong>RAG API</strong> → vector search + LLM answer <em>(~800-1500ms)</em></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🔊 Answer text → <strong>TTS engine</strong> → audio played <em>(~300-600ms)</em></div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🎤 Loop: system listens again automatically</div>
+  </div>
+</div>
+
+<h3>JavaScript Voice Integration Example</h3>
+<pre><span class="cm">// Speech-to-Text (STT) using Web Speech API</span>
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const rec = new SR();
+rec.lang = <span class="str">'en-IN'</span>;  <span class="cm">// or 'hi-IN', 'ta-IN', etc.</span>
+rec.onresult = async (e) => {
+  const question = e.results[<span class="num">0</span>][<span class="num">0</span>].transcript;
+
+  <span class="cm">// Send to API</span>
+  const res = await fetch(<span class="str">`/api/memory/${MEMORY_ID}/ask`</span>, {
+    method: <span class="str">'POST'</span>,
+    headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>, <span class="str">'X-Client-Token'</span>: TOKEN },
+    body: JSON.stringify({ question })
+  });
+  const { answer } = await res.json();
+
+  <span class="cm">// Text-to-Speech</span>
+  const u = new SpeechSynthesisUtterance(answer);
+  u.lang = <span class="str">'en-IN'</span>;
+  speechSynthesis.speak(u);
+};
+rec.start();</pre>
+
+<div class="info tip"><strong>Tip:</strong> Use language detection to automatically pick the right STT/TTS language. Check unicode ranges: Devanagari (Hindi) is <code>\u0900-\u097F</code>, Tamil is <code>\u0B80-\u0BFF</code>.</div>
+
+<!-- 9. EMBED -->
+<h2><span class="sn">9</span> Embed the Chatbot</h2>
+
+<h3>iFrame Embed (Instant, No Code)</h3>
+<pre>&lt;iframe
+  src="https://yourdomain.com/memory-chat-public?id=mem-abc123"
+  width="400" height="600"
+  style="border:none;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.2)"
+  allow="microphone"
+&gt;&lt;/iframe&gt;</pre>
+
+<h3>Chat Widget (JavaScript)</h3>
+<pre>&lt;script&gt;
+  window.MRAIRAG_MEMORY_ID = <span class="str">'mem-abc123'</span>;
+  window.MRAIRAG_BASE_URL = <span class="str">'https://yourdomain.com'</span>;
+&lt;/script&gt;
+&lt;script src="https://yourdomain.com/assets/widget.js"&gt;&lt;/script&gt;
+<span class="cm">&lt;!-- Adds a floating chat button to any webpage --&gt;</span></pre>
+
+<!-- 10. HISTORY -->
+<h2><span class="sn">10</span> Chat History API</h2>
+<pre>GET /api/memory/{memory_id}/chat-history?limit=10&offset=0
+Headers: X-Client-Token: clt-...
+
+Response:
+{
+  "total": 47,
+  "qa_pairs": [
+    {
+      "question": "What are your hours?",
+      "answer": "We are open Mon-Fri 9am-5pm...",
+      "timestamp": "2026-03-13T10:00:00"
+    }
+  ]
+}</pre>
+
+<!-- 11. JS SDK -->
+<h2><span class="sn">11</span> Full JavaScript SDK Example</h2>
+<pre><span class="cm">// MR AI RAG SDK — drop into any webpage</span>
+class MRaiRag {
+  constructor(memoryId, clientToken, baseUrl = <span class="str">''</span>) {
+    this.memoryId = memoryId;
+    this.headers = {
+      <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>,
+      <span class="str">'X-Client-Token'</span>: clientToken
+    };
+    this.base = baseUrl;
+  }
+
+  async ask(question, history = []) {
+    const r = await fetch(`${this.base}/api/memory/${this.memoryId}/ask`, {
+      method: <span class="str">'POST'</span>, headers: this.headers,
+      body: JSON.stringify({ question, top_k: <span class="num">3</span>, history })
+    });
+    return r.json(); <span class="cm">// { answer, sources, latency_ms }</span>
+  }
+
+  async addUrl(url) {
+    const r = await fetch(`${this.base}/api/memory/${this.memoryId}/add-url`, {
+      method: <span class="str">'POST'</span>, headers: this.headers,
+      body: JSON.stringify({ url })
+    });
+    return r.json();
+  }
+
+  async getHistory(limit = <span class="num">10</span>) {
+    const r = await fetch(
+      `${this.base}/api/memory/${this.memoryId}/chat-history?limit=${limit}`,
+      { headers: this.headers }
+    );
+    return r.json();
+  }
+}
+
+<span class="cm">// Usage</span>
+const bot = new MRaiRag(<span class="str">'mem-abc123'</span>, <span class="str">'clt-yourtoken'</span>);
+const { answer } = await bot.ask(<span class="str">'What is your refund policy?'</span>);
+console.log(answer);</pre>
+
+<!-- 12. ERRORS -->
+<h2><span class="sn">12</span> Error Handling Best Practices</h2>
+<pre>try {
+  const res = await fetch(url, { method: <span class="str">'POST'</span>, ... });
+  if (!res.ok) {
+    const err = await res.json();
+    <span class="cm">// err.detail contains the error message</span>
+    if (res.status === <span class="num">401</span>) console.error(<span class="str">'Invalid token — re-login'</span>);
+    if (res.status === <span class="num">404</span>) console.error(<span class="str">'Memory not found'</span>);
+    if (res.status === <span class="num">429</span>) console.error(<span class="str">'Rate limited — retry in 60s'</span>);
+    throw new Error(err.detail || <span class="str">'Request failed'</span>);
+  }
+  return res.json();
+} catch (e) {
+  <span class="cm">// Handle network errors</span>
+  console.error(<span class="str">'API error:'</span>, e.message);
+}</pre>
+
+<div class="info"><strong>Rate Limits:</strong> Default is 60 requests/minute per API key. For higher limits, contact the admin.</div>
+<div class="info tip"><strong>Best Practice:</strong> Cache the client token in <code>localStorage</code> after login. It expires after 30 days. Check for 401 errors and prompt re-login.</div>
+
+<div class="footer">MR AI RAG — Developer Guide · Press Ctrl+P → Save as PDF to export</div>
+</div>
+</body>
+</html>

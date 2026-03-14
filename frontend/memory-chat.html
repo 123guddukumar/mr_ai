@@ -579,24 +579,27 @@ function checkSpecialKeywords(text) {
   const t = text.toLowerCase().trim();
   const botName = document.getElementById('mem-title')?.textContent || 'MR AI Bot';
 
-  // Termination / Logout / Close
-  if (/\b(no thank u|ok bye|bye|stop)\b/i.test(t)) return 'STOP';
+  // Termination / Bas / Stop
+  if (/\b(no thank u|ok bye|bye|stop|bas|khada khatam)\b/i.test(t) || /बन्द|बस|बाय|बंद/.test(t)) return 'STOP';
 
   // Greeting
-  if (/\b(hello|hi|hey|helo)\b/i.test(t)) return `Hi, I am ${botName}. What can I help you with?`;
+  if (/\b(hello|hi|hey|helo|namaste|kem cho)\b/i.test(t) || /नमस्ते|हैलो|हेलो|नमस्कार/.test(t)) 
+    return `Hi, I am ${botName}. What can I help you with?`;
   
   // Identity
-  if (/\b(who are you|what is your name|who|your name)\b/i.test(t)) return `I am ${botName}.`;
+  if (/\b(who are you|what is your name|who|your name|naam kya|kaun ho|kaun hai)\b/i.test(t) || /नाम क्या|कौन हो|कौन है/.test(t)) 
+    return `I am ${botName}.`;
   
   // Creator
-  if (/\b(who made you|your boss name|who created you|boss name)\b/i.test(t)) return `My boss is Divyansu Verma.`;
+  if (/\b(who made you|your boss name|who created you|boss name)\b/i.test(t) || /किसने बनाया|बॉस कौन|मालिक कौन/.test(t)) 
+    return `My boss is Divyansu Verma.`;
   
   // Appreciation
-  if (/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you)\b/i.test(t)) 
+  if (/\b(ok thank you|good information|wow|nice|thank u|well done|awesome|good|weldone|thank you|shukriya|dhanyavad|thx|thanks|thank)\b/i.test(t) || /शुक्रिया|धन्यवाद|थैंक|अच्छे|बढ़िया/.test(t)) 
     return `Thank you sir! Ask any more questions?`;
   
   // History placeholder
-  if (t.includes('previous history') || t.includes('pichla history')) 
+  if (t.includes('previous history') || t.includes('pichla history') || t.includes('पुरानी हिस्ट्री')) 
     return "After 2 days, history of questions with answers will be shown here.";
 
   return null;
@@ -753,7 +756,31 @@ function startV2VSession(){
   const btn=document.getElementById('vo-tap-btn');
   btn.style.display='inline-flex'; btn.className='vo-tap-btn stop';
   btn.innerHTML='⏹ Stop Session';
-  listenAndRespond();
+  
+  // Greet the user in their language before listening
+  const botName = document.getElementById('mem-title')?.textContent || 'Memory Bot';
+  const targetLang = localStorage.getItem('mrairag_sv_lang') || 'en-IN';
+  const baseGreeting = `Hey I am ${botName} what can help you`;
+  
+  setVoS('speaking');
+  document.getElementById('vo-sublabel').textContent = baseGreeting;
+  
+  (async () => {
+    try {
+      const langCode = getLangCode(targetLang);
+      const displayGreeting = (langCode && langCode !== 'en') 
+        ? await translateText(baseGreeting, targetLang) 
+        : baseGreeting;
+      
+      document.getElementById('vo-sublabel').textContent = displayGreeting;
+      detectedLang = targetLang; // temporarily set detectedLang to trigger correct TTS voice
+      await speakTextLang(displayGreeting, targetLang);
+    } catch (e) {
+      console.error('Greeting error:', e);
+    } finally {
+      if(v2vRunning) listenAndRespond();
+    }
+  })();
 }
 
 async function listenAndRespond(){
@@ -1051,14 +1078,18 @@ async function sendMsgAuto(text){
     }
     if(specialRes) {
       removeTyping(typing);
-      appendMessage('assistant', specialRes, []);
+      const langCode = getLangCode(detectedLang);
+      const displayRes = (langCode && langCode!=='en') 
+        ? await translateText(specialRes, detectedLang)
+        : specialRes;
+      appendMessage('assistant', displayRes, []);
       if(chatMode==='v2v'){
         setVoS('speaking');
-        document.getElementById('vo-sublabel').textContent=specialRes.substring(0,100);
-        await speakTextLang(specialRes, detectedLang);
+        document.getElementById('vo-sublabel').textContent=displayRes.substring(0,100);
+        await speakTextLang(displayRes, detectedLang);
         if(v2vRunning) setVoS('listening');
       } else if(chatMode==='v2t' || chatMode==='text'){
-        await speakTextLang(specialRes, detectedLang);
+        await speakTextLang(displayRes, detectedLang);
       }
       return;
     }

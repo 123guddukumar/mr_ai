@@ -54,6 +54,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# ✅ iframe middleware (YAHI PE HONA CHAHIYE)
+@app.middleware("http")
+async def allow_iframe(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "ALLOWALL"
+    response.headers["Content-Security-Policy"] = "frame-ancestors *"
+    return response
 
 
 @app.exception_handler(Exception)
@@ -151,9 +158,3 @@ if os.path.exists(frontend_path):
         index = os.path.join(frontend_path, "index.html")
         return FileResponse(index)
 
-    @app.middleware("http")
-    async def allow_iframe(request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Frame-Options"] = "ALLOWALL"
-        response.headers["Content-Security-Policy"] = "frame-ancestors *"
-        return response

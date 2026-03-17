@@ -383,9 +383,10 @@ select.vsd-inp{cursor:pointer;appearance:none}
 // ── Params ─────────────────────────────────────────────────────────────────────
 const params    = new URLSearchParams(window.location.search);
 const MEMORY_ID = params.get('id');
+const directMode = params.get('direct');
 if(!MEMORY_ID){ document.getElementById('ls-name').textContent='No bot found'; }
 
-// ── Bot preview on login screen ────────────────────────────────────────────────
+// ── Bot preview & Auto-Login ──────────────────────────────────────────────────
 (async()=>{
   if(!MEMORY_ID) return;
   try{
@@ -395,6 +396,12 @@ if(!MEMORY_ID){ document.getElementById('ls-name').textContent='No bot found'; }
     document.getElementById('ls-name').textContent=name;
     document.title=name+' — MR AI RAG';
   }catch(e){}
+
+  // Auto-login if direct link or embedded in iframe
+  if(directMode || window.self !== window.top) {
+    document.getElementById('vs-btn').style.display = 'none'; // hide settings button
+    loginAs('Guest','');
+  }
 })();
 
 // ── Google Sign In ─────────────────────────────────────────────────────────────

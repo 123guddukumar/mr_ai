@@ -221,6 +221,8 @@ textarea.form-input{resize:vertical;min-height:80px}
           <button class="utab" onclick="switchUtab('url',this)">🌐 URL</button>
           <button class="utab" onclick="switchUtab('yt',this)">📺 YouTube</button>
           <button class="utab" onclick="switchUtab('json',this)">📋 JSON</button>
+          <button class="utab" onclick="switchUtab('jsonurl',this)">🔗 JSON URL</button>
+          <button class="utab" onclick="switchUtab('mongo',this)">🗄️ MongoDB</button>
         </div>
         <div class="upload-panel visible" id="upanel-pdf">
           <input type="file" class="form-input" id="up-pdf" accept=".pdf">
@@ -242,6 +244,22 @@ textarea.form-input{resize:vertical;min-height:80px}
           <textarea class="form-input" id="up-json-text" placeholder="Paste JSON text or any structured text data here…"></textarea>
           <button class="btn-upload" onclick="ingestJson()">📋 Index JSON / Text</button>
           <div class="upload-result" id="res-json"></div>
+        </div>
+        <div class="upload-panel" id="upanel-jsonurl">
+          <input type="url" class="form-input" id="up-json-url" placeholder="https://api.example.com/data.json">
+          <input type="text" class="form-input" id="up-json-url-title" placeholder="Source title (e.g. Live API Data)" style="margin-top:6px">
+          <div class="form-hint">Fetches JSON from a URL and indexes it for RAG</div>
+          <button class="btn-upload" onclick="ingestJsonUrl()" style="margin-top:6px">🔗 Fetch &amp; Index JSON URL</button>
+          <div class="upload-result" id="res-jsonurl"></div>
+        </div>
+        <div class="upload-panel" id="upanel-mongo">
+          <input type="text" class="form-input" id="up-mongo-uri" placeholder="mongodb+srv://user:pass@cluster.mongodb.net/" style="font-family:'JetBrains Mono',monospace;font-size:11px">
+          <input type="text" class="form-input" id="up-mongo-db" placeholder="Database name" style="margin-top:6px">
+          <input type="text" class="form-input" id="up-mongo-col" placeholder="Collection name" style="margin-top:6px">
+          <input type="text" class="form-input" id="up-mongo-title" placeholder="Source title (e.g. Products DB)" style="margin-top:6px">
+          <div class="form-hint">Connects to MongoDB, fetches all documents, indexes for live real-time RAG</div>
+          <button class="btn-upload" onclick="ingestMongo()" style="margin-top:6px">🗄️ Connect &amp; Index MongoDB</button>
+          <div class="upload-result" id="res-mongo"></div>
         </div>
         <div style="margin-top:12px;text-align:center">
           <button class="btn btn-primary" onclick="goChat()" style="max-width:240px">💬 Open Chat →</button>
@@ -281,6 +299,8 @@ textarea.form-input{resize:vertical;min-height:80px}
         <button class="utab" onclick="switchDrawerUpload('url',this)">🌐 URL</button>
         <button class="utab" onclick="switchDrawerUpload('yt',this)">📺 YouTube</button>
         <button class="utab" onclick="switchDrawerUpload('json',this)">📋 JSON</button>
+        <button class="utab" onclick="switchDrawerUpload('jsonurl',this)">🔗 JSON URL</button>
+        <button class="utab" onclick="switchDrawerUpload('mongo',this)">🗄️ MongoDB</button>
       </div>
       <div class="upload-panel visible" id="d-upanel-pdf">
         <input type="file" class="form-input" id="d-up-pdf" accept=".pdf">
@@ -303,6 +323,22 @@ textarea.form-input{resize:vertical;min-height:80px}
         <button class="btn-upload" onclick="dIngestJson()">📋 Index JSON / Text</button>
         <div class="upload-result" id="d-res-json"></div>
       </div>
+      <div class="upload-panel" id="d-upanel-jsonurl">
+        <input type="url" class="form-input" id="d-up-json-url" placeholder="https://api.example.com/data.json">
+        <input type="text" class="form-input" id="d-up-json-url-title" placeholder="Source title" style="margin-top:6px">
+        <div class="form-hint">Fetches JSON from a URL and indexes it</div>
+        <button class="btn-upload" onclick="dIngestJsonUrl()" style="margin-top:6px">🔗 Fetch &amp; Index JSON URL</button>
+        <div class="upload-result" id="d-res-jsonurl"></div>
+      </div>
+      <div class="upload-panel" id="d-upanel-mongo">
+        <input type="text" class="form-input" id="d-up-mongo-uri" placeholder="mongodb+srv://user:pass@cluster.mongodb.net/" style="font-family:'JetBrains Mono',monospace;font-size:11px">
+        <input type="text" class="form-input" id="d-up-mongo-db" placeholder="Database name" style="margin-top:6px">
+        <input type="text" class="form-input" id="d-up-mongo-col" placeholder="Collection name" style="margin-top:6px">
+        <input type="text" class="form-input" id="d-up-mongo-title" placeholder="Source title" style="margin-top:6px">
+        <div class="form-hint">Live real-time MongoDB RAG ingest</div>
+        <button class="btn-upload" onclick="dIngestMongo()" style="margin-top:6px">🗄️ Connect &amp; Index MongoDB</button>
+        <div class="upload-result" id="d-res-mongo"></div>
+      </div>
       <div style="margin-top:14px">
         <button class="btn-upload" onclick="switchDTab('sources',document.getElementById('dtab-sources'))" style="background:var(--bg3);color:var(--accent)">← View Sources</button>
       </div>
@@ -314,18 +350,17 @@ textarea.form-input{resize:vertical;min-height:80px}
   </div>
 </div>
 
-<!-- Embed Modal -->
 <div class="modal-overlay" id="embed-modal" style="display:none" onclick="if(event.target===this)document.getElementById('embed-modal').style.display='none'">
   <div class="modal">
     <button onclick="document.getElementById('embed-modal').style.display='none'" style="position:absolute;right:16px;top:16px;background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
     <div style="font-size:16px;font-weight:700;margin-bottom:4px">🔗 Embed Your Bot</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Paste this into any webpage to add your chatbot</div>
-    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">iFrame code</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Paste this into any webpage to add your chatbot (full voice chat UI)</div>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">iFrame code (full chat widget)</div>
     <div class="code-block" id="embed-iframe"></div>
     <button onclick="copyText(document.getElementById('embed-iframe').textContent,'iFrame code')" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.4);color:var(--accent);font-family:Inter,sans-serif;margin-bottom:14px">📋 Copy iFrame</button>
-    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Direct link</div>
+    <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Direct chat link (no login required)</div>
     <div class="code-block" id="embed-url"></div>
-    <button onclick="copyText(document.getElementById('embed-url').textContent,'Link')" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);font-family:Inter,sans-serif">📋 Copy Link</button>
+    <button onclick="copyText(document.getElementById('embed-url').textContent,'Link')" style="width:100%;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);font-family:Inter,sans-serif">📋 Copy Direct Link</button>
   </div>
 </div>
 
@@ -506,6 +541,37 @@ async function ingestJson(){
     document.getElementById('up-json-text').value='';
     loadMemories();
   }catch(e){ showRes('res-json','error','❌ '+e.message); }
+}
+async function ingestJsonUrl(){
+  const url = document.getElementById('up-json-url').value.trim();
+  const title = document.getElementById('up-json-url-title').value.trim() || 'JSON Data';
+  if(!url){ showRes('res-jsonurl','error','Enter a JSON URL'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-jsonurl','info','⏳ Fetching & indexing…');
+  try{
+    const r = await fetch(`/api/memory/${activeMemoryId}/ingest-json-url`,{method:'POST',headers:hdrs(),body:JSON.stringify({url,title})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-jsonurl','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('up-json-url').value='';
+    loadMemories();
+  }catch(e){ showRes('res-jsonurl','error','❌ '+e.message); }
+}
+async function ingestMongo(){
+  const uri = document.getElementById('up-mongo-uri').value.trim();
+  const dbName = document.getElementById('up-mongo-db').value.trim();
+  const col = document.getElementById('up-mongo-col').value.trim();
+  const title = document.getElementById('up-mongo-title').value.trim() || 'MongoDB Data';
+  if(!uri||!dbName||!col){ showRes('res-mongo','error','Enter connection string, database and collection'); return; }
+  if(!activeMemoryId){ toast('Create a bot first','error'); return; }
+  showRes('res-mongo','info','⏳ Connecting to MongoDB…');
+  try{
+    const r = await fetch(`/api/memory/${activeMemoryId}/ingest-mongodb`,{method:'POST',headers:hdrs(),body:JSON.stringify({connection_string:uri,database:dbName,collection:col,title})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('res-mongo','success','✅ '+d.title+' — '+d.docs_fetched+' docs, '+d.total_chunks+' chunks');
+    loadMemories();
+  }catch(e){ showRes('res-mongo','error','❌ '+e.message); }
 }
 function goChat(){ if(activeMemoryId) window.location.href='/memory-chat?id='+activeMemoryId; }
 
@@ -758,6 +824,37 @@ async function dIngestJson(){
     setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
   }catch(e){ showRes('d-res-json','error','❌ '+e.message); }
 }
+async function dIngestJsonUrl(){
+  const url = document.getElementById('d-up-json-url').value.trim();
+  const title = document.getElementById('d-up-json-url-title').value.trim() || 'JSON Data';
+  if(!url||!drawerMemId){ showRes('d-res-jsonurl','error','Enter a JSON URL'); return; }
+  showRes('d-res-jsonurl','info','⏳ Fetching & indexing…');
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/ingest-json-url`,{method:'POST',headers:hdrs(),body:JSON.stringify({url,title})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-jsonurl','success','✅ '+d.title+' — '+d.total_chunks+' chunks');
+    document.getElementById('d-up-json-url').value='';
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-jsonurl','error','❌ '+e.message); }
+}
+async function dIngestMongo(){
+  const uri = document.getElementById('d-up-mongo-uri').value.trim();
+  const dbName = document.getElementById('d-up-mongo-db').value.trim();
+  const col = document.getElementById('d-up-mongo-col').value.trim();
+  const title = document.getElementById('d-up-mongo-title').value.trim() || 'MongoDB Data';
+  if(!uri||!dbName||!col||!drawerMemId){ showRes('d-res-mongo','error','Enter connection details'); return; }
+  showRes('d-res-mongo','info','⏳ Connecting to MongoDB…');
+  try{
+    const r = await fetch(`/api/memory/${drawerMemId}/ingest-mongodb`,{method:'POST',headers:hdrs(),body:JSON.stringify({connection_string:uri,database:dbName,collection:col,title})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail||'Failed');
+    showRes('d-res-mongo','success','✅ '+d.title+' — '+d.docs_fetched+' docs, '+d.total_chunks+' chunks');
+    loadMemories();
+    setTimeout(()=>switchDTab('sources',document.getElementById('dtab-sources')),1500);
+  }catch(e){ showRes('d-res-mongo','error','❌ '+e.message); }
+}
 
 // ── Embed ──────────────────────────────────────────────────────────────────────
 async function showEmbed(memId){
@@ -766,7 +863,7 @@ async function showEmbed(memId){
     const d = await r.json();
     embedData = d;
     document.getElementById('embed-iframe').textContent = d.iframe_code;
-    document.getElementById('embed-url').textContent = d.embed_url;
+    document.getElementById('embed-url').textContent = d.chat_url || d.embed_url;
     document.getElementById('embed-modal').style.display='flex';
   }catch(e){ toast('❌ '+e.message,'error'); }
 }
@@ -776,9 +873,10 @@ async function deleteMemory(memId, name){
   if(!confirm(`Delete "${name}" and all its data? This cannot be undone.`)) return;
   try{
     const r = await fetch(`/api/memory/${memId}`,{method:'DELETE',headers:hdrs()});
-    if(!r.ok){ const d=await r.json(); throw new Error(d.detail||'Failed'); }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail||d.message||`Server error ${r.status}`);
     toast('🗑 Deleted','info'); loadMemories();
-  }catch(e){ toast('❌ '+e.message,'error'); }
+  }catch(e){ toast('❌ '+e.message,'error'); console.error('Delete error:',e); }
 }
 
 // ── Share / Post ────────────────────────────────────────────────────────────────

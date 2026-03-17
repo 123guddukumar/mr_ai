@@ -93,7 +93,7 @@
     <div class="cover-sub">Complete reference for embedding AI memory chatbots, managing conversations, and measuring voice interaction latency.</div>
     <div class="cover-meta">
       <div><div class="cover-meta-label">Version</div><div class="cover-meta-val">v2.0</div></div>
-      <div><div class="cover-meta-label">Base URL</div><div class="cover-meta-val" id="base-url">https://your-domain.com</div></div>
+      <div><div class="cover-meta-label">Base URL</div><div class="cover-meta-val" id="base-url">https://test.3rdai.co</div></div>
       <div><div class="cover-meta-label">Auth</div><div class="cover-meta-val">API Key or Client Token</div></div>
       <div><div class="cover-meta-label">Format</div><div class="cover-meta-val">JSON (REST)</div></div>
     </div>
@@ -174,19 +174,20 @@
   <p>Send questions to a memory chatbot. The AI answers using only the knowledge stored in that memory.</p>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/chat</span><span class="ep-desc">Ask the chatbot a question</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ask</span><span class="ep-desc">Ask the chatbot a question</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">message</td><td class="pt">string</td><td class="pr">Required</td><td>User's question</td></tr>
-        <tr><td class="pn">stream</td><td class="pt">boolean</td><td class="po">Optional</td><td>Stream response word-by-word via SSE</td></tr>
-        <tr><td class="pn">language</td><td class="pt">string</td><td class="po">Optional</td><td>Force reply language e.g. "hindi", "en"</td></tr>
+        <tr><td class="pn">question</td><td class="pt">string</td><td class="pr">Required</td><td>User's question</td></tr>
+        <tr><td class="pn">top_k</td><td class="pt">integer</td><td class="po">Optional</td><td>Number of chunks to retrieve (default: 5)</td></tr>
+        <tr><td class="pn">history</td><td class="pt">array</td><td class="po">Optional</td><td>Chat history e.g. [{"role": "user", "content": "..."}]</td></tr>
       </table>
-      <div class="code-label">Response 200 (non-streaming)</div>
+      <div class="code-label">Response 200</div>
       <pre><span class="kw">{</span>
   <span class="str">"answer"</span>: <span class="str">"Based on the knowledge base, ..."</span>,
   <span class="str">"sources"</span>: [<span class="str">"document.pdf"</span>, <span class="str">"website.com"</span>],
-  <span class="str">"latency_ms"</span>: <span class="num">1240</span>
+  <span class="str">"latency_ms"</span>: <span class="num">1240</span>,
+  <span class="str">"history_saved"</span>: <span class="kw">true</span>
 <span class="kw">}</span></pre>
     </div>
   </div>
@@ -212,11 +213,45 @@
   </div>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/add-url</span><span class="ep-desc">Add a web page or YouTube video</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-url</span><span class="ep-desc">Add a web page to memory</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL or YouTube link</td></tr>
+        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL of the article/website</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-youtube</span><span class="ep-desc">Add a YouTube video to memory</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="pn">url</td><td class="pt">string</td><td>YouTube video link</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-json-url</span><span class="ep-desc">Fetch and index a JSON API/file from URL</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL of the JSON data</td></tr>
+        <tr><td class="pn">title</td><td class="pt">string</td><td>Descriptive title for the source</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-mongodb</span><span class="ep-desc">Connect to MongoDB &amp; index documents (Live Real-Time)</span></div>
+    <div class="ep-body">
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">connection_string</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB URI (mongodb+srv://...)</td></tr>
+        <tr><td class="pn">database</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB Database Name</td></tr>
+        <tr><td class="pn">collection</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB Collection Name</td></tr>
+        <tr><td class="pn">title</td><td class="pt">string</td><td class="po">Optional</td><td>Descriptive title for the source</td></tr>
       </table>
     </div>
   </div>

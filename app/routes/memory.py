@@ -81,6 +81,18 @@ class IngestJsonReq(BaseModel):
     json_text: str = ""
     title: str = "JSON Data"
 
+class IngestJsonUrlReq(BaseModel):
+    url: str
+    title: str = "JSON Data"
+
+class IngestMongoDBReq(BaseModel):
+    connection_string: str
+    database: str
+    collection: str
+    title: str = "MongoDB Data"
+    filter: dict = {}       # optional pymongo filter, default = all docs
+    limit: int = 1000       # max docs to fetch (safety cap)
+
 
 # ── Chunking helper ────────────────────────────────────────────────────────────
 
@@ -167,8 +179,12 @@ async def delete_memory(
     client = _get_client(x_client_token, db)
     mem = _get_memory(memory_id, client["client_id"], db)
     from app.services.vector_store import get_vector_store
-    get_vector_store().delete_by_memory(memory_id)
+    try:
+        get_vector_store().delete_by_memory(memory_id)
+    except Exception as e:
+        logger.warning(f"Vector store delete failed (continuing): {e}")
     db.delete(mem); db.commit()
+    logger.info(f"Memory deleted: {memory_id}")
     return {"success": True, "message": "Memory deleted"}
 
 
@@ -370,6 +386,99 @@ async def memory_ingest_json(
     return {"success": True, "title": req.title, "total_chunks": len(chunks)}
 
 
+# ── 8b. Ingest JSON from URL ─────────────────────────────────────────────────
+
+@router.post("/memory/{memory_id}/ingest-json-url", tags=["Memory"])
+async def memory_ingest_json_url(
+    memory_id: str,
+    req: IngestJsonUrlReq,
+    x_client_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """Fetch a JSON file/API from a URL, then index it into the memory."""
+    client = _get_client(x_client_token, db)
+    _get_memory(memory_id, client["client_id"], db)
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30) as hc:
+            resp = await hc.get(
+                req.url,
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            )
+        resp.raise_for_status()
+        try:
+            data = resp.json()
+            text = json.dumps(data, indent=2, ensure_ascii=False)[:30000]
+        except Exception:
+            text = resp.text[:30000]
+    except Exception as e:
+        raise HTTPException(502, f"Failed to fetch JSON URL: {e}")
+
+    if len(text) < 20:
+        raise HTTPException(422, "JSON content too short")
+
+    from app.services.embedder import embed_texts
+    from app.services.vector_store import get_vector_store
+    title = req.title or req.url
+    chunks, texts = _make_chunks(text, title, memory_id)
+    embeddings = embed_texts(texts)
+    get_vector_store().add_chunks(embeddings, chunks)
+
+    from app.core.models import MemorySource
+    db.add(MemorySource(memory_id=memory_id, source_type="json", source_name=title, chunk_count=len(chunks)))
+    db.commit()
+    return {"success": True, "title": title, "total_chunks": len(chunks)}
+
+
+# ── 8c. Ingest MongoDB Collection ─────────────────────────────────────────────
+
+@router.post("/memory/{memory_id}/ingest-mongodb", tags=["Memory"])
+async def memory_ingest_mongodb(
+    memory_id: str,
+    req: IngestMongoDBReq,
+    x_client_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """Connect to a MongoDB collection, fetch all documents, and RAG-index them."""
+    client = _get_client(x_client_token, db)
+    mem = _get_memory(memory_id, client["client_id"], db)
+
+    try:
+        from pymongo import MongoClient as PyMongoClient
+        mc = PyMongoClient(req.connection_string, serverSelectionTimeoutMS=10000)
+        col = mc[req.database][req.collection]
+        cursor = col.find(req.filter or {}).limit(req.limit)
+        docs = list(cursor)
+        mc.close()
+    except Exception as e:
+        raise HTTPException(502, f"MongoDB connection failed: {e}")
+
+    if not docs:
+        raise HTTPException(422, "MongoDB collection returned no documents")
+
+    # Serialize docs to text (remove _id for clean serialization)
+    for d in docs:
+        d.pop("_id", None)
+    text = json.dumps(docs, indent=2, ensure_ascii=False, default=str)[:60000]
+
+    from app.services.embedder import embed_texts
+    from app.services.vector_store import get_vector_store
+    title = req.title or f"{req.database}/{req.collection}"
+    chunks, texts = _make_chunks(text, title, memory_id)
+    embeddings = embed_texts(texts)
+    get_vector_store().add_chunks(embeddings, chunks)
+
+    from app.core.models import MemorySource
+    db.add(MemorySource(
+        memory_id=memory_id, source_type="json",
+        source_name=f"MongoDB: {title} ({len(docs)} docs)",
+        chunk_count=len(chunks)
+    ))
+    db.commit()
+    return {"success": True, "title": title, "docs_fetched": len(docs), "total_chunks": len(chunks)}
+
+
 # ── 9. Ask (RAG + conversation history) ──────────────────────────────────────
 
 @router.post("/memory/{memory_id}/ask", tags=["Memory"])
@@ -559,14 +668,21 @@ async def memory_embed_info(
         if mem.client_id != client["client_id"]:
             raise HTTPException(403, "Not your memory")
 
-    base_url = os.getenv("BASE_URL", "http://127.0.0.1:8000")
+    base_url = os.getenv("BASE_URL", "https://test.3rdai.co")
+    # direct=1 skips login so it goes straight to chat
+    chat_url  = f"{base_url}/memory-chat-public?id={memory_id}&direct=1"
     embed_url = f"{base_url}/embed/{memory_id}"
-    iframe_code = f'<iframe src="{embed_url}" width="400" height="600" frameborder="0" style="border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.3);" allow="clipboard-write"></iframe>'
+    iframe_code = (
+        f'<iframe src="{chat_url}" width="400" height="600" frameborder="0" '
+        f'style="border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.3);" '
+        f'allow="microphone clipboard-write"></iframe>'
+    )
 
     return {
         "memory_id": memory_id,
         "name": mem.name,
         "embed_url": embed_url,
+        "chat_url": chat_url,
         "iframe_code": iframe_code,
         "source_count": len(mem.sources),
     }

@@ -128,7 +128,8 @@ if os.path.exists(frontend_path):
 
     @app.get("/embed/{memory_id}", include_in_schema=False)
     async def embed_page(memory_id: str):
-        return FileResponse(os.path.join(frontend_path, "embed.html"))
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(f"/memory-chat-public?id={memory_id}&direct=1")
 
     @app.get("/api-docs-page", include_in_schema=False)
     async def api_docs_page():

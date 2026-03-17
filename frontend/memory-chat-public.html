@@ -529,7 +529,7 @@ function detectLangFromText(text){
 
 function checkSpecialKeywords(text){
   const t=text.toLowerCase().trim();
-  const botName=document.getElementById('bot-name')?.textContent||'MR AI Bot';
+  const botName=document.getElementById('chat-bot-name')?.textContent||'your Assistant';
   if(/\b(no thank u|ok bye|bye|stop|bas|khada khatam)\b/i.test(t) || /बन्द|बस|बाय|बंद/.test(t)) return 'STOP';
   if(/\b(hello|hi|hey|helo|namaste|kem cho)\b/i.test(t) || /नमस्ते|हैलो|हेलो|नमस्कार/.test(t)) 
     return `Hi, I am ${botName}. What can I help you with?`;

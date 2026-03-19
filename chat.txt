@@ -111,3 +111,8 @@ FRS -
 10.80.1.135
 10.80.1.145
 10.80.4.155
+
+
+I want to remove google sigin on embeded chat page all same system like when QR code scan but here embeded chat not add singin
+
+all chat page when say or enter hii/hi or what is your name/who are you then speak {bot name} who can help you speak in client language

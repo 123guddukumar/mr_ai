@@ -6,7 +6,6 @@
 <title>Chat — MR AI RAG</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/voice-ui.css">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
   --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
@@ -16,7 +15,7 @@ html,body{height:100%;overflow:hidden}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
 /* Login */
-#login-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+#login-screen{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;
   padding:32px;background:radial-gradient(ellipse at 50% 0%,rgba(108,99,255,.15),transparent 60%)}
 .ls-logo{font-size:13px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:32px}
@@ -29,10 +28,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .ls-divider{display:flex;align-items:center;gap:12px;margin-bottom:24px}
 .ls-divider::before,.ls-divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .ls-divider span{font-size:11px;color:var(--text3);font-weight:600}
-.google-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  padding:12px 24px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);
-  color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;width:100%}
-.google-btn:hover{border-color:var(--accent);background:rgba(108,99,255,.08);transform:translateY(-1px)}
+
 .ls-note{font-size:11px;color:var(--text3);margin-top:18px;line-height:1.6}
 .ls-powered{font-size:10px;color:var(--text3);margin-top:28px;opacity:.6}
 
@@ -192,12 +188,7 @@ select.vsd-inp{cursor:pointer;appearance:none}
     <div class="ls-icon">🧠</div>
     <div class="ls-name" id="ls-name">Loading…</div>
     <div class="ls-desc" id="ls-desc">Scan the QR with your phone and sign in to start chatting.</div>
-    <div class="ls-divider"><span>Sign in to continue</span></div>
-    <button class="google-btn" onclick="handleGoogleSignIn()">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-      Continue with Google
-    </button>
-    <div class="ls-note">Your Google account is used only to display your name &amp; photo.</div>
+    <div class="ls-note">Welcome to MR AI RAG! Just a moment while we set up your chat.</div>
   </div>
   <div class="ls-powered">Powered by MR AI RAG · Built by Divyansu Verma</div>
 </div>
@@ -388,38 +379,13 @@ if(!MEMORY_ID){ document.getElementById('ls-name').textContent='No bot found'; }
 
 // ── Bot preview & Auto-Login ──────────────────────────────────────────────────
 (async()=>{
-  if(!MEMORY_ID) return;
-  try{
-    const r=await fetch(`/api/memory/${MEMORY_ID}/embed-info`);
-    const d=await r.json();
-    const name=d.name||'Memory Bot';
-    document.getElementById('ls-name').textContent=name;
-    document.title=name+' — MR AI RAG';
-  }catch(e){}
-
-  // Auto-login if direct link or embedded in iframe
-  if(directMode || window.self !== window.top) {
-    document.getElementById('vs-btn').style.display = 'none'; // hide settings button
+  // Auto-login ALWAYS for public chat to ensure seamless iframe experience
+  if(MEMORY_ID && !sessionStorage.getItem('pub_user')) {
     loginAs('Guest','');
   }
 })();
 
-// ── Google Sign In ─────────────────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-function handleGoogleSignIn(){
-  if(window.google&&google.accounts&&google.accounts.id){
-    google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:onGoogleToken,auto_select:false});
-    google.accounts.id.prompt(n=>{ if(n.isNotDisplayed()||n.isSkippedMoment()) fallbackLogin(); });
-  } else { fallbackLogin(); }
-}
-function onGoogleToken(r){
-  try{ const p=JSON.parse(atob(r.credential.split('.')[1])); loginAs(p.name||'User',p.picture||''); }
-  catch(e){ loginAs('User',''); }
-}
-function fallbackLogin(){
-  const n=prompt('Enter your name to continue:','Guest');
-  if(n!==null) loginAs(n||'Guest','');
-}
+// ── Guest Login Logic ─────────────────────────────────────────────────────────
 async function loginAs(name,pic){
   sessionStorage.setItem('pub_user',JSON.stringify({name,pic}));
   // Log visit
@@ -529,7 +495,7 @@ function detectLangFromText(text){
 
 function checkSpecialKeywords(text){
   const t=text.toLowerCase().trim();
-  const botName=document.getElementById('chat-bot-name')?.textContent||'your Assistant';
+  const botName=document.getElementById('bot-name')?.textContent||'MR AI Bot';
   if(/\b(no thank u|ok bye|bye|stop|bas|khada khatam)\b/i.test(t) || /बन्द|बस|बाय|बंद/.test(t)) return 'STOP';
   if(/\b(hello|hi|hey|helo|namaste|kem cho)\b/i.test(t) || /नमस्ते|हैलो|हेलो|नमस्कार/.test(t)) 
     return `Hi, I am ${botName}. What can I help you with?`;

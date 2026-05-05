@@ -116,3 +116,15 @@ FRS -
 I want to remove google sigin on embeded chat page all same system like when QR code scan but here embeded chat not add singin
 
 all chat page when say or enter hii/hi or what is your name/who are you then speak {bot name} who can help you speak in client language
+
+
+
+bro i wwant to add when create memory bot using this then why not ask all check img 
+POST https://test.3rdai.co/api/memory
+
+Field	Type	Required	Description
+name	string	Required	Chatbot memory name
+description	string	Optional	Short description
+provider	string	Optional	"gemini" (default) | "openai"
+
+and add api link in which generate api key

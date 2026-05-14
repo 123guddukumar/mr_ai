@@ -7,3 +7,5 @@ vector_store/*.index
 vector_store/metadata.json
 uploads/*.pdf
 *.log
+uploads/*
+/uploads

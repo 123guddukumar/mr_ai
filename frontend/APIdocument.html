@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master API Documentation | MR AI RAG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #ff7a00;
+            --primary-light: #ffb347;
+            --bg: #0d0f17;
+            --card-bg: #161b22;
+            --text-main: #f0f6fc;
+            --text-dim: #8b949e;
+            --border: #30363d;
+            --code-bg: #0d1117;
+            --success: #238636;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg); 
+            color: var(--text-main); 
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        
+        header { 
+            text-align: center; 
+            margin-bottom: 60px; 
+            padding: 40px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 { font-size: 36px; font-weight: 800; margin-bottom: 10px; color: var(--primary); }
+        .subtitle { font-size: 16px; color: var(--text-dim); }
+
+        .section-nav {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+        }
+        .nav-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        .level-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 50px;
+            scroll-margin-top: 80px;
+        }
+        .level-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        .level-header i { font-size: 24px; color: var(--primary); }
+        .level-title { font-size: 24px; font-weight: 800; }
+
+        .api-block {
+            margin-bottom: 40px;
+            border-left: 3px solid var(--border);
+            padding-left: 20px;
+        }
+        .api-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; color: var(--primary-light); }
+        
+        .endpoint {
+            background: var(--code-bg);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .method { font-weight: 800; color: var(--success); }
+        .url { color: #58a6ff; }
+
+        .field-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; }
+        .field-table th { text-align: left; padding: 10px; background: rgba(255,255,255,0.05); color: var(--text-dim); }
+        .field-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+        .req { color: #f85149; font-weight: 800; }
+
+        .code-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #e6edf3;
+            overflow-x: auto;
+            margin: 15px 0;
+            position: relative;
+        }
+        .copy-icon { position: absolute; right: 15px; top: 15px; cursor: pointer; color: var(--text-dim); }
+        .copy-icon:hover { color: var(--primary); }
+
+        .hierarchy-box {
+            background: rgba(255, 122, 0, 0.05);
+            border: 1px dashed var(--primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .level-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Master API <span>Documentation</span></h1>
+            <p class="subtitle">Complete technical reference for Developers to build white-label AI platforms.</p>
+        </header>
+
+        <nav class="section-nav">
+            <a href="#admin" class="nav-btn">Admin API</a>
+            <a href="#client" class="nav-btn">App/Client API</a>
+            <a href="#user" class="nav-btn">User API</a>
+            <a href="#interaction" class="nav-btn">Chat & Usage</a>
+        </nav>
+
+        <div class="hierarchy-box">
+            <strong>Hierarchy Overview:</strong> Admin (Creates Apps) → App/Client (Creates Users & Agents) → End User (Manages their own Agents).
+        </div>
+
+        <!-- LEVEL 1: SUPER ADMIN -->
+        <section class="level-card" id="admin">
+            <div class="level-header">
+                <i class="fas fa-shield-alt"></i>
+                <div class="level-title">1. Super Admin Level (X-Admin-Token)</div>
+            </div>
+            <p class="desc">Admin uses these APIs to create and manage full White-Label Apps (Clients).</p>
+
+            <div class="api-block">
+                <div class="api-title">Create New App (Client)</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/admin/clients/create-direct</span></div>
+                
+                <table class="field-table">
+                    <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                    <tr><td>name</td><td>string</td><td><span class="req">Yes</span></td><td>Owner's Name</td></tr>
+                    <tr><td>email</td><td>string</td><td><span class="req">Yes</span></td><td>Login Email</td></tr>
+                    <tr><td>password</td><td>string</td><td><span class="req">Yes</span></td><td>Login Password (min 6 chars)</td></tr>
+                    <tr><td>business_name</td><td>string</td><td>No</td><td>The App's Brand Name</td></tr>
+                    <tr><td>category</td><td>string</td><td>No</td><td>e.g. "SaaS", "Education"</td></tr>
+                    <tr><td>gst_number</td><td>string</td><td>No</td><td>Tax ID</td></tr>
+                    <tr><td>website_url</td><td>string</td><td>No</td><td>App's website</td></tr>
+                    <tr><td>logo_url</td><td>string</td><td>No</td><td>URL to brand logo</td></tr>
+                </table>
+
+                <div class="code-box">
+                    <i class="far fa-copy copy-icon" onclick="copyCode(this)"></i>
+<pre>{
+  "name": "Guddu Kumar",
+  "email": "app@example.com",
+  "password": "securepassword123",
+  "business_name": "Vectorize AI App",
+  "category": "Technology",
+  "gst_number": "27AAAAA0000A1Z5",
+  "city": "Mumbai",
+  "address": "Tech Park, HSR Layout"
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEVEL 2: APP / CLIENT -->
+        <section class="level-card" id="client">
+            <div class="level-header">
+                <i class="fas fa-briefcase"></i>
+                <div class="level-title">2. App / Client Level (X-App-Token)</div>
+            </div>
+            <p class="desc">The App uses these APIs to manage its own ecosystem of users, agents, and datastores.</p>
+
+            <div class="api-block">
+                <div class="api-title">Create Sub-User</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/clients/sub-users</span></div>
+                <table class="field-table">
+                    <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                    <tr><td>name</td><td>string</td><td><span class="req">Yes</span></td><td>User's Full Name</td></tr>
+                    <tr><td>email</td><td>string</td><td><span class="req">Yes</span></td><td>User's Login Email</td></tr>
+                    <tr><td>password</td><td>string</td><td><span class="req">Yes</span></td><td>User's Password</td></tr>
+                    <tr><td>profession</td><td>string</td><td>No</td><td>User's Job Role</td></tr>
+                    <tr><td>user_type</td><td>string</td><td>No</td><td>"New", "Prime", "Demo"</td></tr>
+                </table>
+            </div>
+
+            <div class="api-block">
+                <div class="api-title">Create DataStore</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/datastores</span></div>
+                <table class="field-table">
+                    <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                    <tr><td>name</td><td>string</td><td><span class="req">Yes</span></td><td>Knowledge Base Name</td></tr>
+                </table>
+            </div>
+
+            <div class="api-block">
+                <div class="api-title">Create AI Agent</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/agents</span></div>
+                <table class="field-table">
+                    <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                    <tr><td>name</td><td>string</td><td><span class="req">Yes</span></td><td>Bot Name</td></tr>
+                    <tr><td>datastores</td><td>array</td><td>No</td><td>List of DataStore IDs to link</td></tr>
+                    <tr><td>personality</td><td>string</td><td>No</td><td>How the bot should behave</td></tr>
+                    <tr><td>starting_message</td><td>string</td><td>No</td><td>First message to user</td></tr>
+                    <tr><td>voice_config</td><td>object</td><td>No</td><td>Voice provider settings</td></tr>
+                </table>
+
+                <div class="code-box">
+<pre>{
+  "name": "Customer Support Bot",
+  "datastores": ["ds_12345", "ds_67890"],
+  "personality": "Helpful, professional and empathetic",
+  "starting_message": "Hello! I am your AI assistant. How can I help you?",
+  "voice_config": {
+    "provider": "elevenlabs",
+    "voice_id": "pNInz6obpg8n9SaBeCm1"
+  }
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEVEL 3: END USER -->
+        <section class="level-card" id="user">
+            <div class="level-header">
+                <i class="fas fa-user"></i>
+                <div class="level-title">3. End User Level (User X-App-Token)</div>
+            </div>
+            <p class="desc">End Users manage their own agents and datastores using the same endpoints as the Client, but within their own scope.</p>
+
+            <div class="api-block">
+                <div class="api-title">Upload Data (PDF/Web/YT)</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/datastores/{ds_id}/upload-pdf</span></div>
+                <div class="info-box" style="margin-top:10px; background: rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                    <strong>Requirement:</strong> Form-Data with <code>file</code> field.
+                </div>
+            </div>
+
+            <div class="api-block">
+                <div class="api-title">Scrape Website</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/datastores/{ds_id}/ingest-url</span></div>
+                <div class="code-box"><pre>{ "url": "https://example.com/docs" }</pre></div>
+            </div>
+        </section>
+
+        <!-- CHAT & INTERACTION -->
+        <section class="level-card" id="interaction">
+            <div class="level-header">
+                <i class="fas fa-comments"></i>
+                <div class="level-title">4. Chat & Interaction</div>
+            </div>
+
+            <div class="api-block">
+                <div class="api-title">Ask Agent (Chat)</div>
+                <div class="endpoint"><span class="method">POST</span> <span class="url"><span class="base-url"></span>/api/agents/{agent_id}/ask</span></div>
+                <div class="code-box">
+<pre>{
+  "question": "What is the return policy?",
+  "history": [
+    {"role": "user", "content": "Hi"},
+    {"role": "assistant", "content": "Hello!"}
+  ]
+}</pre>
+                </div>
+            </div>
+
+            <div class="api-block">
+                <div class="api-title">QR Code Generation</div>
+                <div class="endpoint"><span class="method">GET</span> <span class="url"><span class="base-url"></span>/api/agents/{agent_id}/qr</span></div>
+                <p class="desc">Returns a QR image that opens the agent chat interface.</p>
+            </div>
+        </section>
+
+        <footer style="text-align:center; padding:40px; color:var(--text-dim); font-size:12px; border-top:1px solid var(--border);">
+            &copy; 2026 VectorizeAI API Documentation. All Rights Reserved.
+        </footer>
+    </div>
+
+    <script>
+        const currentOrigin = window.location.origin;
+        document.querySelectorAll('.base-url').forEach(span => {
+            span.textContent = currentOrigin;
+        });
+
+        function copyCode(btn) {
+            const pre = btn.nextElementSibling;
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                const original = btn.className;
+                btn.className = "fas fa-check";
+                btn.style.color = "var(--success)";
+                setTimeout(() => {
+                    btn.className = original;
+                    btn.style.color = "";
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

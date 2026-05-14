@@ -33,15 +33,12 @@ async def ask_question(request: QueryRequest, _key: dict = Depends(require_api_k
     model_used = f"{get_active_provider()}/{get_active_model()}"
 
     if not results:
-        return QueryResponse(
-            question=request.question,
-            answer=NO_CONTEXT_ANSWER,
-            sources=[],
-            context_found=False,
-            model_used=model_used
-        )
-
-    context, sources = build_context_and_sources(results)
+        context = "No specific data sources or relevant documents were found for this query. Please answer the user's question using your general knowledge."
+        sources = []
+        context_found = False
+    else:
+        context, sources = build_context_and_sources(results)
+        context_found = True
 
     try:
         answer = await generate_answer(request.question, context)
@@ -53,6 +50,6 @@ async def ask_question(request: QueryRequest, _key: dict = Depends(require_api_k
         question=request.question,
         answer=answer,
         sources=sources,
-        context_found=True,
+        context_found=context_found,
         model_used=model_used
     )

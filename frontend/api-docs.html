@@ -1,373 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MR AI RAG — Memory Chatbot API Documentation</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>VectorizeAI — API Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f8fafc;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --accent: #ff7a00;
+    --accent-light: #ffb347;
+    --accent-glow: rgba(255, 122, 0, 0.1);
+    --border: #e2e8f0;
+    --card: #ffffff;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+  }
+
+  [data-theme="dark"] {
+    --bg: #030712;
+    --bg2: #0f172a;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #ff7a00;
+    --accent-light: #ffa94d;
+    --accent-glow: rgba(255, 122, 0, 0.15);
+    --border: #1e293b;
+    --card: #0f172a;
+    --code-bg: #000000;
+    --code-text: #f8fafc;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; font-size: 13px; }
-  .doc { max-width: 860px; margin: 0 auto; background: #fff; padding: 48px 56px; }
+  body { 
+    font-family: 'Plus Jakarta Sans', sans-serif; 
+    background: var(--bg); 
+    color: var(--text); 
+    font-size: 14px;
+    line-height: 1.6;
+    transition: background 0.3s, color 0.3s;
+  }
 
-  .cover { padding: 48px 0 40px; border-bottom: 3px solid #7c3aed; margin-bottom: 40px; }
-  .cover-badge { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #7c3aed; text-transform: uppercase; margin-bottom: 12px; }
-  .cover-title { font-size: 36px; font-weight: 800; color: #0f172a; line-height: 1.15; margin-bottom: 8px; }
-  .cover-title span { background: linear-gradient(135deg, #7c3aed, #db2777); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  .cover-sub { font-size: 15px; color: #64748b; margin-bottom: 24px; }
-  .cover-meta { display: flex; gap: 32px; flex-wrap: wrap; }
-  .cover-meta-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
-  .cover-meta-val { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+  .doc { max-width: 900px; margin: 0 auto; padding: 48px 40px; }
 
-  .toc { background: #f1f5f9; border-radius: 12px; padding: 24px 28px; margin-bottom: 36px; }
-  .toc-title { font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
-  .toc-list { columns: 2; gap: 20px; }
-  .toc-item { font-size: 11px; color: #475569; padding: 3px 0; display: flex; align-items: center; gap: 6px; break-inside: avoid; }
-  .toc-num { font-weight: 700; color: #7c3aed; min-width: 20px; }
+  .nav-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 20px; }
+  .brand img { width: 32px; height: 32px; }
+  .brand span { color: var(--accent); }
+  
+  .theme-toggle {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
 
-  h2 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
-  h2 .sec-num { background: #7c3aed; color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
-  h3 { font-size: 13px; font-weight: 700; color: #1e293b; margin: 20px 0 8px; }
-  p { color: #475569; line-height: 1.7; margin-bottom: 10px; }
-  ul { padding-left: 18px; color: #475569; }
-  ul li { margin-bottom: 5px; line-height: 1.6; }
+  .cover { 
+    position: relative;
+    padding: 60px 40px; 
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    margin-bottom: 50px; 
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: var(--accent);
+    filter: blur(80px);
+    opacity: 0.15;
+    z-index: 0;
+  }
+  .cover-badge { 
+    position: relative; z-index: 1;
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--accent); 
+    text-transform: uppercase; margin-bottom: 16px; 
+    display: inline-block; padding: 4px 12px; background: var(--accent-glow); border-radius: 99px;
+  }
+  .cover-title { 
+    position: relative; z-index: 1;
+    font-family: 'Outfit', sans-serif;
+    font-size: 42px; font-weight: 800; color: var(--text); line-height: 1.1; margin-bottom: 12px; 
+  }
+  .cover-title span { color: var(--accent); }
+  .cover-sub { position: relative; z-index: 1; font-size: 16px; color: var(--text-muted); margin-bottom: 32px; max-width: 600px; }
+  .cover-meta { position: relative; z-index: 1; display: flex; gap: 40px; flex-wrap: wrap; }
+  .cover-meta-label { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .cover-meta-val { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 4px; }
 
-  .endpoint { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
-  .ep-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
-  .method { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 5px; letter-spacing: .04em; }
+  .toc { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 40px; }
+  .toc-title { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 16px; }
+  .toc-list { columns: 2; gap: 30px; }
+  .toc-item { font-size: 13px; color: var(--text-muted); padding: 5px 0; display: flex; align-items: center; gap: 8px; break-inside: avoid; text-decoration: none; transition: color 0.2s; }
+  .toc-item:hover { color: var(--accent); }
+  .toc-num { font-weight: 800; color: var(--accent); min-width: 24px; font-family: 'Outfit', sans-serif; }
+
+  h2 { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); margin: 60px 0 16px; padding-bottom: 12px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; scroll-margin-top: 20px; }
+  h2 .sec-num { background: var(--accent); color: #fff; border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 800; }
+  h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 30px 0 10px; }
+  p { color: var(--text-muted); margin-bottom: 12px; }
+  
+  .endpoint { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; background: var(--card); }
+  .ep-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .method { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; letter-spacing: .05em; }
   .m-get { background: #dcfce7; color: #16a34a; }
   .m-post { background: #dbeafe; color: #1d4ed8; }
   .m-delete { background: #fee2e2; color: #dc2626; }
   .m-put { background: #fef3c7; color: #d97706; }
-  .ep-path { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #0f172a; }
-  .ep-desc { font-size: 11px; color: #64748b; margin-left: auto; }
-  .ep-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .ep-path { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+  .ep-desc { font-size: 12px; color: var(--text-muted); margin-left: auto; font-weight: 500; }
+  .ep-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 
-  .params-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .params-table th { text-align: left; padding: 6px 10px; background: #f1f5f9; font-weight: 700; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
-  .params-table td { padding: 7px 10px; border-top: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
-  .pn { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #7c3aed; }
-  .pt { font-family: 'JetBrains Mono', monospace; color: #0369a1; font-size: 10px; }
-  .pr { color: #dc2626; font-size: 9px; font-weight: 700; }
-  .po { color: #64748b; font-size: 9px; }
+  .params-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .params-table th { text-align: left; padding: 8px 12px; background: var(--bg2); font-weight: 800; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .params-table td { padding: 10px 12px; border-top: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  .pn { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); }
+  .pt { font-family: 'JetBrains Mono', monospace; color: #0369a1; font-size: 11px; }
+  .pr { color: #dc2626; font-size: 10px; font-weight: 800; }
+  .po { color: var(--text-muted); font-size: 10px; }
 
-  pre { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 14px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; overflow-x: auto; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
-  .code-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 12px; padding: 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; margin: 10px 0; white-space: pre-wrap; word-break: break-word; border: 1px solid var(--border); }
+  .code-label { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
   .kw { color: #7dd3fc; }
   .str { color: #86efac; }
   .num { color: #fbbf24; }
   .com { color: #94a3b8; font-style: italic; }
 
-  .latency-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .latency-table th { text-align: left; padding: 8px 12px; background: #0f172a; color: #e2e8f0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-  .latency-table td { padding: 9px 12px; border-top: 1px solid #e2e8f0; }
-  .latency-table tr:nth-child(even) { background: #f8fafc; }
-  .lat-good { color: #16a34a; font-weight: 700; }
-  .lat-ok { color: #d97706; font-weight: 700; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; }
+  .latency-table { width: 100%; border-collapse: collapse; font-size: 13px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .latency-table th { text-align: left; padding: 12px 16px; background: var(--code-bg); color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .latency-table td { padding: 12px 16px; border-top: 1px solid var(--border); }
+  .latency-table tr:nth-child(even) { background: var(--bg2); }
+  .lat-good { color: #16a34a; font-weight: 800; }
+  .lat-ok { color: #d97706; font-weight: 800; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 800; }
   .b-green { background: #dcfce7; color: #16a34a; }
   .b-yellow { background: #fef3c7; color: #d97706; }
   .b-red { background: #fee2e2; color: #dc2626; }
 
-  .info-box { border-left: 4px solid #7c3aed; background: #faf5ff; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
-  .info-box.tip { border-color: #16a34a; background: #f0fdf4; }
-  .info-box p { margin: 0; color: #374151; font-size: 12px; }
+  .info-box { border-left: 4px solid var(--accent); background: var(--accent-glow); padding: 16px; border-radius: 4px 12px 12px 4px; margin: 20px 0; }
+  .info-box.tip { border-color: #16a34a; background: rgba(22, 163, 74, 0.05); }
+  .info-box p { margin: 0; color: var(--text); font-size: 13px; font-weight: 500; }
 
-  .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 10px; }
+  .footer { margin-top: 80px; padding-top: 40px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 12px; }
 
-  @media print {
-    body { background: #fff; }
-    .doc { padding: 24px; box-shadow: none; }
-    h2 { page-break-before: auto; }
-    .endpoint { page-break-inside: avoid; }
+  @media (max-width: 768px) {
+    .doc { padding: 30px 20px; }
+    .cover { padding: 40px 20px; }
+    .toc-list { columns: 1; }
+    .ep-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .ep-desc { margin-left: 0; }
   }
-  @page { margin: 18mm; }
 </style>
 </head>
 <body>
 <div class="doc">
 
+  <nav class="nav-top">
+    <a href="/" class="brand">
+      <img src="/assets/vectorize_logo.png" alt="Logo">
+      Vectorize<span>AI</span>
+    </a>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+  </nav>
+
   <div class="cover">
     <div class="cover-badge">🧠 API Reference Documentation</div>
-    <div class="cover-title">MR AI RAG<br><span>Memory Chatbot API</span></div>
-    <div class="cover-sub">Complete reference for embedding AI memory chatbots, managing conversations, and measuring voice interaction latency.</div>
+    <div class="cover-title">Vectorize<span>AI</span><br>Memory Infrastructure</div>
+    <div class="cover-sub">Complete reference for embedding AI knowledge bots, managing vector memory, and building intelligent conversation systems.</div>
     <div class="cover-meta">
-      <div><div class="cover-meta-label">Version</div><div class="cover-meta-val">v2.0</div></div>
-      <div><div class="cover-meta-label">Base URL</div><div class="cover-meta-val" id="base-url">https://test.3rdai.co</div></div>
-      <div><div class="cover-meta-label">Auth</div><div class="cover-meta-val">API Key or Client Token</div></div>
-      <div><div class="cover-meta-label">Format</div><div class="cover-meta-val">JSON (REST)</div></div>
+      <div><div class="cover-meta-label">Version</div><div class="cover-meta-val">v2.0.0</div></div>
+      <div><div class="cover-meta-label">Base URL</div><div class="cover-meta-val" id="base-url">https://api.vectorize.ai</div></div>
+      <div><div class="cover-meta-label">Auth</div><div class="cover-meta-val">API Key / Session Token</div></div>
+      <div><div class="cover-meta-label">Response</div><div class="cover-meta-val">JSON / REST</div></div>
     </div>
   </div>
 
   <div class="toc">
     <div class="toc-title">Table of Contents</div>
     <div class="toc-list">
-      <div class="toc-item"><span class="toc-num">1</span> Authentication</div>
-      <div class="toc-item"><span class="toc-num">2</span> Memory Management</div>
-      <div class="toc-item"><span class="toc-num">3</span> Chatbot Conversations</div>
-      <div class="toc-item"><span class="toc-num">4</span> Source Uploads</div>
-      <div class="toc-item"><span class="toc-num">5</span> Reels &amp; Video Generation</div>
-      <div class="toc-item"><span class="toc-num">6</span> Voice Latency Guide</div>
-      <div class="toc-item"><span class="toc-num">7</span> Embed &amp; QR Code</div>
-      <div class="toc-item"><span class="toc-num">8</span> Error Codes</div>
+      <a href="#auth" class="toc-item"><span class="toc-num">1</span> Authentication</a>
+      <a href="#memory" class="toc-item"><span class="toc-num">2</span> Memory Management</a>
+      <a href="#chat" class="toc-item"><span class="toc-num">3</span> Conversational AI</a>
+      <a href="#sources" class="toc-item"><span class="toc-num">4</span> Data Ingestion</a>
+      <a href="#reels" class="toc-item"><span class="toc-num">5</span> Media Generation</a>
+      <a href="#latency" class="toc-item"><span class="toc-num">6</span> Performance Benchmarks</a>
+      <a href="#embed" class="toc-item"><span class="toc-num">7</span> Deployment &amp; Embeds</a>
+      <a href="#errors" class="toc-item"><span class="toc-num">8</span> Error Reference</a>
     </div>
   </div>
 
   <!-- 1. AUTH -->
-  <h2><span class="sec-num">1</span> Authentication</h2>
-  <p>All API calls require an API key in the <code>X-API-Key</code> header, or a client session token in <code>X-Client-Token</code>. Obtain API keys from <strong>Dashboard → Settings → API Keys</strong>.</p>
-  <div class="info-box"><p><strong>Note:</strong> Client endpoints require <code>X-Client-Token</code>. Admin endpoints require <code>X-Admin-Token</code>.</p></div>
+  <h2 id="auth"><span class="sec-num">1</span> Authentication</h2>
+  <p>Secure your requests using either a persistent API Key or a temporary Client Session Token. Obtain these from your <strong>Dashboard → Developer Settings</strong>.</p>
+  <div class="info-box"><p><strong>Note:</strong> Most endpoints require <code>X-API-Key</code>. Profile and history endpoints require <code>X-Client-Token</code>.</p></div>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/clients/login</span><span class="ep-desc">Email + password login</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/clients/login</span><span class="ep-desc">Standard Authentication</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">email</td><td class="pt">string</td><td class="pr">Required</td><td>User email address</td></tr>
+        <tr><td class="pn">email</td><td class="pt">string</td><td class="pr">Required</td><td>Registered email address</td></tr>
         <tr><td class="pn">password</td><td class="pt">string</td><td class="pr">Required</td><td>Account password</td></tr>
       </table>
-      <div class="code-label">Response 200</div>
-      <pre><span class="kw">{</span> <span class="str">"client_id"</span>: <span class="str">"clt-..."</span>, <span class="str">"token"</span>: <span class="str">"clt-..."</span>, <span class="str">"name"</span>: <span class="str">"John Doe"</span>, <span class="str">"email"</span>: <span class="str">"user@example.com"</span> <span class="kw">}</span></pre>
-    </div>
-  </div>
-
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/clients/google-login</span><span class="ep-desc">Google OAuth login</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">id_token</td><td class="pt">string</td><td class="pr">Required</td><td>Google ID token from Google Sign-In flow</td></tr>
-      </table>
+      <div class="code-label">Successful Response</div>
+      <pre><span class="kw">{</span> 
+  <span class="str">"client_id"</span>: <span class="str">"clt-..."</span>, 
+  <span class="str">"token"</span>: <span class="str">"clt-..."</span>, 
+  <span class="str">"name"</span>: <span class="str">"Sarah Connor"</span> 
+<span class="kw">}</span></pre>
     </div>
   </div>
 
   <!-- 2. MEMORY -->
-  <h2><span class="sec-num">2</span> Memory Management</h2>
-  <p>A <strong>Memory</strong> is an AI knowledge base that stores uploaded documents, websites, and videos. Each chatbot is backed by a distinct memory.</p>
+  <h2 id="memory"><span class="sec-num">2</span> Memory Management</h2>
+  <p>VectorizeAI uses <strong>Memories</strong> to silo data. Each memory acts as a dedicated brain for a specific chatbot or department.</p>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-get">GET</span><span class="ep-path">/api/memory</span><span class="ep-desc">List all memories</span></div>
-    <div class="ep-body">
-      <p style="font-size:11px;color:#475569">Header: <code>X-Client-Token: {token}</code></p>
-    </div>
-  </div>
-
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory</span><span class="ep-desc">Create a new memory</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory</span><span class="ep-desc">Create Knowledge Space</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">name</td><td class="pt">string</td><td class="pr">Required</td><td>Chatbot memory name</td></tr>
-        <tr><td class="pn">description</td><td class="pt">string</td><td class="po">Optional</td><td>Short description</td></tr>
+        <tr><td class="pn">name</td><td class="pt">string</td><td class="pr">Required</td><td>Unique name for this memory</td></tr>
+        <tr><td class="pn">description</td><td class="pt">string</td><td class="po">Optional</td><td>Context for the AI</td></tr>
         <tr><td class="pn">provider</td><td class="pt">string</td><td class="po">Optional</td><td>"gemini" (default) | "openai"</td></tr>
       </table>
     </div>
   </div>
 
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-delete">DELETE</span><span class="ep-path">/api/memory/{memory_id}</span><span class="ep-desc">Delete a memory (irreversible)</span></div>
-    <div class="ep-body"><p style="font-size:11px;color:#dc2626">All sources and chat history will be permanently deleted.</p></div>
-  </div>
-
   <!-- 3. CHAT -->
-  <h2><span class="sec-num">3</span> Chatbot Conversations</h2>
-  <p>Send questions to a memory chatbot. The AI answers using only the knowledge stored in that memory.</p>
+  <h2 id="chat"><span class="sec-num">3</span> Conversational AI</h2>
+  <p>Query your memories using natural language. The system performs semantic retrieval before generating a grounded response.</p>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ask</span><span class="ep-desc">Ask the chatbot a question</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{id}/ask</span><span class="ep-desc">Contextual Query</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">question</td><td class="pt">string</td><td class="pr">Required</td><td>User's question</td></tr>
-        <tr><td class="pn">top_k</td><td class="pt">integer</td><td class="po">Optional</td><td>Number of chunks to retrieve (default: 5)</td></tr>
-        <tr><td class="pn">history</td><td class="pt">array</td><td class="po">Optional</td><td>Chat history e.g. [{"role": "user", "content": "..."}]</td></tr>
+        <tr><td class="pn">question</td><td class="pt">string</td><td class="pr">Required</td><td>The user query</td></tr>
+        <tr><td class="pn">top_k</td><td class="pt">integer</td><td class="po">Optional</td><td>Chunk depth (default: 5)</td></tr>
+        <tr><td class="pn">history</td><td class="pt">array</td><td class="po">Optional</td><td>Conversation thread context</td></tr>
       </table>
-      <div class="code-label">Response 200</div>
+      <div class="code-label">Grounded Response</div>
       <pre><span class="kw">{</span>
-  <span class="str">"answer"</span>: <span class="str">"Based on the knowledge base, ..."</span>,
-  <span class="str">"sources"</span>: [<span class="str">"document.pdf"</span>, <span class="str">"website.com"</span>],
-  <span class="str">"latency_ms"</span>: <span class="num">1240</span>,
-  <span class="str">"history_saved"</span>: <span class="kw">true</span>
+  <span class="str">"answer"</span>: <span class="str">"According to your uploaded PDF, the Q4 targets are..."</span>,
+  <span class="str">"sources"</span>: [<span class="str">"Q4_Report.pdf"</span>],
+  <span class="str">"latency_ms"</span>: <span class="num">1120</span>
 <span class="kw">}</span></pre>
     </div>
   </div>
 
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-get">GET</span><span class="ep-path">/api/memory/{memory_id}/chat-history</span><span class="ep-desc">Get Q&amp;A pairs</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Query Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
-        <tr><td class="pn">limit</td><td class="pt">integer</td><td>10</td><td>Max Q&amp;A pairs to return</td></tr>
-        <tr><td class="pn">offset</td><td class="pt">integer</td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
   <!-- 4. SOURCES -->
-  <h2><span class="sec-num">4</span> Source Uploads</h2>
-  <p>Add knowledge to a memory by uploading PDFs, pasting web URLs, or providing YouTube links.</p>
+  <h2 id="sources"><span class="sec-num">4</span> Data Ingestion</h2>
+  <p>Populate your memory by uploading files or linking dynamic web content. Chunks are automatically vectorized on arrival.</p>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/upload-pdf</span><span class="ep-desc">Upload a PDF document</span></div>
-    <div class="ep-body"><p style="font-size:11px;color:#475569">Content-Type: <code>multipart/form-data</code> | Form field: <code>file</code></p></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{id}/upload-pdf</span><span class="ep-desc">File Ingestion</span></div>
+    <div class="ep-body"><p>Use <code>multipart/form-data</code> with the key <code>file</code>.</p></div>
   </div>
 
   <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-url</span><span class="ep-desc">Add a web page to memory</span></div>
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{id}/ingest-url</span><span class="ep-desc">Web Scraping</span></div>
     <div class="ep-body">
       <table class="params-table">
         <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL of the article/website</td></tr>
+        <tr><td class="pn">url</td><td class="pt">string</td><td>Full URL to scrape and index</td></tr>
       </table>
     </div>
   </div>
 
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-youtube</span><span class="ep-desc">Add a YouTube video to memory</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td class="pn">url</td><td class="pt">string</td><td>YouTube video link</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-json-url</span><span class="ep-desc">Fetch and index a JSON API/file from URL</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        <tr><td class="pn">url</td><td class="pt">string</td><td>HTTP/HTTPS URL of the JSON data</td></tr>
-        <tr><td class="pn">title</td><td class="pt">string</td><td>Descriptive title for the source</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/ingest-mongodb</span><span class="ep-desc">Connect to MongoDB &amp; index documents (Live Real-Time)</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">connection_string</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB URI (mongodb+srv://...)</td></tr>
-        <tr><td class="pn">database</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB Database Name</td></tr>
-        <tr><td class="pn">collection</td><td class="pt">string</td><td class="pr">Required</td><td>MongoDB Collection Name</td></tr>
-        <tr><td class="pn">title</td><td class="pt">string</td><td class="po">Optional</td><td>Descriptive title for the source</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <!-- 5. REELS -->
-  <h2><span class="sec-num">5</span> Reels &amp; Video Generation</h2>
-  <p>Generate short video reels from memory content or a specific answer. Placeholder videos are returned — integrate D-ID, HeyGen, or Runway ML for production use.</p>
-
-  <div class="endpoint">
-    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/memory/{memory_id}/generate-reel</span><span class="ep-desc">Generate a video reel</span></div>
-    <div class="ep-body">
-      <table class="params-table">
-        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td class="pn">topic</td><td class="pt">string</td><td class="po">Optional</td><td>Topic/title for the reel (default: memory name)</td></tr>
-        <tr><td class="pn">style</td><td class="pt">string</td><td class="po">Optional</td><td>"cinematic" | "minimal" | "energetic"</td></tr>
-        <tr><td class="pn">content_text</td><td class="pt">string</td><td class="po">Optional</td><td>Specific answer text to generate from (max 5000 chars)</td></tr>
-      </table>
-      <div class="code-label">Response 200</div>
-      <pre><span class="kw">{</span> <span class="str">"success"</span>: <span class="kw">true</span>, <span class="str">"video_url"</span>: <span class="str">"https://..."</span>, <span class="str">"topic"</span>: <span class="str">"..."</span>, <span class="str">"style"</span>: <span class="str">"cinematic"</span> <span class="kw">}</span></pre>
-    </div>
-  </div>
-
-  <!-- 6. VOICE LATENCY -->
-  <h2><span class="sec-num">6</span> Voice Latency Guide</h2>
-  <p>Voice latency is the delay between a user speaking and the chatbot starting to respond. The total is the sum of several pipeline stages:</p>
+  <!-- 6. LATENCY -->
+  <h2 id="latency"><span class="sec-num">6</span> Performance Benchmarks</h2>
+  <p>VectorizeAI is optimized for low-latency voice and text interactions. Typical response times across the pipeline:</p>
 
   <table class="latency-table">
     <thead>
-      <tr><th>Component</th><th>Typical</th><th>Range</th><th>Rating</th></tr>
+      <tr><th>Component</th><th>Target</th><th>Range</th><th>Status</th></tr>
     </thead>
     <tbody>
-      <tr>
-        <td><strong>Speech-to-Text (STT)</strong><br><span style="font-size:10px;color:#64748b">Transcribing voice to text (e.g. Whisper, Google STT)</span></td>
-        <td class="lat-good">200–400ms</td><td>100–800ms</td><td><span class="badge b-green">Fast</span></td>
-      </tr>
-      <tr>
-        <td><strong>Vector Search (RAG)</strong><br><span style="font-size:10px;color:#64748b">Finding relevant chunks in the memory</span></td>
-        <td class="lat-good">50–150ms</td><td>30–400ms</td><td><span class="badge b-green">Fast</span></td>
-      </tr>
-      <tr>
-        <td><strong>LLM Generation — Gemini</strong><br><span style="font-size:10px;color:#64748b">Generating the AI answer (Google Gemini)</span></td>
-        <td class="lat-ok">800–1500ms</td><td>500–3000ms</td><td><span class="badge b-yellow">Moderate</span></td>
-      </tr>
-      <tr>
-        <td><strong>LLM Generation — GPT-4o</strong><br><span style="font-size:10px;color:#64748b">Generating the AI answer (OpenAI)</span></td>
-        <td class="lat-ok">600–1200ms</td><td>400–2500ms</td><td><span class="badge b-yellow">Moderate</span></td>
-      </tr>
-      <tr>
-        <td><strong>Text-to-Speech (TTS)</strong><br><span style="font-size:10px;color:#64748b">Converting answer text to audio</span></td>
-        <td class="lat-ok">300–600ms</td><td>200–1200ms</td><td><span class="badge b-yellow">Moderate</span></td>
-      </tr>
-      <tr>
-        <td><strong>Network Round-trip</strong><br><span style="font-size:10px;color:#64748b">API calls + server overhead</span></td>
-        <td class="lat-good">50–200ms</td><td>20–500ms</td><td><span class="badge b-green">Fast</span></td>
-      </tr>
-      <tr style="background:#fef3c7">
-        <td><strong>Total — Non-streaming</strong></td>
-        <td class="lat-ok">1.5–3.0s</td><td>1.0–5.0s</td><td><span class="badge b-yellow">Acceptable</span></td>
-      </tr>
-      <tr style="background:#f0fdf4">
-        <td><strong>Total — Streaming (first token)</strong></td>
-        <td class="lat-good">300–700ms</td><td>200ms–1.5s</td><td><span class="badge b-green">Excellent</span></td>
-      </tr>
+      <tr><td><strong>Vector Retrieval</strong></td><td class="lat-good">~100ms</td><td>50–300ms</td><td><span class="badge b-green">Fast</span></td></tr>
+      <tr><td><strong>Gemini Flash</strong></td><td class="lat-good">~800ms</td><td>600–1200ms</td><td><span class="badge b-green">Optimal</span></td></tr>
+      <tr><td><strong>GPT-4o</strong></td><td class="lat-ok">~1200ms</td><td>900–2000ms</td><td><span class="badge b-yellow">Stable</span></td></tr>
+      <tr><td><strong>Network (HTTPS)</strong></td><td class="lat-good">~150ms</td><td>80–400ms</td><td><span class="badge b-green">Fast</span></td></tr>
     </tbody>
   </table>
 
-  <div class="info-box tip" style="margin-top:16px">
-    <p><strong>Tip:</strong> Enable streaming (<code>"stream": true</code> in the chat request) to reduce perceived latency. The first token appears in ~300–700ms, making the response feel instant to users.</p>
+  <div class="info-box tip">
+    <p><strong>Optimization:</strong> Use streaming for a "first-byte" latency of under 400ms. Perfect for real-time customer support bots.</p>
   </div>
-
-  <h3>Benchmarks by Scenario</h3>
-  <table class="latency-table">
-    <thead><tr><th>Scenario</th><th>Total Latency</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Simple Q&amp;A (1–2 sources)</td><td class="lat-good">~800ms</td><td>Streaming + small context</td></tr>
-      <tr><td>Complex multi-document query (10+ sources)</td><td class="lat-ok">~2.5s</td><td>More chunks to process</td></tr>
-      <tr><td>Cold start / first message</td><td class="lat-ok">~1.5–2s</td><td>Model warm-up overhead</td></tr>
-      <tr><td>Subsequent messages (warm)</td><td class="lat-good">~600ms–1.2s</td><td>Embedded context cache</td></tr>
-      <tr><td>Full voice pipeline (STT + LLM + TTS)</td><td class="lat-ok">~2.0–4.0s</td><td>End-to-end voice interaction</td></tr>
-    </tbody>
-  </table>
 
   <!-- 7. EMBED -->
-  <h2><span class="sec-num">7</span> Embed &amp; QR Code</h2>
-  <p>Embed the chatbot on any website using an iframe, or share a QR code that opens the public chat interface.</p>
-  <h3>Embed iframe</h3>
-  <pre><span class="com">&lt;!-- Add to any webpage --&gt;</span>
-<span class="kw">&lt;iframe</span>
-  <span class="str">src</span>=<span class="num">"https://your-domain.com/memory-chat-public?id={memory_id}"</span>
-  <span class="str">width</span>=<span class="num">"400"</span> <span class="str">height</span>=<span class="num">"600"</span>
-  <span class="str">style</span>=<span class="num">"border:none;border-radius:16px"</span>
-  <span class="str">allow</span>=<span class="num">"microphone"</span>
-<span class="kw">&gt;&lt;/iframe&gt;</span></pre>
-  <h3>Public QR URL</h3>
-  <pre>https://your-domain.com/memory-chat-public?id=<span class="num">{memory_id}</span></pre>
-
-  <!-- 8. ERRORS -->
-  <h2><span class="sec-num">8</span> Error Codes</h2>
-  <table class="latency-table">
-    <thead><tr><th>Code</th><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
-    <tbody>
-      <tr><td><span class="badge b-yellow">400</span></td><td>Bad Request</td><td>Missing or invalid body fields</td><td>Check required parameters</td></tr>
-      <tr><td><span class="badge b-red">401</span></td><td>Unauthorized</td><td>Missing or invalid API key / token</td><td>Check X-API-Key or X-Client-Token header</td></tr>
-      <tr><td><span class="badge b-red">403</span></td><td>Forbidden</td><td>Accessing another user's resource</td><td>Use the correct client token</td></tr>
-      <tr><td><span class="badge b-red">404</span></td><td>Not Found</td><td>Memory or resource doesn't exist</td><td>Verify the memory_id or resource path</td></tr>
-      <tr><td><span class="badge b-red">422</span></td><td>Validation Error</td><td>Field type or constraint mismatch</td><td>Check field types (int vs string)</td></tr>
-      <tr><td><span class="badge b-red">500</span></td><td>Server Error</td><td>Unexpected server-side failure</td><td>Check server logs; retry after moment</td></tr>
-    </tbody>
-  </table>
+  <h2 id="embed"><span class="sec-num">7</span> Deployment &amp; Embeds</h2>
+  <p>Drop the VectorizeAI brain into any existing interface with one line of code.</p>
+  <pre><span class="com">&lt;!-- Instant Iframe Embed --&gt;</span>
+<span class="kw">&lt;iframe</span> <span class="str">src</span>=<span class="num">"https://app.vectorize.ai/embed/{memory_id}"</span> <span class="str">width</span>=<span class="num">"100%"</span> <span class="str">height</span>=<span class="num">"600"</span><span class="kw">&gt;&lt;/iframe&gt;</span></pre>
 
   <div class="footer">
-    MR AI RAG — Memory Chatbot API Documentation v2.0 · 
-    <strong>To export as PDF:</strong> Press Ctrl+P (Windows) or Cmd+P (Mac) → Save as PDF
+    VectorizeAI Infrastructure v2.0.0 · All Rights Reserved 2026<br>
+    <a href="/" style="color:var(--accent); text-decoration:none; margin-top:10px; display:inline-block">Back to VectorizeAI Home</a>
   </div>
 </div>
+
 <script>
+  function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('vectorize_theme', next);
+  }
+  
+  // Init theme
+  const saved = localStorage.getItem('vectorize_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  
   document.getElementById('base-url').textContent = window.location.origin;
 </script>
 </body>

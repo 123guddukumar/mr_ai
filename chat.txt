@@ -128,3 +128,39 @@ description	string	Optional	Short description
 provider	string	Optional	"gemini" (default) | "openai"
 
 and add api link in which generate api key
+
+
+******************************************************************************************************************************************************************
+
+Now I want to update on dashboard page add client section on bellow of overview 
+on client section add create new client thenopen full form on client section 
+Bussiness Information:
+Bussiness name. Website url, GST Number, Pan Number, Bussiness Logo, Client type option( New, Prime, Demo, Testing, In-house, Rejected)
+
+User Information:
+Full name, Email Addres, Mobile number, City, Pin code, Address, User image, Date Of Birth, Profession)
+
+Account Security:
+Password, Confirm Password
+
+Cancel Submit button in which submit and create client
+
+when created then show client in row with login button and 3dot under edit/del
+
+when login then redirect on client Dashboard 
+
+
+
+*****************************************************************
+Thank U everything is ok 
+
+Now I want to update when i create agent then in voice setion when select premimum voice provider(Eleven lab, Savaram) then choose Voice / Personality then why not show API key input box in which enter API key then test audio
+because without api key not use premimum voice provider
+
+Jab TTS provider ye (Eleven lab, Savaram) choose kr rha h to API key enter krne ke liye aa jaye uske baad test voice ho jo MRAI free h yisme koi API key ki need nhi to API key enter box in aayega 
+
+and when created agent then show agent and when click on QR code then generate and show successfully but i want to remove colose button add cross icon 
+
+
+and when KB upload pdf or insert website indexed then show same tab uploaded source in KB tab 
+

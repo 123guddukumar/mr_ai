@@ -1,0 +1,74 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,70,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,2,30,30,300,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:02.59,Default,,0,0,0,,🎯 Opening Question: “क्या होगा… जब
+Dialogue: 0,0:00:02.59,0:00:05.19,Default,,0,0,0,,जनता सालों तक अन्याय सहते-सहते टूट
+Dialogue: 0,0:00:05.19,0:00:07.78,Default,,0,0,0,,जाए?” “और क्या सिर्फ ideas… पूरी
+Dialogue: 0,0:00:07.78,0:00:10.37,Default,,0,0,0,,दुनिया बदल सकते हैं?” “1789 —
+Dialogue: 0,0:00:10.37,0:00:12.97,Default,,0,0,0,,फ्रांस में एक ऐसी घटना हुई
+Dialogue: 0,0:00:12.97,0:00:15.56,Default,,0,0,0,,जिसने सिर्फ एक देश नहीं… पूरी
+Dialogue: 0,0:00:15.56,0:00:18.15,Default,,0,0,0,,दुनिया हिला दी।” 🔥 “इसे कहा
+Dialogue: 0,0:00:18.15,0:00:20.75,Default,,0,0,0,,गया — French Revolution… यानी फ्रांसीसी
+Dialogue: 0,0:00:20.75,0:00:23.34,Default,,0,0,0,,क्रांति।” “उस समय France का society
+Dialogue: 0,0:00:23.34,0:00:25.93,Default,,0,0,0,,तीन वर्गों में divided था।” 1️⃣
+Dialogue: 0,0:00:25.93,0:00:28.53,Default,,0,0,0,,Clergy — यानी Church के लोग
+Dialogue: 0,0:00:28.53,0:00:31.12,Default,,0,0,0,,2️⃣ Nobility — यानी अमीर और
+Dialogue: 0,0:00:31.12,0:00:33.71,Default,,0,0,0,,royal लोग 3️⃣ Common People —
+Dialogue: 0,0:00:33.71,0:00:36.31,Default,,0,0,0,,यानी आम जनता 💬 Power Dialogue:
+Dialogue: 0,0:00:36.31,0:00:38.90,Default,,0,0,0,,“लेकिन सबसे बड़ा सवाल था… Tax
+Dialogue: 0,0:00:38.90,0:00:41.49,Default,,0,0,0,,कौन देता था?” ⚡ “सिर्फ common
+Dialogue: 0,0:00:41.49,0:00:44.09,Default,,0,0,0,,लोग!” “गरीब किसान… मजदूर… middle class
+Dialogue: 0,0:00:44.09,0:00:46.68,Default,,0,0,0,,लोग — सभी भारी taxes दे
+Dialogue: 0,0:00:46.68,0:00:49.27,Default,,0,0,0,,रहे थे। जबकि अमीर वर्ग luxury
+Dialogue: 0,0:00:49.27,0:00:51.87,Default,,0,0,0,,life जी रहा था।” “ऊपर से
+Dialogue: 0,0:00:51.87,0:00:54.46,Default,,0,0,0,,food crisis शुरू हो गया। Bread
+Dialogue: 0,0:00:54.46,0:00:57.05,Default,,0,0,0,,की कीमतें बढ़ गईं… लोग भूखे
+Dialogue: 0,0:00:57.05,0:00:59.65,Default,,0,0,0,,मरने लगे… और economic crisis ने
+Dialogue: 0,0:00:59.65,0:01:02.24,Default,,0,0,0,,situation और dangerous बना दी।” 💬
+Dialogue: 0,0:01:02.24,0:01:04.83,Default,,0,0,0,,Crowd Dialogue: “हम भूखे हैं… और
+Dialogue: 0,0:01:04.83,0:01:07.42,Default,,0,0,0,,राजा महलों में जश्न मना रहा
+Dialogue: 0,0:01:07.42,0:01:10.02,Default,,0,0,0,,है!” “अब frustration अपने peak पर
+Dialogue: 0,0:01:10.02,0:01:12.61,Default,,0,0,0,,पहुंच चुका था।” 🔥 “14 July
+Dialogue: 0,0:01:12.61,0:01:15.20,Default,,0,0,0,,1789 — गुस्साई जनता ने Bastille
+Dialogue: 0,0:01:15.20,0:01:17.80,Default,,0,0,0,,जेल पर हमला कर दिया।” “Bastille
+Dialogue: 0,0:01:17.80,0:01:20.39,Default,,0,0,0,,सिर्फ एक जेल नहीं थी… वो
+Dialogue: 0,0:01:20.39,0:01:22.98,Default,,0,0,0,,oppression और dictatorship का symbol बन
+Dialogue: 0,0:01:22.98,0:01:25.58,Default,,0,0,0,,चुकी थी।” ⚔️ Punch Line: “उस
+Dialogue: 0,0:01:25.58,0:01:28.17,Default,,0,0,0,,दिन सिर्फ एक जेल नहीं टूटी…
+Dialogue: 0,0:01:28.17,0:01:30.76,Default,,0,0,0,,राजाओं का डर भी टूट गया!”
+Dialogue: 0,0:01:30.76,0:01:33.36,Default,,0,0,0,,“धीरे-धीरे monarchy खत्म होने लगी… और
+Dialogue: 0,0:01:33.36,0:01:35.95,Default,,0,0,0,,France में Republic की शुरुआत हुई।”
+Dialogue: 0,0:01:35.95,0:01:38.54,Default,,0,0,0,,💬 Dialogue Insert: 👑 King: “राजा
+Dialogue: 0,0:01:38.54,0:01:41.14,Default,,0,0,0,,के बिना देश नहीं चल सकता!”
+Dialogue: 0,0:01:41.14,0:01:43.73,Default,,0,0,0,,🧑‍🤝‍🧑 People: “अब देश जनता चलाएगी!”
+Dialogue: 0,0:01:43.73,0:01:46.32,Default,,0,0,0,,“लेकिन French Revolution की सबसे powerful
+Dialogue: 0,0:01:46.32,0:01:48.92,Default,,0,0,0,,चीज थी — उसके ideas।” ✨
+Dialogue: 0,0:01:48.92,0:01:51.51,Default,,0,0,0,,“Liberty… Equality… Fraternity.” “यानी — Freedom,
+Dialogue: 0,0:01:51.51,0:01:54.10,Default,,0,0,0,,Equal Rights और Brotherhood।” “ये सिर्फ
+Dialogue: 0,0:01:54.10,0:01:56.70,Default,,0,0,0,,words नहीं थे… ये पूरी दुनिया
+Dialogue: 0,0:01:56.70,0:01:59.29,Default,,0,0,0,,की सोच बदलने वाले concepts थे।”
+Dialogue: 0,0:01:59.29,0:02:01.88,Default,,0,0,0,,“अब लोग खुद को राजा का
+Dialogue: 0,0:02:01.88,0:02:04.48,Default,,0,0,0,,subject नहीं… बल्कि nation का citizen
+Dialogue: 0,0:02:04.48,0:02:07.07,Default,,0,0,0,,कहने लगे।” 💬 Power Dialogue: “Citizen…
+Dialogue: 0,0:02:07.07,0:02:09.66,Default,,0,0,0,,जिसके rights होते हैं!” “यहीं से
+Dialogue: 0,0:02:09.66,0:02:12.26,Default,,0,0,0,,modern Nationalism की मजबूत नींव रखी
+Dialogue: 0,0:02:12.26,0:02:14.85,Default,,0,0,0,,गई।” 🔥 Ending Punch: “French Revolution
+Dialogue: 0,0:02:14.85,0:02:17.44,Default,,0,0,0,,ने सिर्फ राजा की सत्ता नहीं
+Dialogue: 0,0:02:17.44,0:02:20.04,Default,,0,0,0,,बदली… उसने लोगों की पहचान बदल
+Dialogue: 0,0:02:20.04,0:02:22.63,Default,,0,0,0,,दी।” “अब लोग सिर्फ किसी kingdom
+Dialogue: 0,0:02:22.63,0:02:25.22,Default,,0,0,0,,का हिस्सा नहीं रहना चाहते थे…
+Dialogue: 0,0:02:25.22,0:02:27.82,Default,,0,0,0,,वे एक ऐसी nation चाहते थे
+Dialogue: 0,0:02:27.82,0:02:30.41,Default,,0,0,0,,जहां उनकी own identity हो… own
+Dialogue: 0,0:02:30.41,0:02:33.00,Default,,0,0,0,,rights हों…” “और यहीं से जन्म
+Dialogue: 0,0:02:33.00,0:02:35.60,Default,,0,0,0,,हुआ एक नए concept का —
+Dialogue: 0,0:02:35.60,0:02:38.19,Default,,0,0,0,,Nation-State.” 🎬 Next Part में देखेंगे:
+Dialogue: 0,0:02:38.19,0:02:40.78,Default,,0,0,0,,👉 Nation-State Concept — आखिर आधुनिक
+Dialogue: 0,0:02:40.78,0:02:43.38,Default,,0,0,0,,राष्ट्र-राज्य कैसे बना?

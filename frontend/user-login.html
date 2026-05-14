@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>User Login — VectorizeAI</title>
+<meta name="description" content="Access your AI agent dashboard and manage your intelligence infrastructure.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020617;--bg2:#0f172a;--card:#1e293b;--border:#334155;
+  --accent:#ff7a00;--accent2:#ffb347;--text:#f8fafc;--text2:#94a3b8;--text3:#64748b;
+  --red:#f87171;--green:#34d399;--yellow:#fbbf24;
+}
+[data-theme="light"] {
+  --bg:#f8fafc;--bg2:#ffffff;--card:#ffffff;--border:#e2e8f0;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --accent:#ff7a00;--accent2:#ffb347;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;padding:20px;
+  background-image: radial-gradient(circle at 0% 0%, rgba(255,122,0,0.1) 0%, transparent 40%), 
+                    radial-gradient(circle at 100% 100%, rgba(255,179,71,0.05) 0%, transparent 40%)}
+
+.login-container {
+  width: 100%;
+  max-width: 440px;
+  perspective: 1000px;
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 48px 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  animation: card-appear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(30px) rotateX(-10deg); }
+  to { opacity: 1; transform: translateY(0) rotateX(0); }
+}
+
+.logo-area {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 18px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: white;
+  box-shadow: 0 10px 25px rgba(255, 122, 0, 0.3);
+}
+
+.login-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.login-sub {
+  font-size: 14px;
+  color: var(--text3);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.25s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg2);
+  box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.1);
+}
+
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(255, 122, 0, 0.2);
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 122, 0, 0.3);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.result-msg {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  display: none;
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.result-msg.error {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--red);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.result-msg.success {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.footer-links {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--text3);
+}
+
+.footer-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--accent2);
+}
+
+.floating-bubbles {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.05;
+  animation: float 20s infinite alternate;
+}
+
+@keyframes float {
+  from { transform: translate(0, 0); }
+  to { transform: translate(100px, 100px); }
+}
+</style>
+</head>
+<body>
+
+<div class="floating-bubbles">
+  <div class="bubble" style="width: 300px; height: 300px; top: -100px; left: -100px;"></div>
+  <div class="bubble" style="width: 400px; height: 400px; bottom: -150px; right: -150px; background: var(--accent2);"></div>
+</div>
+
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo-area">
+      <div class="logo-icon">🤖</div>
+      <h1 class="login-title">Welcome Back</h1>
+      <p class="login-sub">Sign in to access your AI Dashboard</p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="email" placeholder="name@business.com" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+
+    <button class="submit-btn" id="login-btn" onclick="doLogin()">
+      Sign In
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+    </button>
+
+    <div class="result-msg" id="result"></div>
+  </div>
+
+  <div class="footer-links">
+    <a href="/">← Back to Home</a> &nbsp;·&nbsp; 
+    <a href="/help">Need help?</a>
+  </div>
+</div>
+
+<script>
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  const result = document.getElementById('result');
+
+  if (!email || !password) {
+    showMsg('Please fill in all fields.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = 'Signing in...';
+  result.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/clients/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const d = await r.json();
+
+    if (r.ok) {
+      showMsg('Login successful! Redirecting...', 'success');
+      localStorage.setItem('mrairag_client', JSON.stringify({
+        client_id: d.client_id,
+        token: d.token,
+        name: d.name,
+        email: d.email,
+        logo_url: d.logo_url
+      }));
+      setTimeout(() => {
+        window.location.href = '/user/dashboard';
+      }, 800);
+    } else {
+      showMsg(d.detail || 'Invalid email or password.', 'error');
+    }
+  } catch (e) {
+    showMsg('Network error. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Sign In <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+  }
+}
+
+function showMsg(msg, type) {
+  const res = document.getElementById('result');
+  res.textContent = msg;
+  res.className = 'result-msg ' + type;
+  res.style.display = 'block';
+}
+
+// Auto-redirect if already logged in
+(function() {
+  const raw = localStorage.getItem('mrairag_client');
+  if (raw) {
+    try {
+      const s = JSON.parse(raw);
+      if (s && s.token) window.location.href = '/user/dashboard';
+    } catch(e) {}
+  }
+})();
+</script>
+
+</body>
+</html>

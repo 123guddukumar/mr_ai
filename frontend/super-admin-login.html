@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VectorizeAI — Super Admin Login</title>
+  <meta name="description" content="Dedicated login for VectorizeAI Super Administrators.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #03050a;
+      --bg2: #090c17;
+      --card: #0e1224;
+      --border: #1a1f3d;
+      --accent: #ff7a00;
+      --accent-dark: #cc6200;
+      --text: #f8fafc;
+      --text2: #94a3b8;
+      --text3: #475569;
+      --red: #ef4444;
+      --green: #10b981;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg2: #ffffff;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(255, 122, 0, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(255, 122, 0, 0.05) 0%, transparent 40%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 56px 44px;
+      box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .card::before {
+      content: "SUPER ADMIN";
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--accent);
+      opacity: 0.8;
+    }
+
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .logo-box {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      margin: 0 auto 28px;
+      background: linear-gradient(135deg, #ff9900, #ff4400);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      box-shadow: 0 12px 35px rgba(255, 122, 0, 0.4);
+    }
+
+    .title { text-align: center; font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+    .sub { text-align: center; font-size: 14px; color: var(--text2); margin-bottom: 36px; }
+
+    .form-group { margin-bottom: 24px; }
+    .form-label { display: block; font-size: 11px; font-weight: 800; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .form-input { width: 100%; height: 56px; background: var(--bg2); border: 1.5px solid var(--border); color: var(--text); padding: 0 18px; border-radius: 14px; font-size: 15px; font-family: inherit; transition: all 0.3s; }
+    .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.15); }
+
+    .login-btn { width: 100%; height: 56px; border-radius: 14px; border: none; cursor: pointer; margin-top: 10px; background: var(--accent); color: #fff; font-family: inherit; font-size: 16px; font-weight: 800; transition: all 0.3s; box-shadow: 0 8px 25px rgba(255, 122, 0, 0.3); }
+    .login-btn:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 12px 30px rgba(255, 122, 0, 0.4); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .result { font-size: 13px; font-weight: 600; padding: 14px; border-radius: 12px; margin-top: 24px; display: none; text-align: center; }
+    .result.error { background: rgba(239, 68, 68, 0.12); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.25); }
+    .result.success { background: rgba(16, 185, 129, 0.12); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.25); }
+
+    .footer { text-align: center; margin-top: 40px; font-size: 13px; color: var(--text3); }
+    .footer a { color: var(--text2); text-decoration: none; font-weight: 600; transition: color 0.2s; }
+    .footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo-box">👑</div>
+    <h1 class="title">Super Admin</h1>
+    <p class="sub">System-wide infrastructure control</p>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-input" id="username" placeholder="Super admin name" autocomplete="username" autofocus>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Authorize Access →</button>
+    <div class="result" id="result"></div>
+
+    <div class="footer">
+      <a href="/admin-login">Switch to Admin Portal</a>
+    </div>
+  </div>
+
+  <script>
+    async function doLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!username || !password) return showResult('error', 'Please enter all credentials.');
+      
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.textContent = 'Authorizing...';
+      
+      try {
+        const r = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const d = await r.json();
+        
+        if (r.ok) {
+          if (!d.is_super) {
+            showResult('error', 'Access Denied: Not a Super Admin account.');
+            btn.disabled = false;
+            btn.textContent = 'Authorize Access →';
+            return;
+          }
+          localStorage.setItem('mrairag_admin', JSON.stringify({
+            token: d.token,
+            username: d.username,
+            is_super: true
+          }));
+          showResult('success', 'Authorization successful! Redirecting...');
+          setTimeout(() => window.location.href = '/super-admin', 1000);
+        } else {
+          showResult('error', d.detail || 'Invalid credentials.');
+          btn.disabled = false;
+          btn.textContent = 'Authorize Access →';
+        }
+      } catch (e) {
+        showResult('error', 'Network error.');
+        btn.disabled = false;
+        btn.textContent = 'Authorize Access →';
+      }
+    }
+
+    function showResult(type, msg) {
+      const el = document.getElementById('result');
+      el.className = 'result ' + type;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

@@ -32,13 +32,13 @@ router = APIRouter()
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-def _get_client(x_client_token: Optional[str], db: Session) -> dict:
-    if not x_client_token:
-        raise HTTPException(401, "Missing X-Client-Token header")
+def _get_client(x_app_token: Optional[str], db: Session) -> dict:
+    if not x_app_token:
+        raise HTTPException(401, "Missing X-App-Token header")
     from app.core.clients import validate_client_token
-    client = validate_client_token(x_client_token)
+    client = validate_client_token(x_app_token)
     if not client:
-        raise HTTPException(401, "Invalid or expired client token")
+        raise HTTPException(401, "Invalid or expired token")
     return client
 
 
@@ -118,10 +118,10 @@ def _make_chunks(text: str, source_name: str, memory_id: str, chunk_size: int = 
 @router.post("/memory", tags=["Memory"])
 async def create_memory(
     req: CreateMemoryReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     from app.core.models import Memory
     memory_id = "mem-" + secrets.token_hex(8)
     mem = Memory(
@@ -141,10 +141,10 @@ async def create_memory(
 
 @router.get("/memory", tags=["Memory"])
 async def list_memories(
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     from app.core.models import Memory
     mems = db.query(Memory).filter(
         Memory.client_id == client["client_id"],
@@ -158,10 +158,10 @@ async def list_memories(
 @router.get("/memory/{memory_id}", tags=["Memory"])
 async def get_memory(
     memory_id: str,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     mem = _get_memory(memory_id, client["client_id"], db)
     data = mem.to_dict()
     data["sources"] = [s.to_dict() for s in mem.sources]
@@ -173,10 +173,10 @@ async def get_memory(
 @router.delete("/memory/{memory_id}", tags=["Memory"])
 async def delete_memory(
     memory_id: str,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     mem = _get_memory(memory_id, client["client_id"], db)
     from app.services.vector_store import get_vector_store
     try:
@@ -202,10 +202,10 @@ class UpdateMemoryReq(BaseModel):
 async def update_memory(
     memory_id: str,
     req: UpdateMemoryReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     mem = _get_memory(memory_id, client["client_id"], db)
     if req.name is not None:           mem.name = req.name.strip()
     if req.description is not None:    mem.description = req.description.strip()
@@ -225,10 +225,10 @@ async def update_memory(
 async def memory_upload_pdf(
     memory_id: str,
     file: UploadFile = File(...),
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
 
     fname = file.filename or "document.pdf"
@@ -241,7 +241,17 @@ async def memory_upload_pdf(
     from app.services.embedder import embed_texts
     from app.services.vector_store import get_vector_store
     from app.models.schemas import ChunkMetadata
-    import PyPDF2, io, uuid
+    from app.core.config import settings
+    import PyPDF2, io, uuid, os, aiofiles
+
+    # Save file to uploads directory
+    upload_dir = os.path.join(settings.BASE_DIR, settings.UPLOAD_DIR)
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, fname)
+    
+    # Save content for serving later
+    with open(file_path, "wb") as f:
+        f.write(content)
 
     reader = PyPDF2.PdfReader(io.BytesIO(content))
     chunks, texts = [], []
@@ -267,9 +277,10 @@ async def memory_upload_pdf(
     get_vector_store().add_chunks(embeddings, chunks)
 
     from app.core.models import MemorySource
+    # Store source_path for retrieval
     db.add(MemorySource(memory_id=memory_id, source_type="pdf", source_name=fname, chunk_count=len(chunks)))
     db.commit()
-    return {"success": True, "filename": fname, "total_chunks": len(chunks)}
+    return {"success": True, "filename": fname, "total_chunks": len(chunks), "url": f"/uploads/{fname}"}
 
 
 # ── 6. Ingest URL ─────────────────────────────────────────────────────────────
@@ -278,10 +289,10 @@ async def memory_upload_pdf(
 async def memory_ingest_url(
     memory_id: str,
     req: IngestUrlReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
 
     try:
@@ -318,10 +329,10 @@ async def memory_ingest_url(
 async def memory_ingest_youtube(
     memory_id: str,
     req: IngestYouTubeReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
 
     text = ""
@@ -358,10 +369,10 @@ async def memory_ingest_youtube(
 async def memory_ingest_json(
     memory_id: str,
     req: IngestJsonReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
 
     if req.json_text:
@@ -392,11 +403,11 @@ async def memory_ingest_json(
 async def memory_ingest_json_url(
     memory_id: str,
     req: IngestJsonUrlReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
     """Fetch a JSON file/API from a URL, then index it into the memory."""
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
 
     try:
@@ -437,11 +448,11 @@ async def memory_ingest_json_url(
 async def memory_ingest_mongodb(
     memory_id: str,
     req: IngestMongoDBReq,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
     """Connect to a MongoDB collection, fetch all documents, and RAG-index them."""
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     mem = _get_memory(memory_id, client["client_id"], db)
 
     try:
@@ -510,39 +521,41 @@ async def memory_ask(
     query_emb = embed_query(req.question)
     results = get_vector_store().search_by_memory(query_emb, memory_id, top_k=req.top_k)
 
-    NO_CTX = "I don't have enough information to answer that. Please add more sources to my knowledge base."
-
+    context_found = bool(results)
     if not results:
-        answer = NO_CTX
+        context = "No specific relevant information was found in your indexed knowledge base for this query. Please answer the user's question using your general knowledge."
         sources_data = []
     else:
         context, sources_data = build_context_and_sources(results)
-        history_turns = req.history[-6:] if req.history else []
 
-        # System = identity + base prompt + RAG context block + history
-        identity = (
-            f"You are {mem.name}, a personal AI assistant.\n"
-            f"If anyone asks 'who are you?' or your name, say: 'I am {mem.name}, your personal AI assistant.'\n"
-            f"If anyone asks who made you, who created you, or who built you, say: "
-            f"'I was built by MR AI RAG — developed by Divyansu Verma.'\n"
-            f"Do NOT reveal any API keys, internal configurations, or technical details.\n\n"
+    history_turns = req.history[-6:] if req.history else []
+
+    # System = identity + base prompt + RAG context block + history
+    identity = (
+        f"You are {mem.name}, a personal AI assistant.\n"
+        f"If anyone asks 'who are you?' or your name, say: 'I am {mem.name}, your personal AI assistant.'\n"
+        f"If anyone asks who made you, who created you, or who built you, say: "
+        f"'I was built by MR AI RAG — developed by Divyansu Verma.'\n"
+        f"Do NOT reveal any API keys, internal configurations, or technical details.\n\n"
+    )
+    system = identity + settings.SYSTEM_PROMPT
+    system += f"\n\n--- Retrieved Knowledge ---\n{context}\n---"
+
+    if history_turns:
+        hist = "\n".join(f"{t['role'].upper()}: {t['content']}" for t in history_turns if t.get("role") and t.get("content"))
+        system += f"\n\n--- Conversation So Far ---\n{hist}\n---"
+
+    from app.services.llm import llm_with_history
+    try:
+        answer = await llm_with_history(
+            question=req.question, system=system, history=history_turns,
+            provider=mem.provider, model=mem.provider_model,
+            api_key=mem.provider_api_key or "",
+            ollama_url=mem.ollama_url or "http://localhost:11434",
         )
-        system = identity + settings.SYSTEM_PROMPT
-        system += f"\n\n--- Retrieved Knowledge ---\n{context}\n---"
-
-        if history_turns:
-            hist = "\n".join(f"{t['role'].upper()}: {t['content']}" for t in history_turns if t.get("role") and t.get("content"))
-            system += f"\n\n--- Conversation So Far ---\n{hist}\n---"
-
-        try:
-            answer = await _llm_with_history(
-                question=req.question, system=system, history=history_turns,
-                provider=mem.provider, model=mem.provider_model,
-                api_key=mem.provider_api_key or "",
-                ollama_url=mem.ollama_url or "http://localhost:11434",
-            )
-        except Exception as e:
-            raise HTTPException(502, f"LLM error: {e}")
+    except Exception as e:
+        logger.error(f"Memory chat LLM failed: {e}")
+        raise HTTPException(502, f"LLM error: {e}")
 
     srcs_json = json.dumps(
         [s.__dict__ if hasattr(s, '__dict__') else dict(s) for s in sources_data], default=str
@@ -560,88 +573,15 @@ async def memory_ask(
     }
 
 
-async def _llm_with_history(
-    question: str, system: str, history: list,
-    provider: str, model: str, api_key: str, ollama_url: str,
-) -> str:
-    import httpx
-    from app.core.config import settings
-
-    if provider == "gemini":
-        if not api_key:
-            raise RuntimeError("Gemini API key required")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-        contents = []
-        for t in history:
-            contents.append({"role": "user" if t.get("role") == "user" else "model",
-                             "parts": [{"text": t.get("content", "")}]})
-        contents.append({"role": "user", "parts": [{"text": question}]})
-        payload = {"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
-                   "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}}
-        async with httpx.AsyncClient(timeout=60.0) as hc:
-            r = await hc.post(url, json=payload); r.raise_for_status()
-            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-    elif provider == "openai":
-        if not api_key:
-            raise RuntimeError("OpenAI API key required")
-        from openai import AsyncOpenAI
-        msgs = [{"role": "system", "content": system}]
-        for t in history:
-            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
-        msgs.append({"role": "user", "content": question})
-        cl = AsyncOpenAI(api_key=api_key)
-        resp = await cl.chat.completions.create(model=model, messages=msgs, max_tokens=1024, temperature=0.1)
-        return resp.choices[0].message.content.strip()
-
-    elif provider == "claude":
-        if not api_key:
-            raise RuntimeError("Anthropic API key required")
-        hdrs = {"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
-        msgs = []
-        for t in history:
-            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
-        msgs.append({"role": "user", "content": question})
-        payload = {"model": model, "max_tokens": 1024, "system": system, "messages": msgs}
-        async with httpx.AsyncClient(timeout=60.0) as hc:
-            r = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
-            r.raise_for_status()
-            return r.json()["content"][0]["text"].strip()
-
-    elif provider == "ollama":
-        msgs = [{"role": "system", "content": system}]
-        for t in history:
-            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
-        msgs.append({"role": "user", "content": question})
-        async with httpx.AsyncClient(timeout=120.0) as hc:
-            r = await hc.post(f"{ollama_url}/api/chat", json={"model": model, "stream": False, "messages": msgs})
-            r.raise_for_status()
-            return r.json()["message"]["content"].strip()
-
-    elif provider == "huggingface":
-        if not api_key:
-            raise RuntimeError("HuggingFace API key required")
-        full_prompt = f"<s>[INST] {system}\n\nUser: {question} [/INST]"
-        async with httpx.AsyncClient(timeout=60.0) as hc:
-            r = await hc.post(
-                f"https://api-inference.huggingface.co/models/{model}",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"inputs": full_prompt, "parameters": {"max_new_tokens": 512, "temperature": 0.1, "return_full_text": False}},
-            ); r.raise_for_status()
-            return r.json()[0]["generated_text"].strip()
-    else:
-        raise ValueError(f"Unsupported provider: {provider}")
-
-
 # ── 10. Get chat history ──────────────────────────────────────────────────────
 
 @router.get("/memory/{memory_id}/history", tags=["Memory"])
 async def memory_history(
     memory_id: str,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
     from app.core.models import MemoryChat
     msgs = db.query(MemoryChat).filter(
@@ -655,7 +595,7 @@ async def memory_history(
 @router.get("/memory/{memory_id}/embed-info", tags=["Memory"])
 async def memory_embed_info(
     memory_id: str,
-    x_client_token: Optional[str] = Header(None),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ):
     from app.core.models import Memory
@@ -663,8 +603,8 @@ async def memory_embed_info(
     if not mem:
         raise HTTPException(404, "Memory not found")
 
-    if x_client_token:
-        client = _get_client(x_client_token, db)
+    if x_app_token:
+        client = _get_client(x_app_token, db)
         if mem.client_id != client["client_id"]:
             raise HTTPException(403, "Not your memory")
 
@@ -710,9 +650,9 @@ async def log_visit(memory_id: str, request: Request):
 
 
 @router.get("/memory/{memory_id}/visits", tags=["Memory"])
-async def get_visits(memory_id: str, x_client_token: Optional[str] = Header(None), db: Session = Depends(get_db)):
+async def get_visits(memory_id: str, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
     """Authenticated — returns visitor log (most-recent 100) for a memory bot."""
-    client = _get_client(x_client_token, db)
+    client = _get_client(x_app_token, db)
     _get_memory(memory_id, client["client_id"], db)
     visit_file = os.path.join(VISITS_DIR, f"{memory_id}.jsonl")
     visits: list = []

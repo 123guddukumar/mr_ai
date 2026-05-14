@@ -3,13 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Memory Chat — MR AI RAG</title>
+<title>Memory Chat — VectorizeAI</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/voice-ui.css">
 <style>
 :root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
-  --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --accent:#ff7a00;--accent2:#ffb347;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
   --red:#f87171;--green:#34d399}
+[data-theme="light"] {
+  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--card:#ffffff;--border:#e2e8f0;
+  --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --accent:#ff7a00;--accent2:#ffb347;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
@@ -18,8 +23,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .topbar{display:flex;align-items:center;gap:8px;padding:8px 16px;
   background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50;flex-wrap:wrap}
 .topbar-logo{font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.mem-badge{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);color:#a5b4fc;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.mem-badge{background:rgba(255,122,0,.12);border:1px solid rgba(255,122,0,.3);color:#ffb347;
   padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
 .mem-info{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
 .mem-title-bar{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -42,7 +47,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .mode-pill{padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;
   border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .2s;white-space:nowrap}
 .mode-pill:hover{border-color:var(--accent);color:var(--accent)}
-.mode-pill.active{background:linear-gradient(135deg,var(--accent),#5b52e0);border-color:transparent;color:#fff}
+.mode-pill.active{background:linear-gradient(135deg,var(--accent),#e66e00);border-color:transparent;color:#fff}
 .mode-divider{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0}
 
 /* ── Main layout ── */
@@ -62,7 +67,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .src-type-youtube{background:rgba(251,191,36,.1);color:#fbbf24}
 .add-source-link{display:block;text-align:center;font-size:11px;color:var(--accent);text-decoration:none;
   padding:7px;border-radius:7px;border:1px dashed rgba(108,99,255,.4);margin-top:8px;transition:all .2s}
-.add-source-link:hover{background:rgba(108,99,255,.08)}
+.add-source-link:hover{background:rgba(255,122,0,.08)}
 
 /* ── Chat panel ── */
 .chat-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -72,16 +77,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .message.user{margin-left:auto;flex-direction:row-reverse}
 .message.assistant{margin-right:auto}
 .msg-avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.msg-avatar.user{background:linear-gradient(135deg,var(--accent),#5b52e0)}
+.msg-avatar.user{background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .msg-avatar.assistant{background:linear-gradient(135deg,var(--accent2),#00a085)}
 .msg-body{display:flex;flex-direction:column;gap:4px}
 .msg-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.65;word-break:break-word;white-space:pre-wrap}
-.message.user .msg-bubble{background:linear-gradient(135deg,rgba(108,99,255,.22),rgba(91,82,224,.17));
-  border:1px solid rgba(108,99,255,.3);color:var(--text);border-radius:12px 12px 4px 12px}
+.message.user .msg-bubble{background:linear-gradient(135deg,rgba(255,122,0,.22),rgba(255,179,71,.17));
+  border:1px solid rgba(255,122,0,.3);color:var(--text);border-radius:12px 12px 4px 12px}
 .message.assistant .msg-bubble{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:12px 12px 12px 4px}
 .msg-sources-row{display:flex;flex-wrap:wrap;gap:4px}
-.msg-src{font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(108,99,255,.1);
-  border:1px solid rgba(108,99,255,.25);color:#a5b4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.msg-src{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500;
+  background:rgba(255,122,0,.1);border:1px solid rgba(255,122,0,.25);color:#ffb347;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
 .msg-time{font-size:10px;color:var(--text3)}
 .message.user .msg-time{text-align:right}
 .typing-dots{display:flex;gap:4px;padding:11px 14px;background:var(--card);border:1px solid var(--border);
@@ -93,7 +98,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 /* Welcome */
 .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 20px}
-.welcome-icon{font-size:52px;margin-bottom:14px;filter:drop-shadow(0 4px 20px rgba(108,99,255,.4))}
+.welcome-icon{font-size:52px;margin-bottom:14px;filter:drop-shadow(0 4px 20px rgba(255,122,0,.4))}
 .welcome h2{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
 .welcome p{color:var(--text2);font-size:12px;max-width:300px;line-height:1.7}
 
@@ -107,7 +112,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 #chat-input::placeholder{color:var(--text3)}
 .send-btn{background:linear-gradient(135deg,var(--accent),#5b52e0);border:none;color:#fff;
   width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;flex-shrink:0}
-.send-btn:hover:not(:disabled){transform:scale(1.05);box-shadow:0 2px 12px rgba(108,99,255,.4)}
+.send-btn:hover:not(:disabled){transform:scale(1.05);box-shadow:0 2px 12px rgba(255,122,0,.4)}
 .send-btn:disabled{opacity:.4;cursor:not-allowed}
 
 /* Mic button */
@@ -204,7 +209,10 @@ select.vsp-input{cursor:pointer;appearance:none}
 <body>
 
 <header class="topbar">
-  <span class="topbar-logo">MR AI RAG</span>
+  <div class="brand" style="display:flex;align-items:center;gap:8px;text-decoration:none">
+    <img src="./assets/vectorize_logo.png" style="width:20px;height:20px;object-fit:contain">
+    <span class="topbar-logo">VectorizeAI</span>
+  </div>
   <div class="mem-info">
     <span class="mem-badge">🧠 Memory Bot</span>
     <div>
@@ -213,7 +221,7 @@ select.vsp-input{cursor:pointer;appearance:none}
     </div>
   </div>
   <div class="topbar-actions">
-    <button class="tbtn tbtn-settings" onclick="openVoiceSettings()" title="Voice Settings">⚙️ Voice</button>
+    <button class="tbtn tbtn-settings" onclick="toggleTheme()" title="Toggle Theme">🌓 Theme</button>
     <button class="tbtn" style="background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.3)" onclick="openEditBot()">✏️ Edit Bot</button>
     <button class="tbtn tbtn-embed" onclick="showEmbed()">🔗 Embed</button>
     <a href="/memory" class="tbtn tbtn-secondary">← My Bots</a>
@@ -227,7 +235,7 @@ select.vsp-input{cursor:pointer;appearance:none}
   <button class="mode-pill" id="mp-v2t" onclick="setMode('v2t')">🎤→📝 Voice-to-Text</button>
   <button class="mode-pill" id="mp-v2v" onclick="setMode('v2v')">🎤 Voice-to-Voice</button>
   <div class="mode-divider"></div>
-  <span id="tts-label-mini" style="font-size:10px;color:var(--text3);white-space:nowrap">TTS: MRAI Model</span>
+  <span id="tts-label-mini" style="font-size:10px;color:var(--text3);white-space:nowrap">TTS: VectorizeAI Model</span>
 </div>
 
 
@@ -254,7 +262,7 @@ select.vsp-input{cursor:pointer;appearance:none}
     <div class="chat-messages" id="chat-messages">
       <div class="welcome" id="welcome-screen">
         <div class="welcome-icon">🧠</div>
-        <h2 id="welcome-title">Your Memory Bot</h2>
+        <h2 id="welcome-title">VectorizeAI Memory Bot</h2>
         <p>Ask any question about your indexed knowledge sources. The AI will search and give you cited, grounded answers.</p>
       </div>
     </div>
@@ -276,140 +284,6 @@ select.vsp-input{cursor:pointer;appearance:none}
       </div>
     </div>
   </section>
-</div>
-
-<!-- Voice Settings Panel -->
-<div class="vsettings-overlay" id="vs-overlay" onclick="closeVoiceSettings()"></div>
-<div class="vsettings-panel" id="vs-panel">
-  <div class="vsp-head">
-    <div style="font-size:20px">🎙️</div>
-    <div class="vsp-title">Voice Settings</div>
-    <button class="vsp-close" onclick="closeVoiceSettings()">✕</button>
-  </div>
-  <div class="vsp-body">
-    <!-- STT Info -->
-    <div class="vsp-section">
-      <div class="vsp-section-title">🎤 Speech-to-Text (STT)</div>
-      <div class="tts-card selected" style="cursor:default">
-        <div class="tts-card-header">
-          <span style="font-size:18px">🤖</span>
-          <span class="tts-card-name">MRAI Model</span>
-          <span class="tts-card-badge badge-free">FREE</span>
-        </div>
-        <div class="tts-card-desc">Browser Web Speech API · India-friendly · Supports 30+ languages including Hindi, Tamil, Bengali, Gujarati. No API key needed.</div>
-      </div>
-    </div>
-
-    <!-- TTS -->
-    <div class="vsp-section">
-      <div class="vsp-section-title">🔊 Text-to-Speech (TTS) Model</div>
-      <div class="tts-model-cards">
-
-        <div class="tts-card" id="tts-card-mrai" onclick="selectTTS('mrai')">
-          <div class="tts-card-header">
-            <span style="font-size:18px">🤖</span>
-            <span class="tts-card-name">MRAI Model</span>
-            <span class="tts-card-badge badge-free">FREE</span>
-          </div>
-          <div class="tts-card-desc">Browser SpeechSynthesis API · Offline · Multi-language · No API key needed.</div>
-          <div class="vsp-sub-panel" id="sub-mrai">
-            <div class="vsp-form-row" style="margin-top:10px">
-              <label class="vsp-label">Voice</label>
-              <select class="vsp-input" id="mrai-voice"></select>
-            </div>
-            <div class="vsp-form-row">
-              <label class="vsp-label">Speed: <span id="mrai-rate-val">1.0</span></label>
-              <input type="range" class="vsp-range" id="mrai-rate" min="0.5" max="2" step="0.1" value="1"
-                oninput="document.getElementById('mrai-rate-val').textContent=this.value">
-            </div>
-            <div class="vsp-form-row">
-              <label class="vsp-label">Pitch: <span id="mrai-pitch-val">1.0</span></label>
-              <input type="range" class="vsp-range" id="mrai-pitch" min="0" max="2" step="0.1" value="1"
-                oninput="document.getElementById('mrai-pitch-val').textContent=this.value">
-            </div>
-          </div>
-        </div>
-
-        <div class="tts-card" id="tts-card-elevenlabs" onclick="selectTTS('elevenlabs')">
-          <div class="tts-card-header">
-            <span style="font-size:18px">🔊</span>
-            <span class="tts-card-name">ElevenLabs</span>
-            <span class="tts-card-badge badge-api">API KEY</span>
-          </div>
-          <div class="tts-card-desc">Ultra-realistic, natural-sounding voices. Best quality for English and many languages.</div>
-          <div class="vsp-sub-panel" id="sub-elevenlabs">
-            <div class="vsp-form-row" style="margin-top:10px">
-              <label class="vsp-label">ElevenLabs API Key</label>
-              <input type="password" class="vsp-input" id="el-apikey" placeholder="sk-..." oninput="saveVoiceSettings()">
-            </div>
-            <div class="vsp-form-row">
-              <label class="vsp-label">Voice</label>
-              <select class="vsp-input" id="el-voice" onchange="saveVoiceSettings()">
-                <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Female, English)</option>
-                <option value="AZnzlk1XvdvUeBnXmlld">Domi (Female, Energetic)</option>
-                <option value="EXAVITQu4vr4xnSDxMaL">Bella (Female, Soft)</option>
-                <option value="ErXwobaYiN019PkySvjV">Antoni (Male, Well-rounded)</option>
-                <option value="MF3mGyEYCl7XYWbV9V6O">Elli (Female, Young)</option>
-                <option value="TxGEqnHWrfWFTfGW9XjX">Josh (Male, Deep)</option>
-                <option value="VR6AewLTigWG4xSOukaG">Arnold (Male, Crisp)</option>
-                <option value="pNInz6obpgDQGcFmaJgB">Adam (Male, Deep)</option>
-                <option value="yoZ06aMxZJJ28mfd3POQ">Sam (Male, Raspy)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="tts-card" id="tts-card-sarvam" onclick="selectTTS('sarvam')">
-          <div class="tts-card-header">
-            <span style="font-size:18px">🇮🇳</span>
-            <span class="tts-card-name">Sarvam AI</span>
-            <span class="tts-card-badge badge-api">API KEY</span>
-          </div>
-          <div class="tts-card-desc">India-first TTS · Excellent Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam support.</div>
-          <div class="vsp-sub-panel" id="sub-sarvam">
-            <div class="vsp-form-row" style="margin-top:10px">
-              <label class="vsp-label">Sarvam AI API Key</label>
-              <input type="password" class="vsp-input" id="sv-apikey" placeholder="sk-..." oninput="saveVoiceSettings()">
-            </div>
-            <div class="vsp-form-row">
-              <label class="vsp-label">Language</label>
-              <select class="vsp-input" id="sv-lang" onchange="saveVoiceSettings()">
-                <option value="hi-IN">Hindi (हिन्दी)</option>
-                <option value="en-IN">English (Indian)</option>
-                <option value="ta-IN">Tamil (தமிழ்)</option>
-                <option value="te-IN">Telugu (తెలుగు)</option>
-                <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
-                <option value="ml-IN">Malayalam (മലയാളം)</option>
-                <option value="mr-IN">Marathi (मराठी)</option>
-                <option value="gu-IN">Gujarati (ગુજરાતી)</option>
-                <option value="bn-IN">Bengali (বাংলা)</option>
-                <option value="od-IN">Odia (ଓଡ଼ିଆ)</option>
-                <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
-              </select>
-            </div>
-            <div class="vsp-form-row">
-              <label class="vsp-label">Speaker</label>
-              <select class="vsp-select" id="sv-speaker" onchange="saveVoiceSettings()">
-                <option value="shubh">Shubh (M, bulbul:v3)</option>
-                <option value="meera">Meera (F)</option>
-                <option value="pavithra">Pavithra (F)</option>
-                <option value="arvind">Arvind (M)</option>
-                <option value="amol">Amol (M)</option>
-                <option value="diya">Diya (F)</option>
-                <option value="arjun">Arjun (M)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <button onclick="testTTS()" style="width:100%;padding:10px;border-radius:9px;font-size:12px;font-weight:700;
-      background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--accent2);cursor:pointer;transition:all .2s"
-      onmouseover="this.style.background='rgba(0,212,170,.18)'" onmouseout="this.style.background='rgba(0,212,170,.1)'">
-      🔊 Test Voice Output
-    </button>
-  </div>
 </div>
 
 <!-- Voice-to-Voice Overlay -->
@@ -495,6 +369,19 @@ select.vsp-input{cursor:pointer;appearance:none}
 
 <script>
 // ── Auth ───────────────────────────────────────────────────────────────────────
+// Theme Management
+function initTheme() {
+  const theme = localStorage.getItem('mrairag_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('mrairag_theme', next);
+}
+initTheme();
+
 let session = {};
 try{ session = JSON.parse(localStorage.getItem('mrairag_client')||'{}'); }catch(e){}
 if(!session||!session.token) window.location.href='/login';
@@ -503,7 +390,7 @@ const params   = new URLSearchParams(window.location.search);
 const MEMORY_ID = params.get('id');
 if(!MEMORY_ID) window.location.href='/memory';
 
-function hdrs(){ return{'Content-Type':'application/json','X-Client-Token':session.token}; }
+function hdrs(){ return{'Content-Type':'application/json','X-App-Token':session.token}; }
 
 let isTyping = false;
 let msgCount = 0;
@@ -639,35 +526,13 @@ async function saveEditBot(){
   }catch(e){ toast('Error: '+e.message,'error'); }
 }
 
-// ── Voice Settings ─────────────────────────────────────────────────────────────
+// ── Voice Settings (from dashboard) ───────────────────────────────────────────
 
 let currentTTS = localStorage.getItem('mrairag_tts_model') || 'mrai';
 
-function openVSD(){ openVoiceSettings(); }
-function openVoiceSettings(){
-
-  document.getElementById('vs-overlay').classList.add('open');
-  document.getElementById('vs-panel').classList.add('open');
-  loadBrowserVoices();
-}
-function closeVoiceSettings(){
-  document.getElementById('vs-overlay').classList.remove('open');
-  document.getElementById('vs-panel').classList.remove('open');
-  saveVoiceSettings();
-}
-
-function selectTTS(model){
-  currentTTS = model;
-  ['mrai','elevenlabs','sarvam'].forEach(m=>{
-    document.getElementById('tts-card-'+m)?.classList.remove('selected');
-    const sub = document.getElementById('sub-'+m);
-    if(sub) sub.classList.remove('vis');
-  });
-  document.getElementById('tts-card-'+model)?.classList.add('selected');
-  const sub = document.getElementById('sub-'+model);
-  if(sub) sub.classList.add('vis');
-  updateTTSMiniLabel();
-  saveVoiceSettings();
+function openVSD(){ 
+  toast('Voice settings are now managed in the Dashboard','info');
+  window.open('/dashboard','_blank');
 }
 
 function updateTTSMiniLabel(){
@@ -676,50 +541,9 @@ function updateTTSMiniLabel(){
   if(el) el.textContent = 'TTS: '+(labels[currentTTS]||currentTTS);
 }
 
-function saveVoiceSettings(){
-  localStorage.setItem('mrairag_tts_model', currentTTS);
-  localStorage.setItem('mrairag_el_apikey', document.getElementById('el-apikey')?.value||'');
-  localStorage.setItem('mrairag_el_voice',  document.getElementById('el-voice')?.value||'');
-  localStorage.setItem('mrairag_sv_apikey', document.getElementById('sv-apikey')?.value||'');
-  localStorage.setItem('mrairag_sv_lang',   document.getElementById('sv-lang')?.value||'');
-  localStorage.setItem('mrairag_sv_speaker',document.getElementById('sv-speaker')?.value||'');
-  localStorage.setItem('mrairag_mrai_rate',  document.getElementById('mrai-rate')?.value||'1');
-  localStorage.setItem('mrairag_mrai_pitch', document.getElementById('mrai-pitch')?.value||'1');
-  localStorage.setItem('mrairag_mrai_voice', document.getElementById('mrai-voice')?.value||'');
-}
-
 function loadVoiceSettings(){
   currentTTS = localStorage.getItem('mrairag_tts_model') || 'mrai';
-  const el = (id,key,def='')=>{ const el=document.getElementById(id); if(el) el.value=localStorage.getItem(key)||def; };
-  el('el-apikey','mrairag_el_apikey');
-  el('el-voice','mrairag_el_voice','21m00Tcm4TlvDq8ikWAM');
-  el('sv-apikey','mrairag_sv_apikey');
-  el('sv-lang','mrairag_sv_lang','hi-IN');
-  el('sv-speaker','mrairag_sv_speaker','meera');
-  const rate = localStorage.getItem('mrairag_mrai_rate')||'1';
-  const pitch= localStorage.getItem('mrairag_mrai_pitch')||'1';
-  const rv = document.getElementById('mrai-rate'); if(rv){ rv.value=rate; document.getElementById('mrai-rate-val').textContent=rate; }
-  const pv = document.getElementById('mrai-pitch'); if(pv){ pv.value=pitch; document.getElementById('mrai-pitch-val').textContent=pitch; }
-  selectTTS(currentTTS);
   updateTTSMiniLabel();
-}
-
-function loadBrowserVoices(){
-  const sel = document.getElementById('mrai-voice');
-  if(!sel) return;
-  const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-  if(!voices.length){
-    if(window.speechSynthesis){
-      speechSynthesis.onvoiceschanged = ()=>{
-        const v = speechSynthesis.getVoices();
-        const saved = localStorage.getItem('mrairag_mrai_voice');
-        sel.innerHTML = v.map(v=>`<option value="${v.name}" ${v.name===saved?'selected':''}>${v.name} (${v.lang})</option>`).join('');
-      };
-    }
-  } else {
-    const saved = localStorage.getItem('mrairag_mrai_voice');
-    sel.innerHTML = voices.map(v=>`<option value="${v.name}" ${v.name===saved?'selected':''}>${v.name} (${v.lang})</option>`).join('');
-  }
 }
 
 let recognition = null, isRecording = false;
@@ -1146,9 +970,14 @@ function appendMessage(role, text, srcs, timestamp){
   var div=document.createElement('div'); div.className='message '+role;
   var time = timestamp ? new Date(timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
                        : new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  var srcHtml='';
   if(srcs&&srcs.length){
-    srcHtml='<div class="msg-sources-row">'+srcs.slice(0,4).map(s=>`<span class="msg-src">${esc(s.filename||s.file||'Source')}</span>`).join('')+'</div>';
+    srcHtml='<div class="msg-sources-row">'+srcs.slice(0,4).map(s=>{
+      const fname = s.filename||s.file||'Source';
+      const isPdf = fname.toLowerCase().endsWith('.pdf');
+      const click = isPdf ? `onclick="window.open('/uploads/${esc(fname)}','_blank')"` : '';
+      const style = isPdf ? 'cursor:pointer;text-decoration:underline' : '';
+      return `<span class="msg-src" ${click} style="${style}">${esc(fname)}</span>`;
+    }).join('')+'</div>';
   }
   div.innerHTML=`<div class="msg-avatar ${role}">${role==='user'?'👤':'🧠'}</div>`
     +`<div class="msg-body"><div class="msg-bubble">${esc(text)}</div>${srcHtml}<div class="msg-time">${time}</div></div>`;

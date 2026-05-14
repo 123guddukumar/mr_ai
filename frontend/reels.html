@@ -176,7 +176,7 @@
     async function loadChatHistory() {
         try {
             const res  = await fetch(`/api/memory/${memoryId}/chat-history?limit=100&offset=0`, {
-                headers: { 'X-Client-Token': session.token }
+                headers: { 'X-App-Token': session.token }
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Failed to load chat history');
@@ -193,7 +193,7 @@
         document.getElementById('qa-list').innerHTML = '<div class="skeleton"><div class="sk-card"></div></div>';
         try {
             const res  = await fetch(`/api/memory/${memoryId}/sources-text`, {
-                headers: { 'X-Client-Token': session.token }
+                headers: { 'X-App-Token': session.token }
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Failed');
@@ -355,7 +355,7 @@
         try {
             const res = await fetch(`/api/memory/${memoryId}/generate-reel`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Client-Token': session.token },
+                headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
                 body: JSON.stringify({
                     topic: memoryName,
                     style: 'cinematic',

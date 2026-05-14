@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VectorizeAI — Super Admin Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/admin.css" />
+  <style>
+    .tab-content { display: none; flex-direction: column; height: 100%; }
+    .tab-content.active { display: flex; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    .modal { max-width: 700px; }
+    .nav-bottom { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; }
+    .act-btn.act-login { padding: 6px 12px; font-size: 11px; border-radius: 8px; font-weight: 700; }
+    
+    .logo-preview-wrap {
+      width: 60px; height: 60px; border: 2px dashed var(--border); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      background: var(--bg3); cursor: pointer; position: relative;
+    }
+    .logo-preview-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-preview-wrap i { font-size: 20px; color: var(--text3); }
+    .app-logo-sm { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; background: var(--bg3); border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="sb-logo">
+      <img src="https://img.icons8.com/fluency/96/shield.png" alt="Logo">
+      <span class="sb-logo-text">SUPER<span>ADMIN</span></span>
+    </a>
+    
+    <nav class="sb-nav">
+      <div class="sb-section-title">System Management</div>
+      <div class="sb-item active" id="nav-admins" onclick="switchTab('admins')">
+        <span>🛡️</span> <span class="sb-label">Manage Admins</span>
+      </div>
+      <div class="sb-item" id="nav-apps" onclick="switchTab('apps')">
+        <span>📱</span> <span class="sb-label">Manage Apps</span>
+      </div>
+      
+      <div class="sb-section-title">Navigation</div>
+      <a href="/admin" class="sb-item">
+        <span>👥</span> <span class="sb-label">Admin Dashboard</span>
+      </a>
+
+      <div class="nav-bottom">
+        <a href="/" class="sb-item">
+          <span>🏠</span> <span class="sb-label">Home</span>
+        </a>
+        <a href="/help" class="sb-item">
+          <span>❓</span> <span class="sb-label">Help</span>
+        </a>
+        <div class="sb-item" onclick="logout()" style="color:var(--red)">
+          <span>🚪</span> <span class="sb-label">Logout</span>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="page-title">Super Admin — Manage Admins</div>
+      <div class="admin-name" id="admin-name">👑 Super Admin</div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </header>
+
+    <div style="overflow-y:auto; flex:1; padding: 20px;">
+      
+      <!-- Admins Tab -->
+      <div class="tab-content active" id="tab-admins-content">
+        <div class="toolbar">
+          <input type="search" class="search-input" id="search-admins" placeholder="🔍 Search admins..." oninput="renderAdmins()">
+          <button class="nav-btn primary" onclick="openAddAdminModal()" style="margin-left: 10px; background: var(--accent); color: white;">➕ Create Admin</button>
+          <div style="flex:1"></div>
+          <button class="nav-btn" onclick="loadAdmins()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 60px">ID</th>
+                <th>Username / Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th style="text-align: right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admins-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Apps Tab -->
+      <div class="tab-content" id="tab-apps-content">
+        <div class="toolbar">
+          <input type="search" class="search-input" id="search-apps" placeholder="🔍 Search apps by business or email..." oninput="renderApps()">
+          <select class="search-input" id="filter-category" style="width: 150px; margin-left: 10px;" onchange="renderApps()">
+            <option value="all">All Categories</option>
+          </select>
+          <button class="nav-btn primary" onclick="openAddAppModal()" style="margin-left: 10px; background: var(--accent); color: white;">➕ Register New App</button>
+          <div style="flex:1"></div>
+          <button class="nav-btn" onclick="loadApps()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>App / Business</th>
+                <th>Contact</th>
+                <th>Category</th>
+                <th>Tax Info</th>
+                <th>Status</th>
+                <th style="text-align: right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="apps-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Admin Modal -->
+  <div class="modal-overlay" id="admin-modal">
+    <div class="modal">
+      <div class="modal-title" id="admin-modal-title">➕ Create Admin</div>
+      <input type="hidden" id="edit-admin-id">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-input" id="admin-username">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="admin-email">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="admin-password">
+      <label class="form-label">Role</label>
+      <select class="form-input" id="admin-is-super">
+        <option value="false">Admin</option>
+        <option value="true">Super Admin</option>
+      </select>
+      <div class="modal-result" id="admin-result" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="closeModal('admin-modal')">Cancel</button>
+        <button class="modal-btn primary" onclick="saveAdmin()">Save Admin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Modal -->
+  <div class="modal-overlay" id="app-modal">
+    <div class="modal">
+      <div class="modal-title" id="app-modal-title">➕ Register App</div>
+      <input type="hidden" id="edit-app-id">
+      
+      <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px; background:var(--bg2); padding:15px; border-radius:12px; border:1px solid var(--border)">
+        <div class="logo-preview-wrap" onclick="document.getElementById('app-logo-input').click()">
+          <img id="app-logo-preview" style="display:none">
+          <i id="app-logo-placeholder">🖼️</i>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700; font-size:14px; margin-bottom:4px">App Logo</div>
+          <div style="font-size:12px; color:var(--text3); margin-bottom:8px">Upload a square logo for the app</div>
+          <input type="file" id="app-logo-input" hidden accept="image/*" onchange="handleLogoUpload(this)">
+          <input type="hidden" id="app-logo-url">
+          <button class="nav-btn" onclick="document.getElementById('app-logo-input').click()" style="padding: 4px 10px; font-size:11px">Choose File</button>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div><label class="form-label">App Name</label><input type="text" class="form-input" id="app-name"></div>
+        <div><label class="form-label">Business Name</label><input type="text" class="form-input" id="app-business"></div>
+        <div><label class="form-label">Email</label><input type="email" class="form-input" id="app-email"></div>
+        <div><label class="form-label">Mobile</label><input type="text" class="form-input" id="app-mobile"></div>
+        <div><label class="form-label">Password</label><input type="password" class="form-input" id="app-pw"></div>
+        <div><label class="form-label">Category</label>
+          <div style="display:flex;gap:5px">
+            <input type="text" class="form-input" id="app-category" placeholder="e.g. Real Estate" list="category-list">
+            <datalist id="category-list"></datalist>
+          </div>
+        </div>
+        <div><label class="form-label">Website</label><input type="text" class="form-input" id="app-url"></div>
+        <div><label class="form-label">GST</label><input type="text" class="form-input" id="app-gst"></div>
+        <div style="grid-column: span 2">
+          <label class="form-label">Address</label>
+          <input type="text" class="form-input" id="app-address">
+        </div>
+      </div>
+      <div class="modal-result" id="app-result" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="closeModal('app-modal')">Cancel</button>
+        <button class="modal-btn primary" onclick="saveApp()">Save App</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    let adminSession = null;
+    let allAdmins = [];
+    let allApps = [];
+    let openMenuId = null;
+
+    function initTheme() {
+      const theme = localStorage.getItem('mrairag_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    initTheme();
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('mrairag_theme', next);
+    }
+
+    (function init() {
+      const raw = localStorage.getItem('mrairag_admin');
+      if (!raw) return window.location.href = '/super-admin-login';
+      adminSession = JSON.parse(raw);
+      if (!adminSession.is_super) return window.location.href = '/admin-login';
+      document.getElementById('admin-name').textContent = `👑 ${adminSession.username}`;
+      loadAdmins();
+      loadApps();
+      
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.actions-cell')) closeAllMenus();
+      });
+    })();
+
+    function adminHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Admin-Token': adminSession.token };
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+      document.getElementById('tab-' + tab + '-content').classList.add('active');
+      const navItem = document.getElementById('nav-' + tab);
+      if(navItem) navItem.classList.add('active');
+      document.getElementById('page-title').textContent = 'Super Admin — Manage ' + tab.charAt(0).toUpperCase() + tab.slice(1);
+    }
+
+    async function loadAdmins() {
+      try {
+        const r = await fetch('/api/admin/manage/admins', { headers: adminHeaders() });
+        const d = await r.json();
+        allAdmins = d.admins || [];
+        renderAdmins();
+      } catch (e) { toast('Error loading admins', 'error'); }
+    }
+
+    async function loadApps() {
+      try {
+        const r = await fetch('/api/admin/clients', { headers: adminHeaders() });
+        const d = await r.json();
+        allApps = d.clients || [];
+        updateCategoryFilters();
+        renderApps();
+      } catch (e) { toast('Error loading apps', 'error'); }
+    }
+
+    function updateCategoryFilters() {
+      const cats = [...new Set(allApps.map(a => a.category || 'General'))].sort();
+      const filter = document.getElementById('filter-category');
+      const datalist = document.getElementById('category-list');
+      
+      const options = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      filter.innerHTML = '<option value="all">All Categories</option>' + options;
+      datalist.innerHTML = options;
+    }
+
+    function renderAdmins() {
+      const tbody = document.getElementById('admins-tbody');
+      const search = document.getElementById('search-admins').value.toLowerCase();
+      const filtered = allAdmins.filter(a => a.username.toLowerCase().includes(search) || (a.email||'').toLowerCase().includes(search));
+      
+      tbody.innerHTML = filtered.map(a => `
+        <tr>
+          <td><div style="font-size:12px;color:var(--text3)">${a.id}</div></td>
+          <td>
+            <div style="font-weight:700">${esc(a.username)}</div>
+            <div style="font-size:11px;color:var(--text3)">${esc(a.email||'No email')}</div>
+          </td>
+          <td><span class="verified-badge ${a.is_super?'yes':'no'}">${a.is_super?'👑 Super':'🛡️ Admin'}</span></td>
+          <td><div style="font-size:11px;color:var(--text3)">Last: ${a.last_login?new Date(a.last_login).toLocaleDateString():'Never'}</div></td>
+          <td class="actions-cell">
+            <button class="act-btn act-login" onclick="loginAsAdmin(${a.id}, '${esc(a.username)}')">Login As</button>
+            <button class="dots-btn" onclick="toggleMenu('adm-${a.id}', event)">⋮</button>
+            <div class="actions-dropdown" id="adm-${a.id}">
+              <button class="dropdown-item" onclick="openEditAdminModal(${a.id})">✏️ Edit</button>
+              <button class="dropdown-item del" onclick="deleteAdmin(${a.id})">🗑️ Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderApps() {
+      const tbody = document.getElementById('apps-tbody');
+      const search = document.getElementById('search-apps').value.toLowerCase();
+      const cat = document.getElementById('filter-category').value;
+      
+      const filtered = allApps.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(search) || (c.business_name||'').toLowerCase().includes(search);
+        const matchesCat = cat === 'all' || (c.category || 'General') === cat;
+        return matchesSearch && matchesCat;
+      });
+      
+      tbody.innerHTML = filtered.map(c => `
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:12px">
+              ${c.logo_url ? `<img src="${c.logo_url}" class="app-logo-sm">` : `<div class="app-logo-sm" style="display:flex;align-items:center;justify-content:center;font-size:14px">📱</div>`}
+              <div>
+                <div style="font-weight:700">${esc(c.name)}</div>
+                <div style="font-size:11px;color:var(--text3)">${esc(c.business_name||'Individual')}</div>
+                <div style="font-size:9px; color:var(--accent2); font-family: 'JetBrains Mono', monospace; margin-top:2px">App ID: ${esc(c.client_id)}</div>
+              </div>
+            </div>
+          </td>
+          <td><div style="font-size:12px">${esc(c.email)}</div><div style="font-size:11px;color:var(--text3)">${esc(c.mobile_number||'No phone')}</div></td>
+          <td><span class="category-badge">${esc(c.category || 'General')}</span></td>
+          <td><div style="font-size:11px">GST: ${esc(c.gst_number||'N/A')}</div><div style="font-size:11px">PAN: ${esc(c.pan_number||'N/A')}</div></td>
+          <td><span class="verified-badge ${c.is_verified?'yes':'no'}">${c.is_verified?'✅ Verified':'⏳ Pending'}</span></td>
+          <td class="actions-cell">
+            <button class="act-btn act-login" onclick="loginAsClient('${c.client_id}', '${esc(c.name)}')">Login As</button>
+            <button class="dots-btn" onclick="toggleMenu('app-${c.client_id}', event)">⋮</button>
+            <div class="actions-dropdown" id="app-${c.client_id}">
+              <button class="dropdown-item" onclick="openEditAppModal('${c.client_id}')">✏️ Edit</button>
+              <button class="dropdown-item del" onclick="deleteApp('${c.client_id}')">🗑️ Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function toggleMenu(id, e) {
+      e.stopPropagation();
+      const el = document.getElementById(id);
+      const isShow = el.classList.contains('show');
+      closeAllMenus();
+      if (!isShow) {
+        el.classList.add('show');
+        openMenuId = id;
+      }
+    }
+    function closeAllMenus() {
+      document.querySelectorAll('.actions-dropdown').forEach(m => m.classList.remove('show'));
+      openMenuId = null;
+    }
+
+    async function handleLogoUpload(input) {
+      if(!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const r = await fetch('/api/admin/clients/upload-logo', {
+          method: 'POST',
+          headers: { 'X-Admin-Token': adminSession.token },
+          body: formData
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.detail);
+        
+        document.getElementById('app-logo-url').value = d.logo_url;
+        const img = document.getElementById('app-logo-preview');
+        img.src = d.logo_url;
+        img.style.display = 'block';
+        document.getElementById('app-logo-placeholder').style.display = 'none';
+        toast('Logo uploaded successfully', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function loginAsAdmin(id, name) {
+      if(!confirm(`Login as Admin "${name}"?`)) return;
+      try {
+        const r = await fetch(`/api/admin/manage/login-as/${id}`, { method: 'POST', headers: adminHeaders() });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.detail);
+        localStorage.setItem('mrairag_admin', JSON.stringify({ token: d.token, username: d.username, is_super: d.is_super }));
+        toast('Logged in as admin ' + name, 'success');
+        setTimeout(() => window.location.href = '/admin', 1000);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function loginAsClient(id, name) {
+      try {
+        const r = await fetch(`/api/admin/login-as/${id}`, { method: 'POST', headers: adminHeaders() });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.detail);
+        localStorage.setItem('mrairag_client', JSON.stringify({ 
+          client_id: d.client_id, 
+          token: d.token, 
+          name: d.name, 
+          email: d.email,
+          logo_url: d.logo_url 
+        }));
+        window.open('/dashboard', '_blank');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    // Modal Helpers
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function toast(msg, type='info') {
+      const c = document.getElementById('toasts');
+      const e = document.createElement('div'); e.className = 'toast ' + type; e.textContent = msg; c.appendChild(e);
+      setTimeout(() => { e.style.opacity = '0'; setTimeout(() => e.remove(), 300); }, 3000);
+    }
+    function esc(s) { return String(s||'').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    // Admin CRUD
+    function openAddAdminModal() {
+      document.getElementById('edit-admin-id').value = '';
+      document.getElementById('admin-username').value = '';
+      document.getElementById('admin-email').value = '';
+      document.getElementById('admin-password').value = '';
+      document.getElementById('admin-is-super').value = 'false';
+      document.getElementById('admin-modal-title').textContent = '➕ Create Admin';
+      document.getElementById('admin-result').style.display = 'none';
+      document.getElementById('admin-modal').classList.add('open');
+    }
+    function openEditAdminModal(id) {
+      const a = allAdmins.find(x => x.id === id);
+      if(!a) return;
+      document.getElementById('edit-admin-id').value = a.id;
+      document.getElementById('admin-username').value = a.username;
+      document.getElementById('admin-email').value = a.email || '';
+      document.getElementById('admin-password').value = '';
+      document.getElementById('admin-is-super').value = String(a.is_super);
+      document.getElementById('admin-modal-title').textContent = '✏️ Edit Admin';
+      document.getElementById('admin-result').style.display = 'none';
+      document.getElementById('admin-modal').classList.add('open');
+    }
+    async function saveAdmin() {
+      const id = document.getElementById('edit-admin-id').value;
+      const body = { 
+        username: document.getElementById('admin-username').value,
+        email: document.getElementById('admin-email').value,
+        is_super: document.getElementById('admin-is-super').value === 'true'
+      };
+      const pw = document.getElementById('admin-password').value;
+      if(pw) body.password = pw;
+      try {
+        const r = await fetch(id ? `/api/admin/manage/admins/${id}` : '/api/admin/manage/admins', {
+          method: id ? 'PUT' : 'POST', headers: adminHeaders(), body: JSON.stringify(body)
+        });
+        if(!r.ok) throw new Error('Failed to save admin');
+        toast('Admin saved', 'success');
+        closeModal('admin-modal');
+        loadAdmins();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+    async function deleteAdmin(id) {
+      if(!confirm('Delete admin?')) return;
+      try {
+        await fetch(`/api/admin/manage/admins/${id}`, { method: 'DELETE', headers: adminHeaders() });
+        toast('Admin deleted', 'success');
+        loadAdmins();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    // App CRUD
+    function openAddAppModal() {
+      document.getElementById('edit-app-id').value = '';
+      document.querySelectorAll('#app-modal .form-input').forEach(i => i.value = '');
+      document.getElementById('app-category').value = 'General';
+      document.getElementById('app-logo-url').value = '';
+      document.getElementById('app-logo-preview').style.display = 'none';
+      document.getElementById('app-logo-placeholder').style.display = 'block';
+      document.getElementById('app-modal-title').textContent = '➕ Register App';
+      document.getElementById('app-modal').classList.add('open');
+    }
+    function openEditAppModal(id) {
+      const c = allApps.find(x => x.client_id === id);
+      document.getElementById('edit-app-id').value = c.client_id;
+      document.getElementById('app-name').value = c.name || '';
+      document.getElementById('app-business').value = c.business_name || '';
+      document.getElementById('app-email').value = c.email;
+      document.getElementById('app-mobile').value = c.mobile_number || '';
+      document.getElementById('app-url').value = c.website_url || '';
+      document.getElementById('app-category').value = c.category || 'General';
+      document.getElementById('app-gst').value = c.gst_number || '';
+      document.getElementById('app-address').value = c.address || '';
+      
+      const logoUrl = c.logo_url || '';
+      document.getElementById('app-logo-url').value = logoUrl;
+      if(logoUrl){
+        document.getElementById('app-logo-preview').src = logoUrl;
+        document.getElementById('app-logo-preview').style.display = 'block';
+        document.getElementById('app-logo-placeholder').style.display = 'none';
+      } else {
+        document.getElementById('app-logo-preview').style.display = 'none';
+        document.getElementById('app-logo-placeholder').style.display = 'block';
+      }
+
+      document.getElementById('app-modal-title').textContent = '✏️ Edit App Details';
+      document.getElementById('app-modal').classList.add('open');
+    }
+    async function saveApp() {
+      const id = document.getElementById('edit-app-id').value;
+      const body = {
+        name: document.getElementById('app-name').value,
+        business_name: document.getElementById('app-business').value,
+        email: document.getElementById('app-email').value,
+        mobile_number: document.getElementById('app-mobile').value,
+        website_url: document.getElementById('app-url').value,
+        category: document.getElementById('app-category').value || 'General',
+        logo_url: document.getElementById('app-logo-url').value,
+        gst_number: document.getElementById('app-gst').value,
+        address: document.getElementById('app-address').value
+      };
+      const pw = document.getElementById('app-pw').value;
+      if(pw) body.password = pw;
+      try {
+        const r = await fetch(id ? `/api/admin/clients/${id}` : '/api/admin/clients/create-direct', {
+          method: id ? 'PUT' : 'POST', headers: adminHeaders(), body: JSON.stringify(body)
+        });
+        if(!r.ok) throw new Error('Failed');
+        toast('App saved', 'success');
+        closeModal('app-modal');
+        loadApps();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+    async function deleteApp(id) {
+      if(!confirm('Delete app?')) return;
+      try {
+        await fetch(`/api/admin/clients/${id}`, { method: 'DELETE', headers: adminHeaders() });
+        toast('App deleted', 'success');
+        loadApps();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    function logout() { localStorage.removeItem('mrairag_admin'); window.location.href = '/super-admin-login'; }
+  </script>
+</body>
+</html>

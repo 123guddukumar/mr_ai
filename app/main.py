@@ -11,7 +11,11 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.routes import upload, query, health, provider, website, youtube, jsondata, apikeys, clients, admin as admin_routes, memory as memory_routes, reels as reels_routes
+from app.routes import (
+    upload, query, health, provider, website, youtube, jsondata, 
+    apikeys, clients, admin as admin_routes, memory as memory_routes, 
+    reels as reels_routes, agents as agents_routes, social as social_routes
+)
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
 
@@ -71,6 +75,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # ── API Routes ────────────────────────────────────────────────────────────────
 app.include_router(health.router, prefix="/api", tags=["System"])
+app.include_router(agents_routes.router, prefix="/api", tags=["Agents & DataStores"])
 app.include_router(provider.router, prefix="/api", tags=["Provider"])
 app.include_router(upload.router, prefix="/api", tags=["Documents"])
 app.include_router(website.router, prefix="/api", tags=["Documents"])
@@ -82,12 +87,16 @@ app.include_router(clients.router, prefix="/api", tags=["Clients"])
 app.include_router(admin_routes.router, prefix="/api", tags=["Admin"])
 app.include_router(memory_routes.router, prefix="/api", tags=["Memory"])
 app.include_router(reels_routes.router, prefix="/api", tags=["Reels"])
+app.include_router(social_routes.router, prefix="/api", tags=["Social Hub"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.exists(frontend_path):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
+    if not os.path.exists("static"): os.makedirs("static", exist_ok=True)
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/uploads", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "uploads")), name="uploads")
 
     @app.get("/api-docs", include_in_schema=False)
     async def api_docs_page():
@@ -101,8 +110,16 @@ if os.path.exists(frontend_path):
     async def login_page():
         return FileResponse(os.path.join(frontend_path, "login.html"))
 
+    @app.get("/user/login", include_in_schema=False)
+    async def user_login_page():
+        return FileResponse(os.path.join(frontend_path, "user-login.html"))
+
     @app.get("/dashboard", include_in_schema=False)
     async def dashboard_page():
+        return FileResponse(os.path.join(frontend_path, "dashboard.html"))
+
+    @app.get("/user/dashboard", include_in_schema=False)
+    async def user_dashboard_page():
         return FileResponse(os.path.join(frontend_path, "dashboard.html"))
 
     @app.get("/help", include_in_schema=False)
@@ -113,9 +130,17 @@ if os.path.exists(frontend_path):
     async def admin_login_page():
         return FileResponse(os.path.join(frontend_path, "admin-login.html"))
 
+    @app.get("/super-admin-login", include_in_schema=False)
+    async def super_admin_login_page():
+        return FileResponse(os.path.join(frontend_path, "super-admin-login.html"))
+
     @app.get("/admin", include_in_schema=False)
     async def admin_dashboard_page():
         return FileResponse(os.path.join(frontend_path, "admin.html"))
+
+    @app.get("/super-admin", include_in_schema=False)
+    async def super_admin_page():
+        return FileResponse(os.path.join(frontend_path, "super-admin.html"))
 
     @app.get("/memory", include_in_schema=False)
     async def memory_page():
@@ -124,6 +149,10 @@ if os.path.exists(frontend_path):
     @app.get("/memory-chat", include_in_schema=False)
     async def memory_chat_page():
         return FileResponse(os.path.join(frontend_path, "memory-chat.html"))
+
+    @app.get("/agent-chat", include_in_schema=False)
+    async def agent_chat_page():
+        return FileResponse(os.path.join(frontend_path, "agent-chat.html"))
 
     @app.get("/memory-chat-public", include_in_schema=False)
     async def memory_chat_public_page():
@@ -149,6 +178,10 @@ if os.path.exists(frontend_path):
     @app.get("/developer-guide", include_in_schema=False)
     async def developer_guide():
         return FileResponse(os.path.join(frontend_path, "developer-guide.html"))
+
+    @app.get("/api-document", include_in_schema=False)
+    async def api_document_page():
+        return FileResponse(os.path.join(frontend_path, "APIdocument.html"))
 
     @app.get("/", include_in_schema=False)
     async def root():

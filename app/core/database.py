@@ -73,6 +73,46 @@ def init_db():
             conn.execute(__import__('sqlalchemy').text(
                 "ALTER TABLE clients ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''"
             ))
+            
+            # Admin New Columns
+            conn.execute(__import__('sqlalchemy').text(
+                "ALTER TABLE admins ADD COLUMN IF NOT EXISTS is_super BOOLEAN DEFAULT FALSE"
+            ))
+            conn.execute(__import__('sqlalchemy').text(
+                "ALTER TABLE admins ADD COLUMN IF NOT EXISTS email VARCHAR(200) DEFAULT ''"
+            ))
+            
+            # Client (App) New Columns
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS business_name VARCHAR(200)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(20)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS website_url VARCHAR(300)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS gst_number VARCHAR(50)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS pan_number VARCHAR(50)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS pin_code VARCHAR(20)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS address TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_by_admin_id INTEGER"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS category VARCHAR(100)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_by_client_id VARCHAR(64)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS user_type VARCHAR(50)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS dob VARCHAR(50)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS profession VARCHAR(100)"))
+            
+            # Agents Table New Columns
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS voice_config_json TEXT DEFAULT '{}'"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS system_config_json TEXT DEFAULT '{}'"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS customization_json TEXT DEFAULT '{}'"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS datastores_json TEXT DEFAULT '[]'"))
+            
+            # Knowledge Source New Columns
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE datastore_sources ADD COLUMN IF NOT EXISTS raw_text TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE agent_knowledge_sources ADD COLUMN IF NOT EXISTS raw_text TEXT"))
+            
+            # Social Content Fixes (Type changes)
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ALTER COLUMN media_url TYPE TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ALTER COLUMN title TYPE VARCHAR(500)"))
+            
             conn.commit()
     except Exception:
         pass  # Table may not exist yet or DB may not support IF NOT EXISTS

@@ -43,35 +43,24 @@ class IngestURLResponse(BaseModel):
 
 def extract_text_from_html(html: str) -> tuple[str, str]:
     """
-    Extract clean readable text + page title from raw HTML.
-    No external dependencies — pure regex/string processing.
+    Extract clean readable text + page title from raw HTML using BeautifulSoup.
     """
-    # Get title
-    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-    title = title_match.group(1).strip() if title_match else "Untitled Page"
-    title = re.sub(r"\s+", " ", title)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "lxml")
 
-    # Remove unwanted tags entirely (scripts, styles, nav, footer, etc.)
+    # Get title
+    title = soup.title.string if soup.title else "Untitled Page"
+    title = (title or "").strip()
+
+    # Remove unwanted tags
     for tag in ["script", "style", "noscript", "nav", "footer", "header",
                 "aside", "form", "iframe", "svg", "button", "input"]:
-        html = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", " ", html, flags=re.DOTALL | re.IGNORECASE)
+        for s in soup.select(tag):
+            s.decompose()
 
-    # Remove all remaining HTML tags
-    text = re.sub(r"<[^>]+>", " ", html)
-
-    # Decode common HTML entities
-    entities = {
-        "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
-        "&#39;": "'", "&nbsp;": " ", "&mdash;": "—", "&ndash;": "–",
-        "&hellip;": "...", "&copy;": "©", "&reg;": "®",
-    }
-    for entity, char in entities.items():
-        text = text.replace(entity, char)
-
-    # Remove leftover entity patterns
-    text = re.sub(r"&[a-zA-Z]{2,8};", " ", text)
-    text = re.sub(r"&#\d+;", " ", text)
-
+    # Get text
+    text = soup.get_text(separator="\n")
+    
     # Normalize whitespace
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)

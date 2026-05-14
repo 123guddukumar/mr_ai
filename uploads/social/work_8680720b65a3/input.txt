@@ -1,0 +1,11 @@
+file 'img_0.jpg'
+duration 4.0
+file 'img_1.jpg'
+duration 4.0
+file 'img_2.jpg'
+duration 4.0
+file 'img_3.jpg'
+duration 4.0
+file 'img_4.jpg'
+duration 4.0
+file 'img_4.jpg'

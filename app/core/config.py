@@ -28,11 +28,11 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 100
     TOP_K_RESULTS: int = 5
 
-    # LLM Provider: openai | gemini | claude | ollama | huggingface
-    LLM_PROVIDER: str = "openai"
+    # LLM Provider: openai | gemini | claude | ollama | huggingface | groq
+    LLM_PROVIDER: str = "groq"
 
     # OpenAI
-    OPENAI_API_KEY: str = ""
+    OPENAI_API_KEY: str = "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"
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_MAX_TOKENS: int = 1024
     OPENAI_TEMPERATURE: float = 0.1
@@ -49,16 +49,35 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3"
 
+    # Groq
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
     # HuggingFace
     HF_MODEL_ID: str = "mistralai/Mistral-7B-Instruct-v0.2"
     HF_API_KEY: str = ""
+
+    # Veo (Google Video Generation)
+    VEO_API_KEY: str = ""
+
+    # Buffer Social Publishing
+    BUFFER_API_KEY: str = ""
+    BUFFER_ORG_ID: str = ""
+    
+    # Advanced Video Engine
+    PEXELS_API_KEY: str = ""
+    ELEVENLABS_API_KEY: str = ""
 
     # API Key Management
     API_KEY_ADMIN_SECRET: str = "change-me-admin-secret"
     API_KEYS_ENABLED: bool = False
 
     # PostgreSQL Database
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/mrairag"
+    DATABASE_URL: str = "postgresql://postgres.twtyobkljlomlgoywyvr:GudduKumar2580@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+
+    # Supabase (Optional for direct SDK access)
+    SUPABASE_URL: str = "https://twtyobkljlomlgoywyvr.supabase.co"
+    SUPABASE_KEY: str = "sb_publishable_JsMa3JjeE1WcI1RMIeaOQg_oIgb5f9S"
 
     # SMTP Email (for OTP)
     SMTP_HOST: str = "smtp.gmail.com"

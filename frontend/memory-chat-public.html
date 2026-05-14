@@ -10,6 +10,11 @@
 :root{--bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
   --accent:#6c63ff;--accent2:#00d4aa;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
   --red:#f87171;--green:#34d399}
+[data-theme="light"] {
+  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--card:#ffffff;--border:#e2e8f0;
+  --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --accent:#4f46e5;--accent2:#059669;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
@@ -200,7 +205,8 @@ select.vsd-inp{cursor:pointer;appearance:none}
     <span class="mem-badge">🧠 Memory Bot</span>
     <span id="chat-bot-name" style="font-size:13px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"></span>
     <!-- Voice settings hidden for public users — preset voice model is used -->
-    <div class="user-chip" id="user-chip" style="display:none">
+    <button class="tbtn tbtn-s" onclick="toggleTheme()" title="Toggle Theme" style="margin-left:auto">🌓 Theme</button>
+    <div class="user-chip" id="user-chip" style="display:none; margin-left:8px">
       <img id="user-avatar" src="" alt="">
       <span id="user-name"></span>
     </div>
@@ -371,6 +377,19 @@ select.vsd-inp{cursor:pointer;appearance:none}
 <div class="toast-container" id="toasts"></div>
 
 <script>
+// Theme Management
+function initTheme() {
+  const theme = localStorage.getItem('mrairag_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('mrairag_theme', next);
+}
+initTheme();
+
 // ── Params ─────────────────────────────────────────────────────────────────────
 const params    = new URLSearchParams(window.location.search);
 const MEMORY_ID = params.get('id');
@@ -420,6 +439,7 @@ async function showChat(name,pic){
   loadVS();
   if(window.speechSynthesis) speechSynthesis.getVoices();
   initMode();
+  setTimeout(handleGreeting, 1000);
 }
 (()=>{ const s=sessionStorage.getItem('pub_user'); if(s){ try{ const u=JSON.parse(s); showChat(u.name||'',u.pic||''); }catch(e){} } })();
 
@@ -582,6 +602,59 @@ async function listenAndRespond(){
   await sendMsgAuto(text);
   if(v2vRunning) listenAndRespond();
 }
+// ── Greeting & Suggestions ───────────────────────────────────────────────────
+let greetingDone = false;
+async function handleGreeting() {
+  if (greetingDone) return;
+  greetingDone = true;
+  
+  const botName = document.getElementById('chat-bot-name')?.textContent || 'Memory Bot';
+  const targetLang = localStorage.getItem('mrairag_sv_lang') || 'hi-IN';
+  
+  // 1. Fetch suggestions
+  let suggestions = [];
+  try {
+    const r = await fetch(`/api/suggest-prompts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': 'GUEST' }, // Guest access if public
+      body: JSON.stringify({ count: 5 })
+    });
+    const d = await r.json();
+    suggestions = d.prompts || [];
+  } catch (e) {
+    suggestions = ["What can you do?", "How does this work?", "What sources do you have?"];
+  }
+
+  // 2. Build the greeting text
+  // "Ye Rag h yissme aap mere source ke according question puchh sakte but m aapka questions ka bhi answer dunga/dungi , jaise ki aap mere ye yis type ka question puchh sakte h"
+  const hindiIntro = `नमस्ते! मैं ${botName} हूँ। यह RAG है जिसमें आप मेरे सोर्स के अनुसार प्रश्न पूछ सकते हैं, लेकिन मैं आपके सामान्य प्रश्नों का भी उत्तर दूँगा। जैसे कि आप मुझसे इस प्रकार के प्रश्न पूछ सकते हैं:`;
+  const englishIntro = `Hi! I am ${botName}. This is RAG where you can ask questions based on my sources, but I will also answer your general questions. For example, you can ask me these types of questions:`;
+  
+  const baseIntro = targetLang.startsWith('hi') ? hindiIntro : englishIntro;
+  const fullText = baseIntro + " " + suggestions.join(". ");
+  
+  // 3. Show as a message
+  appendMsg('assistant', baseIntro);
+  const sugList = document.createElement('div');
+  sugList.style.display = 'flex';
+  sugList.style.flexWrap = 'wrap';
+  sugList.style.gap = '8px';
+  sugList.style.marginTop = '10px';
+  suggestions.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'mode-pill';
+    b.style.fontSize = '10px';
+    b.textContent = s;
+    b.onclick = () => { document.getElementById('chat-input').value = s; sendMsg(); };
+    sugList.appendChild(b);
+  });
+  document.querySelector('#chat-messages .message:last-child .msg-bubble').appendChild(sugList);
+
+  // 4. Speak it
+  detectedLang = targetLang;
+  await speakMRAI(fullText, targetLang);
+}
+
 function listenOnce(){
   return new Promise(resolve=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -589,7 +662,7 @@ function listenOnce(){
     rec.lang=localStorage.getItem('mrairag_sv_lang')||'en-IN'; isRec=true;
     let ft='';
     rec.onresult=(e)=>{ let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-      ft=t; detectedLang=detectLangFromText(t);  // detect actual language
+      ft=t; detectedLang=detectLangFromText(t);
       document.getElementById('chat-input').value=t; autoResize(document.getElementById('chat-input'));
       document.getElementById('vo-sublabel').textContent='“'+t+'”'; };
     rec.onend=()=>{ isRec=false; resolve(ft.trim()); };
@@ -784,7 +857,7 @@ async function sendMsgAuto(text){
     // ─ Translate English answer back to user’s language ─
     const displayAnswer=(langCode&&langCode!=='en'&&rawAnswer.charAt(0)!=='❌')
       ? await translateText(rawAnswer,detectedLang) : rawAnswer;
-    appendMsg('assistant',displayAnswer);
+    appendMsg('assistant', displayAnswer, d.sources||[]);
     if(chatMode==='v2v'){
       setVS('speaking');
       document.getElementById('vo-sublabel').textContent=displayAnswer.substring(0,100)+(displayAnswer.length>100?'…':'');
@@ -809,13 +882,25 @@ async function sendMsg(){
 }
 
 
-function appendMsg(role,text){
+function appendMsg(role, text, srcs){
   const area=document.getElementById('chat-messages');
   const div=document.createElement('div'); div.className='message '+role;
   const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   let av=role==='user'?'👤':'🧠';
   if(role==='user'){ try{ const u=JSON.parse(sessionStorage.getItem('pub_user')||'{}'); if(u.pic) av=`<img src="${u.pic}" style="width:30px;height:30px;border-radius:50%;object-fit:cover">`; else if(u.name) av=`<span style="font-size:12px;font-weight:800;color:#fff">${u.name[0].toUpperCase()}</span>`; }catch(e){} }
-  div.innerHTML=`<div class="msg-avatar ${role}">${av}</div><div style="display:flex;flex-direction:column;gap:3px"><div class="msg-bubble">${esc(text)}</div><div class="msg-time">${time}</div></div>`;
+  
+  let srcHtml = '';
+  if(srcs && srcs.length){
+    srcHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">' + srcs.slice(0,3).map(s => {
+      const fname = s.filename||s.file||'Source';
+      const isPdf = fname.toLowerCase().endsWith('.pdf');
+      const click = isPdf ? `onclick="window.open('/uploads/${esc(fname)}','_blank')"` : '';
+      const style = isPdf ? 'cursor:pointer;background:rgba(108,99,255,0.1);border:1px solid rgba(108,99,255,0.3);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:9px' : 'background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:9px;color:var(--text3)';
+      return `<span ${click} style="${style}">${esc(fname)}</span>`;
+    }).join('') + '</div>';
+  }
+
+  div.innerHTML=`<div class="msg-avatar ${role}">${av}</div><div style="display:flex;flex-direction:column;gap:3px"><div class="msg-bubble">${esc(text)}</div>${srcHtml}<div class="msg-time">${time}</div></div>`;
   area.appendChild(div); area.scrollTop=area.scrollHeight; return div;
 }
 function appendTyping(){

@@ -1,0 +1,3 @@
+file 'img_6.jpg'
+duration 36.096
+file 'img_6.jpg'

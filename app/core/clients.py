@@ -34,7 +34,7 @@ def _get_db():
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def register_client(name: str, email: str, password: str, db=None) -> Optional[dict]:
+def register_client(name: str, email: str, password: str, created_by_admin_id: int = None, category: str = "General", logo_url: str = None, db=None) -> Optional[dict]:
     """Register a new client. Returns client dict or None if email taken."""
     from app.core.models import Client
     close_db = db is None
@@ -55,11 +55,14 @@ def register_client(name: str, email: str, password: str, db=None) -> Optional[d
             client_id=client_id, name=name, email=email.lower(),
             password_hash=_hash_password(password), token=token,
             is_verified=False, created_at=now, last_login=now,
+            created_by_admin_id=created_by_admin_id,
+            category=category,
+            logo_url=logo_url
         )
         db.add(client)
         db.commit()
         db.refresh(client)
-        logger.info(f"Client registered: {client_id} ({email})")
+        logger.info(f"Client registered: {client_id} ({email}) by admin {created_by_admin_id}")
         return client.to_dict()
     finally:
         if close_db:

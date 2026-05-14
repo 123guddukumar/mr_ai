@@ -17,7 +17,7 @@ POST /api/clients/reset-password  → Verify OTP + set new password
 import logging
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -58,6 +58,7 @@ class ClientAuthResponse(BaseModel):
     name: str
     email: str
     created_at: str
+    logo_url: Optional[str] = None
     message: str
 
 class ClientProfile(BaseModel):
@@ -66,6 +67,19 @@ class ClientProfile(BaseModel):
     email: str
     created_at: str
     last_login: str
+    business_name: Optional[str] = ""
+    website_url: Optional[str] = ""
+    gst_number: Optional[str] = ""
+    pan_number: Optional[str] = ""
+    user_type: Optional[str] = ""
+    mobile_number: Optional[str] = ""
+    city: Optional[str] = ""
+    pin_code: Optional[str] = ""
+    address: Optional[str] = ""
+    dob: Optional[str] = ""
+    profession: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    avatar_url: Optional[str] = ""
 
 class ChatMessageIn(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
@@ -108,18 +122,41 @@ class ResetPasswordRequest(BaseModel):
     otp: str = Field(..., min_length=4)
     new_password: str = Field(..., min_length=6)
 
+class SubUserCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=5)
+    password: str = Field(..., min_length=6)
+    business_name: Optional[str] = ""
+    website_url: Optional[str] = ""
+    gst_number: Optional[str] = ""
+    pan_number: Optional[str] = ""
+    user_type: Optional[str] = "New" # New, Prime, Demo, Testing, In-house, Rejected
+    mobile_number: Optional[str] = ""
+    city: Optional[str] = ""
+    pin_code: Optional[str] = ""
+    address: Optional[str] = ""
+    dob: Optional[str] = ""
+    profession: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    user_image: Optional[str] = ""
+
+class ImageUploadResponse(BaseModel):
+    success: bool
+    url: str
+    message: str
+
 
 # ── Auth dependency ───────────────────────────────────────────────────────────
 
 def _require_client(
-    x_client_token: Optional[str] = Header(None, alias="X-Client-Token"),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not x_client_token:
-        raise HTTPException(401, "Missing X-Client-Token header.")
-    record = validate_client_token(x_client_token, db=db)
+    if not x_app_token:
+        raise HTTPException(401, "Missing X-App-Token header.")
+    record = validate_client_token(x_app_token, db=db)
     if not record:
-        raise HTTPException(401, "Invalid or expired client token. Please login again.")
+        raise HTTPException(401, "Invalid or expired token. Please login again.")
     return record
 
 
@@ -151,13 +188,14 @@ async def api_register(req: RegisterRequest, db: Session = Depends(get_db)):
     save_notification(
         client_id=result["client_id"], type="system",
         title="Welcome to MR AI RAG!",
-        message=f"Your account has been created. Client ID: {result['client_id']}",
+        message=f"Your account has been created. App ID: {result['client_id']}",
         db=db,
     )
     return ClientAuthResponse(
         client_id=result["client_id"], token=result["token"],
         name=result["name"], email=result["email"],
         created_at=result["created_at"],
+        logo_url=result.get("logo_url"),
         message=f"Welcome, {result['name']}! Account verified and ready.",
     )
 
@@ -173,6 +211,7 @@ async def api_login(req: LoginRequest, db: Session = Depends(get_db)):
         client_id=result["client_id"], token=result["token"],
         name=result["name"], email=result["email"],
         created_at=result["created_at"],
+        logo_url=result.get("logo_url"),
         message=f"Welcome back, {result['name']}!",
     )
 
@@ -203,8 +242,24 @@ async def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db
 @router.get("/clients/me", response_model=ClientProfile, tags=["Clients"])
 async def api_get_me(client: dict = Depends(_require_client)):
     return ClientProfile(
-        client_id=client["client_id"], name=client["name"], email=client["email"],
-        created_at=client.get("created_at", ""), last_login=client.get("last_login", ""),
+        client_id=client["client_id"],
+        name=client["name"],
+        email=client["email"],
+        created_at=client.get("created_at", ""),
+        last_login=client.get("last_login", ""),
+        business_name=client.get("business_name", ""),
+        website_url=client.get("website_url", ""),
+        gst_number=client.get("gst_number", ""),
+        pan_number=client.get("pan_number", ""),
+        user_type=client.get("user_type", ""),
+        mobile_number=client.get("mobile_number", ""),
+        city=client.get("city", ""),
+        pin_code=client.get("pin_code", ""),
+        address=client.get("address", ""),
+        dob=client.get("dob", ""),
+        profession=client.get("profession", ""),
+        logo_url=client.get("logo_url", ""),
+        avatar_url=client.get("avatar_url", "")
     )
 
 
@@ -334,6 +389,7 @@ async def api_google_login(req: GoogleLoginRequest, db: Session = Depends(get_db
         client_id=client.client_id, token=client.token,
         name=client.name, email=client.email,
         created_at=client.created_at.isoformat() if client.created_at else "",
+        logo_url=client.logo_url,
         message=f"Welcome, {client.name}! (Google Login)",
     )
 
@@ -400,5 +456,93 @@ async def api_qr_login(req: QRLoginRequest, db: Session = Depends(get_db)):
         client_id=client.client_id, token=client.token,
         name=client.name, email=client.email,
         created_at=client.created_at.isoformat() if client.created_at else "",
+        logo_url=client.logo_url,
         message=f"Welcome, {client.name}! (QR Login)",
     )
+
+# ── Sub-User Management (Reseller Flow) ──────────────────────────────────────
+
+@router.post("/clients/sub-users", tags=["Sub-Users"])
+async def create_sub_user(req: SubUserCreateRequest, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """Allow a Client to create their own sub-users."""
+    from app.core.models import Client
+    from app.core.clients import _generate_client_id, _generate_token, _hash_password
+    
+    # Check if email taken
+    if db.query(Client).filter(Client.email == req.email.lower()).first():
+        raise HTTPException(409, f"Email '{req.email}' is already taken.")
+        
+    cid = _generate_client_id()
+    while db.query(Client).filter(Client.client_id == cid).first():
+        cid = _generate_client_id()
+        
+    new_user = Client(
+        client_id=cid,
+        name=req.name,
+        email=req.email.lower(),
+        password_hash=_hash_password(req.password),
+        token=_generate_token(),
+        is_verified=True, # Auto-verify for sub-users created by parent
+        created_by_client_id=client["client_id"],
+        business_name=req.business_name,
+        website_url=req.website_url,
+        gst_number=req.gst_number,
+        pan_number=req.pan_number,
+        user_type=req.user_type,
+        mobile_number=req.mobile_number,
+        city=req.city,
+        pin_code=req.pin_code,
+        address=req.address,
+        dob=req.dob,
+        profession=req.profession,
+        logo_url=req.logo_url or req.user_image,
+        created_at=datetime.utcnow()
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"success": True, "message": "User created successfully.", "user": new_user.to_dict()}
+
+@router.get("/clients/sub-users", tags=["Sub-Users"])
+async def list_sub_users(client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """List all sub-users created by this client."""
+    from app.core.models import Client
+    users = db.query(Client).filter(Client.created_by_client_id == client["client_id"]).order_by(Client.created_at.desc()).all()
+    return {"success": True, "total": len(users), "users": [u.to_dict() for u in users]}
+
+@router.delete("/clients/sub-users/{sub_client_id}", tags=["Sub-Users"])
+async def delete_sub_user(sub_client_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """Delete a sub-user."""
+    from app.core.models import Client
+    user = db.query(Client).filter(Client.client_id == sub_client_id, Client.created_by_client_id == client["client_id"]).first()
+    if not user:
+        raise HTTPException(404, "User not found or not owned by you.")
+    db.delete(user)
+    db.commit()
+    return {"success": True, "message": "User deleted."}
+
+@router.post("/clients/upload-image", response_model=ImageUploadResponse, tags=["Sub-Users"])
+async def upload_client_image(file: UploadFile = File(...), client: dict = Depends(_require_client)):
+    """Upload an image for logo or profile and return the URL."""
+    import os
+    import secrets
+    from app.core.config import settings
+    
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Only image files are allowed.")
+    
+    # Ensure dir
+    upload_dir = os.path.join(settings.BASE_DIR, "uploads", "images")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique name
+    ext = os.path.splitext(file.filename)[1] or ".png"
+    fname = f"{secrets.token_hex(8)}{ext}"
+    fpath = os.path.join(upload_dir, fname)
+    
+    with open(fpath, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    url = f"/uploads/images/{fname}"
+    return {"success": True, "url": url, "message": "Image uploaded successfully."}

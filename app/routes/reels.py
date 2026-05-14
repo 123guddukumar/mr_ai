@@ -21,14 +21,14 @@ router = APIRouter()
 # ── Auth dependency ───────────────────────────────────────────────────────────
 
 def _require_client(
-    x_client_token: Optional[str] = Header(None, alias="X-Client-Token"),
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not x_client_token:
-        raise HTTPException(401, "Missing X-Client-Token header.")
-    record = validate_client_token(x_client_token, db=db)
+    if not x_app_token:
+        raise HTTPException(401, "Missing X-App-Token header.")
+    record = validate_client_token(x_app_token, db=db)
     if not record:
-        raise HTTPException(401, "Invalid or expired client token.")
+        raise HTTPException(401, "Invalid or expired token.")
     return record
 
 

@@ -16,6 +16,8 @@ class ChunkMetadata(BaseModel):
     char_start: int = 0
     char_end: int = 0
     memory_id: Optional[str] = None   # None = global; set = belongs to a personal Memory bot
+    datastore_id: Optional[str] = None
+    agent_id: Optional[str] = None
 
 
 class UploadResponse(BaseModel):

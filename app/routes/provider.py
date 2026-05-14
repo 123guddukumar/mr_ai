@@ -5,9 +5,16 @@ POST /provider/config → set provider + API key at runtime
 """
 
 import logging
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import ProviderConfigRequest, ProviderConfigResponse, ProviderStatusResponse
 from app.services.llm import set_runtime_provider, get_active_provider, get_active_model
+from app.core.config import settings
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from app.core.database import get_db
+from app.core.models import SystemSettings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,6 +35,11 @@ PROVIDER_MODELS = {
     "ollama":      ["llama3", "llama3.1", "mistral", "phi3", "gemma2", "deepseek-r1"],
     "huggingface": ["mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta", "tiiuae/falcon-7b-instruct"],
 }
+
+class SystemSettingsUpdateRequest(BaseModel):
+    buffer_api_key: Optional[str] = None
+    buffer_org_id: Optional[str] = None
+    # Add other global settings here if needed
 
 
 @router.get("/provider", response_model=ProviderStatusResponse, summary="Get current LLM provider status")
@@ -77,3 +89,37 @@ async def configure_provider(req: ProviderConfigRequest):
         model=model,
         message=f"Provider set to {info['label']} using model {model}."
     )
+
+
+@router.post("/system/settings", tags=["System"])
+async def update_system_settings(req: SystemSettingsUpdateRequest, db: Session = Depends(get_db)):
+    """Update global system settings like Buffer API keys in database."""
+    config = db.query(SystemSettings).first()
+    if not config:
+        config = SystemSettings()
+        db.add(config)
+    
+    if req.buffer_api_key is not None:
+        config.buffer_api_key = req.buffer_api_key
+        settings.BUFFER_API_KEY = req.buffer_api_key
+    if req.buffer_org_id is not None:
+        config.buffer_org_id = req.buffer_org_id
+        settings.BUFFER_ORG_ID = req.buffer_org_id
+    
+    db.commit()
+    return {
+        "success": True, 
+        "message": "System settings saved to database.",
+        "config": config.to_dict()
+    }
+
+@router.get("/system/settings", tags=["System"])
+async def get_system_settings(db: Session = Depends(get_db)):
+    """Get global system settings from database."""
+    config = db.query(SystemSettings).first()
+    if not config:
+        return {
+            "buffer_api_key": settings.BUFFER_API_KEY,
+            "buffer_org_id": settings.BUFFER_ORG_ID
+        }
+    return config.to_dict()

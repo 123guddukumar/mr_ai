@@ -43,6 +43,7 @@ def get_active_model() -> str:
         "gemini": settings.GEMINI_MODEL,
         "claude": settings.CLAUDE_MODEL,
         "ollama": settings.OLLAMA_MODEL,
+        "groq": settings.GROQ_MODEL,
         "huggingface": settings.HF_MODEL_ID,
     }.get(p, "unknown")
 
@@ -54,6 +55,7 @@ def get_active_api_key(provider: str) -> str:
         "openai": settings.OPENAI_API_KEY,
         "gemini": settings.GEMINI_API_KEY,
         "claude": settings.CLAUDE_API_KEY,
+        "groq": settings.GROQ_API_KEY,
         "ollama": "",
         "huggingface": settings.HF_API_KEY,
     }.get(provider, "")
@@ -98,12 +100,38 @@ async def generate_answer(question: str, context: str) -> str:
         "gemini": _call_gemini,
         "claude": _call_claude,
         "ollama": _call_ollama,
+        "groq": _call_groq,
         "huggingface": _call_huggingface,
     }
     fn = dispatch.get(provider)
     if not fn:
         raise ValueError(f"Unsupported provider: {provider}")
     return await fn(question, context)
+
+
+async def _call_groq(question: str, context: str) -> str:
+    """Groq API (OpenAI compatible)."""
+    api_key = get_active_api_key("groq")
+    model = get_active_model()
+    if not api_key: return "Groq API Key missing."
+    
+    prompt = build_prompt(question, context)
+    try:
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+        resp = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": settings.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=settings.OPENAI_MAX_TOKENS,
+            temperature=settings.OPENAI_TEMPERATURE
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Groq error: {e}")
+        return f"Error connecting to Groq: {str(e)}"
 
 
 async def generate_answer_with_config(
@@ -289,3 +317,76 @@ async def _call_huggingface(question: str, context: str) -> str:
         response = await client.post(url, json=payload, headers=headers)
         response.raise_for_status()
         return response.json()[0]["generated_text"].strip()
+
+async def llm_with_history(
+    question: str, system: str, history: list,
+    provider: str, model: str, api_key: str, ollama_url: str = "",
+) -> str:
+    """Helper for chatting with history, used by Memory and Agent routes."""
+    import httpx
+    from app.core.config import settings
+
+    if provider == "gemini":
+        if not api_key:
+            raise RuntimeError("Gemini API key required")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        contents = []
+        for t in history:
+            contents.append({"role": "user" if t.get("role") == "user" else "model",
+                             "parts": [{"text": t.get("content", "")}]})
+        contents.append({"role": "user", "parts": [{"text": question}]})
+        payload = {"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
+                   "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}}
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post(url, json=payload); r.raise_for_status()
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    elif provider == "openai":
+        if not api_key:
+            raise RuntimeError("OpenAI API key required")
+        from openai import AsyncOpenAI
+        msgs = [{"role": "system", "content": system}]
+        for t in history:
+            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+        msgs.append({"role": "user", "content": question})
+        cl = AsyncOpenAI(api_key=api_key)
+        resp = await cl.chat.completions.create(model=model, messages=msgs, max_tokens=1024, temperature=0.1)
+        return resp.choices[0].message.content.strip()
+
+    elif provider == "claude":
+        if not api_key:
+            raise RuntimeError("Anthropic API key required")
+        hdrs = {"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+        msgs = []
+        for t in history:
+            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+        msgs.append({"role": "user", "content": question})
+        payload = {"model": model, "max_tokens": 1024, "system": system, "messages": msgs}
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
+            r.raise_for_status()
+            return r.json()["content"][0]["text"].strip()
+
+    elif provider == "ollama":
+        msgs = [{"role": "system", "content": system}]
+        for t in history:
+            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+        msgs.append({"role": "user", "content": question})
+        async with httpx.AsyncClient(timeout=120.0) as hc:
+            r = await hc.post(f"{ollama_url}/api/chat", json={"model": model, "stream": False, "messages": msgs})
+            r.raise_for_status()
+            return r.json()["message"]["content"].strip()
+
+    elif provider == "huggingface":
+        if not api_key:
+            raise RuntimeError("HuggingFace API key required")
+        full_prompt = f"<s>[INST] {system}\n\nUser: {question} [/INST]"
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post(
+                f"https://api-inference.huggingface.co/models/{model}",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"inputs": full_prompt, "parameters": {"max_new_tokens": 512, "temperature": 0.1, "return_full_text": False}},
+            ); r.raise_for_status()
+            return r.json()[0]["generated_text"].strip()
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")

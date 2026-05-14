@@ -1,0 +1,15 @@
+file 'img_0.jpg'
+duration 5.177142857142857
+file 'img_1.jpg'
+duration 5.177142857142857
+file 'img_2.jpg'
+duration 5.177142857142857
+file 'img_3.jpg'
+duration 5.177142857142857
+file 'img_4.jpg'
+duration 5.177142857142857
+file 'img_5.jpg'
+duration 5.177142857142857
+file 'img_6.jpg'
+duration 5.177142857142857
+file 'img_6.jpg'

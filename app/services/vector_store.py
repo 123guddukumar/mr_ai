@@ -172,6 +172,63 @@ class VectorStore:
             self.metadata = keep_meta
         self.save()
 
+    def purge_by_source(self, datastore_id: Optional[str] = None, agent_id: Optional[str] = None, source_file: Optional[str] = None):
+        """Remove chunks for a specific file within a datastore or agent context."""
+        def is_match(m):
+            if source_file and m.source_file != source_file: return False
+            if datastore_id and m.datastore_id != datastore_id: return False
+            if agent_id and m.agent_id != agent_id: return False
+            return True
+
+        keep_meta = [m for m in self.metadata if not is_match(m)]
+        if len(keep_meta) == len(self.metadata):
+            return
+
+        logger.info(f"Purging vectors for source: {source_file} in ds:{datastore_id}/ag:{agent_id}")
+        self._init_index()
+        if keep_meta:
+            from app.services.embedder import embed_texts
+            texts = [m.text for m in keep_meta]
+            embeddings = embed_texts(texts)
+            self.index.add(embeddings)
+            self.metadata = keep_meta
+        self.save()
+
+    def search_combined(
+        self, query_embedding: np.ndarray, agent_id: str, datastore_ids: List[str], top_k: int = 5
+    ) -> List[Tuple[ChunkMetadata, float]]:
+        """
+        Search for top_k chunks across multiple contexts:
+        - Chunks belonging directly to agent_id
+        - Chunks belonging to any of the datastore_ids
+        """
+        if self.index.ntotal == 0:
+            return []
+
+        # Over-fetch for filtering
+        fetch_k = min(max(top_k * 5, 50), self.index.ntotal)
+        scores, indices = self.index.search(query_embedding, fetch_k)
+
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx == -1: continue
+            chunk = self.metadata[idx]
+            
+            is_match = False
+            if agent_id and chunk.agent_id == agent_id:
+                is_match = True
+            elif datastore_ids and chunk.datastore_id in datastore_ids:
+                is_match = True
+            
+            if is_match:
+                similarity = float(np.clip(score, 0, 1))
+                results.append((chunk, similarity))
+            
+            if len(results) >= top_k:
+                break
+        
+        return results
+
 
 # Module-level singleton
 _vector_store: Optional[VectorStore] = None

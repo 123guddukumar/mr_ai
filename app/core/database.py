@@ -109,9 +109,17 @@ def init_db():
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE datastore_sources ADD COLUMN IF NOT EXISTS raw_text TEXT"))
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE agent_knowledge_sources ADD COLUMN IF NOT EXISTS raw_text TEXT"))
             
-            # Social Content Fixes (Type changes)
+            # Social Content Fixes (Type changes and new columns)
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ALTER COLUMN media_url TYPE TEXT"))
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ALTER COLUMN title TYPE VARCHAR(500)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ADD COLUMN IF NOT EXISTS scenes_json TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE social_contents ADD COLUMN IF NOT EXISTS metadata_json TEXT"))
+            
+            # Classroom Upgrade Columns
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE exams ADD COLUMN IF NOT EXISTS category VARCHAR(200)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS paper_id VARCHAR(64)"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS color VARCHAR(50) DEFAULT '#4f46e5'"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS notes TEXT"))
             
             conn.commit()
     except Exception:

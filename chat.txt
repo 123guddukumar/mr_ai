@@ -164,3 +164,38 @@ and when created agent then show agent and when click on QR code then generate a
 
 and when KB upload pdf or insert website indexed then show same tab uploaded source in KB tab 
 
+
+
+
+
+
+sk-proj-REDACTED_OPENAI_API_KEY
+
+Now I want to add classroom section in user dashboard and remove institute sectio
+
+in class room section add new exam(name, image, description) and show in card with 3dot edit/delete 
+and when click on exam then show exam page and add new subject(Name) when savethen show chapter name then show topic name and when save topic name then add subtopic name with scription
+and show subject in row  with dropdon icon in which show chapter wwith dropdown show topi with dropdown show subtopic when click on subtopic then show description in right side
+
+
+
+
+
+
+Bro classroom section m upgrade krna h 
+
+jab exam pe click krte h to jb paper pe click kr rha hu aur jo subject show ho rha h to wo sabject card pe show krna small m kitna chapter h aur kitna topic h aur subtopic kitna h 
+
+aur ab subtopic section pe ja rheh h to jo button niche show ho rha h  wo sab uper  show kr generate description ke pass geenrate notes, quize, reels
+
+jab generate notes kr rhe h to to multipart/form data laguage(kyuki mujhe api ke through data dena h app ko) m generate kro with atractive with color and images 
+
+and jab quize generate kara rha hu to sahi generate  ho rha h to achhe se page m show ho generated quize 
+
+aur jab generate reels kr rhe h to jo form show ho rha h select language and voice then test voice kyu nhi play ho rha h aur jab form submit kr rhe h to 
+ek popup show kr do page pe ka kya ho rha h step by step like generate script,generate image prompt, generate image, generate audio, generate background music, edit all , wait not generate uske baad jab success fully generate ho jaye to wah preview show kr dena 
+aur subtopic page pe hi ek button lahga do show reelsjisse click krne pe reels history show ho jaye yis subtopic pe jitna reels generate karaye h wahio show krana 
+
+aur bro ek aur update krna h jab image ke liye prompt generate kr rhe ho scene by secen then usi time scene by secne audion prompt generate kro aur ausion generaye kr ke add kr do 
+
+aur bro ek image 3second ka hi rakho yisi type script generate kro 

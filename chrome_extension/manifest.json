@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "MR AI Reel Generator",
+  "version": "1.0.0",
+  "description": "Auto-generate images via Google Flow and videos via Meta AI for reel creation",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads",
+    "tabs",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://labs.google/*",
+    "https://www.meta.ai/*",
+    "https://meta.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://labs.google/*"],
+      "js": ["content_flow.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.meta.ai/*", "https://meta.ai/*"],
+      "js": ["content_meta.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content_dashboard.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon16.png", "icon48.png", "icon128.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

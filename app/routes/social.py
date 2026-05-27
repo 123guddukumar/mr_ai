@@ -23,52 +23,33 @@ from app.core.config import settings
 from app.core.models import SocialContent, Notification
 
 import urllib.parse
-from app.services.video_engine import assemble_pro_reel
+from app.services.video_engine import assemble_pro_reel, assemble_advanced_reel, assemble_edited_reel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+class SocialGenerateReq(BaseModel):
+    type: str  # 'post' or 'reel'
+    topic: str
+    language: Optional[str] = "English"
+    datastore_id: Optional[str] = None
+    voice_id: Optional[str] = "adam"
+    custom_script: Optional[str] = None
+
+class ReAssembleRequest(BaseModel):
+    reel_id: Optional[str] = None
+    title: str
+    scenes: List[Dict]
+    metadata: Dict
+
 # ── Image Generation Helper ───────────────────────────────────────────────────
 
 async def generate_hf_image(prompt: str) -> str:
-    """Generates an image using HuggingFace Inference API and saves it locally."""
-    # prompthero/openjourney is extremely stable and free on the inference API
-    API_URL = "https://api-inference.huggingface.co/models/prompthero/openjourney"
-    headers = {"Authorization": f"Bearer {settings.HF_API_KEY}"}
-
-    # Ensure uploads/social exists
-    base_uploads = os.path.join(os.getcwd(), "uploads")
-    social_uploads = os.path.join(base_uploads, "social")
-    os.makedirs(social_uploads, exist_ok=True)
-    filename = f"social_{secrets.token_hex(8)}.jpg"
-    filepath = os.path.join(social_uploads, filename)
-
-    try:
-        async with httpx.AsyncClient() as client:
-            logger.info(f"Attempting HF Image Generation: {prompt[:50]}...")
-            response = await client.post(API_URL, headers=headers, json={"inputs": prompt}, timeout=60.0)
-            
-            if response.status_code == 503:
-                logger.info("HF Model loading, waiting 12s...")
-                await asyncio.sleep(12)
-                response = await client.post(API_URL, headers=headers, json={"inputs": prompt}, timeout=60.0)
-
-            if response.status_code == 200 and len(response.content) > 1000:
-                with open(filepath, "wb") as f:
-                    f.write(response.content)
-                logger.info(f"HF Image saved: {filename}")
-                return f"/uploads/social/{filename}"
-            else:
-                logger.warning(f"HF failed ({response.status_code}), falling back to Pollinations...")
-    except Exception as e:
-        logger.error(f"HF Exception: {e}")
-    
-    # Try multiple AI models and then fallback to high-quality stock
+    """Generates a high-quality image using Pollinations AI (Flux Model)."""
     encoded_prompt = urllib.parse.quote(prompt)
     seed = secrets.token_hex(4)
-    
-    # Primary: Pollinations Turbo (Fastest and less rate-limited)
-    return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={seed}&model=turbo"
+    # Using FLUX model for maximum realism and text adherence
+    return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true&seed={seed}&model=flux"
 
 async def generate_stock_image(topic: str) -> str:
     # Reliable stock fallback using Unsplash Source
@@ -223,6 +204,65 @@ async def assemble_ai_reel(script_text: str, image_prompts: List[str]) -> Option
 
 # ── Auth helper ──────────────────────────────────────────────────────────────
 
+@router.post("/re-assemble")
+async def re_assemble_social_content(req: ReAssembleRequest, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client_data = _get_client(x_app_token, db)
+    
+    try:
+        # Extract data from scenes
+        image_prompts = [s.get('thumb') for s in req.scenes] # Use current thumbs as prompts or directly
+        # In re-assemble, we might want to just re-use the thumbs as fixed assets if they are already generated
+        
+        # We need to map the studio scenes back to the video engine format
+        # For now, let's treat the 'thumb' as the fixed asset for each scene
+        
+        # Re-assemble using assemble_pro_reel with fixed assets
+        # We'll modify assemble_pro_reel to accept fixed_assets if needed, 
+        # but for now let's just use the current logic with the new script/order
+        
+        res_pro = await assemble_edited_reel(
+            scenes=req.scenes,
+            voice_id=req.metadata.get("voice", "adam"),
+            bgm_style=req.metadata.get("bgm_style", "cinematic")
+        )
+        
+        video_url = res_pro.get("video_url")
+        if res_pro.get("scenes"):
+            req.scenes = res_pro["scenes"]
+        full_script = "\n".join([s.get('script', '') for s in req.scenes])
+        if video_url:
+            # Update existing record or create new one
+            if req.reel_id:
+                db_item = db.query(SocialContent).filter(SocialContent.content_id == req.reel_id).first()
+                if db_item:
+                    db_item.media_url = video_url
+                    db_item.title = req.title
+                    db_item.body = full_script
+                    db_item.scenes_json = json.dumps(req.scenes)
+                    db_item.metadata_json = json.dumps(req.metadata)
+                    db.commit()
+                    return {"status": "updated", "video_url": video_url}
+            
+            # If no reel_id or not found, create new
+            content_id = secrets.token_hex(8)
+            db_item = SocialContent(
+                content_id=content_id,
+                client_id=client_data["client_id"],
+                content_type="reel",
+                title=req.title,
+                body=full_script,
+                media_url=video_url,
+                scenes_json=json.dumps(req.scenes),
+                metadata_json=json.dumps(req.metadata)
+            )
+            db.add(db_item)
+            db.commit()
+            return {"status": "created", "content_id": content_id, "video_url": video_url}
+            
+    except Exception as e:
+        logger.error(f"Re-assembly failed: {e}")
+        raise HTTPException(500, f"Re-assembly failed: {str(e)}")
+
 def _get_client(x_app_token: Optional[str], db: Session) -> dict:
     if not x_app_token:
         raise HTTPException(401, "Missing X-App-Token header")
@@ -241,6 +281,8 @@ class SocialGenerateReq(BaseModel):
     language: Optional[str] = "English"
     voice_id: Optional[str] = None
     custom_script: Optional[str] = None
+    exam_id: Optional[str] = None
+    subtopic_id: Optional[str] = None
 
 class SocialPublishReq(BaseModel):
     content_ids: List[str]
@@ -295,7 +337,7 @@ async def suggest_social_topics(datastore_id: str, language: Optional[str] = "En
     
     Format: ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]"""
     
-    resp = await generate_answer(prompt, provider=get_active_provider(db))
+    resp = await generate_answer(prompt, provider=get_active_provider())
     import re
     match = re.search(r"(\[.*\])", resp, re.DOTALL)
     if match:
@@ -308,7 +350,7 @@ async def suggest_social_topics(datastore_id: str, language: Optional[str] = "En
     return {"topics": ["Future of " + client_data["name"], "AI in Industry", "Success Secrets"]}
 
 @router.get("/social/voice-preview/{voice_id}", tags=["Social"])
-async def voice_preview(voice_id: str):
+async def voice_preview(voice_id: str, text: Optional[str] = None):
     """Proxy for ElevenLabs voice preview to keep API key secure."""
     api_key = settings.ELEVENLABS_API_KEY
     if not api_key:
@@ -321,8 +363,14 @@ async def voice_preview(voice_id: str):
         "accept": "audio/mpeg"
     }
     data = {
-        "text": "नमस्ते! यह आपके रील के लिए चुनी गई आवाज़ का नमूना है।", # Hindi/English mix for testing
-        "model_id": "eleven_multilingual_v2"
+        "text": (text[:300] if text else "Hello! This is a voice preview sample for your reel narration."),
+        "model_id": "eleven_turbo_v2_5",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.85,
+            "style": 0.15,
+            "use_speaker_boost": True
+        }
     }
     
     try:
@@ -448,125 +496,55 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
             raise HTTPException(500, f"Failed to generate posts: {str(e)}")
 
     elif req.type == "reel":
-        # Generate Reel Pipeline (Cinematic Multi-Style Storyboard)
+        # Generate Reel Pipeline
         lang = req.language or "English"
         
         if req.custom_script:
-            # Use user provided script
-            logger.info("Processing Custom Script for Reel (Strict Mode)...")
-            prompt = (
-                f"COMMAND: YOU MUST ONLY USE THE 'USER SCRIPT' BELOW. IGNORE ALL OTHER KNOWLEDGE.\n"
-                f"USER SCRIPT: {req.custom_script}\n"
-                f"TARGET VOICE LANGUAGE: {lang.upper()}\n\n"
-                "TASK:\n"
-                "1. Extract ONLY the narration/dialogue text from the USER SCRIPT.\n"
-                "2. CLEAN the text by removing ALL 'Visual:', 'Part:', 'Narrator:', '👑', '🔥' and other markers/emojis.\n"
-                f"3. TRANSLATE the cleaned narration into {lang.upper()} for the 'script' field.\n"
-                "4. Provide the narration translated into ENGLISH for the 'subtitles' field.\n"
-                f"5. Generate a catchy TITLE in {lang.upper()}.\n"
-                "6. Generate 7 search_terms in English for stock footage.\n"
-                "7. FORMAT: Output ONLY raw JSON.\n\n"
-                "JSON STRUCTURE:\n"
-                "{\n"
-                "  \"title\": \"...\",\n"
-                "  \"script\": \"(Narration in " + lang.upper() + ")\",\n"
-                "  \"subtitles\": \"(Translation in ENGLISH)\",\n"
-                "  \"image_prompts\": [\"...\"],\n"
-                "  \"search_terms\": [\"...\", ...]\n"
-                "}"
-            )
-        else:
-            prompt = (
-                f"COMMAND: Generate a professional reel script for topic: {req.topic}.\n"
-                f"TARGET VOICE LANGUAGE: {lang.upper()}\n"
-                f"CONTEXT: {context_text[:2500]}\n\n"
-                "STRICT REQUIREMENTS:\n"
-                f"1. SCRIPT: Exactly 100-120 words. MUST BE IN {lang.upper()} (Native Script) for voiceover.\n"
-                "2. SUBTITLES: Provide the SAME script translated into ENGLISH.\n"
-                f"3. TITLE: Catchy title in {lang.upper()}.\n"
-                "4. STORYBOARD: 7 visual prompts in English.\n"
-                "5. SEARCH TERMS: 7 simple search terms in English.\n"
-                "6. FORMAT: Output ONLY raw JSON.\n\n"
-                "JSON STRUCTURE:\n"
-                "{\n"
-                "  \"title\": \"...\",\n"
-                "  \"script\": \"(Narration in " + lang.upper() + ")\",\n"
-                "  \"subtitles\": \"(English translation)\",\n"
-                "  \"image_prompts\": [\"...\"],\n"
-                "  \"search_terms\": [\"...\", ...]\n"
-                "}"
-            )
-        
-        try:
-            resp_text = await generate_answer(prompt, "SYSTEM: You are a JSON-only API. Do not talk. Output only the requested JSON object.")
-            logger.info(f"AI Raw Response (Reel): {resp_text[:300]}...")
+            # Use Advanced Pipeline for Custom Scripts
+            logger.info("Processing Custom Script with Advanced Pipeline...")
             
-            # Robust Multi-JSON extraction
-            import re
-            json_obj = None
+            structured_script = req.custom_script
+            # If not already structured, ask LLM to structure it
+            if "🎬 Scene" not in req.custom_script:
+                logger.info("Structuring custom script using LLM...")
+                struct_prompt = f"""
+                Convert the following raw study material, notes, or concept explanations into a structured scene-by-scene video reel script.
+                
+                RAW CONTEXT / NOTES:
+                {req.custom_script}
+                
+                TARGET LANGUAGE FOR DIALOGUE: {lang}
+                
+                FORMAT FOR EACH SCENE (Output EXACTLY in this format, do not include parentheses in the dialogue or visual text):
+                
+                🎬 Scene 1 (0-3 sec)
+                🎙️ Dialogue: Write the narration text to be spoken by the voiceover in {lang}. Do not add any parenthetical notes or translation. Keep it extremely brief (strictly 5 to 8 words).
+                📸 Visuals / Footage: Detailed description of the visual scene in English (suitable for generating an AI image).
+                🎥 Editing Notes: Cinematic camera movement (e.g. slow zoom in, pan right, tracking shot).
+                
+                🎬 Scene 2 (3-6 sec)
+                🎙️ Dialogue: Write the narration text to be spoken by the voiceover in {lang}. Keep it extremely brief (strictly 5 to 8 words).
+                📸 Visuals / Footage: Detailed description of the visual scene in English.
+                🎥 Editing Notes: Cinematic camera movement.
+                
+                REQUIREMENTS:
+                1. Create exactly 5 to 7 scenes.
+                2. Visuals must be highly descriptive AI image prompts (English only).
+                3. The Dialogue MUST be written in {lang} and must be strictly 5 to 8 words per scene to fit the 3-second duration limit.
+                   - CRITICAL: If the language is Hindi, you MUST write the dialogue strictly in proper Devanagari Unicode script (e.g. "भारत", "प्रौद्योगिकी"). NEVER write in Hinglish (Hindi written using English/Latin alphabet, e.g. "Bharat", "vigyan"), as TTS engines pronounce Hinglish with a highly robotic/incorrect accent.
+                   - CRITICAL: Spell out all numbers, place names, acronyms, and math symbols fully in spoken words of the target language (e.g. write "उन्नीस सौ सैंतालीस" instead of "1947", "प्रतिशत" / "percent" instead of "%", "किलोमीटर" instead of "km") so that ElevenLabs reads them with perfect professional pronunciation.
+                4. Do NOT include any intro, outro, headers, or markdown wrappers. Only output the scenes in the format above.
+                """
+                structured_script = await generate_answer(struct_prompt, "You are a professional video script writer. Output only the scene blocks as requested.")
             
-            # Find all strings that look like JSON objects
-            all_objs = re.findall(r"(\{.*?\})", resp_text, re.DOTALL)
-            for candidate in all_objs:
-                try:
-                    candidate_json = json.loads(candidate)
-                    # Check if this is OUR JSON (has a script or title)
-                    if 'script' in candidate_json or 'image_prompts' in candidate_json or 'title' in candidate_json:
-                        json_obj = candidate_json
-                        break
-                except:
-                    continue
-
-            # If findall fails, try greedy search as last resort
-            if not json_obj:
-                match = re.search(r"(\{.*\})", resp_text, re.DOTALL)
-                if match:
-                    try: json_obj = json.loads(match.group(1))
-                    except: pass
-
-            if not json_obj:
-                logger.error(f"Failed to extract Reel JSON. Using script fallback logic.")
-                # If custom_script, at least we have the input
-                fallback_script = req.custom_script[:500] if req.custom_script else f"Exploring the importance of {req.topic} in {lang}."
-                reel_data = {
-                    "title": req.topic or "Modern Insight",
-                    "script": fallback_script,
-                    "subtitles": fallback_script,
-                    "image_prompts": [f"Visual representation of {req.topic}"] * 7,
-                    "search_terms": [req.topic] * 7
-                }
-            else:
-                reel_data = json_obj
-            
-            # Normalize Reel keys
-            if 'narration' in reel_data and 'script' not in reel_data: reel_data['script'] = reel_data['narration']
-            if 'content' in reel_data and 'script' not in reel_data: reel_data['script'] = reel_data['content']
-            if 'prompts' in reel_data and 'image_prompts' not in reel_data: reel_data['image_prompts'] = reel_data['prompts']
-            
-            # Ensure mandatory fields (with DataStore integration)
-            if not reel_data.get('script'): 
-                reel_data['script'] = f"Let's explore {req.topic} together. This technology is changing everything about how we handle data and AI."
-            if not reel_data.get('title'): reel_data['title'] = f"Expert Insights: {req.topic}"
-            if not reel_data.get('image_prompts'): 
-                reel_data['image_prompts'] = [f"cinematic scene of {req.topic}"] * 7
-
-            # Assemble the Reel
-            logger.info("Starting Pro Reel Assembly Pipeline (Pexels + ElevenLabs)...")
-            logo_url = client_data.get("logo_url")
-            
-            # Extract search terms or fall back to image prompts
-            search_terms = reel_data.get('search_terms', reel_data.get('image_prompts', [req.topic]))
-            
-            video_url = await assemble_pro_reel(
-                reel_data['script'], 
-                req.topic, 
-                image_prompts=reel_data.get('image_prompts', []),
-                search_terms=search_terms,
+            res_adv = await assemble_advanced_reel(
+                structured_script,
                 language=lang,
-                voice_id=req.voice_id, 
-                logo_url=logo_url,
-                subtitles_text=reel_data.get('subtitles', reel_data['script'])
+                voice_id=req.voice_id,
+                bgm_style="dramatic" # Default for advanced
             )
+            video_url = res_adv.get("video_url")
+            scenes_data = res_adv.get("scenes", [])
             
             if video_url:
                 content_id = secrets.token_hex(8)
@@ -574,9 +552,17 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                     content_id=content_id,
                     client_id=client_data["client_id"],
                     content_type="reel",
-                    title=reel_data['title'],
-                    body=reel_data['script'],
-                    media_url=video_url
+                    title=req.topic or "Custom Reel",
+                    body=structured_script[:1000],
+                    media_url=video_url,
+                    scenes_json=json.dumps(scenes_data),
+                    metadata_json=json.dumps({
+                        "bgm_url": res_adv.get("bgm_url"),
+                        "voice_id": req.voice_id,
+                        "script": structured_script,
+                        "exam_id": req.exam_id,
+                        "subtopic_id": req.subtopic_id
+                    })
                 )
                 db.add(db_item)
                 db.commit()
@@ -585,17 +571,140 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                     "type": "reel",
                     "items": [{
                         "id": content_id,
-                        "title": reel_data['title'],
-                        "script": reel_data['script'],
+                        "title": req.topic or "Custom Reel",
+                        "script": structured_script,
                         "video_url": video_url,
-                        "note": "Fully Automated AI Production (Voice + Images + Motion)"
+                        "scenes": scenes_data,
+                        "note": "Advanced AI Production (Flux + ElevenLabs + Cinematic Assembly)"
                     }]
                 }
             else:
-                raise ValueError("Reel assembly returned no video URL")
-        except Exception as e:
-            logger.error(f"Reel generation failed: {e}")
-            raise HTTPException(500, f"Failed to generate reel: {str(e)}")
+                raise HTTPException(500, "Advanced reel assembly failed")
+
+        else:
+            # Standard automated pipeline for topic-based generation
+            prompt = (
+                f"COMMAND: Generate a professional scene-by-scene reel script for topic: {req.topic}.\n"
+                f"TARGET VOICE LANGUAGE: {lang.upper()}\n"
+                f"CONTEXT: {context_text[:2500]}\n\n"
+                f"INSTRUCTIONS:\n"
+                f"1. TITLE: Create an engaging title.\n"
+                f"2. BGM_STYLE: cinematic, energetic, corporate, or dramatic.\n"
+                f"3. SCENES: Split the content into exactly 5 to 7 sequential scenes.\n"
+                f"4. For EACH scene, provide:\n"
+                f"   - term: A search term for stock footages.\n"
+                f"   - prompt: A highly detailed 8k visual prompt for AI image generation.\n"
+                f"   - source: 'ai' or 'stock'. Use 'ai' for brand names/dashboards/apps, and 'stock' for tech/office/nature/people visuals.\n"
+                f"   - script: The exact voice narration/dialogue to be spoken during this scene in {lang.upper()} (strictly 5-8 words, max 8 words, to fit in a 3-second duration limit).\n"
+                f"5. FORMAT: Output ONLY raw JSON.\n\n"
+                f"JSON STRUCTURE:\n"
+                f"{{\n"
+                f"  \"title\": \"...\",\n"
+                f"  \"bgm_style\": \"...\",\n"
+                f"  \"scenes\": [\n"
+                f"    {{\n"
+                f"      \"term\": \"...\",\n"
+                f"      \"prompt\": \"...\",\n"
+                f"      \"source\": \"...\",\n"
+                f"      \"script\": \"...\"\n"
+                f"    }},\n"
+                f"    ...\n"
+                f"  ]\n"
+                f"}}"
+            )
+            
+            try:
+                resp_text = await generate_answer(prompt, "SYSTEM: You are a JSON-only API. Do not talk. Output only the requested JSON object.")
+                logger.info(f"AI Raw Response (Reel): {resp_text[:300]}...")
+                
+                # Robust Multi-JSON extraction
+                import re
+                json_obj = None
+                all_objs = re.findall(r"(\{.*?\})", resp_text, re.DOTALL)
+                for candidate in all_objs:
+                    try:
+                        candidate_json = json.loads(candidate)
+                        if 'scenes' in candidate_json or 'title' in candidate_json:
+                            json_obj = candidate_json
+                            break
+                    except: continue
+
+                if not json_obj:
+                    match = re.search(r"(\{.*\})", resp_text, re.DOTALL)
+                    if match:
+                        try: json_obj = json.loads(match.group(1))
+                        except: pass
+
+                if not json_obj:
+                    reel_data = {
+                        "title": req.topic or "Modern Insight",
+                        "bgm_style": "cinematic",
+                        "scenes": [{
+                            "term": req.topic,
+                            "prompt": f"cinematic scene of {req.topic}",
+                            "source": "stock",
+                            "script": f"Exploring the importance of {req.topic}."
+                        }] * 5
+                    }
+                else:
+                    reel_data = json_obj
+                
+                if not reel_data.get('title'): reel_data['title'] = req.topic
+                scenes = reel_data.get('scenes', [])
+                if not scenes:
+                    scenes = [{
+                        "term": req.topic,
+                        "prompt": f"cinematic scene of {req.topic}",
+                        "source": "stock",
+                        "script": f"Exploring the importance of {req.topic}."
+                    }] * 5
+                
+                res_pro = await assemble_edited_reel(
+                    scenes=scenes,
+                    voice_id=req.voice_id,
+                    bgm_style=reel_data.get('bgm_style', 'cinematic')
+                )
+                video_url = res_pro.get("video_url")
+                scenes_data = res_pro.get("scenes", [])
+                full_script = "\n".join([s.get('script', '') for s in scenes_data])
+                
+                if video_url:
+                    content_id = secrets.token_hex(8)
+                    db_item = SocialContent(
+                        content_id=content_id,
+                        client_id=client_data["client_id"],
+                        content_type="reel",
+                        title=reel_data['title'],
+                        body=full_script,
+                        media_url=video_url,
+                        scenes_json=json.dumps(scenes_data),
+                        metadata_json=json.dumps({
+                            "bgm_url": res_pro.get("bgm_url"),
+                            "voice_id": req.voice_id,
+                            "script": full_script,
+                            "exam_id": req.exam_id,
+                            "subtopic_id": req.subtopic_id
+                        })
+                    )
+                    db.add(db_item)
+                    db.commit()
+
+                    return {
+                        "type": "reel",
+                        "items": [{
+                            "id": content_id,
+                            "title": reel_data.get('title', req.topic or "Modern Insight"),
+                            "script": reel_data.get('script') or full_script,
+                            "video_url": video_url,
+                            "scenes": scenes_data,
+                            "note": "Professional Production (Hybrid Assets)"
+                        }]
+                    }
+                else:
+                    raise ValueError("Reel assembly failed")
+            except Exception as e:
+                logger.error(f"Reel generation failed: {e}")
+                raise HTTPException(500, f"Failed to generate reel: {str(e)}")
 
     else:
         raise HTTPException(400, "Invalid content type")
@@ -611,8 +720,26 @@ async def re_assemble_reel(req: ReAssembleReq, x_app_token: Optional[str] = Head
         
     # 2. Call the assembly engine with new data
     logger.info(f"Re-assembling reel {req.content_id} with updated data...")
-    video_url = await assemble_pro_reel(req.script, req.topic)
-    
+    import json
+    scenes = []
+    if db_item.scenes_json:
+        try: scenes = json.loads(db_item.scenes_json)
+        except: pass
+    if not scenes:
+        scenes = [{
+            "term": req.topic or "scene",
+            "prompt": f"cinematic scene of {req.topic or 'scene'}",
+            "source": "stock",
+            "script": req.script
+        }]
+    else:
+        scenes[0]["script"] = req.script
+
+    res_pro = await assemble_edited_reel(
+        scenes=scenes,
+        voice_id="adam"
+    )
+    video_url = res_pro.get("video_url")
     if not video_url:
         raise HTTPException(500, "Re-assembly engine failed to produce video")
         
@@ -908,3 +1035,47 @@ async def delete_social_content(
     db.delete(content)
     db.commit()
     return {"success": True, "message": "Content deleted successfully"}
+
+class GenerateImageRequest(BaseModel):
+    prompt: str
+
+@router.post("/social/generate-image", tags=["Social Hub"])
+async def api_generate_social_image(
+    req: GenerateImageRequest,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    client_data = _get_client(x_app_token, db)
+    
+    prompt = req.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt is required")
+        
+    try:
+        # Generate the Pollinations AI image URL
+        img_url = await generate_hf_image(prompt)
+        
+        # Ensure directory exists
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        os.makedirs(base_uploads, exist_ok=True)
+        
+        # Unique filename
+        filename = f"ai_scene_{secrets.token_hex(6)}.jpg"
+        dst = os.path.join(base_uploads, filename)
+        
+        # Download the image
+        async with httpx.AsyncClient() as client:
+            img_res = await client.get(img_url, timeout=30.0)
+            if img_res.status_code == 200:
+                with open(dst, "wb") as f:
+                    f.write(img_res.content)
+                url = f"/uploads/social/{filename}"
+                return {"success": True, "url": url}
+            else:
+                logger.error(f"Pollinations AI failed with status {img_res.status_code}")
+                raise HTTPException(status_code=500, detail=f"Image generation failed: Status {img_res.status_code}")
+    except Exception as e:
+        logger.error(f"Image generation exception: {e}")
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=str(e))
+

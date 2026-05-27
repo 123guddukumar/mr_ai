@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 340px; font-family: 'Segoe UI', sans-serif; background: #0d0f17; color: #e2e8f0; }
+
+  .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 14px 16px; }
+  .header h1 { font-size: 14px; font-weight: 800; color: #fff; }
+  .header p { font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+
+  .section { padding: 14px 16px; border-bottom: 1px solid #1e2340; }
+  .label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+
+  input { width: 100%; background: #1a1d33; border: 1px solid #1e2340; color: #e2e8f0; padding: 9px 11px; border-radius: 8px; font-size: 12px; margin-bottom: 8px; }
+  input:focus { outline: none; border-color: #4f46e5; }
+
+  .btn { width: 100%; padding: 10px; border-radius: 10px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-primary { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; }
+  .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); margin-top: 6px; }
+
+  .phase-bar { display: flex; gap: 3px; margin: 8px 0; }
+  .phase-step { flex: 1; height: 5px; border-radius: 3px; background: #1e2340; transition: all 0.4s; }
+  .phase-step.active { background: #f59e0b; animation: pulse 1s infinite; }
+  .phase-step.done { background: #34d399; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 8px 0; }
+  .stat { background: #1a1d33; border: 1px solid #1e2340; border-radius: 8px; padding: 8px; text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 800; color: #4f46e5; }
+  .stat-lbl { font-size: 9px; color: #64748b; text-transform: uppercase; }
+
+  .log-box { background: #1a1d33; border: 1px solid #1e2340; border-radius: 8px; padding: 8px; max-height: 130px; overflow-y: auto; }
+  .log-line { font-size: 10px; line-height: 1.7; color: #94a3b8; }
+  .log-line.error { color: #f87171; }
+  .log-line.success { color: #34d399; }
+
+  .saved-badge { font-size: 10px; color: #34d399; margin-left: 6px; display: none; }
+  .auto-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #34d399; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
+
+  .token-help { background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.25); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 10px; color: #94a3b8; line-height: 1.6; }
+  .token-help strong { color: #a5b4fc; }
+  .token-help code { background: rgba(79,70,229,0.2); padding: 1px 5px; border-radius: 4px; font-family: monospace; color: #c4b5fd; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎬 MR AI Reel Generator</h1>
+  <p>Auto-pipeline: Google Flow → Meta AI → Reel</p>
+</div>
+
+<!-- Setup -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div class="label" style="margin:0">Setup (one-time)</div>
+    <span class="auto-badge">🤖 Auto Mode</span>
+  </div>
+
+  <div class="token-help">
+    <strong>How to get your token:</strong><br>
+    1. Open your dashboard in Chrome<br>
+    2. Click the <strong>🔑 Token</strong> button at the top of the page header.<br>
+    3. The active token is instantly copied to your clipboard!<br>
+    4. Paste it in the input field below.
+  </div>
+
+  <input type="text" id="backend-url" placeholder="http://localhost:8000">
+  <input type="password" id="token" placeholder="Paste your token here...">
+  <button class="btn btn-primary" id="btn-save">
+    💾 Save Config
+    <span class="saved-badge" id="saved-badge">✓ Saved!</span>
+  </button>
+  <div style="font-size:10px;color:#64748b;margin-top:8px;line-height:1.5">
+    After saving, click <strong style="color:#f59e0b">🔌 Extension Reel</strong> on dashboard — extension auto-starts!
+  </div>
+</div>
+
+<!-- Live Status -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div class="label" style="margin:0">Live Status</div>
+    <div id="phase-label" style="font-size:10px;color:#64748b">Waiting for job...</div>
+  </div>
+
+  <div class="phase-bar">
+    <div class="phase-step" id="p1" title="Fetching Job"></div>
+    <div class="phase-step" id="p2" title="Generating Images"></div>
+    <div class="phase-step" id="p3" title="Generating Videos"></div>
+    <div class="phase-step" id="p4" title="Assembling Reel"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="s-scenes">—</div><div class="stat-lbl">Scenes</div></div>
+    <div class="stat"><div class="stat-val" id="s-images">0</div><div class="stat-lbl">Images</div></div>
+    <div class="stat"><div class="stat-val" id="s-videos">0</div><div class="stat-lbl">Videos</div></div>
+  </div>
+
+  <div class="log-box" id="log-box">
+    <div class="log-line">Waiting for a job from dashboard...</div>
+  </div>
+
+  <button class="btn btn-danger" id="btn-reset" style="margin-top:8px">↺ Reset</button>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

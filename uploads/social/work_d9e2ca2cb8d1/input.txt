@@ -1,3 +1,0 @@
-file 'img_0.jpg'
-duration 35.76
-file 'img_0.jpg'

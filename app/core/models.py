@@ -529,7 +529,23 @@ class SocialContent(Base):
     title        = Column(String(500), nullable=True)
     body         = Column(Text, nullable=True)  # Caption or Script
     media_url    = Column(Text, nullable=True) # URL to image or video
+    scenes_json  = Column(Text, nullable=True) # JSON scene breakdown
+    metadata_json = Column(Text, nullable=True) # JSON metadata (voice, bgm, etc.)
     created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    @property
+    def scenes(self):
+        try:
+            return json.loads(self.scenes_json or "[]")
+        except:
+            return []
+
+    @property
+    def metadata_info(self):
+        try:
+            return json.loads(self.metadata_json or "{}")
+        except:
+            return {}
 
     def to_dict(self):
         return {
@@ -538,6 +554,8 @@ class SocialContent(Base):
             "title": self.title or "",
             "body": self.body or "",
             "media_url": self.media_url or "",
+            "scenes": self.scenes,
+            "metadata": self.metadata_info,
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -555,3 +573,140 @@ class SystemSettings(Base):
             "buffer_api_key": self.buffer_api_key,
             "buffer_org_id": self.buffer_org_id
         }
+
+
+# ── Classroom Section Models ──────────────────────────────────────────────────
+
+class Exam(Base):
+    __tablename__ = "exams"
+    id = Column(Integer, primary_key=True, index=True)
+    exam_id = Column(String(64), unique=True, index=True, nullable=False)
+    client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    image_url = Column(String(500), nullable=True)
+    description = Column(Text, nullable=True)
+    category = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    papers = relationship("PaperClassroom", back_populates="exam", cascade="all, delete-orphan")
+    subjects = relationship("Subject", back_populates="exam", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "exam_id": self.exam_id,
+            "name": self.name,
+            "category": self.category or "",
+            "image_url": self.image_url or "",
+            "description": self.description or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+class PaperClassroom(Base):
+    __tablename__ = "classroom_papers"
+    id = Column(Integer, primary_key=True, index=True)
+    paper_id = Column(String(64), unique=True, index=True, nullable=False)
+    exam_id = Column(String(64), ForeignKey("exams.exam_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    exam = relationship("Exam", back_populates="papers")
+    subjects = relationship("Subject", back_populates="paper", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "paper_id": self.paper_id,
+            "exam_id": self.exam_id,
+            "name": self.name,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+class Subject(Base):
+    __tablename__ = "subjects"
+    id = Column(Integer, primary_key=True, index=True)
+    subject_id = Column(String(64), unique=True, index=True, nullable=False)
+    exam_id = Column(String(64), ForeignKey("exams.exam_id", ondelete="CASCADE"), nullable=True, index=True)
+    paper_id = Column(String(64), ForeignKey("classroom_papers.paper_id", ondelete="CASCADE"), nullable=True, index=True)
+    name = Column(String(200), nullable=False)
+    color = Column(String(50), nullable=True, default="#4f46e5")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    exam = relationship("Exam", back_populates="subjects", foreign_keys=[exam_id])
+    paper = relationship("PaperClassroom", back_populates="subjects", foreign_keys=[paper_id])
+    chapters = relationship("ChapterClassroom", back_populates="subject", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        chapter_count = len(self.chapters) if self.chapters else 0
+        topic_count = sum(len(ch.topics) for ch in self.chapters) if self.chapters else 0
+        subtopic_count = sum(len(t.subtopics) for ch in self.chapters for t in ch.topics) if self.chapters else 0
+        return {
+            "subject_id": self.subject_id,
+            "exam_id": self.exam_id or "",
+            "paper_id": self.paper_id or "",
+            "name": self.name,
+            "color": self.color or "#4f46e5",
+            "chapter_count": chapter_count,
+            "topic_count": topic_count,
+            "subtopic_count": subtopic_count,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+class ChapterClassroom(Base):
+    __tablename__ = "classroom_chapters"
+    id = Column(Integer, primary_key=True, index=True)
+    chapter_id = Column(String(64), unique=True, index=True, nullable=False)
+    subject_id = Column(String(64), ForeignKey("subjects.subject_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    subject = relationship("Subject", back_populates="chapters")
+    topics = relationship("TopicClassroom", back_populates="chapter", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "chapter_id": self.chapter_id,
+            "subject_id": self.subject_id,
+            "name": self.name,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+class TopicClassroom(Base):
+    __tablename__ = "classroom_topics"
+    id = Column(Integer, primary_key=True, index=True)
+    topic_id = Column(String(64), unique=True, index=True, nullable=False)
+    chapter_id = Column(String(64), ForeignKey("classroom_chapters.chapter_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    chapter = relationship("ChapterClassroom", back_populates="topics")
+    subtopics = relationship("SubtopicClassroom", back_populates="topic", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "topic_id": self.topic_id,
+            "chapter_id": self.chapter_id,
+            "name": self.name,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+class SubtopicClassroom(Base):
+    __tablename__ = "classroom_subtopics"
+    id = Column(Integer, primary_key=True, index=True)
+    subtopic_id = Column(String(64), unique=True, index=True, nullable=False)
+    topic_id = Column(String(64), ForeignKey("classroom_topics.topic_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    topic = relationship("TopicClassroom", back_populates="subtopics")
+
+    def to_dict(self):
+        return {
+            "subtopic_id": self.subtopic_id,
+            "topic_id": self.topic_id,
+            "name": self.name,
+            "description": self.description or "",
+            "notes": self.notes or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+

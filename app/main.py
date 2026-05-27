@@ -14,7 +14,8 @@ from app.core.config import settings
 from app.routes import (
     upload, query, health, provider, website, youtube, jsondata, 
     apikeys, clients, admin as admin_routes, memory as memory_routes, 
-    reels as reels_routes, agents as agents_routes, social as social_routes
+    reels as reels_routes, agents as agents_routes, social as social_routes,
+    classroom as classroom_routes, extension as extension_routes
 )
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
@@ -88,6 +89,8 @@ app.include_router(admin_routes.router, prefix="/api", tags=["Admin"])
 app.include_router(memory_routes.router, prefix="/api", tags=["Memory"])
 app.include_router(reels_routes.router, prefix="/api", tags=["Reels"])
 app.include_router(social_routes.router, prefix="/api", tags=["Social Hub"])
+app.include_router(classroom_routes.router, prefix="/api", tags=["Classroom"])
+app.include_router(extension_routes.router, prefix="/api", tags=["Extension"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────

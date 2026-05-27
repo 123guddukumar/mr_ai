@@ -201,7 +201,7 @@
       <a href="#memory" class="toc-item"><span class="toc-num">2</span> Memory Management</a>
       <a href="#chat" class="toc-item"><span class="toc-num">3</span> Conversational AI</a>
       <a href="#sources" class="toc-item"><span class="toc-num">4</span> Data Ingestion</a>
-      <a href="#reels" class="toc-item"><span class="toc-num">5</span> Media Generation</a>
+      <a href="#reels" class="toc-item"><span class="toc-num">5</span> Classroom AI Engine</a>
       <a href="#latency" class="toc-item"><span class="toc-num">6</span> Performance Benchmarks</a>
       <a href="#embed" class="toc-item"><span class="toc-num">7</span> Deployment &amp; Embeds</a>
       <a href="#errors" class="toc-item"><span class="toc-num">8</span> Error Reference</a>
@@ -284,6 +284,88 @@
         <tr><th>Field</th><th>Type</th><th>Description</th></tr>
         <tr><td class="pn">url</td><td class="pt">string</td><td>Full URL to scrape and index</td></tr>
       </table>
+    </div>
+  </div>
+
+  <!-- 5. CLASSROOM AI ENGINE -->
+  <h2 id="reels"><span class="sec-num">5</span> Classroom AI Engine</h2>
+  <p>The Classroom AI Engine exposes a structured hierarchical curriculum system (Exams → Papers → Subjects → Chapters → Topics → Subtopics) along with core RAG educational generation endpoints (Notes, PDF compilation, AI Quiz, and fully synthesized Reels generation).</p>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-get">GET</span><span class="ep-path">/api/classroom/exams</span><span class="ep-desc">Retrieve All Exams</span></div>
+    <div class="ep-body">
+      <p>Fetches the list of all configured exams, including their subjects, chapters, topics, and subtopics.</p>
+      <div class="code-label">Response Payload</div>
+      <pre><span class="kw">[</span>
+  <span class="kw">{</span>
+    <span class="str">"exam_id"</span>: <span class="str">"exam-..."</span>,
+    <span class="str">"name"</span>: <span class="str">"UPSC Civil Services"</span>,
+    <span class="str">"papers"</span>: <span class="kw">[...]</span>
+  <span class="kw">}</span>
+<span class="kw">]</span></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/classroom/papers/{id}/auto-generate</span><span class="ep-desc">Auto-Generate Curriculum Syllabus</span></div>
+    <div class="ep-body">
+      <p>Given a syllabus paper, automatically generates chapters, topics, and subtopics using AI, building a complete learning matrix in seconds.</p>
+      <div class="code-label">Response</div>
+      <pre><span class="kw">{</span>
+  <span class="str">"success"</span>: <span class="num">true</span>,
+  <span class="str">"chapters_created"</span>: <span class="num">8</span>,
+  <span class="str">"topics_created"</span>: <span class="num">32</span>
+<span class="kw">}</span></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/classroom/subtopics/{id}/generate-notes</span><span class="ep-desc">Compile RAG Study Notes</span></div>
+    <div class="ep-body">
+      <p>Synthesizes extensive, deeply grounded markdown study notes based on RAG knowledge vectors linked to this subtopic.</p>
+      <div class="code-label">Response</div>
+      <pre><span class="kw">{</span>
+  <span class="str">"success"</span>: <span class="num">true</span>,
+  <span class="str">"notes"</span>: <span class="str">"# Indian Federal Structure\nFederalism is a system of governance..."</span>
+<span class="kw">}</span></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/classroom/subtopics/{id}/quiz/generate</span><span class="ep-desc">Generate AI Custom Quiz</span></div>
+    <div class="ep-body">
+      <p>Compiles a custom multiple-choice question quiz from RAG study materials with answers, detailed explanations, and cognitive level mappings.</p>
+      <div class="code-label">Response</div>
+      <pre><span class="kw">{</span>
+  <span class="str">"success"</span>: <span class="num">true</span>,
+  <span class="str">"quiz"</span>: <span class="kw">[</span>
+    <span class="kw">{</span>
+      <span class="str">"question"</span>: <span class="str">"Which article of the Constitution describes India as a Union of States?"</span>,
+      <span class="str">"options"</span>: <span class="kw">[</span><span class="str">"Article 1"</span>, <span class="str">"Article 2"</span>, <span class="str">"Article 3"</span>, <span class="str">"Article 4"</span><span class="kw">]</span>,
+      <span class="str">"answer"</span>: <span class="str">"Article 1"</span>,
+      <span class="str">"explanation"</span>: <span class="str">"Article 1 of the Constitution says India, that is Bharat, shall be a Union of States."</span>
+    <span class="kw">}</span>
+  <span class="kw">]</span>
+<span class="kw">}</span></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="ep-head"><span class="method m-post">POST</span><span class="ep-path">/api/classroom/subtopics/{id}/generate-reel</span><span class="ep-desc">Auto-Generate Educational AI Reel</span></div>
+    <div class="ep-body">
+      <p>Initiates a background job to generate 12 visually photorealistic scene prompts, sync segment-by-segment multilingual narration voiceovers, overlay ASS subtitles, and compile a final mixed video reel with background music.</p>
+      <table class="params-table">
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="pn">language</td><td class="pt">string</td><td class="po">Optional</td><td>"English" | "Hindi" | "Spanish" | "French" (default: English)</td></tr>
+        <tr><td class="pn">voice_id</td><td class="pt">string</td><td class="po">Optional</td><td>Premium ElevenLabs voice personality ID</td></tr>
+        <tr><td class="pn">transcript</td><td class="pt">string</td><td class="po">Optional</td><td>Custom lecture text transcript to direct scene scripting</td></tr>
+      </table>
+      <div class="code-label">Response</div>
+      <pre><span class="kw">{</span>
+  <span class="str">"success"</span>: <span class="num">true</span>,
+  <span class="str">"job_id"</span>: <span class="str">"job-e2bd3664bcc8"</span>,
+  <span class="str">"scenes_created"</span>: <span class="num">12</span>
+<span class="kw">}</span></pre>
     </div>
   </div>
 

@@ -1,0 +1,261 @@
+﻿function initTheme() {
+function toggleTheme() {
+function openModal(id) {
+function closeModal(id) {
+function toggleSidebar(){
+function openMobileSidebar(){
+function closeMobileSidebar(){
+function showPanel(id){
+  function startProgress(type) {
+function loadWebBuilder() {
+async function loadSocial() {
+function toggleSocialGenUI() {
+async function previewVoice() {
+function toggleCustomScriptUI() {
+function updatePlayheadVisuals(currentTime, duration) {
+function pushStudioState() {
+function undoStudio() {
+function generateVideoThumbnails(videoUrl) {
+        function seekAndCapture() {
+function openStudio(reelId = null) {
+function closeStudio() {
+function renderStudioTimeline() {
+function renderTimelineRuler() {
+function selectStudioScene(idx) {
+function updateActiveSceneScript(val) {
+function updateActiveSceneEffect(val) {
+async function refineSceneWithAI() {
+async function exportStudioReel() {
+function setAspectRatio(ratio, btn) {
+function addSceneAtEnd() {
+function selectStudioTrackItem(type, idx) {
+function deleteActiveScene() {
+function cutScene() {
+function trimActiveItem() {
+function moveScene(dir) {
+function getCurrentPlayheadPct() {
+function hoverEffectPreview(effectName, isHover) {
+function hoverTextPreview(animName, label, isHover, cardEl) {
+function toggleTestPlayMusic(url, btn, event) {
+function applyEffectToScene(effectName) {
+function selectBgmTrack(bgmName) {
+function uploadLocalMusic(input) {
+function applyTextAnimation(animName) {
+function updateStudioVolume(trackType, val) {
+function toggleClipMute(type, idx, e) {
+function calculateClipRows(items, playbackRate = 1.0) {
+function startClipResize(type, idx, e) {
+function handleClipResize(e) {
+function stopClipResize() {
+function handleSceneDragStart(idx, e) {
+function handleSceneDragOver(idx, e) {
+function handleSceneDragEnd(e) {
+function startSceneResize(idx, e) {
+function handleSceneResize(e) {
+function stopSceneResize() {
+function handleTransitionDividerClick(idx, e) {
+function makeCaptionOverlayDraggable() {
+    function dragMove(e) {
+    function dragEnd() {
+function updateStudioSpeed(rate) {
+function switchStudioTab(tab, btn) {
+function deleteLibraryAsset(index, event) {
+function handleLibraryUpload(event) {
+function selectLibraryAssetForReplace(index) {
+function triggerSceneReplace(idx) {
+function triggerSceneDelete(idx) {
+function triggerSceneReplaceFromPreview() {
+function openSceneContextMenu(idx, event) {
+function closeSceneContextMenu() {
+function triggerSceneDownload(idx) {
+function updateActivePreviewOverride() {
+function updateSidePreviews() {
+function showJunctionTransitionSelector(side) {
+async function generateSocialContent() {
+async function suggestSocialTopics() {
+function selectTopic(t) {
+function renderSocialResults(type) {
+function openPublishModal() {
+async function finishPublishing() {
+async function publishToBuffer(title, text, mediaUrl = null) {
+async function loadSocialHistory() {
+function renderSocialHistory() {
+async function deleteSocialContent(id) {
+function openReelEditor(id) {
+async function loadTraining() {
+async function generateCourses() {
+async function loadCourses() {
+function renderCourseList() {
+async function deleteCourse(cid, e) {
+async function openCourse(cid) {
+function renderCourseSidebar() {
+function toggleChapterAccordion(idx) {
+function renderTopic(cIdx, tIdx) {
+function checkAnswer(btn, selected, correct) {
+function openFinalTest() {
+async function submitFinalTest() {
+function closeCoursePlayer() {
+function addTrainingQAPair() {
+async function loadWebBuilder() {
+async function loadWebProjects() {
+function renderWebProjects() {
+async function upgradeWebsite() {
+async function refineWebsite() {
+function updateWebPreview() {
+async function saveWebsite() {
+function editWebProject(pid) {
+async function deleteWebProject(pid) {
+function resetWebBuilder() {
+function openSocialModal(type) {
+function showUserForm() {
+function hideUserForm() {
+async function loadSubUsers() {
+function renderSubUsers() {
+function toggleUserDropdown(e, id) {
+function triggerUserImageUpload(id) { document.getElementById(id).click(); }
+async function handleUserImageUpload(input, targetId) {
+async function submitUser() {
+async function deleteSubUser(id) {
+function loginAsUser(id) {
+function closeModal(id) {
+function openCreateDataStoreModal() {
+async function saveDataStoreFromPanel() {
+async function loadDataStores() {
+function renderDataStoreCards() {
+async function viewDataStore(id) {
+function backToDSGrid() {
+async function editDataStoreInline(id) {
+function toggleDSDropdown(id) {
+function updateAgProgress() {
+function updateAgentModelOptions(selectedModel = '') {
+function updateAgentVoiceOptions(selectedVoice = '') {
+async function suggestAgentPrompt(btn) {
+function openCreateAgentModal() {
+function backToAgentGrid() {
+async function loadAgents() {
+function renderAgentCards() {
+function showAgentQR(id) {
+async function downloadQR() {
+function openAgentChat(id, mode = 'text') {
+async function saveAgent() {
+async function loadDSSelector() {
+async function editAgent(id) {
+async function loadDSSources(id) {
+async function loadAgentKB(id) {
+function triggerFileUpload(type) {
+async function deleteSource(ownerId, sourceId, type) {
+function openIngestModal(type, owner) {
+async function processIngest() {
+function addQAPair() {
+async function deleteAgent(id) {
+async function deleteDS(id) {
+async function testAgentVoice() {
+function renderDashboardExtras(){
+async function loadNotifications(){
+function renderNotifDropdown(notifs){
+function renderFullNotifList(notifs){
+async function markRead(id){
+async function markAllRead(){
+function toggleNotifDropdown(){ document.getElementById('notif-dropdown').classList.toggle('open'); }
+ async function viewSourceContent(title, sourceId, type, ownerId) {
+ function copySourceText() {
+async function generateKey(){
+function toggleKeyVisibility(){
+function copyGeneratedKey(){
+function buildKeyCard(k, compact) {
+function toggleKeyRaw(id) {
+async function loadMyKeys(){
+async function revokeKey(id, name){
+function updateModelOptions(){
+function saveAIConfig(){
+async function saveBufferConfig(){
+async function loadAIConfig(){
+function toggleTTSConfig(){
+function saveVoiceConfig(){
+async function testVoice() {
+function loadVoiceConfig(){
+function loadBrowserVoices(retries=0){
+function toast(msg, type){
+function showResult(id, type, msg){
+function copyText(txt, lbl){
+async function loadHistory(){
+function filterHistory(cat, el){
+function renderHistory(messages){
+function toggleQA(id){
+async function clearHistory(){
+async function changePassword(){
+function logout(){
+function syncActiveSceneFromTime(currentTime) {
+function getSceneStartOffset(sceneIdx) {
+function toggleRightAISidebar() {
+function updateProductionHUD(currentTime) {
+function toggleStudioPlay() {
+function initStudioListeners() {
+function toggleStudioFullscreen() {
+function escapeHTML(str) {
+async function loadClassroom() {
+function filterExamsByCategory(category, btnElement) {
+function toggleExamDropdown(event, exam_id) {
+function showExamModal(exam_id = null) {
+function closeExamModal() {
+function triggerExamImageUpload() {
+async function handleExamImageUpload(input) {
+async function saveExam() {
+async function editExam(exam_id) {
+async function deleteExam(exam_id) {
+async function showExamDetails(exam_id) {
+function hideExamDetails() {
+function handleClassroomBackClick() {
+function switchClassroomTab(index) {
+function goBackToTab(index) {
+async function refreshExamTree() {
+function renderPapersList() {
+async function autoGenerateCourse(paperId) {
+function selectPaper(paperId) {
+function renderSubjectsGrid() {
+function selectSubject(subjectId) {
+function renderChaptersList() {
+function selectChapter(chapterId) {
+function renderTopicsList() {
+function selectTopic(topicId) {
+function renderSubtopicsList() {
+function selectSubtopic(subtopicId) {
+function showAddPaperModal() {
+function showEditPaperModal(paper_id, name) {
+function closePaperModal() {
+async function savePaper() {
+async function deletePaper(paper_id) {
+function showAddSubjectModal() {
+function showEditSubjectModal(subject_id, name, color) {
+function closeSubjectModal() {
+async function saveSubject() {
+async function deleteSubject(subject_id) {
+function showAddChapterModal() {
+function showEditChapterModal(chapter_id, name) {
+function closeChapterModal() {
+async function saveChapter() {
+async function deleteChapter(chapter_id) {
+function showAddTopicModal() {
+function showEditTopicModal(topic_id, name) {
+function closeTopicModal() {
+async function saveTopic() {
+async function deleteTopic(topic_id) {
+function showAddSubtopicModal() {
+function showEditSubtopicModal(subtopic_id, name, description) {
+function closeSubtopicModal() {
+async function saveSubtopic() {
+async function deleteSubtopic(subtopic_id) {
+function showReelPreview(reel) {
+function editClassroomReel(reel) {
+async function showExamHistory(exam_id, exam_name) {
+function previewClassroomReelFromHistory(content_id) {
+function editClassroomReelById(content_id) {
+function closeReelPreviewModal() {
+function openReelGeneratorSettingsModal() {
+function closeReelGeneratorModal() {
+async function submitReelGeneration() {
+(function init(){
+async function generateQuiz() {
+function renderQuizModal() {
+function closeQuizModal() {
+function submitQuiz() {

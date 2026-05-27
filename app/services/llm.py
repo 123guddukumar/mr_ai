@@ -213,9 +213,48 @@ async def generate_answer_with_config(
             ); r.raise_for_status()
             return r.json()[0]["generated_text"].strip()
 
+    elif provider == "groq":
+        if not api_key:
+            raise RuntimeError("Groq API key required for memory bot")
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+        resp = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": settings.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=settings.OPENAI_MAX_TOKENS,
+            temperature=settings.OPENAI_TEMPERATURE
+        )
+        return resp.choices[0].message.content.strip()
+
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 
+
+async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.") -> str:
+    """Generates a response without RAG boilerplate."""
+    provider = get_active_provider()
+    model = get_active_model()
+    api_key = get_active_api_key(provider)
+    
+    if provider == "groq":
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+        resp = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1024,
+            temperature=0.7
+        )
+        return resp.choices[0].message.content.strip()
+    
+    # Fallback to general generate_answer but with no context
+    return await generate_answer(prompt, "")
 
 # ── OpenAI ────────────────────────────────────────────────────────────────────
 

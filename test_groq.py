@@ -1,24 +1,25 @@
+import os
 from groq import Groq
 
-client = Groq(api_key="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")
-
-chat_completion = client.chat.completions.create(
-    messages=[
-        {
-            "role": "user",
-            "content": "Explain the importance of fast language models",
-        }
-    ],
-    model="llama-3.3-70b-versatile",
+# Initialize client using environment variable
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY", "")
 )
 
-print(chat_completion.choices[0].message.content)
+try:
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": "Explain the importance of fast language models in one sentence.",
+            }
+        ],
+        model="llama-3.3-70b-versatile",
+    )
 
-# from groq import Groq
+    print("✅ Groq API Working Successfully!")
+    print("Response:", chat_completion.choices[0].message.content)
 
-# client = Groq(api_key="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")
-
-# models = client.models.list()
-
-# for model in models.data:
-#     print(model.id)
+except Exception as e:
+    print("❌ Error:")
+    print(str(e))

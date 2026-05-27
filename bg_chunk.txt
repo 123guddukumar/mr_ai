@@ -1,0 +1,20 @@
+function sendNextVideoScene(tabId) {
+  if (state.currentSceneIdx >= state.scenes.length) {
+    allVideosDone();
+    return;
+  }
+
+  const scene = state.scenes[state.currentSceneIdx];
+  const imageFile = state.imagesDone[state.currentSceneIdx];
+
+  notifyPopup(`🎬 Generating video ${state.currentSceneIdx + 1}/${state.scenes.length}...`);
+
+  chrome.tabs.sendMessage(tabId, {
+    type: "GENERATE_VIDEO",
+    sceneIdx: state.currentSceneIdx,
+    imageFilename: imageFile,
+    animationPrompt: scene.animation_prompt,
+    dialogue: scene.dialogue,
+    jobId: state.jobId
+  }).catch(async () => {
+    // Tab

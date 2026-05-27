@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "groq"
 
     # OpenAI
-    OPENAI_API_KEY: str = "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"
+    OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_MAX_TOKENS: int = 1024
     OPENAI_TEMPERATURE: float = 0.1
@@ -73,17 +73,17 @@ class Settings(BaseSettings):
     API_KEYS_ENABLED: bool = False
 
     # PostgreSQL Database
-    DATABASE_URL: str = "postgresql://postgres.twtyobkljlomlgoywyvr:GudduKumar2580@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+    DATABASE_URL: str = "postgresql://localhost:5432/postgres"
 
     # Supabase (Optional for direct SDK access)
     SUPABASE_URL: str = "https://twtyobkljlomlgoywyvr.supabase.co"
-    SUPABASE_KEY: str = "sb_publishable_JsMa3JjeE1WcI1RMIeaOQg_oIgb5f9S"
+    SUPABASE_KEY: str = ""
 
     # SMTP Email (for OTP)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
-    SMTP_USER: str = "rkinstitute85@gmail.com"
-    SMTP_PASSWORD: str = "hchdlojdrkwtacnx"
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
 
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (

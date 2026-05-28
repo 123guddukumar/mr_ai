@@ -3,7 +3,7 @@
 // Load saved config on open
 chrome.storage.local.get(['token', 'backendUrl'], (data) => {
   if (data.token) document.getElementById('token').value = data.token;
-  document.getElementById('backend-url').value = data.backendUrl || 'http://localhost:8000';
+  document.getElementById('backend-url').value = data.backendUrl || 'https://test.3rdai.co';
 });
 
 // Listen for logs from background
@@ -17,7 +17,7 @@ setInterval(pollState, 1500);
 // ── Save Config ───────────────────────────────────────────────────────────────
 function saveConfig() {
   const token = document.getElementById('token').value.trim();
-  const backendUrl = document.getElementById('backend-url').value.trim() || 'http://localhost:8000';
+  const backendUrl = document.getElementById('backend-url').value.trim() || 'https://test.3rdai.co';
   if (!token) { addLog('Please enter your App Token', 'error'); return; }
 
   chrome.runtime.sendMessage({ type: 'SAVE_CONFIG', token, backendUrl });

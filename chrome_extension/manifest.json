@@ -14,6 +14,7 @@
   ],
   "host_permissions": [
     "http://localhost:8000/*",
+    "https://test.3rdai.co/*",
     "https://labs.google/*",
     "https://www.meta.ai/*",
     "https://meta.ai/*"
@@ -41,7 +42,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://test.3rdai.co/*"],
       "js": ["content_dashboard.js"],
       "run_at": "document_start"
     }

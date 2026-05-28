@@ -214,7 +214,7 @@ def send_api_key_email(to_email: str, key_name: str, full_key: str, name: str = 
         </td></tr>
         <!-- Footer -->
         <tr><td style="padding:16px 36px;border-top:1px solid #2a2f47;text-align:center">
-          <p style="color:#475569;font-size:11px;margin:0">© 2024 MR AI RAG Platform · <a href="http://127.0.0.1:8000/dashboard" style="color:#6c63ff;text-decoration:none">Go to Dashboard</a></p>
+          <p style="color:#475569;font-size:11px;margin:0">© 2024 MR AI RAG Platform · <a href="https://test.3rdai.co/dashboard" style="color:#6c63ff;text-decoration:none">Go to Dashboard</a></p>
         </td></tr>
       </table>
     </td></tr>

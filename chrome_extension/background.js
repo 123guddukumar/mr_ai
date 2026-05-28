@@ -8,7 +8,7 @@ let state = {
   phase: "idle",
   currentSceneIdx: 0,
   token: null,
-  backendUrl: "http://localhost:8000",
+  backendUrl: "https://test.3rdai.co",
   metaTabId: null,
 };
 
@@ -112,7 +112,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!cfg.token) return;
 
   state.token = cfg.token;
-  state.backendUrl = cfg.backendUrl || "http://localhost:8000";
+  state.backendUrl = cfg.backendUrl || "https://test.3rdai.co";
 
   // Sync phase from storage
   if (cfg.sw_state && cfg.sw_state.phase) {

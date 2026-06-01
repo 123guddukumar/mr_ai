@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
+<!-- Marked.js Markdown Parser -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 :root{
   --bg:#0d0f17;--bg2:#13161f;--bg3:#1a1e2e;--card:#1e2235;--border:#2a2f47;
@@ -493,6 +495,65 @@ body{display:flex;min-height:100vh;overflow:hidden;
 .tree-action-btn.del:hover {
   color: var(--red);
   background: rgba(248,113,113,0.1);
+}
+
+/* Premium Markdown Styling for Description and Notes */
+#active-subtopic-description, #active-subtopic-notes {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.75;
+}
+#active-subtopic-description h1, #active-subtopic-description h2, #active-subtopic-description h3,
+#active-subtopic-notes h1, #active-subtopic-notes h2, #active-subtopic-notes h3 {
+  color: var(--accent2);
+  font-weight: 700;
+  margin-top: 22px;
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+#active-subtopic-description h1, #active-subtopic-notes h1 { 
+  font-size: 1.4rem; 
+  border-bottom: 1px solid var(--border); 
+  padding-bottom: 8px; 
+  color: var(--accent);
+}
+#active-subtopic-description h2, #active-subtopic-notes h2 { font-size: 1.25rem; }
+#active-subtopic-description h3, #active-subtopic-notes h3 { font-size: 1.1rem; }
+#active-subtopic-description p, #active-subtopic-notes p {
+  margin-bottom: 14px;
+  color: var(--text2);
+  font-size: 13.5px;
+}
+#active-subtopic-description strong, #active-subtopic-notes strong {
+  color: var(--text);
+  font-weight: 600;
+}
+#active-subtopic-description ul, #active-subtopic-notes ul,
+#active-subtopic-description ol, #active-subtopic-notes ol {
+  margin-left: 22px;
+  margin-bottom: 16px;
+  color: var(--text2);
+  font-size: 13.5px;
+}
+#active-subtopic-description li, #active-subtopic-notes li {
+  margin-bottom: 7px;
+}
+#active-subtopic-description blockquote, #active-subtopic-notes blockquote {
+  border-left: 4px solid var(--accent);
+  background: var(--bg3);
+  padding: 12px 18px;
+  margin: 16px 0;
+  border-radius: 6px;
+  font-style: italic;
+  color: var(--text);
+}
+#active-subtopic-description code, #active-subtopic-notes code {
+  background: var(--bg3);
+  color: var(--accent2);
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border);
 }
 </style>
 </head>
@@ -1573,7 +1634,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <button class="btn btn-secondary" onclick="showNotesLanguageModal()" id="btn-generate-notes" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#eab308; color:#eab308;">📚 Generate Notes</button>
                   <button class="btn btn-secondary" onclick="generateQuiz()" id="btn-generate-quiz" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent2); color:var(--accent2);">📝 Generate Quiz</button>
                   <button class="btn btn-secondary" onclick="toggleSubtopicReelsPanel()" id="btn-show-reels" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#8b5cf6; color:#8b5cf6;">🎞️ Reels</button>
-                  <button class="btn btn-secondary" onclick="openExtensionReelGeneratorModal()" id="btn-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
+                  <button class="btn btn-secondary" onclick="openExtensionReelWizard()" id="btn-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
                 </div>
               </div>
 
@@ -1924,6 +1985,54 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <div id="reel-progress-bar" style="height:100%; background:linear-gradient(90deg,var(--accent),#f59e0b); border-radius:10px; width:0%; transition:width 0.5s ease;"></div>
         </div>
         <div id="reel-progress-status" style="margin-top:12px; font-size:11px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:1px;">Initializing...</div>
+      </div>
+    </div>
+
+    <!-- Interactive Reels Generator Wizard -->
+    <div id="extension-reel-wizard" style="display:none; position:fixed; inset:0; background:rgba(8,10,18,0.99); z-index:99999; flex-direction:column; justify-content:stretch; backdrop-filter:blur(12px); font-family:'Inter', sans-serif;">
+      <!-- Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 30px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0;">
+        <div>
+          <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:3px;">Classroom Reels Studio</div>
+          <div style="font-size:17px; font-weight:900; color:#fff;" id="wizard-subtopic-title">Subtopic Reels Wizard</div>
+        </div>
+        <button onclick="closeReelsWizard()" style="padding:9px 18px; border-radius:8px; border:1px solid var(--border); background:rgba(239,68,68,0.08); color:#f87171; font-weight:700; cursor:pointer; font-size:12px; transition:0.2s; font-family:inherit;" onmouseover="this.style.background='rgba(239,68,68,0.18)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">✕ Cancel & Close</button>
+      </div>
+
+      <!-- Main Layout -->
+      <div style="flex:1; display:flex; overflow:hidden;">
+        <!-- Left Sidebar (Steps) -->
+        <div style="width:290px; border-right:1px solid var(--border); background:rgba(14,17,33,0.4); padding:32px 20px; display:flex; flex-direction:column; gap:14px; flex-shrink:0; overflow-y:auto;">
+          <div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-family:inherit;">Steps Sequence</div>
+          
+          <div id="wizard-step-indicator-1" class="wizard-step-item active" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1.5px solid var(--accent); font-size:13px; color:#fff; background:rgba(168,85,247,0.08); transition:0.3s; font-weight:700;">
+            <span class="wizard-step-icon" style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;">1</span>
+            <span>Dialogue Script</span>
+          </div>
+          <div id="wizard-step-indicator-2" class="wizard-step-item" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1.5px solid var(--border); font-size:13px; color:var(--text3); background:transparent; transition:0.3s; font-weight:600;">
+            <span class="wizard-step-icon" style="width:24px; height:24px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:12px;">2</span>
+            <span>Voice Narration</span>
+          </div>
+          <div id="wizard-step-indicator-3" class="wizard-step-item" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1.5px solid var(--border); font-size:13px; color:var(--text3); background:transparent; transition:0.3s; font-weight:600;">
+            <span class="wizard-step-icon" style="width:24px; height:24px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:12px;">3</span>
+            <span>Scene Prompts</span>
+          </div>
+          <div id="wizard-step-indicator-4" class="wizard-step-item" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1.5px solid var(--border); font-size:13px; color:var(--text3); background:transparent; transition:0.3s; font-weight:600;">
+            <span class="wizard-step-icon" style="width:24px; height:24px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:12px;">4</span>
+            <span>Meta AI Harvesting</span>
+          </div>
+          <div id="wizard-step-indicator-5" class="wizard-step-item" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1.5px solid var(--border); font-size:13px; color:var(--text3); background:transparent; transition:0.3s; font-weight:600;">
+            <span class="wizard-step-icon" style="width:24px; height:24px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:12px;">5</span>
+            <span>Assemble & Finish</span>
+          </div>
+        </div>
+
+        <!-- Right Content Area -->
+        <div style="flex:1; padding:40px; overflow-y:auto; background:radial-gradient(circle at 50% 50%, rgba(168,85,247,0.02) 0%, transparent 60%); display:flex; flex-direction:column; justify-content:stretch;">
+          <div style="flex:1; display:flex; flex-direction:column;" id="wizard-step-content-container">
+            <!-- Dynamically populated step content -->
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2460,10 +2569,13 @@ body{display:flex;min-height:100vh;overflow:hidden;
     </div>
 
     <div class="sh-right">
-      <button class="btn btn-secondary" id="btn-studio-toggle-ai" onclick="toggleRightAISidebar()" style="background: rgba(167, 139, 250, 0.1); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.35);">
+      <!-- <button class="btn btn-secondary" id="btn-studio-toggle-ai" onclick="toggleRightAISidebar()" style="background: rgba(167, 139, 250, 0.1); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.35);">
         <i data-lucide="sparkles"></i> AI Panel
-      </button>
+      </button> -->
       <button class="btn btn-secondary" onclick="closeStudio()">Discard</button>
+      <button class="btn btn-secondary" id="btn-studio-download" onclick="downloadEditedReel()" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35);">
+        <i data-lucide="download"></i> Download Reel
+      </button>
       <button class="btn btn-primary" id="btn-studio-export" onclick="exportStudioReel()">
         <i data-lucide="sparkles"></i> Export & Render
       </button>
@@ -2607,6 +2719,73 @@ body{display:flex;min-height:100vh;overflow:hidden;
               Update Scene Visuals
             </button>
           </div>
+
+          <!-- AI Audio & Voice Upgrade Card -->
+          <div class="st-card ai-card" style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+            <div class="st-card-title" style="color: #c084fc;">
+              <i data-lucide="mic"></i> AI Audio & Voice Upgrade
+            </div>
+            <p class="st-card-desc">Upgrade, translate, or replace the spoken voiceover and dialogue transcript for this scene.</p>
+            
+            <div class="st-input-group" style="margin-bottom: 10px;">
+              <label style="font-size: 11px; color: var(--text3); display: block; margin-bottom: 4px;">Select Language</label>
+              <select id="st-ai-voice-lang" class="st-input" style="width: 100%;" onchange="updateAIVoiceLanguage(this.value)">
+                <option value="English">English</option>
+                <option value="Hindi">Hindi (proper Devanagari)</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="Bengali">Bengali</option>
+                <option value="Marathi">Marathi</option>
+              </select>
+            </div>
+
+            <div class="st-input-group" style="margin-bottom: 10px;">
+              <label style="font-size: 11px; color: var(--text3); display: block; margin-bottom: 4px;">Select Voice / Accent</label>
+              <div style="display: flex; gap: 8px;">
+                <select id="st-ai-voice-id" class="st-input" style="flex: 1;">
+                  <option value="1zUSi8LeHs9M2mV8X6YS">Priyanka (Female - Hindi/Indian Accent)</option>
+                  <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (Male - Indian Accent)</option>
+                  <option value="WeK8ylKjTV2trMlayizC">Shrikant (Male - Warm Indian Accent)</option>
+                  <option value="bpkHhw4QrZFYIfahwsHh">Amit (Male - Clear Accent)</option>
+                  <option value="QCwUVw5fOJzf8t55fhmR">Irfan (Male - Bold Accent)</option>
+                  <option value="p9aflnsbBe1o0aDeQa97">Kanika (Female - Dynamic Accent)</option>
+                  <option value="adam">Adam (Male - English Fallback)</option>
+                  <option value="rachel">Rachel (Female - Global Fallback)</option>
+                </select>
+                <button class="btn btn-secondary" onclick="playSelectedAIVoicePreview()" title="Test selected ElevenLabs voice" style="padding: 0 12px; background: rgba(167, 139, 250, 0.15); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.35); white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+                  🔊 Test
+                </button>
+              </div>
+            </div>
+
+            <div class="st-input-group" style="margin-bottom: 12px;">
+              <label style="font-size: 11px; color: var(--text3); display: block; margin-bottom: 4px;">Selected Scene Transcript</label>
+              <textarea id="st-ai-voice-transcript" class="st-input" style="height: 65px;" placeholder="Enter dialogue text to synthesize..."></textarea>
+            </div>
+
+            <div class="st-input-group" style="margin-bottom: 12px; border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 10px;">
+              <label style="font-size: 11px; color: #a78bfa; display: block; margin-bottom: 4px; font-weight: bold;">📝 Full Reel Audio Transcript</label>
+              <p style="font-size: 9px; color: var(--text3); margin-bottom: 6px; line-height: 1.2;">Edit the whole reel narration below (one paragraph/line per scene clip). Click Sync to update scene tracks.</p>
+              <textarea id="st-full-audio-transcript" class="st-input" style="height: 110px; font-family: monospace; font-size: 11px; line-height: 1.4; color: #e9d5ff;" placeholder="Enter full reel dialogues..."></textarea>
+              <button class="btn btn-secondary w-full" onclick="syncFullTranscriptToScenes()" style="margin-top: 6px; padding: 4px 10px; font-size: 10px; background: rgba(167, 139, 250, 0.1); border: 1px solid rgba(167, 139, 250, 0.25); color: #c084fc;">
+                🔄 Sync Transcript Edits
+              </button>
+            </div>
+
+            <button class="btn btn-secondary w-full" id="btn-st-audio-upgrade" onclick="upgradeSceneAudio()" style="background: rgba(167, 139, 250, 0.15); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.35); margin-top: 10px;">
+              🚀 Upgrade & Replace Audio
+            </button>
+            
+            <div style="margin-top:15px; border-top:1px dashed rgba(255,255,255,0.08); padding-top:12px;">
+              <div style="font-size:11px; font-weight:700; color:#c084fc; margin-bottom:6px; display:flex; align-items:center; gap:4px;"><i data-lucide="music" style="width:12px;height:12px;"></i> Generated AI Panel Voices</div>
+              <button class="btn btn-secondary w-full" id="btn-st-audio-generate-only" onclick="generateAIPanelAudio()" style="font-size:10px; padding:6px; color:#c084fc; background:rgba(167, 139, 250, 0.08); border:1px solid rgba(167, 139, 250, 0.2); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+                <i data-lucide="mic" style="width:12px;height:12px;"></i> Generate As New Clip
+              </button>
+              <div id="st-ai-panel-generated-list" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <!-- Filled dynamically by renderAIPanelVoicesList() -->
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2651,13 +2830,22 @@ body{display:flex;min-height:100vh;overflow:hidden;
             <div class="st-voice-selector">
               <label>Voice Personality</label>
               <select id="st-scene-voice" class="st-input">
-                <option value="adam">Adam (Male)</option>
-                <option value="rachel">Rachel (Female)</option>
-                <option value="bella">Bella (Soft)</option>
+                <option value="1zUSi8LeHs9M2mV8X6YS">Priyanka (Female - Hindi/Indian Accent)</option>
+                <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (Male - Indian Accent)</option>
+                <option value="WeK8ylKjTV2trMlayizC">Shrikant (Male - Warm Indian Accent)</option>
+                <option value="bpkHhw4QrZFYIfahwsHh">Amit (Male - Clear Accent)</option>
+                <option value="QCwUVw5fOJzf8t55fhmR">Irfan (Male - Bold Accent)</option>
+                <option value="p9aflnsbBe1o0aDeQa97">Kanika (Female - Dynamic Accent)</option>
+                <option value="adam">Adam (Male - English Fallback)</option>
+                <option value="rachel">Rachel (Female - Global Fallback)</option>
               </select>
             </div>
           </div>
         </div>
+      </div>
+      <!-- Section 4: Watermark -->
+      <div id="st-right-panel-watermark" class="st-right-panel-section" style="display: none;">
+        <!-- Filled dynamically by initWatermarkPanel() -->
       </div>
     </div>
 
@@ -2674,6 +2862,10 @@ body{display:flex;min-height:100vh;overflow:hidden;
       <div class="st-tool-item" id="st-right-tab-properties" onclick="switchStudioRightTab('properties', this)" title="Properties">
         <i data-lucide="sliders"></i>
         <span>Config</span>
+      </div>
+      <div class="st-tool-item" id="st-right-tab-watermark" onclick="switchStudioRightTab('watermark', this)" title="Add Watermark">
+        <i data-lucide="shield"></i>
+        <span>Watermark</span>
       </div>
     </aside>
   </main>
@@ -2724,7 +2916,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
       <!-- Track 3: Audio / SFX -->
       <div class="tl-track-row">
-        <div class="tl-track-label"><i data-lucide="mic"></i> AUDIO</div>
+        <div class="tl-track-label" style="cursor:pointer; display:flex; align-items:center;" onclick="showCustomAudioPanelDirect()" title="Click to generate voiceover"><i data-lucide="mic"></i> AUDIO <span style="font-size:9px; color:#c084fc; margin-left:auto; background:rgba(192,132,252,0.15); padding:1px 6px; border-radius:4px; border:1px solid rgba(192,132,252,0.3);">+ Voice</span></div>
         <div class="tl-track-items" id="st-timeline-audio">
           <!-- Audio clips here -->
         </div>
@@ -2743,6 +2935,14 @@ body{display:flex;min-height:100vh;overflow:hidden;
         <div class="tl-track-label"><i data-lucide="type"></i> TEXT</div>
         <div class="tl-track-items" id="st-timeline-text">
           <!-- Text clips here -->
+        </div>
+      </div>
+
+      <!-- Track 6: Watermarks -->
+      <div class="tl-track-row">
+        <div class="tl-track-label" style="cursor:pointer;" onclick="switchStudioRightTab('watermark', document.getElementById('st-right-tab-watermark'))" title="Click to edit watermark"><i data-lucide="shield"></i> WATERMARK</div>
+        <div class="tl-track-items" id="st-timeline-watermark">
+          <!-- Watermarks here -->
         </div>
       </div>
 
@@ -3471,6 +3671,169 @@ body{display:flex;min-height:100vh;overflow:hidden;
   color: #fff !important;
 }
 
+/* Library card EDIT hover button */
+.st-library-card-edit-btn {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(167, 139, 250, 0.92);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+  z-index: 12;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.4px;
+}
+.st-library-card:hover .st-library-card-edit-btn {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.st-library-card-edit-btn:hover {
+  background: #a78bfa;
+}
+
+/* ── Library Edit Modal ──────────────────────────────────────────── */
+.st-lib-edit-overlay {
+  position: fixed; inset: 0; z-index: 20000;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  animation: st-fadeIn 0.2s ease;
+}
+@keyframes st-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.st-lib-edit-modal {
+  background: #13141f;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 18px;
+  padding: 28px;
+  width: min(420px, 92vw);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.st-lib-edit-modal h3 {
+  font-size: 16px; font-weight: 800; color: #c084fc;
+  margin: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.st-lib-edit-preview {
+  width: 100%; aspect-ratio: 9/16; max-height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.st-lib-edit-prompt {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(167,139,250,0.25);
+  border-radius: 10px;
+  color: #e9d5ff;
+  font-size: 12px; padding: 10px 14px;
+  resize: vertical; min-height: 72px;
+  font-family: inherit;
+}
+.st-lib-edit-prompt:focus { outline: 1px solid #a78bfa; }
+.st-lib-edit-status {
+  font-size: 11px; color: #a78bfa; min-height: 16px;
+  display: flex; align-items: center; gap: 6px;
+}
+.st-lib-edit-actions { display: flex; gap: 10px; }
+.st-lib-edit-actions button { flex: 1; }
+
+/* ── Custom Audio Generator Panel ──────────────────────────────────── */
+.st-custom-audio-panel {
+  background: #0d0e1a;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: st-fadeIn 0.2s ease;
+}
+.st-custom-audio-panel label {
+  font-size: 10px; font-weight: 700; color: #a78bfa;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.st-custom-audio-panel textarea {
+  width: 100%; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(167,139,250,0.22);
+  border-radius: 8px; color: #e9d5ff;
+  font-size: 11px; padding: 8px 12px;
+  resize: vertical; min-height: 70px;
+  font-family: inherit;
+}
+.st-custom-audio-panel select {
+  width: 100%; background: #0d0e1a;
+  border: 1px solid rgba(167,139,250,0.22);
+  border-radius: 8px; color: #e9d5ff;
+  font-size: 11px; padding: 6px 10px;
+}
+.st-custom-audio-player-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.st-custom-audio-player-wrap audio {
+  flex: 1; height: 32px; border-radius: 8px;
+  accent-color: #a78bfa;
+}
+
+/* ── Watermark Overlay Elements ──────────────────────────────────── */
+.wm-element {
+  position: absolute;
+  cursor: move;
+  user-select: none;
+  box-sizing: border-box;
+  z-index: 100;
+}
+.wm-element.selected {
+  outline: 2px dashed #a78bfa;
+}
+.wm-element .wm-resize-handle,
+.wm-element .wm-rotate-handle {
+  display: none;
+}
+.wm-element.selected .wm-resize-handle,
+.wm-element.selected .wm-rotate-handle {
+  display: block;
+}
+.wm-element .wm-resize-handle {
+  position: absolute;
+  bottom: -6px; right: -6px;
+  width: 14px; height: 14px;
+  background: #a78bfa;
+  border-radius: 50%;
+  cursor: se-resize;
+  z-index: 101;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.wm-element .wm-rotate-handle {
+  position: absolute;
+  top: -20px; left: 50%;
+  transform: translateX(-50%);
+  width: 14px; height: 14px;
+  background: #22d3ee;
+  border-radius: 50%;
+  cursor: grab;
+  z-index: 101;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.wm-shape-btn.active {
+  background: rgba(167, 139, 250, 0.25) !important;
+  border-color: rgba(167, 139, 250, 0.6) !important;
+  color: #c084fc !important;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+
 /* Premium HUD Overlay styles */
 .st-production-hud {
   position: absolute;
@@ -3656,6 +4019,10 @@ body{display:flex;min-height:100vh;overflow:hidden;
 }
 .preview-viewport:hover .preview-replace-overlay {
   opacity: 1;
+}
+.preview-viewport.wm-mode .preview-replace-overlay {
+  display: none !important;
+  pointer-events: none !important;
 }
 .preview-replace-overlay i {
   width: 28px;
@@ -3988,6 +4355,7 @@ let _stBgmItems = [];
 let _stAudioItems = [];
 let _stEffectItems = [];
 let _stTextItems = [];
+let _stUploadedSfx = [];
 let _stPlaybackSpeed = 1.0;
 let _stHistory = [];
 let _stIsSeeking = false;
@@ -4197,25 +4565,59 @@ function openStudio(reelId = null) {
             }
         }
 
-        // Scene array should be handled by openReelEditor, but we add a safety check here
-        if(!_stScenes || !_stScenes.length) {
-            console.warn("Studio opened without pre-loaded scenes. Re-attempting load.");
-            if(item) {
-                _stScenes = item.scenes || [];
+        // Clear and completely re-initialize all studio session variables with deep copies
+        _stScenes = [];
+        _stAudioItems = [];
+        _stBgmItems = [];
+        _wmElements = [];
+        _wmSelectedId = null;
+
+        if (item) {
+            let loadedScenes = [];
+            if (item.scenes_json) {
+                try { loadedScenes = JSON.parse(item.scenes_json); } catch(e) { loadedScenes = item.scenes || []; }
+            } else {
+                loadedScenes = item.scenes || [];
             }
-        }
-        
-        // Safe parsing if _stScenes is returned as a JSON string
-        if (typeof _stScenes === 'string') {
-            try {
-                _stScenes = JSON.parse(_stScenes);
-            } catch(e) {
-                console.error("Failed to parse scenes string in openStudio:", e);
-                _stScenes = [];
+            if (typeof loadedScenes === 'string') {
+                try { loadedScenes = JSON.parse(loadedScenes); } catch(e) { loadedScenes = []; }
+            }
+            // Deep copy to prevent mutating the original dashboard list items
+            _stScenes = JSON.parse(JSON.stringify(loadedScenes));
+
+            let meta = {};
+            if (item.metadata_json) {
+                try { meta = JSON.parse(item.metadata_json); } catch(e) { meta = item.metadata || {}; }
+            } else {
+                meta = item.metadata || {};
+            }
+            if (typeof meta === 'string') {
+                try { meta = JSON.parse(meta); } catch(e) { meta = {}; }
+            }
+
+            // Load watermark elements if saved
+            if (meta.watermarks) {
+                _wmElements = JSON.parse(JSON.stringify(meta.watermarks));
+            } else if (meta.watermark_elements) {
+                _wmElements = JSON.parse(JSON.stringify(meta.watermark_elements));
+            } else {
+                _wmElements = [];
+            }
+
+            // Load audio tracks if saved
+            if (meta.audio_tracks) {
+                _stAudioItems = JSON.parse(JSON.stringify(meta.audio_tracks));
+            } else {
+                _stAudioItems = [{
+                    id: 'audio-1',
+                    name: "AI Voiceover Narration",
+                    width: 95,
+                    start: 0
+                }];
             }
         }
 
-        // Initialize BGM and Audio track items dynamically based on the current reel
+        // Initialize BGM track dynamically based on the current reel
         let bgmName = "Cinematic Ambient Beat.mp3";
         if(item && item.metadata && item.metadata.bgm_url) {
             bgmName = item.metadata.bgm_url.split('/').pop();
@@ -4227,12 +4629,7 @@ function openStudio(reelId = null) {
             width: 80,
             start: 0
         }];
-        _stAudioItems = [{
-            id: 'audio-1',
-            name: "AI Voiceover Narration",
-            width: 95,
-            start: 0
-        }];
+
         _stEffectItems = [];
         _stTextItems = [];
         _stPlaybackSpeed = 1.0;
@@ -4241,6 +4638,7 @@ function openStudio(reelId = null) {
         _stSelectedTrackIdx = 0;
         
         renderStudioTimeline();
+        renderWatermarkElements();
         selectStudioScene(0);
         makeCaptionOverlayDraggable();
         
@@ -4468,6 +4866,36 @@ function renderStudioTimeline() {
         }
     }
     
+    // Update Watermark Track dynamically
+    const watermarkContainer = document.getElementById('st-timeline-watermark');
+    if(watermarkContainer) {
+        if (!_wmElements || _wmElements.length === 0) {
+            watermarkContainer.innerHTML = `<div class="tl-track-empty-msg" style="padding: 10px; color: #555; font-size: 10px; font-weight: 500;">No Watermarks Loaded</div>`;
+            watermarkContainer.style.height = '40px';
+        } else {
+            const rows = calculateClipRows(_wmElements, _stPlaybackSpeed);
+            const maxRow = Math.max(...rows, 0);
+            watermarkContainer.style.height = `${40 + maxRow * 36}px`;
+            
+            watermarkContainer.innerHTML = _wmElements.map((item, i) => {
+                const scaledStart = (item.start || 0) / _stPlaybackSpeed;
+                const scaledWidth = (item.width || 100) / _stPlaybackSpeed;
+                const row = rows[i] || 0;
+                const isSelected = (_wmSelectedId === item.id);
+                const displayName = item.type === 'text' ? `Text: ${item.text}` : `Logo (${item.shape || 'square'})`;
+                return `
+                    <div class="tl-audio-item ${isSelected ? 'active-text' : ''}" 
+                         onclick="selectWatermarkFromTimeline('${item.id}')"
+                         style="position: absolute; left: ${scaledStart}%; width: ${scaledWidth}%; top: ${4 + row * 36}px; height: 32px; background: linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.4)); border-color: rgba(56, 189, 248, 0.5); color: #38bdf8; cursor: pointer;">
+                        <i data-lucide="shield" style="width:10px; height:10px; margin-right:5px"></i>
+                        <span>${displayName}</span>
+                        <div class="tl-clip-resize-handle" onmousedown="startClipResize('watermark', ${i}, event)"></div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+    
     if(window.lucide) lucide.createIcons();
     renderTimelineRuler();
     
@@ -4520,9 +4948,21 @@ function selectStudioScene(idx) {
     document.getElementById('st-scene-script').value = scene.script || '';
     document.getElementById('st-scene-effect').value = scene.effect || 'none';
     if(scene.voice) document.getElementById('st-scene-voice').value = scene.voice;
-    // Sync AI panel scene badge
+    
+    // Sync AI panel scene badge & Voice Upgrade fields
     const _aiBadge = document.getElementById('st-active-scene-badge-ai');
     if (_aiBadge) _aiBadge.textContent = `Scene #${idx + 1}`;
+    
+    const transcriptInput = document.getElementById('st-ai-voice-transcript');
+    if (transcriptInput) transcriptInput.value = scene.script || '';
+    
+    const fullTranscriptInput = document.getElementById('st-full-audio-transcript');
+    if (fullTranscriptInput) {
+        fullTranscriptInput.value = _stScenes.map(s => s.script || '').join('\n');
+    }
+    
+    const voiceSelectInput = document.getElementById('st-ai-voice-id');
+    if (voiceSelectInput && scene.voice) voiceSelectInput.value = scene.voice;
     // Refresh All Scenes tab if it is currently open
     if (typeof _stActiveRightTab !== 'undefined' && _stActiveRightTab === 'scenes') renderAllScenesDownloadList();
     
@@ -4678,28 +5118,59 @@ async function exportStudioReel() {
     btn.innerHTML = '<div class="loader-spin"></div> Re-assembling...';
     
     try {
+        // Snapshot watermark canvas if any watermarks are present
+        let watermark_base64 = null;
+        if (_wmElements && _wmElements.length > 0) {
+            try { watermark_base64 = await generateWatermarkOverlayImage(); } catch(we) { console.warn('Watermark export failed:', we); }
+        }
+        
+        // Gather custom timeline audio tracks
+        const audio_tracks = (_stAudioItems || []).filter(t => t.url).map(t => ({
+            url: t.url,
+            start: t._startSec || 0,
+            volume: (t.volume !== undefined ? t.volume : 100) / 100
+        }));
+        
         const payload = {
             reel_id: _editingReelId,
             title: document.getElementById('st-reel-title').value,
             scenes: _stScenes,
             metadata: {
                 aspect_ratio: document.querySelector('.ratio-btn.active').textContent.trim(),
-                voice: document.getElementById('st-scene-voice').value
+                voice: document.getElementById('st-scene-voice').value,
+                audio_tracks: audio_tracks,
+                watermarks: _wmElements,
+                watermark_base64: watermark_base64
             }
         };
         
-        const res = await fetch('/api/social/re-assemble', {
+        const res = await fetch('/api/re-assemble', {
             method: 'POST',
             headers: hdrs(),
             body: JSON.stringify(payload)
         });
         
         const data = await res.json();
-        if(!res.ok) throw new Error(data.detail || 'Re-assembly failed');
+        if (!res.ok) {
+            let errMsg = 'Re-assembly failed';
+            if (data && data.detail) {
+                if (typeof data.detail === 'string') {
+                    errMsg = data.detail;
+                } else if (Array.isArray(data.detail)) {
+                    errMsg = data.detail.map(err => `${err.loc ? err.loc.join('.') : ''}: ${err.msg}`).join('; ');
+                } else if (typeof data.detail === 'object') {
+                    errMsg = JSON.stringify(data.detail);
+                }
+            }
+            throw new Error(errMsg);
+        }
         
         toast('🚀 Reel re-assembled successfully!', 'success');
         closeStudio();
-        loadSocialHistory(); // Refresh list to show updated reel
+        showPanel('soc-history');
+        if (typeof loadSocialHistory === 'function') {
+            loadSocialHistory();
+        }
     } catch(e) {
         toast('Export failed: ' + e.message, 'error');
     } finally {
@@ -4783,6 +5254,9 @@ function selectStudioTrackItem(type, idx) {
                 const savedVol = audioItem.volume !== undefined ? audioItem.volume : 100;
                 if (voiceVolSlider) voiceVolSlider.value = savedVol;
                 if (voiceVolVal) voiceVolVal.textContent = savedVol + '%';
+                
+                // Show custom audio generator panel for audio tracks
+                showCustomAudioPanel(audioItem, idx);
             }
         } else if (type === 'effect') {
             document.getElementById('st-active-scene-label').textContent = `Visual Effect Clip #${idx + 1}`;
@@ -5166,8 +5640,21 @@ function toggleTestPlayMusic(url, btn, event) {
     if (window.lucide) lucide.createIcons();
 }
 
-function applyEffectToScene(effectName) {
+function applyEffectToScene(effectName, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
     pushStudioState();
+    
+    // If a scene is selected, apply it directly to the active scene!
+    if (_stActiveIdx !== null && _stActiveIdx !== undefined) {
+        _stScenes[_stActiveIdx].transition = effectName;
+        toast(`✨ Scene transition/effect updated to ${effectName.toUpperCase()}!`, 'success');
+        renderStudioTimeline();
+        updateSidePreviews();
+        return;
+    }
     
     if (_stActiveJunctionIdx !== null) {
         // Apply effect as a scene-to-scene transition!
@@ -5200,6 +5687,251 @@ function applyEffectToScene(effectName) {
         renderStudioTimeline();
         toast(`✨ Added Effect "${effectName.toUpperCase()}" timeline clip starting exactly at playhead (${currentPct.toFixed(0)}%)!`, 'success');
     }
+}
+
+let _currentSfxPreview = null;
+function hoverVoiceSfxPreview(url, play) {
+    if (play) {
+        if (_currentSfxPreview) {
+            _currentSfxPreview.pause();
+        }
+        _currentSfxPreview = new Audio(url);
+        _currentSfxPreview.volume = 0.5;
+        _currentSfxPreview.play().catch(e => console.log("SFX preview error:", e));
+    } else {
+        if (_currentSfxPreview) {
+            _currentSfxPreview.pause();
+            _currentSfxPreview = null;
+        }
+    }
+}
+
+function applyVoiceSfxToTimeline(sfxName, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    pushStudioState();
+    
+    if (_stActiveIdx !== null && _stActiveIdx !== undefined) {
+        // Apply SFX to the active scene properties
+        _stScenes[_stActiveIdx].voice_sfx = sfxName;
+        toast(`🎙️ Sound effect ${sfxName} applied to Scene #${_stActiveIdx + 1}!`, "success");
+        renderStudioTimeline();
+    } else {
+        // Fallback: Add to timeline SFX track
+        const currentPct = getCurrentPlayheadPct();
+        const newEffect = {
+            id: 'sfx-' + Date.now(),
+            name: sfxName,
+            width: 10,
+            start: parseFloat(currentPct.toFixed(1))
+        };
+        if (!_stEffectItems) _stEffectItems = [];
+        _stEffectItems.push(newEffect);
+        renderStudioTimeline();
+        toast(`🔊 Added Sound Effect ${sfxName} to timeline!`, "success");
+    }
+}
+
+async function upgradeSceneAudio() {
+    if (_stActiveIdx === null || _stActiveIdx === undefined) {
+        return toast("Please select a scene first.", "error");
+    }
+    
+    const text = document.getElementById('st-ai-voice-transcript').value.trim();
+    if (!text) return toast("Transcript cannot be empty", "error");
+    
+    const voice_id = document.getElementById('st-ai-voice-id').value;
+    const language = document.getElementById('st-ai-voice-lang').value;
+    
+    const btn = document.getElementById('btn-st-audio-upgrade');
+    const oldHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="loader-spin" style="display:inline-block; vertical-align:middle; margin-right:5px;"></div> Upgrading Audio...';
+    
+    try {
+        const payload = {
+            reel_id: _stReelId || _editingReelId,
+            scene_idx: _stActiveIdx,
+            text: text,
+            voice_id: voice_id,
+            language: language
+        };
+        
+        const res = await fetch('/api/social/upgrade-audio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+            toast("🎙️ Audio upgraded successfully!", "success");
+            
+            // Update the scene's script/dialogue and audio properties in the local scenes array!
+            _stScenes[_stActiveIdx].script = text;
+            _stScenes[_stActiveIdx].audio = data.audio_url;
+            _stScenes[_stActiveIdx].voice = voice_id;
+            
+            // Re-render the timeline
+            renderStudioTimeline();
+            
+            // Update other panel fields
+            document.getElementById('st-scene-script').value = text;
+            document.getElementById('st-scene-voice').value = voice_id;
+        } else {
+            toast(data.detail || "Audio upgrade failed", "error");
+        }
+    } catch (e) {
+        toast("Audio upgrade error: " + e.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+    }
+}
+
+let _currentVoiceTestAudio = null;
+function playSelectedAIVoicePreview() {
+    const voiceId = document.getElementById('st-ai-voice-id').value;
+    const lang = document.getElementById('st-ai-voice-lang').value;
+    const text = "Hello! This is a preview of my voice style. How does it sound?";
+    
+    if (_currentVoiceTestAudio) {
+        _currentVoiceTestAudio.pause();
+    }
+    
+    const url = `/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(text)}&language=${encodeURIComponent(lang)}`;
+    _currentVoiceTestAudio = new Audio(url);
+    _currentVoiceTestAudio.volume = 0.8;
+    _currentVoiceTestAudio.play().catch(e => console.log("Voice preview error:", e));
+}
+
+function syncFullTranscriptToScenes() {
+    const fullText = document.getElementById('st-full-audio-transcript').value.trim();
+    if (!fullText) return toast("Transcript cannot be empty", "warning");
+    
+    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return toast("No valid lines found", "warning");
+    
+    pushStudioState();
+    
+    for (let i = 0; i < _stScenes.length; i++) {
+        if (lines[i]) {
+            _stScenes[i].script = lines[i];
+        }
+    }
+    
+    renderStudioTimeline();
+    
+    // Sync the active scene input field
+    if (_stActiveIdx !== -1 && _stActiveIdx < _stScenes.length) {
+        const input = document.getElementById('st-ai-voice-transcript');
+        if (input) input.value = _stScenes[_stActiveIdx].script || '';
+        document.getElementById('st-scene-script').value = _stScenes[_stActiveIdx].script || '';
+        document.getElementById('st-caption-overlay').textContent = _stScenes[_stActiveIdx].script || '[ No Narration ]';
+    }
+    
+    toast("🔄 Synced full transcript edits to all scene tracks successfully!", "success");
+}
+
+function downloadEditedReel() {
+    const player = document.getElementById('st-video-player');
+    if (!player || !player.src || player.src.startsWith('blob:') || player.src.includes('anullsrc')) {
+        return toast("No fully rendered video file exists for download yet. Please run Export & Render first!", "warning");
+    }
+    
+    const a = document.createElement('a');
+    a.href = player.src;
+    a.download = (document.getElementById('st-reel-title').value || 'edited_reel').trim().replace(/\s+/g, '_') + '.mp4';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast("📥 Initiated download of edited reel to your local system!", "success");
+}
+
+let _currentSfxTestAudio = null;
+let _currentSfxTestBtn = null;
+
+function toggleSfxTestPlay(url, btn, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    
+    if (_currentSfxTestAudio && _currentSfxTestAudio.src === url && !_currentSfxTestAudio.paused) {
+        _currentSfxTestAudio.pause();
+        btn.innerHTML = '<i data-lucide="play" style="width:10px; height:10px;"></i>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+    
+    if (_currentSfxTestAudio) {
+        _currentSfxTestAudio.pause();
+        if (_currentSfxTestBtn) {
+            _currentSfxTestBtn.innerHTML = '<i data-lucide="play" style="width:10px; height:10px;"></i>';
+        }
+    }
+    
+    _currentSfxTestAudio = new Audio(url);
+    _currentSfxTestAudio.volume = 0.6;
+    _currentSfxTestBtn = btn;
+    
+    btn.innerHTML = '<i data-lucide="square" style="width:10px; height:10px;"></i>';
+    if (window.lucide) lucide.createIcons();
+    
+    _currentSfxTestAudio.play().then(() => {
+        _currentSfxTestAudio.onended = () => {
+            btn.innerHTML = '<i data-lucide="play" style="width:10px; height:10px;"></i>';
+            if (window.lucide) lucide.createIcons();
+        };
+    }).catch(e => {
+        console.log("SFX preview error:", e);
+        btn.innerHTML = '<i data-lucide="play" style="width:10px; height:10px;"></i>';
+        if (window.lucide) lucide.createIcons();
+    });
+}
+
+function uploadLocalSfx(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const objectUrl = URL.createObjectURL(file);
+        
+        const newSfx = {
+            id: 'sfx-' + Date.now(),
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            url: objectUrl,
+            description: "Custom uploaded local sound effect clip"
+        };
+        
+        _stUploadedSfx.push(newSfx);
+        toast(`📤 Local sound effect "${newSfx.name}" added to list!`, "success");
+        
+        if (_stActiveTab === 'audio') {
+            const btn = document.querySelector('.st-tool-item.active') || null;
+            _stActiveTab = null; 
+            switchStudioTab('audio', btn);
+        }
+    }
+}
+
+function updateAIVoiceLanguage(lang) {
+    const voiceSelect = document.getElementById('st-ai-voice-id');
+    if (!voiceSelect) return;
+    
+    voiceSelect.innerHTML = `
+        <option value="1zUSi8LeHs9M2mV8X6YS">Priyanka (Female - Hindi/Indian Accent)</option>
+        <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (Male - Indian Accent)</option>
+        <option value="WeK8ylKjTV2trMlayizC">Shrikant (Male - Warm Indian Accent)</option>
+        <option value="bpkHhw4QrZFYIfahwsHh">Amit (Male - Clear Accent)</option>
+        <option value="QCwUVw5fOJzf8t55fhmR">Irfan (Male - Bold Accent)</option>
+        <option value="p9aflnsbBe1o0aDeQa97">Kanika (Female - Dynamic Accent)</option>
+        <option value="adam">Adam (Male - English Fallback)</option>
+        <option value="rachel">Rachel (Female - Global Fallback)</option>
+    `;
 }
 
 const BGM_URLS = {
@@ -5404,6 +6136,7 @@ function startClipResize(type, idx, e) {
     else if (type === 'audio') item = _stAudioItems[idx];
     else if (type === 'effect') item = _stEffectItems[idx];
     else if (type === 'text') item = _stTextItems[idx];
+    else if (type === 'watermark') item = _wmElements[idx];
     
     if (!item) return;
     
@@ -5412,11 +6145,15 @@ function startClipResize(type, idx, e) {
     _stResizeItem = item;
     _stResizeType = type;
     _stResizeIdx = idx;
-    _stResizeStartWidth = item.width;
+    _stResizeStartWidth = item.width || 100;
     _stResizeStartX = e.clientX;
     
     // Select the item
-    selectStudioTrackItem(type, idx);
+    if (type === 'watermark') {
+        selectWatermarkFromTimeline(item.id);
+    } else {
+        selectStudioTrackItem(type, idx);
+    }
     
     document.addEventListener('mousemove', handleClipResize);
     document.addEventListener('mouseup', stopClipResize);
@@ -5744,12 +6481,16 @@ function switchStudioTab(tab, btn) {
             assetListHtml = _stUploadedAssets.map((asset, index) => {
                 const tag = asset.type === 'video' ? `<video src="${asset.url}" muted loop playsinline></video>` : `<img src="${asset.url}">`;
                 const typeLabel = asset.type.toUpperCase();
+                const assetId = asset.id || `asset-${index}`;
                 return `
-                    <div class="st-library-card" onclick="selectLibraryAssetForReplace(${index})">
+                    <div class="st-library-card" onclick="selectLibraryAssetForReplace(${index})" id="lib-card-${assetId}">
                         ${tag}
                         <div class="st-library-card-badge">${typeLabel}</div>
                         <div class="st-library-card-name">${asset.name}</div>
-                        
+                        <!-- Edit/Generate Button -->
+                        <button class="st-library-card-edit-btn" onclick="openLibraryEditModal(${index}, event)" title="Edit with AI">
+                            ✨ AI Generate
+                        </button>
                         <!-- Delete Button inside Card -->
                         <div class="st-library-card-delete-btn" onclick="deleteLibraryAsset(${index}, event)" title="Delete from Library">
                             <i data-lucide="trash-2"></i>
@@ -5779,67 +6520,79 @@ function switchStudioTab(tab, btn) {
     } else if (tab === 'effects') {
         html = `
             <h4>✨ Video Effects</h4>
-            <div class="st-panel-desc">Hover card to live preview effect on player. Click to apply permanently.</div>
+            <div class="st-panel-desc">Hover card to live preview effect on player. Click "+" to apply to scene.</div>
             <div class="st-list-items">
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('glitch', true)" 
                      onmouseleave="hoverEffectPreview('glitch', false)" 
-                     onclick="applyEffectToScene('glitch')">
+                     onclick="applyEffectToScene('glitch')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="zap"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">Glitch Transition</span>
                         <span class="st-list-card-sub">Dynamic cyberpunk scanline style</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('glitch', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('zoom', true)" 
                      onmouseleave="hoverEffectPreview('zoom', false)" 
-                     onclick="applyEffectToScene('zoom')">
+                     onclick="applyEffectToScene('zoom')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="zoom-in"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">Zoom Zoom Cut</span>
                         <span class="st-list-card-sub">Fast rhythmic cinematic push</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('zoom', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('split', true)" 
                      onmouseleave="hoverEffectPreview('split', false)" 
-                     onclick="applyEffectToScene('split')">
+                     onclick="applyEffectToScene('split')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="columns"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">Split Screen</span>
                         <span class="st-list-card-sub">Horizontal dual multi-frame cut</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('split', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('vhs', true)" 
                      onmouseleave="hoverEffectPreview('vhs', false)" 
-                     onclick="applyEffectToScene('vhs')">
+                     onclick="applyEffectToScene('vhs')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="tv"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">VHS Retro</span>
                         <span class="st-list-card-sub">Vintage tape analog distortion</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('vhs', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('fade', true)" 
                      onmouseleave="hoverEffectPreview('fade', false)" 
-                     onclick="applyEffectToScene('fade')">
+                     onclick="applyEffectToScene('fade')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="eye"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">Fade Out</span>
                         <span class="st-list-card-sub">Gentle cinematic dark dip</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('fade', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
                 <div class="st-list-card" 
                      onmouseenter="hoverEffectPreview('none', true)" 
                      onmouseleave="hoverEffectPreview('none', false)" 
-                     onclick="applyEffectToScene('none')">
+                     onclick="applyEffectToScene('none')"
+                     style="position:relative">
                     <div class="st-list-card-icon"><i data-lucide="x"></i></div>
                     <div class="st-list-card-info">
                         <span class="st-list-card-title">No Effect</span>
                         <span class="st-list-card-sub">Standard instant scene cut</span>
                     </div>
+                    <button class="st-effect-add-btn" onclick="applyEffectToScene('none', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Effect">+</button>
                 </div>
             </div>
         `;
@@ -5956,6 +6709,24 @@ function switchStudioTab(tab, btn) {
     } else if (tab === 'audio') {
         const player = document.getElementById('st-video-player');
         const voiceVol = player ? Math.round(player.volume * 100) : 100;
+        
+        let uploadedSfxHtml = '';
+        if (typeof _stUploadedSfx !== 'undefined' && _stUploadedSfx.length > 0) {
+            uploadedSfxHtml = _stUploadedSfx.map((sfx, idx) => `
+                <div class="st-list-card" onclick="applyVoiceSfxToTimeline('${sfx.name}')" style="position:relative">
+                    <div class="st-list-card-icon"><i data-lucide="music"></i></div>
+                    <div class="st-list-card-info">
+                        <span class="st-list-card-title">${sfx.name}</span>
+                        <span class="st-list-card-sub">Custom uploaded sound effect</span>
+                    </div>
+                    <button class="st-effect-play-btn" onclick="toggleSfxTestPlay('${sfx.url}', this, event)" style="position:absolute; right:35px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:5px; transition:0.2s" title="Test Sound Effect">
+                        <i data-lucide="play" style="width:10px; height:10px;"></i>
+                    </button>
+                    <button class="st-effect-add-btn" onclick="applyVoiceSfxToTimeline('${sfx.name}', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Sound Effect">+</button>
+                </div>
+            `).join('');
+        }
+
         html = `
             <h4>🔊 Sound Controller</h4>
             <div class="st-panel-desc">Independently scale the voiceover narration and background music track levels.</div>
@@ -5974,6 +6745,70 @@ function switchStudioTab(tab, btn) {
                     </div>
                     <input type="range" class="st-slider-input" min="0" max="100" value="80" oninput="updateStudioVolume('bgm', this.value)">
                 </div>
+            </div>
+            
+            <h4 style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px; color:#c084fc;">🎙️ Sound Effects (SFX)</h4>
+            <div class="st-panel-desc">Test sound effects using the Play icon or upload your own local SFX. Click "+" to apply.</div>
+            
+            <div class="sfx-upload-box" style="margin-top: 10px; padding: 10px; border: 1px dashed rgba(167, 139, 250, 0.3); border-radius: 8px; background: rgba(167, 139, 250, 0.05); margin-bottom:12px;">
+                <label style="font-size: 11px; color: #c084fc; display: block; margin-bottom: 6px; font-weight: 500;">📤 Upload Local SFX</label>
+                <input type="file" id="local-sfx-upload" accept="audio/*" onchange="uploadLocalSfx(this)" style="display: none;">
+                <button class="btn btn-secondary w-full" onclick="document.getElementById('local-sfx-upload').click()" style="padding: 4px 10px; font-size: 11px; background: rgba(167, 139, 250, 0.15); border: 1px solid rgba(167, 139, 250, 0.3);">
+                    Choose Audio File...
+                </button>
+            </div>
+
+            <div class="st-list-items" style="margin-top:10px;">
+                <!-- Cinematic Rise -->
+                <div class="st-list-card" onclick="applyVoiceSfxToTimeline('Cinematic Rise')" style="position:relative">
+                    <div class="st-list-card-icon"><i data-lucide="music-4"></i></div>
+                    <div class="st-list-card-info">
+                        <span class="st-list-card-title">Cinematic Rise</span>
+                        <span class="st-list-card-sub">Deep atmospheric riser transition</span>
+                    </div>
+                    <button class="st-effect-play-btn" onclick="toggleSfxTestPlay('https://actions.google.com/sounds/v1/science_fiction/alien_hum_continuous.ogg', this, event)" style="position:absolute; right:35px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:5px; transition:0.2s" title="Test Sound Effect">
+                        <i data-lucide="play" style="width:10px; height:10px;"></i>
+                    </button>
+                    <button class="st-effect-add-btn" onclick="applyVoiceSfxToTimeline('Cinematic Rise', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Sound Effect">+</button>
+                </div>
+                <!-- Swoosh -->
+                <div class="st-list-card" onclick="applyVoiceSfxToTimeline('Swoosh')" style="position:relative">
+                    <div class="st-list-card-icon"><i data-lucide="wind"></i></div>
+                    <div class="st-list-card-info">
+                        <span class="st-list-card-title">Swoosh Transition</span>
+                        <span class="st-list-card-sub">Fast cinematic whip pan transition</span>
+                    </div>
+                    <button class="st-effect-play-btn" onclick="toggleSfxTestPlay('https://actions.google.com/sounds/v1/cartoon/swoosh.ogg', this, event)" style="position:absolute; right:35px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:5px; transition:0.2s" title="Test Sound Effect">
+                        <i data-lucide="play" style="width:10px; height:10px;"></i>
+                    </button>
+                    <button class="st-effect-add-btn" onclick="applyVoiceSfxToTimeline('Swoosh', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Sound Effect">+</button>
+                </div>
+                <!-- Vinyl Scratch -->
+                <div class="st-list-card" onclick="applyVoiceSfxToTimeline('Vinyl Scratch')" style="position:relative">
+                    <div class="st-list-card-icon"><i data-lucide="disc"></i></div>
+                    <div class="st-list-card-info">
+                        <span class="st-list-card-title">Vinyl Scratch</span>
+                        <span class="st-list-card-sub">Funny record stop accent sound</span>
+                    </div>
+                    <button class="st-effect-play-btn" onclick="toggleSfxTestPlay('https://actions.google.com/sounds/v1/cartoon/funny_squeaky_sound.ogg', this, event)" style="position:absolute; right:35px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:5px; transition:0.2s" title="Test Sound Effect">
+                        <i data-lucide="play" style="width:10px; height:10px;"></i>
+                    </button>
+                    <button class="st-effect-add-btn" onclick="applyVoiceSfxToTimeline('Vinyl Scratch', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Sound Effect">+</button>
+                </div>
+                <!-- Modern Pop -->
+                <div class="st-list-card" onclick="applyVoiceSfxToTimeline('Modern Pop')" style="position:relative">
+                    <div class="st-list-card-icon"><i data-lucide="sparkles"></i></div>
+                    <div class="st-list-card-info">
+                        <span class="st-list-card-title">Modern Pop Accent</span>
+                        <span class="st-list-card-sub">Aesthetic bubble pop bubble highlight</span>
+                    </div>
+                    <button class="st-effect-play-btn" onclick="toggleSfxTestPlay('https://actions.google.com/sounds/v1/cartoon/pop.ogg', this, event)" style="position:absolute; right:35px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:5px; transition:0.2s" title="Test Sound Effect">
+                        <i data-lucide="play" style="width:10px; height:10px;"></i>
+                    </button>
+                    <button class="st-effect-add-btn" onclick="applyVoiceSfxToTimeline('Modern Pop', event)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#a78bfa; color:#0d0f17; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s" title="Apply Sound Effect">+</button>
+                </div>
+                
+                ${uploadedSfxHtml}
             </div>
         `;
     } else if (tab === 'speed') {
@@ -6752,13 +7587,37 @@ async function deleteSocialContent(id) {
 
 let _editingReelId = null;
 
-function openReelEditor(id) {
+async function openReelEditor(id) {
     console.log("Triggering openReelEditor for ID:", id);
     try {
         _editingReelId = id;
-        // Try finding in active results first, then history
-        let item = _socialItems.find(s => s.id == id || s.content_id == id);
-        if(!item) item = _socialHistory.find(h => h.id == id || h.content_id == id);
+        
+        let item = null;
+        try {
+            const res = await fetch(`/api/social/content/${id}`, { headers: hdrs() });
+            if (res.ok) {
+                item = await res.json();
+                console.log("Fetched fresh item from backend for editor:", item);
+                
+                // Keep local state in sync
+                if (item) {
+                    if (!_socialHistory.some(h => h.content_id === item.content_id)) {
+                        _socialHistory.push(item);
+                    } else {
+                        let idx = _socialHistory.findIndex(h => h.content_id === item.content_id);
+                        if (idx !== -1) _socialHistory[idx] = item;
+                    }
+                }
+            }
+        } catch(fetchErr) {
+            console.warn("Failed to fetch fresh reel detail from backend:", fetchErr);
+        }
+        
+        if (!item) {
+            // Try finding in active results first, then history
+            item = _socialItems.find(s => s.id == id || s.content_id == id);
+            if(!item) item = _socialHistory.find(h => h.id == id || h.content_id == id);
+        }
         
         if(item) {
             console.log("Found item for editor:", item);
@@ -6804,6 +7663,34 @@ function openReelEditor(id) {
                     });
                 }
             }
+            
+            // Dynamically scope Media Library assets exclusively to the images and videos from this specific reel!
+            _stUploadedAssets = [];
+            _stScenes.forEach((scene, index) => {
+                const imgUrl = scene.thumb || scene.image || scene.image_url || '';
+                const vidUrl = scene.videoThumb || scene.video || scene.video_url || scene.url || '';
+                
+                if (imgUrl && (imgUrl.startsWith('http') || imgUrl.startsWith('/'))) {
+                    const imgName = imgUrl.split('/').pop().split('?')[0] || `Scene_${index + 1}_Image.jpg`;
+                    if (!_stUploadedAssets.some(asset => asset.url === imgUrl)) {
+                        _stUploadedAssets.push({
+                            type: 'image',
+                            name: imgName.length > 25 ? imgName.slice(0, 22) + '...' : imgName,
+                            url: imgUrl
+                        });
+                    }
+                }
+                if (vidUrl && (vidUrl.startsWith('http') || vidUrl.startsWith('/')) && !vidUrl.includes('soundhelix')) {
+                    const vidName = vidUrl.split('/').pop().split('?')[0] || `Scene_${index + 1}_Video.mp4`;
+                    if (!_stUploadedAssets.some(asset => asset.url === vidUrl)) {
+                        _stUploadedAssets.push({
+                            type: 'video',
+                            name: vidName.length > 25 ? vidName.slice(0, 22) + '...' : vidName,
+                            url: vidUrl
+                        });
+                    }
+                }
+            });
             
             const titleEl = document.getElementById('st-reel-title');
             if(titleEl) titleEl.value = item.title || 'Untitled Reel';
@@ -8892,12 +9779,27 @@ function switchStudioRightTab(tab, btn) {
     var aiPanel   = document.getElementById('st-right-panel-ai');
     var scenesPanel = document.getElementById('st-right-panel-scenes');
     var propsPanel  = document.getElementById('st-right-panel-properties');
+    var wmPanel     = document.getElementById('st-right-panel-watermark');
     if (aiPanel)    aiPanel.style.display    = (tab === 'ai')         ? 'flex' : 'none';
     if (scenesPanel) scenesPanel.style.display = (tab === 'scenes')    ? 'flex' : 'none';
     if (propsPanel)  propsPanel.style.display  = (tab === 'properties') ? 'flex' : 'none';
+    if (wmPanel)     wmPanel.style.display     = (tab === 'watermark') ? 'flex' : 'none';
 
     // Populate All Scenes dynamically when that tab is opened
     if (tab === 'scenes') renderAllScenesDownloadList();
+    if (tab === 'ai') renderAIPanelVoicesList();
+    // Initialize watermark panel on first open
+    if (tab === 'watermark') initWatermarkPanel();
+
+    // Toggle wm-mode on the preview container to hide the annoying black blur replace overlay when in watermark tab!
+    const previewContainer = document.getElementById('st-preview-container');
+    if (previewContainer) {
+        if (tab === 'watermark') {
+            previewContainer.classList.add('wm-mode');
+        } else {
+            previewContainer.classList.remove('wm-mode');
+        }
+    }
 }
 
 function renderAllScenesDownloadList() {
@@ -9389,8 +10291,9 @@ function initStudioListeners() {
             
             const bgmTrack = e.target.closest('#st-timeline-bgm');
             const audioTrack = e.target.closest('#st-timeline-audio');
-            const effectsTrack = e.target.closest('#st-timeline-effects');
-            const textTrack = e.target.closest('#st-timeline-text');
+            const eTrack = e.target.closest('#st-timeline-effects');
+            const tTrack = e.target.closest('#st-timeline-text');
+            const wmTrack = e.target.closest('#st-timeline-watermark');
             
             let type = '';
             let idx = -1;
@@ -9406,21 +10309,30 @@ function initStudioListeners() {
                 const items = Array.from(audioTrack.querySelectorAll('.tl-audio-item'));
                 idx = items.indexOf(audioItemEl);
                 item = _stAudioItems[idx];
-            } else if (effectsTrack) {
+            } else if (eTrack) {
                 type = 'effect';
-                const items = Array.from(effectsTrack.querySelectorAll('.tl-audio-item'));
+                const items = Array.from(eTrack.querySelectorAll('.tl-audio-item'));
                 idx = items.indexOf(audioItemEl);
                 item = _stEffectItems[idx];
-            } else if (textTrack) {
+            } else if (tTrack) {
                 type = 'text';
-                const items = Array.from(textTrack.querySelectorAll('.tl-audio-item'));
+                const items = Array.from(tTrack.querySelectorAll('.tl-audio-item'));
                 idx = items.indexOf(audioItemEl);
                 item = _stTextItems[idx];
+            } else if (wmTrack) {
+                type = 'watermark';
+                const items = Array.from(wmTrack.querySelectorAll('.tl-audio-item'));
+                idx = items.indexOf(audioItemEl);
+                item = _wmElements[idx];
             }
             
             if (item && idx !== -1) {
                 pushStudioState(); // Push state to undo history before starting drag!
-                selectStudioTrackItem(type, idx);
+                if (type === 'watermark') {
+                    selectWatermarkFromTimeline(item.id);
+                } else {
+                    selectStudioTrackItem(type, idx);
+                }
                 _stDragItem = item;
                 _stDragType = type;
                 _stDragIdx = idx;
@@ -9504,6 +10416,23 @@ function escapeHTML(str) {
               .replace(/'/g, '&#039;');
 }
 
+function renderMarkdownToHTML(elementId, markdownText, fallbackText = '') {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    
+    let text = markdownText || fallbackText;
+    if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+        try {
+            el.innerHTML = marked.parse(text);
+        } catch (err) {
+            console.error("Markdown parse error: ", err);
+            el.textContent = text;
+        }
+    } else {
+        el.textContent = text;
+    }
+}
+
 async function loadClassroom() {
     const grid = document.getElementById('exam-grid');
     const empty = document.getElementById('exam-empty');
@@ -9582,10 +10511,10 @@ async function loadClassroom() {
                     <!-- Content Body -->
                     <div style="padding: 12px 14px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: transparent;">
                         <div style="margin-bottom: 4px;">
-                            <div class="ac-name" style="font-size: 14px; font-weight: 800; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 4px;">
+                            <div style="font-size: 14px; font-weight: 800; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 4px;">
                                 ${escapeHTML(exam.name)}
                             </div>
-                            <div class="ac-desc" style="font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;">
+                            <div style="font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;">
                                 ${escapeHTML(desc)}
                             </div>
                         </div>
@@ -9982,14 +10911,14 @@ async function refreshExamTree() {
                 if (foundSub) {
                     currentActiveSubtopicData = foundSub;
                     document.getElementById('active-subtopic-name').textContent = foundSub.name;
-                    document.getElementById('active-subtopic-description').textContent = foundSub.description || 'No description provided.';
+                    renderMarkdownToHTML('active-subtopic-description', foundSub.description, 'No description provided.');
                     
                     // Show or hide notes based on availability
                     if (foundSub.notes) {
-                        document.getElementById('active-subtopic-notes').textContent = foundSub.notes;
+                        renderMarkdownToHTML('active-subtopic-notes', foundSub.notes, 'No notes generated yet.');
                         document.getElementById('active-subtopic-notes-container').style.display = 'block';
                     } else {
-                        document.getElementById('active-subtopic-notes').textContent = 'No notes generated yet.';
+                        document.getElementById('active-subtopic-notes').innerHTML = 'No notes generated yet.';
                         document.getElementById('active-subtopic-notes-container').style.display = 'none';
                     }
                 }
@@ -10377,14 +11306,14 @@ function selectSubtopic(subtopicId) {
     currentActiveSubtopicData = foundSub;
     
     document.getElementById('active-subtopic-name').textContent = foundSub.name;
-    document.getElementById('active-subtopic-description').textContent = foundSub.description || 'No description provided.';
+    renderMarkdownToHTML('active-subtopic-description', foundSub.description, 'No description provided.');
     
     // Show or hide notes based on availability
     if (foundSub.notes) {
-        document.getElementById('active-subtopic-notes').textContent = foundSub.notes;
+        renderMarkdownToHTML('active-subtopic-notes', foundSub.notes, 'No notes generated yet.');
         document.getElementById('active-subtopic-notes-container').style.display = 'block';
     } else {
-        document.getElementById('active-subtopic-notes').textContent = 'No notes generated yet.';
+        document.getElementById('active-subtopic-notes').innerHTML = 'No notes generated yet.';
         document.getElementById('active-subtopic-notes-container').style.display = 'none';
     }
     
@@ -10722,6 +11651,12 @@ function showAddSubtopicModal() {
 }
 
 function showEditSubtopicModal(subtopic_id, name, description) {
+    if (typeof subtopic_id === 'object' && subtopic_id !== null) {
+        const obj = subtopic_id;
+        subtopic_id = obj.subtopic_id;
+        name = obj.name;
+        description = obj.description;
+    }
     document.getElementById('modal-subtopic-id').value = subtopic_id;
     document.getElementById('modal-subtopic-name').value = name;
     document.getElementById('modal-subtopic-desc').value = description || '';
@@ -10836,6 +11771,15 @@ function editClassroomReel(reel) {
     openReelEditor(mappedReel.content_id);
 }
 
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;");
+}
+
 async function showExamHistory(exam_id, exam_name) {
     document.getElementById('classroom-history-subtitle').textContent = `Reels generated for: ${exam_name}`;
     const container = document.getElementById('classroom-history-content');
@@ -10900,106 +11844,1140 @@ function previewClassroomReelFromHistory(content_id) {
     const reel = currentExamReels.find(r => r.content_id === content_id);
     if (reel) {
         closeExamHistoryModal();
-        const mappedReel = {
-            id: reel.content_id,
-            content_id: reel.content_id,
-            title: reel.title,
-            script: reel.body,
-            body: reel.body,
-            video_url: reel.media_url,
-            media_url: reel.media_url,
-            scenes: reel.scenes || [],
-            content_type: "reel"
-        };
-        showReelPreview(mappedReel);
+        showReelPreview(reel);
     }
 }
 
 function editClassroomReelById(content_id) {
     const reel = currentExamReels.find(r => r.content_id === content_id);
     if (reel) {
-        const mappedReel = {
-            id: reel.content_id,
-            content_id: reel.content_id,
-            title: reel.title,
-            script: reel.body,
-            body: reel.body,
-            video_url: reel.media_url,
-            media_url: reel.media_url,
-            scenes: reel.scenes || [],
-            content_type: "reel"
-        };
-        if (!_socialHistory.some(h => h.content_id === mappedReel.content_id)) {
-            _socialHistory.push(mappedReel);
-        }
         closeExamHistoryModal();
-        openReelEditor(mappedReel.content_id);
+        editClassroomReel(reel);
     }
 }
 
-function closeReelPreviewModal() {
-    const modal = document.getElementById('classroom-preview-modal');
-    if (modal) modal.classList.remove('open');
-}
+// ── Guided Reels Wizard Global State & Core Functions ──
+let wizardActiveStep = 1;
+let wizardTranscript = '';
+let wizardLanguage = 'English';
+let wizardVoiceId = 'WeK8ylKjTV2trMlayizC'; // Shrikant default
+let wizardJobId = null;
+let wizardScenes = [];
+let wizardPollingInterval = null;
+let wizardRegeneratingScenes = [];
 
-// Close the Exam History modal overlay
-function closeExamHistoryModal() {
-    const modal = document.getElementById('classroom-history-modal');
-    if (modal) modal.classList.remove('open');
-}
+// Restore wizardJobId from localStorage if available
+try {
+    const savedJobId = localStorage.getItem('wizardJobId');
+    if (savedJobId) wizardJobId = savedJobId;
+} catch(e) {}
 
-function openReelGeneratorSettingsModal() {
-    if (!currentActiveSubtopicData) {
-        toast('Please select a subtopic first', 'warning');
-        return;
+function openExtensionReelWizard() {
+    const wizardOverlay = document.getElementById('extension-reel-wizard');
+    if (wizardOverlay) {
+        wizardOverlay.style.display = 'flex';
     }
     
-    // Reset modal submit button for standard generation
-    const submitBtn = document.getElementById('btn-modal-submit-reel');
-    if (submitBtn) {
-        submitBtn.textContent = '🎬 Generate Reel';
-        submitBtn.setAttribute('onclick', 'submitReelGeneration()');
-        submitBtn.style.background = '';
-        submitBtn.style.borderColor = '';
-    }
-
-    // Auto populate topic name with the subtopic name
-    const topicInput = document.getElementById('modal-reel-topic');
-    if (topicInput) {
-        topicInput.value = currentActiveSubtopicData.name || '';
+    const titleEl = document.getElementById('wizard-subtopic-title');
+    if (titleEl && currentActiveSubtopicData) {
+        titleEl.textContent = `🎬 Reels Wizard: ${currentActiveSubtopicData.name}`;
     }
     
-    // Auto populate transcript from subtopic description/notes
-    const transcriptEl = document.getElementById('modal-reel-transcript');
-    if (transcriptEl && !transcriptEl.value) {
+    // Reset state — but restore jobId from localStorage if user wants to resume
+    wizardActiveStep = 1;
+    wizardTranscript = '';
+    wizardLanguage = 'English';
+    wizardVoiceId = 'WeK8ylKjTV2trMlayizC';
+    wizardJobId = null;
+    try { localStorage.removeItem('wizardJobId'); } catch(e) {}
+    wizardScenes = [];
+    wizardRegeneratingScenes = [];
+    
+    if (wizardPollingInterval) {
+        clearInterval(wizardPollingInterval);
+        wizardPollingInterval = null;
+    }
+    
+    if (currentActiveSubtopicData) {
         const raw = currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
-        // Strip markdown/html, take first 400 chars as default script
         const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
-        transcriptEl.value = plain.substring(0, 400);
+        wizardTranscript = plain.substring(0, 450);
     }
     
-    // Open the modal
-    const modal = document.getElementById('classroom-reel-generator-modal');
-    if (modal) modal.classList.add('open');
+    goToWizardStep(1);
 }
 
-function openExtensionReelGeneratorModal() {
-    if (!currentActiveSubtopicData) {
-        toast('Please select a subtopic first', 'warning');
+function closeReelsWizard() {
+    const wizardOverlay = document.getElementById('extension-reel-wizard');
+    if (wizardOverlay) {
+        wizardOverlay.style.display = 'none';
+    }
+    if (wizardPollingInterval) {
+        clearInterval(wizardPollingInterval);
+        wizardPollingInterval = null;
+    }
+}
+
+async function generateWizardFullVoice(btn) {
+    if (!wizardTranscript) return;
+    const oldText = btn.textContent;
+    btn.textContent = '⏳ Generating Full Voice...';
+    btn.disabled = true;
+    
+    try {
+        const langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
+        const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+        const res = await fetch('/api/social/voice-preview/' + wizardVoiceId + '?text=' + encodeURIComponent(wizardTranscript) + '&language=' + encodeURIComponent(selectedLang), {
+            headers: hdrs()
+        });
+        if (!res.ok) throw new Error('Voice generation failed: ' + res.status);
+        const blob = await res.blob();
+        
+        const playerContainer = document.getElementById('wizard-full-voice-player-container');
+        const player = document.getElementById('wizard-full-voice-player');
+        if (playerContainer && player) {
+            player.src = URL.createObjectURL(blob);
+            playerContainer.style.display = 'block';
+            player.load();
+            player.play();
+            toast('🎙️ Narration voice generated and playing!', 'success');
+        }
+    } catch(e) {
+        toast('Failed to generate full narration: ' + e.message, 'error');
+    } finally {
+        btn.textContent = oldText;
+        btn.disabled = false;
+    }
+}
+
+function toggleWizardVoiceUpgrade() {
+    const panel = document.getElementById('wizard-voice-upgrade-panel');
+    const arrow = document.getElementById('wizard-upgrade-arrow');
+    if (panel) {
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'flex';
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
+        } else {
+            panel.style.display = 'none';
+            if (arrow) arrow.style.transform = 'rotate(0deg)';
+        }
+    }
+}
+
+async function applyWizardVoiceUpgrade(btn) {
+    const newScript = document.getElementById('wizard-upgrade-script-input').value.trim();
+    const newLang = document.getElementById('wizard-reel-language').value;
+    const newVoice = document.getElementById('wizard-reel-voice').value;
+    
+    if (!newScript) {
+        toast('Script cannot be empty', 'error');
         return;
     }
     
-    // Open standard modal to populate defaults
-    openReelGeneratorSettingsModal();
+    wizardTranscript = newScript;
+    wizardLanguage = newLang;
+    wizardVoiceId = newVoice;
     
-    // Customize submit button for extension reel!
-    const submitBtn = document.getElementById('btn-modal-submit-reel');
-    if (submitBtn) {
-        submitBtn.textContent = '🔌 Generate via Extension';
-        submitBtn.setAttribute('onclick', 'createExtensionJob()');
-        submitBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
-        submitBtn.style.borderColor = '#d97706';
+    const previewDiv = document.querySelector('[style*="Narration Script Preview"] ~ div');
+    if (previewDiv) {
+        previewDiv.textContent = wizardTranscript;
     }
+    
+    toast('Voice and script settings saved! Generating new audio...', 'success');
+    
+    const genBtn = document.querySelector('button[onclick="generateWizardFullVoice(this)"]');
+    if (genBtn) {
+        await generateWizardFullVoice(genBtn);
+    }
+    
+    toggleWizardVoiceUpgrade();
+}
+
+let currentEditSceneIdx = null;
+
+function openWizardEditOverlay(idx, type) {
+    currentEditSceneIdx = idx;
+    const scene = wizardScenes[idx];
+    if (!scene) return;
+    
+    let modal = document.getElementById('wizard-edit-scene-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'wizard-edit-scene-modal';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            font-family: 'Inter', sans-serif;
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = `
+        <div style="width: 100%; max-width: 500px; background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 18px; animation: scaleIn 0.25s ease; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="font-size: 15px; font-weight: 900; color: var(--accent);">✏️ Edit Scene ${idx + 1} Prompts</span>
+                <span onclick="closeWizardEditOverlay()" style="cursor: pointer; color: var(--text3); font-size: 18px; font-weight: 700;">✕</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--text3); text-transform: uppercase;">🎙️ Scene Dialogue</label>
+                <textarea id="edit-scene-dialogue" style="width: 100%; height: 60px; font-size: 13px; line-height: 1.5; padding: 10px; border-radius: 8px; background: var(--bg3); border: 1px solid var(--border); color: #fff; resize: none; font-family: inherit;">${scene.dialogue || ''}</textarea>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--text3); text-transform: uppercase;">📸 Visual Image Prompt</label>
+                <textarea id="edit-scene-img-prompt" style="width: 100%; height: 100px; font-size: 13px; line-height: 1.5; padding: 10px; border-radius: 8px; background: var(--bg3); border: 1px solid var(--border); color: #fff; resize: none; font-family: inherit;">${scene.image_prompt || ''}</textarea>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--text3); text-transform: uppercase;">🎥 Camera Movement</label>
+                <input id="edit-scene-anim-prompt" type="text" value="${scene.animation_prompt || 'zoompan'}" style="width: 100%; font-size: 13px; padding: 10px; border-radius: 8px; background: var(--bg3); border: 1px solid var(--border); color: #fff; font-family: inherit;">
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 16px;">
+                <button onclick="closeWizardEditOverlay()" class="btn btn-secondary" style="padding: 10px 20px; font-size: 12.5px; font-weight: 700;">Cancel</button>
+                <button onclick="submitWizardSceneRegen(${idx}, '${type}')" class="btn btn-primary" style="padding: 10px 24px; font-size: 12.5px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; border-radius: 8px; cursor: pointer;">⚡ Re-Generate Scene</button>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+
+function closeWizardEditOverlay() {
+    const modal = document.getElementById('wizard-edit-scene-modal');
+    if (modal) modal.style.display = 'none';
+    currentEditSceneIdx = null;
+}
+
+async function submitWizardSceneRegen(idx, type) {
+    const dialogue = document.getElementById('edit-scene-dialogue').value.trim();
+    const image_prompt = document.getElementById('edit-scene-img-prompt').value.trim();
+    const animation_prompt = document.getElementById('edit-scene-anim-prompt').value.trim();
+    
+    if (!dialogue || !image_prompt) {
+        toast('Dialogue and Image Prompt cannot be empty', 'error');
+        return;
+    }
+    
+    wizardScenes[idx].dialogue = dialogue;
+    wizardScenes[idx].image_prompt = image_prompt;
+    wizardScenes[idx].animation_prompt = animation_prompt;
+    
+    closeWizardEditOverlay();
+    
+    if (!wizardRegeneratingScenes.includes(idx)) {
+        wizardRegeneratingScenes.push(idx);
+    }
+    
+    const total = 12;
+    renderWizardHarvestGrids(total, total, total, 'generating_images');
+    
+    try {
+        toast(`⚡ Kicking off single scene regeneration for Scene ${idx + 1}...`, 'info');
+        const res = await fetch(`/api/extension/job/${wizardJobId}/update-scene`, {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                scene_num: idx + 1,
+                dialogue: dialogue,
+                image_prompt: image_prompt,
+                animation_prompt: animation_prompt
+            })
+        });
+        
+        if (!res.ok) throw new Error('Failed to update scene prompts in backend');
+        
+        window.postMessage({
+            type: "MR_AI_REGEN_SCENE",
+            jobId: wizardJobId,
+            sceneIdx: idx
+        }, "*");
+        
+    } catch(e) {
+        toast('Failed to regenerate: ' + e.message, 'error');
+        wizardRegeneratingScenes = wizardRegeneratingScenes.filter(s => s !== idx);
+        renderWizardHarvestGrids(total, total, total, 'extension_running');
+    }
+}
+
+async function checkRegenStatus(idx, type) {
+    if (!wizardJobId) return;
+    const workFolder = 'ext_work_' + wizardJobId.substring(0, 8);
+    const suffix = type === 'image' ? 'orig_img.jpg' : 'orig_vid.mp4';
+    const url = `/uploads/social/${workFolder}/scene_${idx}_${suffix}`;
+    
+    try {
+        const res = await fetch(url, { method: 'HEAD' });
+        if (res.ok) {
+            wizardRegeneratingScenes = wizardRegeneratingScenes.filter(s => s !== idx);
+            renderWizardHarvestGrids(12, 12, 12, 'generating_videos');
+            toast(`🎉 Scene ${idx + 1} ${type} regenerated successfully!`, 'success');
+        }
+    } catch(e) {}
+}
+
+function handleHarvestImgError(img, idx) {
+    const card = img.closest('.wizard-grid-card-inner');
+    if (card) {
+        card.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; color:var(--text3); background:var(--bg3); border-radius:8px; border:1.5px dashed var(--border);">
+                <span class="loader-spin" style="width:14px; height:14px; border-top-color:var(--accent)"></span>
+                <span>Scene ${idx + 1}</span>
+            </div>
+        `;
+    }
+}
+
+function handleHarvestVidError(vid, idx) {
+    const card = vid.closest('.wizard-grid-card-inner');
+    if (card) {
+        card.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; color:var(--text3); background:var(--bg3); border-radius:8px; border:1.5px dashed var(--border);">
+                <span style="font-size:14px;">⏳</span>
+                <span>Scene ${idx + 1}</span>
+            </div>
+        `;
+    }
+}
+
+function goToWizardStep(stepNum) {
+    // 1. Save active step values first to ensure no state is lost
+    if (wizardActiveStep === 1) {
+        const scriptEl = document.getElementById('wizard-reel-transcript');
+        const langEl = document.getElementById('wizard-reel-language-step1');
+        const voiceEl = document.getElementById('wizard-reel-voice-step1');
+        if (scriptEl) wizardTranscript = scriptEl.value.trim();
+        if (langEl) wizardLanguage = langEl.value;
+        if (voiceEl) wizardVoiceId = voiceEl.value;
+    } else if (wizardActiveStep === 2) {
+        const langEl = document.getElementById('wizard-reel-language');
+        const voiceEl = document.getElementById('wizard-reel-voice');
+        if (langEl) wizardLanguage = langEl.value;
+        if (voiceEl) wizardVoiceId = voiceEl.value;
+    }
+
+    wizardActiveStep = stepNum;
+    
+    // Highlight the Step Indicators in the Left Sidebar
+    for (let i = 1; i <= 5; i++) {
+        const ind = document.getElementById(`wizard-step-indicator-${i}`);
+        if (!ind) continue;
+        
+        const isCompleted = i < stepNum;
+        const isActive = i === stepNum;
+        
+        ind.className = 'wizard-step-item';
+        const numIcon = ind.querySelector('.wizard-step-icon');
+        
+        if (isCompleted) {
+            ind.style.borderColor = 'rgba(52,211,153,0.3)';
+            ind.style.background = 'rgba(52,211,153,0.03)';
+            ind.style.color = 'var(--text2)';
+            if (numIcon) {
+                numIcon.textContent = '✓';
+                numIcon.style.background = '#34d399';
+                numIcon.style.color = '#fff';
+            }
+        } else if (isActive) {
+            ind.style.borderColor = 'var(--accent)';
+            ind.style.background = 'rgba(168,85,247,0.08)';
+            ind.style.color = '#fff';
+            if (numIcon) {
+                numIcon.textContent = i;
+                numIcon.style.background = 'var(--accent)';
+                numIcon.style.color = '#fff';
+            }
+        } else {
+            ind.style.borderColor = 'var(--border)';
+            ind.style.background = 'transparent';
+            ind.style.color = 'var(--text3)';
+            if (numIcon) {
+                numIcon.textContent = i;
+                numIcon.style.background = 'var(--bg3)';
+                numIcon.style.color = 'var(--text3)';
+            }
+        }
+    }
+    
+    // 2. Render dynamic content for this step
+    const container = document.getElementById('wizard-step-content-container');
+    if (!container) return;
+    
+    if (stepNum === 1) {
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:20px; flex:1;">
+              <div style="font-size:18px; font-weight:800; color:var(--text);">📝 Step 1: Craft Dialogue & Script</div>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6; max-width:700px;">Review and refine the narration script for your 1-minute educational reel. The script will be split into exactly 12 scenes. You can let AI auto-generate it from the subtopic notes, or type your own custom transcript below.</p>
+              
+              <div style="flex:1; min-height:220px; display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase;">Dialogue Script Editor</span>
+                  <button class="btn btn-secondary" onclick="generateWizardTranscript()" id="wizard-btn-gen-transcript" style="font-size:11px; padding:6px 14px; border-color:var(--accent); color:var(--accent);">✨ Auto Generate from Notes</button>
+                </div>
+                <textarea id="wizard-reel-transcript" class="form-input" style="flex:1; font-size:13.5px; line-height:1.7; padding:20px; border-radius:12px; resize:none; background:var(--bg2);" placeholder="Script will be auto-generated from subtopic content, or write your own...">${wizardTranscript}</textarea>
+              </div>
+              
+              <!-- Select language and voice directly in Step 1 -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:10px; text-align:left;">
+                  <div>
+                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Select Language</label>
+                      <select id="wizard-reel-language-step1" class="form-input" onchange="handleWizardLangChangeStep1(this.value)" style="margin-bottom:0; font-size:13px;">
+                          <option value="English" ${wizardLanguage === 'English' ? 'selected' : ''}>English</option>
+                          <option value="Hindi" ${wizardLanguage === 'Hindi' ? 'selected' : ''}>Hindi (हिन्दी)</option>
+                          <option value="Spanish" ${wizardLanguage === 'Spanish' ? 'selected' : ''}>Spanish</option>
+                          <option value="Bengali" ${wizardLanguage === 'Bengali' ? 'selected' : ''}>Bengali</option>
+                          <option value="Marathi" ${wizardLanguage === 'Marathi' ? 'selected' : ''}>Marathi</option>
+                      </select>
+                  </div>
+                  <div>
+                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">AI Voice Model</label>
+                      <select id="wizard-reel-voice-step1" class="form-input" style="margin-bottom:0; font-size:13px;">
+                          <optgroup label="Male Voices">
+                              <option value="WeK8ylKjTV2trMlayizC" ${wizardVoiceId === 'WeK8ylKjTV2trMlayizC' ? 'selected' : ''}>Shrikant</option>
+                              <option value="bpkHhw4QrZFYIfahwsHh" ${wizardVoiceId === 'bpkHhw4QrZFYIfahwsHh' ? 'selected' : ''}>Amit</option>
+                              <option value="QCwUVw5fOJzf8t55fhmR" ${wizardVoiceId === 'QCwUVw5fOJzf8t55fhmR' ? 'selected' : ''}>Irfan</option>
+                          </optgroup>
+                          <optgroup label="Female Voices">
+                              <option value="p9aflnsbBe1o0aDeQa97" ${wizardVoiceId === 'p9aflnsbBe1o0aDeQa97' ? 'selected' : ''}>Kanika</option>
+                          </optgroup>
+                          <optgroup label="Kid / Other Voices">
+                              <option value="ibbx9zDYGvLgtYzRbqqG" ${wizardVoiceId === 'ibbx9zDYGvLgtYzRbqqG' ? 'selected' : ''}>Bunty</option>
+                          </optgroup>
+                      </select>
+                  </div>
+              </div>
+              
+              <div style="display:flex; justify-content:flex-end; margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+                <button onclick="goToWizardStep(2)" class="btn btn-primary" style="padding:12px 28px; font-size:13px; font-weight:700; background:var(--accent); border:none; border-radius:10px; color:#fff; cursor:pointer;">Continue to Voice Narration →</button>
+              </div>
+            </div>
+        `;
+        
+        // Auto-populate Step 1 transcript
+        const transcriptEl = document.getElementById('wizard-reel-transcript');
+        if (transcriptEl) {
+            if (wizardTranscript) {
+                transcriptEl.value = wizardTranscript;
+            } else if (currentActiveSubtopicData) {
+                const raw = currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
+                const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
+                wizardTranscript = plain.substring(0, 450);
+                transcriptEl.value = wizardTranscript;
+            }
+        }
+    }
+    
+    else if (stepNum === 2) {
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:20px; flex:1;">
+              <div style="font-size:18px; font-weight:800; color:var(--text);">🎙️ Step 2: Voice Over Narration & Upgrade</div>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6; max-width:700px;">Review your script, generate full audio narrations to test pronunciation, and upgrade voice settings (language/model) as needed.</p>
+              
+              <!-- Voice Over Scripts Preview -->
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:16px 20px; max-height:110px; overflow-y:auto; font-size:13px; line-height:1.6; color:var(--text2); text-align:left; position:relative;">
+                  <span style="position:absolute; right:10px; top:8px; font-size:9.5px; font-weight:800; color:var(--accent2); text-transform:uppercase; background:rgba(168,85,247,0.1); padding:2px 8px; border-radius:4px;">🎙️ Narration Script Preview</span>
+                  <div style="margin-top:10px; white-space:pre-wrap;">${wizardTranscript || 'No script defined. Go back to Step 1.'}</div>
+              </div>
+              
+              <!-- Generated Voice Audio preview box -->
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:24px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:5px;">
+                  <div style="font-size:14px; font-weight:800; color:#fff;">🔊 Generated Voice Audio Preview</div>
+                  <div style="font-size:12px; color:var(--text3); margin-top:-6px; max-width:440px;">Generate high-quality ElevenLabs/gTTS voiceovers to listen, review accents, and verify timing before proceeding to scenes.</div>
+                  
+                  <button class="btn btn-primary" onclick="generateWizardFullVoice(this)" style="font-size:13px; font-weight:800; padding:11px 24px; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; border-radius:10px; cursor:pointer;">🔊 Generate Narration Voice</button>
+                  
+                  <div id="wizard-full-voice-player-container" style="display:none; width:100%; max-width:340px; margin-top:10px; background:var(--bg3); padding:10px; border-radius:30px; border:1px solid var(--border);">
+                      <audio id="wizard-full-voice-player" controls style="width:100%; height:32px;"></audio>
+                  </div>
+              </div>
+              
+              <!-- Upgrade Voice options (initially collapsed) -->
+              <div style="background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:0.3s;">
+                  <div onclick="toggleWizardVoiceUpgrade()" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; cursor:pointer; background:rgba(255,255,255,0.02); transition:0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+                      <span style="font-size:13.5px; font-weight:800; color:var(--accent2); display:flex; align-items:center; gap:8px;">🛠️ Upgrade Voice Settings / Edit Script</span>
+                      <span id="wizard-upgrade-arrow" style="font-size:12px; color:var(--text3); transition:transform 0.3s ease;">▼</span>
+                  </div>
+                  
+                  <div id="wizard-voice-upgrade-panel" style="display:none; flex-direction:column; gap:16px; padding:20px; border-top:1px solid var(--border); text-align:left;">
+                      <div style="display:flex; flex-direction:column; gap:6px;">
+                          <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Upgrade Narration Script</label>
+                          <textarea id="wizard-upgrade-script-input" class="form-input" style="height:100px; font-size:13px; line-height:1.6; resize:none; border-radius:8px; background:var(--bg2);" placeholder="Edit script...">${wizardTranscript}</textarea>
+                      </div>
+                      
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                          <div>
+                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Select Language</label>
+                              <select id="wizard-reel-language" class="form-input" onchange="handleWizardLangChangeStep2(this.value)" style="margin-bottom:0; font-size:13px;">
+                                  <option value="English" ${wizardLanguage === 'English' ? 'selected' : ''}>English</option>
+                                  <option value="Hindi" ${wizardLanguage === 'Hindi' ? 'selected' : ''}>Hindi (हिन्दी)</option>
+                                  <option value="Spanish" ${wizardLanguage === 'Spanish' ? 'selected' : ''}>Spanish</option>
+                                  <option value="Bengali" ${wizardLanguage === 'Bengali' ? 'selected' : ''}>Bengali</option>
+                                  <option value="Marathi" ${wizardLanguage === 'Marathi' ? 'selected' : ''}>Marathi</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">AI Voice Model</label>
+                              <select id="wizard-reel-voice" class="form-input" style="margin-bottom:0; font-size:13px;">
+                                  <optgroup label="Male Voices">
+                                      <option value="WeK8ylKjTV2trMlayizC" ${wizardVoiceId === 'WeK8ylKjTV2trMlayizC' ? 'selected' : ''}>Shrikant</option>
+                                      <option value="bpkHhw4QrZFYIfahwsHh" ${wizardVoiceId === 'bpkHhw4QrZFYIfahwsHh' ? 'selected' : ''}>Amit</option>
+                                      <option value="QCwUVw5fOJzf8t55fhmR" ${wizardVoiceId === 'QCwUVw5fOJzf8t55fhmR' ? 'selected' : ''}>Irfan</option>
+                                  </optgroup>
+                                  <optgroup label="Female Voices">
+                                      <option value="p9aflnsbBe1o0aDeQa97" ${wizardVoiceId === 'p9aflnsbBe1o0aDeQa97' ? 'selected' : ''}>Kanika</option>
+                                  </optgroup>
+                                  <optgroup label="Kid / Other Voices">
+                                      <option value="ibbx9zDYGvLgtYzRbqqG" ${wizardVoiceId === 'ibbx9zDYGvLgtYzRbqqG' ? 'selected' : ''}>Bunty</option>
+                                  </optgroup>
+                              </select>
+                          </div>
+                      </div>
+                      
+                      <button class="btn btn-secondary" onclick="applyWizardVoiceUpgrade(this)" style="align-self:flex-end; font-size:12px; font-weight:800; padding:8px 18px; border-color:var(--accent2); color:var(--accent2); background:transparent; border-radius:8px;">💾 Save and Re-generate</button>
+                  </div>
+              </div>
+              
+              <div style="display:flex; justify-content:space-between; margin-top:auto; border-top:1px solid var(--border); padding-top:20px;">
+                <button onclick="goToWizardStep(1)" class="btn btn-secondary" style="padding:12px 24px; font-size:13px; font-weight:700; font-family:inherit;">← Back to Script</button>
+                <button onclick="goToWizardStep(3)" class="btn btn-primary" style="padding:12px 28px; font-size:13px; font-weight:700; background:var(--accent); border:none; border-radius:10px; color:#fff; cursor:pointer; font-family:inherit;">Generate Scene Prompts →</button>
+              </div>
+            </div>
+        `;
+    }
+    
+    else if (stepNum === 3) {
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:20px; flex:1;">
+              <div style="font-size:18px; font-weight:800; color:var(--text);">🎨 Step 3: AI Generated Visual Scene Prompts</div>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6;">AI has split your dialogue script into exactly 12 scenes. Review the visual image generator prompts and video camera movements designed to match your audio.</p>
+              
+              <div id="wizard-scenes-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; margin-top:10px; max-height:480px; padding-right:10px;">
+                <div style="text-align:center; padding:50px; color:var(--text3); font-size:13px;">
+                    <span class="loader-spin" style="width:28px; height:28px; margin:0 auto 12px; border-top-color:var(--accent)"></span>
+                    Analyzing script and designing 12 AI scenes (10-15s)...
+                </div>
+              </div>
+              
+              <div style="display:flex; justify-content:space-between; margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+                <button onclick="goToWizardStep(2)" class="btn btn-secondary" style="padding:12px 24px; font-size:13px; font-weight:700; font-family:inherit;">← Back to Voice</button>
+                <button onclick="goToWizardStep(4)" class="btn btn-primary" id="wizard-btn-to-step-4" style="padding:12px 28px; font-size:13px; font-weight:700; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; border-radius:10px; color:#fff; cursor:pointer; font-family:inherit;" disabled>🔌 Launch Extension & Start Meta AI →</button>
+              </div>
+            </div>
+        `;
+        
+        // Trigger creation of Extension Job & scenes generation using the updated settings
+        generateWizardScenes(wizardTranscript, wizardLanguage, wizardVoiceId);
+    }
+    
+    else if (stepNum === 4) {
+        container.innerHTML = `
+            <style>
+              .wizard-grid-card {
+                position: relative;
+                overflow: hidden;
+                border-radius: 10px;
+                border: 1.5px solid var(--border);
+                background: var(--bg3);
+                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+                aspect-ratio: 3/4;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+              }
+              .wizard-grid-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+                border-color: var(--accent);
+              }
+              .wizard-grid-card img {
+                transition: transform 0.5s ease;
+              }
+              .wizard-grid-card:hover img {
+                transform: scale(1.08);
+              }
+            </style>
+            <div style="display:flex; flex-direction:column; gap:20px; flex:1;">
+              <div style="font-size:18px; font-weight:800; color:var(--text);">🔌 Step 4: Meta AI Harvesting & Visual Assets Grid</div>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6;">The Chrome Extension is generating visual assets. Generated images/videos are shown below in real-time. Hover over images to zoom, hover over videos to autoplay, and click Edit to re-generate any scene.</p>
+              
+              <div style="display:flex; flex-direction:column; gap:24px; margin-top:10px;">
+                <!-- Overall Status Indicator bar -->
+                <div style="background:var(--bg2); padding:16px 20px; border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span id="wizard-ext-status-label" style="font-size:12px; font-weight:800; color:var(--accent);">Extension Status: Handshake starting...</span>
+                    <span id="wizard-ext-percentage" style="font-size:13px; font-weight:800; color:#fff;">0%</span>
+                  </div>
+                  <div style="width:100%; height:6px; background:var(--border); border-radius:10px; overflow:hidden;">
+                    <div id="wizard-ext-bar" style="height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%; transition:width 0.5s ease;"></div>
+                  </div>
+                </div>
+                
+                <!-- Action controls -->
+                <div id="wizard-step4-controls" style="display:none; justify-content:center; gap:16px;">
+                    <button id="btn-wizard-trigger-videos" onclick="triggerWizardVideos()" style="padding:12px 28px; font-size:13px; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; border-radius:10px; cursor:pointer; font-family:inherit; box-shadow:0 8px 20px rgba(16,185,129,0.2);">🎬 Click to Generate Videos from Images</button>
+                </div>
+ 
+                <!-- Split image / video harvest columns -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+                  <!-- Images column -->
+                  <div>
+                    <div style="font-size:12px; font-weight:800; color:var(--text2); text-transform:uppercase; margin-bottom:12px; display:flex; justify-content:space-between; font-family:inherit;">
+                      <span>📸 1. Meta AI Image Assets</span>
+                      <span id="wizard-imgs-badge" style="color:var(--text3);">0/12</span>
+                    </div>
+                    <div id="wizard-imgs-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+                      <!-- 12 scene thumbnail placeholders -->
+                    </div>
+                  </div>
+                  
+                  <!-- Videos column -->
+                  <div>
+                    <div style="font-size:12px; font-weight:800; color:var(--text2); text-transform:uppercase; margin-bottom:12px; display:flex; justify-content:space-between; font-family:inherit;">
+                      <span>🎬 2. Meta AI Video Clips</span>
+                      <span id="wizard-vids-badge" style="color:var(--text3);">0/12</span>
+                    </div>
+                    <div id="wizard-vids-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+                      <!-- 12 scene video placeholders -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+ 
+              <div style="display:flex; justify-content:space-between; margin-top:auto; border-top:1px solid var(--border); padding-top:20px;">
+                <button onclick="goToWizardStep(3)" class="btn btn-secondary" style="padding:12px 24px; font-size:13px; font-weight:700; font-family:inherit;">← Back to Scene Prompts</button>
+                <button onclick="goToWizardStep(5)" id="wizard-btn-to-step-5" class="btn btn-primary" style="padding:12px 28px; font-size:13px; font-weight:700; background:var(--accent); border:none; border-radius:10px; color:#fff; cursor:pointer; font-family:inherit;" disabled>Assemble Final Video →</button>
+              </div>
+            </div>
+        `;
+        
+        // Build initial placeholder grid
+        renderWizardHarvestGrids(12, 0, 0, 'waiting_extension');
+        
+        // Start Chrome Extension Connection Handshake
+        startExtensionWizardHandshake();
+    }
+
+    
+    else if (stepNum === 5) {
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:20px; flex:1; align-items:center; text-align:center;">
+              <div style="font-size:18px; font-weight:800; color:var(--text); width:100%; text-align:left;">🎬 Step 5: Assemble, Mix and Preview AI Reel</div>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6; width:100%; text-align:left;">Assemble the final reel by overlaying your high-definition scene video clips, custom voiceover narration, and cinematic background music.</p>
+              
+              <div id="wizard-assembly-trigger-section" style="margin:40px 0; display:flex; flex-direction:column; align-items:center; gap:20px; width:100%; max-width:400px;">
+                <button onclick="startWizardAssembly()" id="btn-wizard-assemble" style="width:100%; padding:18px; font-size:16px; font-weight:900; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 30px rgba(168,85,247,0.3); transition:0.3s; font-family:inherit;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">🚀 Assemble Final Reel</button>
+              </div>
+
+              <!-- Assembly Progress Monitor -->
+              <div id="wizard-assembly-progress" style="display:none; width:100%; max-width:480px; background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:24px 30px; margin-top:20px; box-shadow:0 15px 40px rgba(0,0,0,0.5);">
+                <div style="font-size:32px; margin-bottom:12px;">⚙️</div>
+                <div id="wizard-assembly-pct-label" style="font-size:15px; font-weight:900; color:var(--accent); margin-bottom:8px;">Assembling - 0% completed</div>
+                <div style="width:100%; height:6px; background:var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px;">
+                  <div id="wizard-assembly-bar" style="height:100%; background:linear-gradient(90deg,var(--accent),#f59e0b); width:0%; transition:width 0.5s ease;"></div>
+                </div>
+                <div id="wizard-assembly-status-msg" style="font-size:11px; color:var(--text2); line-height:1.5; font-weight:500;">Initializing audio mixing and subtitles assembly (1-2 mins)...</div>
+              </div>
+
+              <!-- Final Preview (vertical player + edit triggers) -->
+              <div id="wizard-final-preview" style="display:none; flex-direction:column; align-items:center; gap:24px; margin-top:10px; width:100%;">
+                <div style="width:100%; max-width:240px; aspect-ratio:9/16; background:#000; border-radius:20px; border:3px solid var(--border); overflow:hidden; position:relative; box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+                  <video id="wizard-final-video" style="width:100%; height:100%; object-fit:cover;" controls playsinline></video>
+                </div>
+                
+                <div style="display:flex; gap:12px; width:100%; max-width:440px; font-family:inherit;">
+                  <button onclick="downloadWizardVideo()" class="btn btn-secondary" style="flex:1; padding:12px; font-size:13px; font-weight:700;">⬇️ Download Video</button>
+                  <button id="wizard-btn-edit-pro" onclick="openWizardStudio()" class="btn btn-primary" style="flex:1.2; padding:12px; font-size:13px; font-weight:800; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; border-radius:10px; cursor:pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">✏️ Edit in Pro Studio</button>
+                </div>
+              </div>
+            </div>
+        `;
+    }
+}
+
+async function generateWizardTranscript() {
+    if (!currentActiveSubtopicData) return;
+    const btn = document.getElementById('wizard-btn-gen-transcript');
+    const transcriptEl = document.getElementById('wizard-reel-transcript');
+    
+    const langSelect = document.getElementById('wizard-reel-language-step1');
+    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+    
+    btn.disabled = true; btn.textContent = '⏳ Generating...';
+    try {
+        const res = await fetch('/api/classroom/subtopics/' + currentActiveSubtopicId + '/generate-transcript', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ language: selectedLang })
+        });
+        const data = await res.json();
+        if (data.transcript) {
+            transcriptEl.value = data.transcript;
+        } else {
+            throw new Error('No transcript returned');
+        }
+    } catch(e) {
+        toast('Transcript auto-generated from subtopic info', 'info');
+    }
+    btn.disabled = false; btn.textContent = '✨ Auto Generate from Notes';
+}
+
+async function previewWizardVoice(btn) {
+    const voiceId = document.getElementById('wizard-reel-voice').value;
+    if (!voiceId) return;
+    const old = btn.textContent;
+    btn.textContent = '...'; btn.disabled = true;
+    const transcriptEl = document.getElementById('wizard-reel-transcript');
+    const previewText = transcriptEl && transcriptEl.value.trim()
+        ? transcriptEl.value.trim().substring(0, 200)
+        : (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'Hello, this is a voice preview.');
+        
+    const langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
+    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+    
+    fetch(`/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(previewText)}&language=${encodeURIComponent(selectedLang)}`, { headers: hdrs() })
+        .then(res => { if (!res.ok) throw new Error('Preview failed: ' + res.status); return res.blob(); })
+        .then(blob => { new Audio(URL.createObjectURL(blob)).play(); toast('Playing voice preview', 'info'); btn.textContent = old; btn.disabled = false; })
+        .catch(e => { toast('Voice preview error: ' + e.message, 'error'); btn.textContent = old; btn.disabled = false; });
+}
+
+async function handleWizardLangChangeStep1(newLang) {
+    wizardLanguage = newLang;
+    toast(`Language changed to ${newLang}. Auto-generating script...`, 'info');
+    await generateWizardTranscript();
+}
+
+async function handleWizardLangChangeStep2(newLang) {
+    wizardLanguage = newLang;
+    toast(`Language upgraded to ${newLang}. Re-generating voiceover script...`, 'info');
+    
+    if (!currentActiveSubtopicData) return;
+    const upgradeScriptInput = document.getElementById('wizard-upgrade-script-input');
+    const genBtn = document.querySelector('button[onclick="generateWizardFullVoice(this)"]');
+    if (genBtn) {
+        genBtn.disabled = true;
+        genBtn.textContent = '⏳ Regenerating...';
+    }
+    
+    try {
+        const res = await fetch('/api/classroom/subtopics/' + currentActiveSubtopicId + '/generate-transcript', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ language: newLang })
+        });
+        const data = await res.json();
+        if (data.transcript) {
+            wizardTranscript = data.transcript;
+            if (upgradeScriptInput) upgradeScriptInput.value = data.transcript;
+            
+            // Also update any inline previews
+            const previewDiv = document.querySelector('[style*="Narration Script Preview"] ~ div');
+            if (previewDiv) previewDiv.textContent = data.transcript;
+            toast(`Script successfully updated in ${newLang}!`, 'success');
+        }
+    } catch(e) {
+        toast('Failed to regenerate script: ' + e.message, 'error');
+    } finally {
+        if (genBtn) {
+            genBtn.disabled = false;
+            genBtn.textContent = '🔊 Generate Narration Voice';
+        }
+    }
+}
+
+async function generateWizardScenes(transcriptText, lang, voiceId) {
+    try {
+        const res = await fetch('/api/extension/create-job', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                subtopic_id: currentActiveSubtopicId,
+                language: lang,
+                voice_id: voiceId,
+                transcript: transcriptText
+            })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || 'Failed');
+        
+        wizardJobId = data.job_id;
+        // Persist so page refresh doesn't lose state
+        try { localStorage.setItem('wizardJobId', wizardJobId); } catch(e) {}
+        wizardScenes = data.scenes || [];
+        
+        // Render scene prompt list
+        const container = document.getElementById('wizard-scenes-list');
+        if (container) {
+            container.innerHTML = wizardScenes.map((s, idx) => `
+                <div style="background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:16px 20px; display:flex; flex-direction:column; gap:8px; animation:scaleIn 0.3s ease; text-align:left;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:12px; font-weight:800; color:var(--accent);">🎬 Scene ${s.scene_num || (idx + 1)} / 12</span>
+                        <span style="font-size:10px; color:var(--text3); font-weight:700;">5 SECONDS</span>
+                    </div>
+                    <div style="font-size:13px; color:var(--text); line-height:1.5;"><strong style="color:var(--text2); font-size:12px;">🎙️ Dialogue:</strong> ${s.dialogue || ''}</div>
+                    <div style="font-size:12px; color:var(--text2); line-height:1.5; background:var(--bg2); padding:10px 14px; border-radius:8px; border-left:3px solid var(--accent2);"><strong style="color:var(--text3); font-size:10.5px; display:block; margin-bottom:2px; text-transform:uppercase;">📸 Visual Image Prompt:</strong> ${s.image_prompt || ''}</div>
+                    <div style="font-size:12.5px; color:var(--text2);"><strong style="color:var(--text3); font-size:11px;">🎥 Camera Animation:</strong> ${s.animation_prompt || 'zoompan'}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Enable Next Button
+        document.getElementById('wizard-btn-to-step-4').disabled = false;
+        toast('12 scene Prompts designed successfully!', 'success');
+        
+    } catch(e) {
+        toast('Scene generation error: ' + e.message, 'error');
+        const container = document.getElementById('wizard-scenes-list');
+        if (container) {
+            container.innerHTML = `<div style="color:var(--red); font-size:12px; padding:20px;">❌ Failed to generate scenes: ${e.message}</div>`;
+        }
+    }
+}
+
+function startExtensionWizardHandshake() {
+    if (!wizardJobId) return;
+    
+    // Post message to wake up and connect the Chrome Extension
+    window.postMessage({
+        type: "MR_AI_START_JOB",
+        jobId: wizardJobId,
+        token: session.token,
+        backendUrl: window.location.origin
+    }, "*");
+    
+    // Start active polling
+    pollWizardJob(wizardJobId);
+}
+
+function pollWizardJob(jobId) {
+    if (wizardPollingInterval) clearInterval(wizardPollingInterval);
+    
+    const check = async () => {
+        if (wizardRegeneratingScenes.length > 0) {
+            wizardRegeneratingScenes.forEach(idx => {
+                checkRegenStatus(idx, 'image');
+                checkRegenStatus(idx, 'video');
+            });
+        }
+        
+        try {
+            const res = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
+            const data = await res.json();
+            
+            const pBar = document.getElementById('wizard-ext-bar');
+            const pStatus = document.getElementById('wizard-ext-status-label');
+            const pPct = document.getElementById('wizard-ext-percentage');
+            
+            if (data.status === 'extension_running' || data.status === 'generating_images' || data.status === 'waiting_extension') {
+                const total = data.total_scenes || 12;
+                const done = data.images_done || 0;
+                const pct = 5 + Math.floor((done / total) * 45); // 5% to 50%
+                
+                if (pBar) pBar.style.width = pct + '%';
+                if (pPct) pPct.textContent = pct + '%';
+                if (pStatus) pStatus.textContent = `Extension status: Harvesting Scene Images (${done}/${total} done)...`;
+                
+                renderWizardHarvestGrids(total, data.images_indices || [], data.videos_indices || [], data.status);
+                
+                // Show standard launch instructions if extension hasn't picked up the job yet
+                if (data.status === 'waiting_extension') {
+                    if (pStatus) pStatus.textContent = 'Waiting for Chrome Extension connection... (Make sure your extension is active)';
+                }
+                
+                // If all images are completed, show the trigger video generation button
+                if (done >= total) {
+                    const ctrl = document.getElementById('wizard-step4-controls');
+                    if (ctrl) ctrl.style.display = 'flex';
+                }
+            }
+            
+            else if (data.status === 'generating_videos') {
+                const total = data.total_scenes || 12;
+                const done = data.videos_done || 0;
+                const pct = 50 + Math.floor((done / total) * 45); // 50% to 95%
+                
+                if (pBar) pBar.style.width = pct + '%';
+                if (pPct) pPct.textContent = pct + '%';
+                if (pStatus) pStatus.textContent = `Extension status: Harvesting Scene Video Clips (${done}/${total} done)...`;
+                
+                // Hide video triggers once video harvesting starts
+                const ctrl = document.getElementById('wizard-step4-controls');
+                if (ctrl) ctrl.style.display = 'none';
+                
+                renderWizardHarvestGrids(total, data.images_indices || [], data.videos_indices || [], data.status);
+                
+                // If all videos are complete, enable step 5 transition button
+                if (done >= total) {
+                    const btn = document.getElementById('wizard-btn-to-step-5');
+                    if (btn) btn.disabled = false;
+                    if (pBar) pBar.style.width = '98%';
+                    if (pPct) pPct.textContent = '98%';
+                    if (pStatus) pStatus.textContent = 'Meta AI Video harvesting successfully complete!';
+                }
+            }
+            
+            else if (data.status === 'assembling' || data.status === 'done') {
+                // Extension finished harvesting! Transition can occur directly
+                const btn = document.getElementById('wizard-btn-to-step-5');
+                if (btn) btn.disabled = false;
+                if (pBar) pBar.style.width = '100%';
+                if (pPct) pPct.textContent = '100%';
+                if (pStatus) pStatus.textContent = 'Meta AI assets harvest complete! Ready to assemble final video.';
+                
+                const allIdx = Array.from({length: total}, (_, i) => i);
+                renderWizardHarvestGrids(total, data.images_indices || allIdx, data.videos_indices || allIdx, data.status);
+                
+                if (data.status === 'done') {
+                    // Auto go to step 5 if already assembled in backend
+                    clearInterval(wizardPollingInterval);
+                    wizardPollingInterval = null;
+                }
+            }
+            
+        } catch(e) {
+            console.error("Wizard polling error: ", e);
+        }
+    };
+    
+    // Poll every 2.5 seconds
+    wizardPollingInterval = setInterval(check, 2500);
+}
+
+function renderWizardHarvestGrids(total, imagesIndices, videosIndices, currentStatus) {
+    // imagesIndices and videosIndices can be numbers (legacy) or arrays of scene indices
+    const imgDoneSet = Array.isArray(imagesIndices) ? new Set(imagesIndices) : new Set(Array.from({length: imagesIndices}, (_, i) => i));
+    const vidDoneSet = Array.isArray(videosIndices) ? new Set(videosIndices) : new Set(Array.from({length: videosIndices}, (_, i) => i));
+    const imagesDoneCount = imgDoneSet.size;
+    const videosDoneCount = vidDoneSet.size;
+    const imgGrid = document.getElementById('wizard-imgs-grid');
+    const vidGrid = document.getElementById('wizard-vids-grid');
+    if (!imgGrid || !vidGrid) return;
+    
+    const workFolder = wizardJobId ? 'ext_work_' + wizardJobId.substring(0, 8) : '';
+    
+    // Renders 12 boxes for images
+    let imgHtml = '';
+    for (let i = 0; i < total; i++) {
+        const isRegen = wizardRegeneratingScenes.includes(i);
+        const isDone = imgDoneSet.has(i);
+        const isActive = !isDone && currentStatus !== 'generating_videos' && currentStatus !== 'assembling' && currentStatus !== 'done';
+        
+        if (isRegen) {
+            imgHtml += `
+                <div class="wizard-grid-card" style="aspect-ratio:3/4; border:1.5px dashed var(--accent); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-size:11px; font-weight:700; color:var(--accent); background:rgba(168,85,247,0.05); transition:0.3s; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+                    <span class="loader-spin" style="width:20px; height:20px; border-top-color:var(--accent)"></span>
+                    <span>Regenerating...</span>
+                    <span style="font-size:9.5px; opacity:0.8;">Scene ${i + 1}</span>
+                </div>
+            `;
+        } else if (isDone && workFolder) {
+            imgHtml += `
+                <div class="wizard-grid-card" style="aspect-ratio:3/4; border:1.5px solid #34d399; border-radius:8px; overflow:hidden; position:relative; transition:0.3s; box-shadow:0 4px 12px rgba(52,211,153,0.15); background:#000;">
+                    <div class="wizard-grid-card-inner" style="width:100%; height:100%; position:relative;">
+                        <img class="wizard-hover-zoom" src="/uploads/social/${workFolder}/scene_${i}_orig_img.jpg?t=${Date.now()}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.5s ease;" onerror="handleHarvestImgError(this, ${i})">
+                        <div class="wizard-card-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:0.3s;">
+                            <button onclick="openWizardEditOverlay(${i}, 'image')" class="btn btn-primary" style="padding:6px 12px; font-size:10px; font-weight:800; border-radius:6px; border:none; background:var(--accent); color:#fff; cursor:pointer;">✏️ Edit</button>
+                        </div>
+                        <div style="position:absolute; bottom:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800; border:1px solid rgba(255,255,255,0.1);">Scene ${i+1}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            let bgStyle = 'background:var(--bg3); border-color:var(--border); color:var(--text3);';
+            let statusSymbol = '○';
+            if (isActive) {
+                bgStyle = 'background:rgba(168,85,247,0.06); border-color:var(--accent); color:var(--accent);';
+                statusSymbol = '▶';
+            }
+            imgHtml += `
+                <div style="aspect-ratio:3/4; border:1.5px solid var(--border); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; ${bgStyle} transition:0.3s;">
+                    <span style="font-size:18px;">⏳</span>
+                    <span>Scene ${i + 1}</span>
+                    <span style="font-size:10px; font-weight:900;">${statusSymbol}</span>
+                </div>
+            `;
+        }
+    }
+    imgGrid.innerHTML = imgHtml;
+    
+    // Renders 12 boxes for videos
+    let vidHtml = '';
+    for (let i = 0; i < total; i++) {
+        const isRegen = wizardRegeneratingScenes.includes(i);
+        const isDone = vidDoneSet.has(i);
+        const isActive = !isDone && currentStatus === 'generating_videos';
+        
+        if (isRegen) {
+            vidHtml += `
+                <div class="wizard-grid-card" style="aspect-ratio:3/4; border:1.5px dashed var(--accent); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-size:11px; font-weight:700; color:var(--accent); background:rgba(168,85,247,0.05); transition:0.3s; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+                    <span class="loader-spin" style="width:20px; height:20px; border-top-color:var(--accent)"></span>
+                    <span>Regenerating...</span>
+                    <span style="font-size:9.5px; opacity:0.8;">Scene ${i + 1}</span>
+                </div>
+            `;
+        } else if (isDone && workFolder) {
+            vidHtml += `
+                <div class="wizard-grid-card" style="aspect-ratio:3/4; border:1.5px solid #ec4899; border-radius:8px; overflow:hidden; position:relative; transition:0.3s; box-shadow:0 4px 12px rgba(236,72,153,0.15); background:#000;" onmouseenter="const v=this.querySelector('video'); if(v){v.muted=true; v.play().catch(e=>console.log(e));}" onmouseleave="const v=this.querySelector('video'); if(v){v.pause(); v.currentTime=0;}">
+                    <div class="wizard-grid-card-inner" style="width:100%; height:100%; position:relative;">
+                        <video src="/uploads/social/${workFolder}/scene_${i}_orig_vid.mp4?t=${Date.now()}" style="width:100%; height:100%; object-fit:cover;" loop muted playsinline onerror="handleHarvestVidError(this, ${i})"></video>
+                        <div class="wizard-card-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:0.3s;">
+                            <button onclick="openWizardEditOverlay(${i}, 'video')" class="btn btn-primary" style="padding:6px 12px; font-size:10px; font-weight:800; border-radius:6px; border:none; background:var(--accent); color:#fff; cursor:pointer;">✏️ Edit</button>
+                        </div>
+                        <div style="position:absolute; bottom:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800; border:1px solid rgba(255,255,255,0.1);">Scene ${i+1}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            let bgStyle = 'background:var(--bg3); border-color:var(--border); color:var(--text3);';
+            let statusSymbol = '○';
+            if (isActive) {
+                bgStyle = 'background:rgba(168,85,247,0.06); border-color:var(--accent); color:var(--accent);';
+                statusSymbol = '▶';
+            }
+            vidHtml += `
+                <div style="aspect-ratio:3/4; border:1.5px solid var(--border); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; ${bgStyle} transition:0.3s;">
+                    <span style="font-size:18px;">⏳</span>
+                    <span>Scene ${i + 1}</span>
+                    <span style="font-size:10px; font-weight:900;">${statusSymbol}</span>
+                </div>
+            `;
+        }
+    }
+    vidGrid.innerHTML = vidHtml;
+    
+    // Badge numbers
+    document.getElementById('wizard-imgs-badge').textContent = `${imagesDoneCount}/${total}`;
+    document.getElementById('wizard-vids-badge').textContent = `${videosDoneCount}/${total}`;
+}
+
+async function triggerWizardVideos() {
+    if (!wizardJobId) return;
+    try {
+        const res = await fetch(`/api/extension/job/${wizardJobId}/start-videos`, { method: 'POST', headers: hdrs() });
+        if (res.ok) {
+            toast('Kicked off Meta AI Video generation phase!', 'success');
+            // Force state reload
+            const ctrl = document.getElementById('wizard-step4-controls');
+            if (ctrl) ctrl.style.display = 'none';
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function startWizardAssembly() {
+    if (!wizardJobId) return;
+    
+    // Stop extension polling interval if active
+    if (wizardPollingInterval) clearInterval(wizardPollingInterval);
+    
+    // Show assembly progress bar
+    document.getElementById('wizard-assembly-trigger-section').style.display = 'none';
+    document.getElementById('wizard-assembly-progress').style.display = 'block';
+    
+    // Trigger assembly endpoint
+    try {
+        fetch(`/api/extension/job/${wizardJobId}/assemble`, {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ videos: [], images: [] })
+        }).catch(err => console.error("Assemble triggered: ", err));
+        
+        // Start polling assembly progress
+        pollAssemblyProgress(wizardJobId);
+        
+    } catch(e) {
+        toast('Assembly trigger failed: ' + e.message, 'error');
+        document.getElementById('wizard-assembly-trigger-section').style.display = 'flex';
+        document.getElementById('wizard-assembly-progress').style.display = 'none';
+    }
+}
+
+function pollAssemblyProgress(jobId) {
+    const check = async () => {
+        try {
+            const res = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
+            const data = await res.json();
+            
+            const bar = document.getElementById('wizard-assembly-bar');
+            const pctLabel = document.getElementById('wizard-assembly-pct-label');
+            const msgEl = document.getElementById('wizard-assembly-status-msg');
+            
+            if (data.status === 'assembling') {
+                const rawPct = data.progress_pct || 75;
+                const pct = Math.floor(rawPct);
+                const msg = data.progress_msg || 'Assembling final reel with premium audio layers...';
+                
+                if (bar) bar.style.width = pct + '%';
+                if (pctLabel) pctLabel.textContent = `Assembling — ${pct}% completed`;
+                if (msgEl) msgEl.textContent = msg;
+            }
+            
+            else if (data.status === 'done') {
+                clearInterval(wizardPollingInterval);
+                wizardPollingInterval = null;
+                
+                toast('🎉 Reel Assembled Successfully!', 'success');
+                
+                // Show the final preview video player
+                document.getElementById('wizard-assembly-progress').style.display = 'none';
+                const previewEl = document.getElementById('wizard-final-preview');
+                const videoEl = document.getElementById('wizard-final-video');
+                
+                if (previewEl && videoEl) {
+                    videoEl.src = data.video_url;
+                    previewEl.style.display = 'flex';
+                }
+                
+                // Refresh list of reels in classroom subtopics
+                showSubtopicReels();
+            }
+            
+            else if (data.status === 'error') {
+                clearInterval(wizardPollingInterval);
+                wizardPollingInterval = null;
+                toast('❌ Assembly failed. Check backend logs.', 'error');
+                document.getElementById('wizard-assembly-trigger-section').style.display = 'flex';
+                document.getElementById('wizard-assembly-progress').style.display = 'none';
+            }
+            
+        } catch(e) {
+            console.error("Assembly polling error: ", e);
+        }
+    };
+    
+    wizardPollingInterval = setInterval(check, 2000);
+}
+
+function downloadWizardVideo() {
+    const v = document.getElementById('wizard-final-video');
+    if (!v || !v.src) return;
+    const a = document.createElement('a');
+    a.href = v.src;
+    a.download = `assembled_reel_${wizardJobId}.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+async function openWizardStudio() {
+    if (!wizardJobId) return;
+    
+    // Stop all polling
+    if (wizardPollingInterval) clearInterval(wizardPollingInterval);
+    
+    // Close reels wizard fullscreen overlay
+    closeReelsWizard();
+    
+    // Load studio editor
+    openReelEditor(wizardJobId);
 }
 
 function toggleSubtopicReelsPanel() {
@@ -11564,7 +13542,7 @@ async function generateSubtopicDescription() {
             toast("Description generated successfully!", "success");
             
             // Update UI description immediately
-            document.getElementById('active-subtopic-description').textContent = data.description;
+            renderMarkdownToHTML('active-subtopic-description', data.description, 'No description provided.');
             
             // Sync tree data
             if (currentActiveSubtopicData) {
@@ -11607,8 +13585,7 @@ async function generateSubtopicNotes() {
         const data = await resp.json();
         if (resp.ok && data.success) {
             toast("Study Notes generated!", "success");
-            const notesEl = document.getElementById('active-subtopic-notes');
-            notesEl.innerHTML = data.notes.replace(/\n/g, '<br>');
+            renderMarkdownToHTML('active-subtopic-notes', data.notes, 'No notes generated yet.');
             document.getElementById('active-subtopic-notes-container').style.display = 'block';
             if (currentActiveSubtopicData) currentActiveSubtopicData.notes = data.notes;
             if (currentActiveExamId) refreshExamTree();
@@ -11791,16 +13768,775 @@ function submitQuiz() { submitQuizAnswers(); }
 const style = document.createElement('style');
 style.innerHTML = `
 @keyframes scaleIn {
-    0% { transform: scale(0.8); opacity: 0; }
+    0% { transform: scale(0.85); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
 .quiz-option:hover { border-color: var(--accent2) !important; }
+
+/* Reels Wizard Custom Styling */
+.wizard-step-item {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+.wizard-step-item:hover {
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    background: rgba(168, 85, 247, 0.04) !important;
+}
+.wizard-step-item.active {
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.15);
+}
+@keyframes loader-spin {
+    to { transform: rotate(360deg); }
+}
+.loader-spin {
+    display: inline-block;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: loader-spin 0.8s linear infinite;
+}
+
+/* Reels Wizard Visual Interactions */
+.wizard-grid-card:hover .wizard-card-overlay {
+    opacity: 1 !important;
+}
+.wizard-grid-card:hover img.wizard-hover-zoom {
+    transform: scale(1.08) !important;
+}
+.wizard-grid-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+.wizard-grid-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 25px rgba(0,0,0,0.5) !important;
+}
+
 `;
 document.head.appendChild(style);
+
+// Listen to messages from content script for extension context invalidated
+window.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "MR_AI_EXTENSION_INVALIDATED") {
+        toast("🔌 Extension was reloaded or updated. Please refresh this page to reconnect!", "warning");
+    }
+    // ── Single asset generation completed by extension ──────────────────────────
+    if (event.data && event.data.type === "MR_AI_SINGLE_ASSET_DOWNLOADED") {
+        const { assetId, url, thumb, mediaType } = event.data;
+        // Find and update the asset in _stUploadedAssets
+        const idx = _stUploadedAssets.findIndex(a => (a.id || `asset-${_stUploadedAssets.indexOf(a)}`) === assetId);
+        if (idx !== -1) {
+            _stUploadedAssets[idx].url = url || thumb;
+            _stUploadedAssets[idx].thumb = thumb || url;
+            toast('✅ Library asset regenerated and replaced!', 'success');
+            
+            // Force re-render of library tab!
+            _stActiveTab = null;
+            switchStudioTab('library');
+            
+            // Post confirmation that the asset was successfully replaced!
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+        }
+        closeLibraryEditModal();
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// LIBRARY EDIT & GENERATE
+// ═══════════════════════════════════════════════════════════════════
+let _libEditAssetIdx = null;
+
+function openLibraryEditModal(index, event) {
+    event && event.stopPropagation();
+    const asset = _stUploadedAssets[index];
+    if (!asset) return;
+    _libEditAssetIdx = index;
+    const assetId = asset.id || `asset-${index}`;
+    
+    const modal = document.getElementById('st-lib-edit-overlay');
+    if (!modal) return;
+    
+    // Populate preview
+    const prevEl = modal.querySelector('#lib-edit-preview');
+    if (prevEl) {
+        if (asset.type === 'video') {
+            prevEl.outerHTML = `<video id="lib-edit-preview" class="st-lib-edit-preview" src="${asset.url}" muted loop autoplay playsinline></video>`;
+        } else {
+            prevEl.outerHTML = `<img id="lib-edit-preview" class="st-lib-edit-preview" src="${asset.url}">`;
+        }
+    }
+    
+    // Populate prompt with existing prompt or name
+    const promptEl = modal.querySelector('#lib-edit-prompt');
+    if (promptEl) promptEl.value = asset.prompt || asset.name || '';
+    
+    // Re-enable generate button and reset its label
+    const btn = document.getElementById('btn-lib-edit-generate');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>✨ Generate &amp; Replace</span>';
+    }
+    
+    modal.querySelector('#lib-edit-status').textContent = '';
+    modal.style.display = 'flex';
+}
+
+function closeLibraryEditModal() {
+    const modal = document.getElementById('st-lib-edit-overlay');
+    if (modal) modal.style.display = 'none';
+    _libEditAssetIdx = null;
+    
+    // Re-enable button on close
+    const btn = document.getElementById('btn-lib-edit-generate');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>✨ Generate &amp; Replace</span>';
+    }
+}
+
+async function generateLibraryAsset() {
+    if (_libEditAssetIdx === null) return;
+    const asset = _stUploadedAssets[_libEditAssetIdx];
+    if (!asset) return;
+    const assetId = asset.id || `asset-${_libEditAssetIdx}`;
+    const prompt = document.getElementById('lib-edit-prompt').value.trim();
+    if (!prompt) return toast('Please enter a prompt first!', 'warning');
+    
+    // Combine scene script details with user prompt if a scene is active!
+    let finalPrompt = prompt;
+    if (_stActiveIdx !== -1 && _stScenes && _stScenes[_stActiveIdx]) {
+        const scene = _stScenes[_stActiveIdx];
+        const sceneText = scene.script || scene.dialogue || scene.subtitle || '';
+        if (sceneText) {
+            finalPrompt = `${prompt} (Scene context: "${sceneText.trim()}")`;
+        }
+    }
+    
+    const statusEl = document.getElementById('lib-edit-status');
+    statusEl.textContent = '⏳ Generating via Meta AI...';
+    document.getElementById('btn-lib-edit-generate').disabled = true;
+    
+    // Send message to extension via page window
+    window.postMessage({
+        type: 'MR_AI_GENERATE_SINGLE_ASSET',
+        assetId: assetId,
+        prompt: finalPrompt,
+        mediaType: asset.type || 'image',
+        token: window._currentToken || '',
+        backendUrl: window.location.origin
+    }, '*');
+    
+    statusEl.textContent = '⏳ Meta AI is generating... Extension will close it automatically once replaced successfully.';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CUSTOM VOICEOVER AUDIO PANEL (Timeline Audio Track Click)
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// CUSTOM VOICEOVER AUDIO PANEL (Timeline Audio Track Click)
+// ═══════════════════════════════════════════════════════════════════
+if (typeof window._stGeneratedAudios === 'undefined') {
+    window._stGeneratedAudios = [];
+}
+
+function showCustomAudioPanelDirect() {
+    // Open properties tab first
+    switchStudioRightTab('properties', document.getElementById('st-right-tab-properties'));
+    
+    const propertiesPanel = document.getElementById('st-right-panel-properties');
+    if (!propertiesPanel) return;
+    
+    document.getElementById('st-active-scene-label').textContent = `Voiceover Studio`;
+    showCustomAudioPanel(null, null);
+}
+
+function showCustomAudioPanel(audioItem, idx) {
+    const propertiesPanel = document.getElementById('st-right-panel-properties');
+    if (!propertiesPanel) return;
+    
+    // Remove any existing custom audio panel
+    const existing = document.getElementById('st-custom-audio-panel');
+    if (existing) existing.remove();
+    
+    const panelHtml = `
+    <div class="st-custom-audio-panel" id="st-custom-audio-panel" style="margin-top:12px; border-top:1px dashed rgba(167,139,250,0.3); padding-top:12px;">
+      <div style="font-size:13px; font-weight:800; color:#c084fc; display:flex; align-items:center; gap:6px;">🎙️ Custom Voiceover Generator</div>
+      <div style="margin-top:8px;">
+        <label style="font-size:10px; color:#888;">Your Script</label>
+        <textarea id="cap-script" class="st-input" style="height:60px; font-size:11px; padding:6px; width:100%; margin-top:4px;" placeholder="Paste your script or narration text here..."></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+        <div>
+          <label style="font-size:10px; color:#888;">Language</label>
+          <select id="cap-lang" class="st-input" style="font-size:11px; padding:4px; width:100%; margin-top:4px;">
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Spanish">Spanish</option>
+            <option value="French">French</option>
+            <option value="Bengali">Bengali</option>
+            <option value="Marathi">Marathi</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px; color:#888;">Voice</label>
+          <select id="cap-voice" class="st-input" style="font-size:11px; padding:4px; width:100%; margin-top:4px;">
+            <option value="1zUSi8LeHs9M2mV8X6YS">Priyanka (F)</option>
+            <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (M)</option>
+            <option value="WeK8ylKjTV2trMlayizC">Shrikant (M)</option>
+            <option value="bpkHhw4QrZFYIfahwsHh">Amit (M)</option>
+            <option value="adam">Adam (EN)</option>
+            <option value="rachel">Rachel (EN)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-cap-generate" onclick="generateCustomAudioClip()" style="width:100%; font-size:11px; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:6px;">
+        <i data-lucide="mic" style="width:14px; height:14px;"></i> Generate Audio
+      </button>
+      <div id="cap-status" style="font-size:10px; color:#a78bfa; min-height:14px; margin-top:6px;"></div>
+      
+      <div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
+        <div style="font-size:11px; font-weight:700; color:#c084fc; margin-bottom:6px;">📜 Generated Audio List</div>
+        <div id="cap-voices-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
+          <!-- Dynamically filled list -->
+        </div>
+      </div>
+    </div>`;
+    
+    propertiesPanel.querySelector('.st-scroll-area').insertAdjacentHTML('beforeend', panelHtml);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Render the initial list of generated voices
+    renderCapVoicesList();
+}
+
+async function generateCustomAudioClip() {
+    const script = document.getElementById('cap-script').value.trim();
+    if (!script) return toast('Please enter your script!', 'warning');
+    const lang = document.getElementById('cap-lang').value;
+    const voiceSelect = document.getElementById('cap-voice');
+    const voice = voiceSelect.value;
+    const voiceName = voiceSelect.options[voiceSelect.selectedIndex].text;
+    
+    document.getElementById('btn-cap-generate').disabled = true;
+    document.getElementById('cap-status').textContent = '⏳ Generating voice...';
+    
+    try {
+        const res = await fetch('/api/social/generate-voice-file', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ text: script, voice_id: voice, language: lang })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.audio_url) throw new Error(data.detail || 'Failed to generate audio');
+        
+        const audioUrl = data.audio_url;
+        const duration = data.duration || 0;
+        
+        if (typeof window._stGeneratedAudios === 'undefined') {
+            window._stGeneratedAudios = [];
+        }
+        window._stGeneratedAudios.push({
+            url: audioUrl,
+            duration: duration,
+            script: script,
+            voiceName: voiceName
+        });
+        
+        document.getElementById('cap-status').textContent = `✅ Generated! Duration: ${duration.toFixed(1)}s`;
+        renderCapVoicesList();
+    } catch(e) {
+        document.getElementById('cap-status').textContent = '❌ ' + e.message;
+    } finally {
+        document.getElementById('btn-cap-generate').disabled = false;
+    }
+}
+
+function renderCapVoicesList() {
+    const listEl = document.getElementById('cap-voices-list');
+    if (!listEl) return;
+    
+    if (typeof window._stGeneratedAudios === 'undefined') {
+        window._stGeneratedAudios = [];
+    }
+    
+    if (window._stGeneratedAudios.length === 0) {
+        listEl.innerHTML = `<div style="font-size:10px; color:#666; text-align:center; padding:10px 0;">No audio generated yet.</div>`;
+        return;
+    }
+    
+    listEl.innerHTML = window._stGeneratedAudios.map((item, i) => {
+        const truncatedScript = item.script.length > 45 ? item.script.substring(0, 45) + '...' : item.script;
+        return `
+        <div class="st-card" style="margin-top:4px; padding:8px; background:rgba(26,30,46,0.5); border:1px solid rgba(167,139,250,0.2); display:flex; flex-direction:column; gap:6px; border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+            <span style="font-weight:700; color:#c084fc;">🔊 Voice #${i+1} (${item.voiceName})</span>
+            <button onclick="deleteGeneratedVoiceItem(${i})" style="font-size:10px; padding:2px; color:#f87171; border:none; background:transparent; cursor:pointer;" title="Delete">🗑️</button>
+          </div>
+          <div style="font-size:10px; color:#ccc; font-style:italic;">"${truncatedScript}"</div>
+          <audio src="${item.url}" controls style="width:100%; height:24px; accent-color:#a78bfa;"></audio>
+          <button class="btn btn-secondary" onclick="addCustomAudioToTimelineDirect(${i})" style="font-size:10px; padding:4px 8px; width:100%; display:flex; align-items:center; justify-content:center; gap:4px; border-radius:6px; background:rgba(167,139,250,0.1); border:1px solid rgba(167,139,250,0.3); color:#e9d5ff; cursor:pointer;">
+            <i data-lucide="plus" style="width:12px; height:12px;"></i> Add to Timeline
+          </button>
+        </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function deleteGeneratedVoiceItem(i) {
+    if (typeof window._stGeneratedAudios !== 'undefined') {
+        window._stGeneratedAudios.splice(i, 1);
+        renderCapVoicesList();
+        renderAIPanelVoicesList();
+    }
+}
+
+function addCustomAudioToTimelineDirect(idx) {
+    if (typeof window._stGeneratedAudios === 'undefined' || !window._stGeneratedAudios[idx]) return;
+    const item = window._stGeneratedAudios[idx];
+    
+    const newTrack = {
+        id: Date.now(),
+        name: 'Custom Voice',
+        url: item.url,
+        duration: item.duration,
+        start: 0,
+        width: 50,
+        volume: 100,
+        _startSec: 0
+    };
+    _stAudioItems.push(newTrack);
+    renderStudioTimeline();
+    toast('✅ Custom voiceover added to timeline!', 'success');
+}
+
+async function generateAIPanelAudio() {
+    const script = document.getElementById('st-ai-voice-transcript').value.trim();
+    if (!script) return toast('Please enter a transcript first!', 'warning');
+    const lang = document.getElementById('st-ai-voice-lang').value;
+    const voiceSelect = document.getElementById('st-ai-voice-id');
+    const voice = voiceSelect.value;
+    const voiceName = voiceSelect.options[voiceSelect.selectedIndex].text;
+    
+    const btn = document.getElementById('btn-st-audio-generate-only');
+    const oldHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="loader-spin" style="display:inline-block; vertical-align:middle; margin-right:5px;"></div> Generating...';
+    
+    try {
+        const res = await fetch('/api/social/generate-voice-file', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ text: script, voice_id: voice, language: lang })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.audio_url) throw new Error(data.detail || 'Failed to generate audio');
+        
+        const audioUrl = data.audio_url;
+        const duration = data.duration || 0;
+        
+        if (typeof window._stGeneratedAudios === 'undefined') {
+            window._stGeneratedAudios = [];
+        }
+        window._stGeneratedAudios.push({
+            url: audioUrl,
+            duration: duration,
+            script: script,
+            voiceName: voiceName
+        });
+        
+        toast('✅ Audio generated successfully! Added to list.', 'success');
+        
+        // Refresh both lists
+        renderAIPanelVoicesList();
+        renderCapVoicesList();
+    } catch(e) {
+        toast('❌ ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+    }
+}
+
+function renderAIPanelVoicesList() {
+    const listEl = document.getElementById('st-ai-panel-generated-list');
+    if (!listEl) return;
+    
+    if (typeof window._stGeneratedAudios === 'undefined') {
+        window._stGeneratedAudios = [];
+    }
+    
+    if (window._stGeneratedAudios.length === 0) {
+        listEl.innerHTML = `<div style="font-size:10px; color:#666; text-align:center; padding:10px 0;">No audio generated yet.</div>`;
+        return;
+    }
+    
+    listEl.innerHTML = window._stGeneratedAudios.map((item, i) => {
+        const truncatedScript = item.script.length > 40 ? item.script.substring(0, 40) + '...' : item.script;
+        return `
+        <div class="st-card" style="margin-top:4px; padding:8px; background:rgba(26,30,46,0.5); border:1px solid rgba(167,139,250,0.2); display:flex; flex-direction:column; gap:6px; border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+            <span style="font-weight:700; color:#c084fc;">🔊 Voice #${i+1} (${item.voiceName})</span>
+            <button onclick="deleteGeneratedVoiceItem(${i})" style="font-size:10px; padding:2px; color:#f87171; border:none; background:transparent; cursor:pointer;" title="Delete">🗑️</button>
+          </div>
+          <div style="font-size:10px; color:#ccc; font-style:italic;">"${truncatedScript}"</div>
+          <audio src="${item.url}" controls style="width:100%; height:24px; accent-color:#a78bfa;"></audio>
+          <button class="btn btn-secondary" onclick="addCustomAudioToTimelineDirect(${i})" style="font-size:10px; padding:4px 8px; width:100%; display:flex; align-items:center; justify-content:center; gap:4px; border-radius:6px; background:rgba(167,139,250,0.1); border:1px solid rgba(167,139,250,0.3); color:#e9d5ff; cursor:pointer;">
+            <i data-lucide="plus" style="width:12px; height:12px;"></i> Add to Timeline
+          </button>
+        </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WATERMARK OVERLAY SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+let _wmElements = [];  // Array of { type, text, fontsize, color, x, y, rotation, scale, src, id }
+let _wmDragging = null;
+let _wmRotating = null;
+let _wmResizing = null;
+let _wmSelectedId = null;
+
+function initWatermarkPanel() {
+    const propertiesPanel = document.getElementById('st-right-panel-watermark');
+    if (!propertiesPanel) return;
+    
+    propertiesPanel.innerHTML = `
+      <div class="st-panel-header">
+        <h3>🛡️ Watermark</h3>
+      </div>
+      <div class="st-scroll-area">
+        <div class="st-card" style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="btn btn-primary" style="flex:1;font-size:11px;" onclick="document.getElementById('wm-logo-input').click()">
+            <i data-lucide="image"></i> Upload Logo
+          </button>
+          <input type="file" id="wm-logo-input" accept="image/*" style="display:none" onchange="addLogoWatermark(event)">
+        </div>
+        
+        <!-- Shape Mask Selection Section -->
+        <div class="st-card" id="wm-logo-details" style="display:none; gap:8px;">
+          <div style="font-size:10px;color:#a78bfa;font-weight:700;">Logo Mask Shape</div>
+          <div style="display:flex; gap:6px; margin: 4px 0;">
+            <button class="wm-shape-btn active" onclick="setWatermarkShape('square')" title="Square" style="flex:1; padding:6px; font-size:10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;"><div style="width:12px; height:12px; border:1px solid #fff;"></div>Sq</button>
+            <button class="wm-shape-btn" onclick="setWatermarkShape('circle')" title="Circle" style="flex:1; padding:6px; font-size:10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;"><div style="width:12px; height:12px; border:1px solid #fff; border-radius:50%;"></div>Cir</button>
+            <button class="wm-shape-btn" onclick="setWatermarkShape('rounded')" title="Rounded" style="flex:1; padding:6px; font-size:10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;"><div style="width:12px; height:12px; border:1px solid #fff; border-radius:3px;"></div>Rnd</button>
+            <button class="wm-shape-btn" onclick="setWatermarkShape('triangle')" title="Triangle" style="flex:1; padding:6px; font-size:10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;"><div style="width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-bottom:12px solid #fff;"></div>Tri</button>
+            <button class="wm-shape-btn" onclick="setWatermarkShape('hexagon')" title="Hexagon" style="flex:1; padding:6px; font-size:10px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;"><div style="width:12px; height:12px; border:1px solid #fff; clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);"></div>Hex</button>
+          </div>
+          
+          <div style="display:flex;gap:8px;align-items:center; margin-top:6px;">
+            <label style="font-size:10px;color:#888;">Opacity:</label>
+            <input type="range" id="wm-opacity-input" min="10" max="100" value="80" style="flex:1;accent-color:#a78bfa;" oninput="updateSelectedWatermark()">
+          </div>
+          
+          <button class="btn btn-secondary" style="font-size:10px;color:#f87171;border-color:rgba(248,113,113,0.3);margin-top:6px;width:100%;" onclick="deleteSelectedWatermark()">
+            🗑️ Delete Selected
+          </button>
+        </div>
+        <p style="font-size:9px;color:#555;margin-top:8px;line-height:1.4;">Select a watermark clip on the timeline tracker below, then upload a logo and apply shape masking overlays.</p>
+      </div>`;
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    syncWatermarkPanelControls();
+}
+
+function addLogoWatermark(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const el = {
+            id: 'wm-' + Date.now(),
+            type: 'logo',
+            src: e.target.result,
+            width: 80, height: 80,
+            x: 10, y: 10,
+            rotation: 0, opacity: 0.8,
+            shape: 'square',
+            start: 0, width: 100, name: 'Logo Watermark'
+        };
+        _wmElements.push(el);
+        _wmSelectedId = el.id;
+        renderWatermarkElements();
+        renderStudioTimeline();
+    };
+    reader.readAsDataURL(file);
+}
+
+function selectWatermarkFromTimeline(id) {
+    _wmSelectedId = id;
+    _stSelectedTrackType = 'watermark';
+    const idx = _wmElements.findIndex(e => e.id === id);
+    _stSelectedTrackIdx = idx;
+    
+    // Un-highlight other track visual classes
+    document.querySelectorAll('.tl-audio-item').forEach(el => el.classList.remove('active-text', 'active-audio', 'active-bgm', 'active-effect'));
+    
+    renderWatermarkElements();
+    renderStudioTimeline();
+    switchStudioRightTab('watermark', document.getElementById('st-right-tab-watermark'));
+}
+
+function renderWatermarkElements() {
+    const container = document.getElementById('st-preview-container');
+    if (!container) return;
+    // Remove old wm elements
+    container.querySelectorAll('.wm-element').forEach(e => e.remove());
+    
+    _wmElements.forEach(el => {
+        const wrap = document.createElement('div');
+        wrap.className = 'wm-element' + (el.id === _wmSelectedId ? ' selected' : '');
+        wrap.dataset.wmId = el.id;
+        wrap.style.cssText = `left:${el.x}%;top:${el.y}%;transform:rotate(${el.rotation || 0}deg);position:absolute;z-index:100;pointer-events:auto;`;
+        
+        let shapeStyle = '';
+        if (el.shape === 'circle') {
+            shapeStyle = 'border-radius:50%;';
+        } else if (el.shape === 'rounded') {
+            shapeStyle = 'border-radius:12px;';
+        } else if (el.shape === 'triangle') {
+            shapeStyle = 'clip-path:polygon(50% 0%, 0% 100%, 100% 100%);';
+        } else if (el.shape === 'hexagon') {
+            shapeStyle = 'clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);';
+        }
+        wrap.innerHTML = `<img src="${el.src}" style="width:${el.width || 80}px;height:${el.height || 80}px;object-fit:cover;opacity:${el.opacity || 0.8};${shapeStyle}">`;
+        
+        // Resize handle
+        const rh = document.createElement('div');
+        rh.className = 'wm-resize-handle';
+        wrap.appendChild(rh);
+        // Rotate handle
+        const roh = document.createElement('div');
+        roh.className = 'wm-rotate-handle';
+        wrap.appendChild(roh);
+        
+        // Click and drag - only allowed if selected from timeline first!
+        wrap.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('wm-resize-handle')) {
+                _wmResizing = { id: el.id, startX: e.clientX, startY: e.clientY, startW: el.width || 80, startH: el.height || 80 };
+                e.preventDefault();
+            } else if (e.target.classList.contains('wm-rotate-handle')) {
+                const rect = wrap.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                _wmRotating = { id: el.id, cx, cy, startAngle: el.rotation || 0 };
+                e.preventDefault();
+            } else {
+                if (el.id === _wmSelectedId) {
+                    _wmDragging = { id: el.id, startX: e.clientX, startY: e.clientY, startElX: el.x, startElY: el.y };
+                    e.preventDefault();
+                }
+            }
+        });
+        
+        container.appendChild(wrap);
+    });
+    
+    // Sync sidebar fields
+    syncWatermarkPanelControls();
+}
+
+function syncWatermarkPanelControls() {
+    const detailsEl = document.getElementById('wm-logo-details');
+    if (!detailsEl) return;
+    
+    if (!_wmSelectedId) {
+        detailsEl.style.display = 'none';
+        return;
+    }
+    
+    const el = _wmElements.find(e => e.id === _wmSelectedId);
+    if (!el) {
+        detailsEl.style.display = 'none';
+        return;
+    }
+    
+    // Show details card
+    detailsEl.style.display = 'flex';
+    detailsEl.style.flexDirection = 'column';
+    
+    // Sync opacity slider
+    const opacIn = document.getElementById('wm-opacity-input');
+    if (opacIn) {
+        opacIn.value = Math.round((el.opacity || 0.8) * 100);
+    }
+    
+    // Sync shape active buttons
+    const activeShape = el.shape || 'square';
+    document.querySelectorAll('.wm-shape-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.title.toLowerCase() === activeShape);
+    });
+}
+
+function setWatermarkShape(shape) {
+    if (!_wmSelectedId) return;
+    const el = _wmElements.find(e => e.id === _wmSelectedId);
+    if (!el) return;
+    el.shape = shape;
+    renderWatermarkElements();
+    
+    // Highlight active shape button in panel
+    document.querySelectorAll('.wm-shape-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.title.toLowerCase() === shape);
+    });
+}
+
+// Global mouse move/up for drag, resize, rotate
+document.addEventListener('mousemove', (e) => {
+    const container = document.getElementById('st-preview-container');
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    
+    if (_wmDragging) {
+        const dx = ((e.clientX - _wmDragging.startX) / rect.width) * 100;
+        const dy = ((e.clientY - _wmDragging.startY) / rect.height) * 100;
+        const el = _wmElements.find(e => e.id === _wmDragging.id);
+        if (el) { el.x = Math.max(0, _wmDragging.startElX + dx); el.y = Math.max(0, _wmDragging.startElY + dy); }
+        renderWatermarkElements();
+    }
+    if (_wmResizing) {
+        const dx = e.clientX - _wmResizing.startX;
+        const el = _wmElements.find(e => e.id === _wmResizing.id);
+        if (el) {
+            if (el.type === 'text') { el.fontSize = Math.max(10, Math.round(_wmResizing.startW + dx / 2)); }
+            else { el.width = Math.max(20, _wmResizing.startW + dx); el.height = Math.max(20, (_wmResizing.startH || 80) + dx); }
+        }
+        renderWatermarkElements();
+    }
+    if (_wmRotating) {
+        const angle = Math.atan2(e.clientY - _wmRotating.cy, e.clientX - _wmRotating.cx) * (180 / Math.PI);
+        const el = _wmElements.find(e => e.id === _wmRotating.id);
+        if (el) el.rotation = Math.round(angle + 90);
+        renderWatermarkElements();
+    }
+});
+document.addEventListener('mouseup', () => { _wmDragging = null; _wmResizing = null; _wmRotating = null; syncWatermarkPanelControls(); });
+
+function updateSelectedWatermark() {
+    const el = _wmElements.find(e => e.id === _wmSelectedId);
+    if (!el) return;
+    const textIn = document.getElementById('wm-text-input');
+    const sizeIn = document.getElementById('wm-size-input');
+    const colorIn = document.getElementById('wm-color-input');
+    const opacIn = document.getElementById('wm-opacity-input');
+    const sizeVal = document.getElementById('wm-size-val');
+    if (textIn && el.type === 'text') el.text = textIn.value || 'WATERMARK';
+    if (sizeIn) { const s = parseInt(sizeIn.value); if (el.type === 'text') el.fontSize = s; else { el.width = s * 2; el.height = s * 2; } if (sizeVal) sizeVal.textContent = s; }
+    if (colorIn && el.type === 'text') el.color = colorIn.value;
+    if (opacIn) el.opacity = parseInt(opacIn.value) / 100;
+    renderWatermarkElements();
+    renderStudioTimeline();
+}
+
+function deleteSelectedWatermark() {
+    if (!_wmSelectedId) return;
+    _wmElements = _wmElements.filter(e => e.id !== _wmSelectedId);
+    _wmSelectedId = null;
+    renderWatermarkElements();
+    renderStudioTimeline();
+}
+
+async function generateWatermarkOverlayImage() {
+    // Render all watermark elements onto a 1080x1920 transparent canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('st-preview-container');
+    const contRect = container.getBoundingClientRect();
+    const scaleX = 1080 / contRect.width;
+    const scaleY = 1920 / contRect.height;
+    
+    for (const el of _wmElements) {
+        const px = (el.x / 100) * 1080;
+        const py = (el.y / 100) * 1920;
+        ctx.save();
+        ctx.globalAlpha = el.opacity || 0.8;
+        ctx.translate(px, py);
+        ctx.rotate(((el.rotation || 0) * Math.PI) / 180);
+        
+        if (el.type === 'text') {
+            ctx.font = `800 ${Math.round((el.fontSize || 36) * scaleX)}px 'Inter', Arial, sans-serif`;
+            ctx.fillStyle = el.color || '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 8;
+            ctx.fillText(el.text || '', 0, 0);
+        } else if (el.type === 'logo' && el.src) {
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const w = Math.round((el.width || 80) * scaleX);
+                    const h = Math.round((el.height || 80) * scaleY);
+                    
+                    ctx.save();
+                    // Draw clip path depending on shape!
+                    ctx.beginPath();
+                    if (el.shape === 'circle') {
+                        ctx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+                        ctx.clip();
+                    } else if (el.shape === 'rounded') {
+                        const r = Math.min(w, h) * 0.15; // 15% rounded corners
+                        if (ctx.roundRect) {
+                            ctx.roundRect(0, 0, w, h, r);
+                        } else {
+                            ctx.rect(0, 0, w, h);
+                        }
+                        ctx.clip();
+                    } else if (el.shape === 'triangle') {
+                        ctx.moveTo(w / 2, 0);
+                        ctx.lineTo(0, h);
+                        ctx.lineTo(w, h);
+                        ctx.closePath();
+                        ctx.clip();
+                    } else if (el.shape === 'hexagon') {
+                        ctx.moveTo(w * 0.25, 0);
+                        ctx.lineTo(w * 0.75, 0);
+                        ctx.lineTo(w, h * 0.5);
+                        ctx.lineTo(w * 0.75, h);
+                        ctx.lineTo(w * 0.25, h);
+                        ctx.lineTo(0, h * 0.5);
+                        ctx.closePath();
+                        ctx.clip();
+                    }
+                    
+                    ctx.drawImage(img, 0, 0, w, h);
+                    ctx.restore();
+                    resolve();
+                };
+                img.onerror = resolve;
+                img.src = el.src;
+            });
+        }
+        ctx.restore();
+    }
+    
+    return canvas.toDataURL('image/png');
+}
 
 </script>
 
 <!-- AI Quiz Modal -->
+
+<!-- Library Edit & Generate Modal -->
+<div class="st-lib-edit-overlay" id="st-lib-edit-overlay" style="display:none;">
+  <div class="st-lib-edit-modal">
+    <h3>✨ AI Generate Asset</h3>
+    <img id="lib-edit-preview" class="st-lib-edit-preview" src="" alt="preview">
+    <div>
+      <label style="font-size:10px;color:#a78bfa;font-weight:700;display:block;margin-bottom:6px;">EDIT PROMPT</label>
+      <textarea id="lib-edit-prompt" class="st-lib-edit-prompt" placeholder="Describe the image or video you want to generate (e.g. 'A futuristic classroom with holograms')..."></textarea>
+    </div>
+    <div id="lib-edit-status" class="st-lib-edit-status"></div>
+    <div class="st-lib-edit-actions">
+      <button class="btn btn-secondary" onclick="closeLibraryEditModal()">Cancel</button>
+      <button class="btn btn-primary" id="btn-lib-edit-generate" onclick="generateLibraryAsset()">
+        <span>✨ Generate &amp; Replace</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

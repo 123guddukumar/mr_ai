@@ -42,6 +42,11 @@ class ReAssembleRequest(BaseModel):
     scenes: List[Dict]
     metadata: Dict
 
+class GenerateVoiceFileReq(BaseModel):
+    text: str
+    voice_id: Optional[str] = "adam"
+    language: Optional[str] = "English"
+
 # ── Image Generation Helper ───────────────────────────────────────────────────
 
 async def generate_hf_image(prompt: str) -> str:
@@ -211,19 +216,31 @@ async def re_assemble_social_content(req: ReAssembleRequest, x_app_token: Option
     try:
         # Extract data from scenes
         image_prompts = [s.get('thumb') for s in req.scenes] # Use current thumbs as prompts or directly
-        # In re-assemble, we might want to just re-use the thumbs as fixed assets if they are already generated
         
-        # We need to map the studio scenes back to the video engine format
-        # For now, let's treat the 'thumb' as the fixed asset for each scene
-        
-        # Re-assemble using assemble_pro_reel with fixed assets
-        # We'll modify assemble_pro_reel to accept fixed_assets if needed, 
-        # but for now let's just use the current logic with the new script/order
-        
+        watermark_path = None
+        watermark_base64 = req.metadata.get("watermark_base64")
+        if watermark_base64:
+            try:
+                import base64
+                if "base64," in watermark_base64:
+                    watermark_base64 = watermark_base64.split("base64,")[1]
+                img_data = base64.b64decode(watermark_base64)
+                base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+                watermark_dir = os.path.join(base_uploads, "watermarks")
+                os.makedirs(watermark_dir, exist_ok=True)
+                watermark_path = os.path.join(watermark_dir, f"wat_{secrets.token_hex(6)}.png")
+                with open(watermark_path, "wb") as f:
+                    f.write(img_data)
+                logger.info(f"Successfully decoded watermark canvas to {watermark_path}")
+            except Exception as we:
+                logger.error(f"Failed to decode watermark base64: {we}")
+
         res_pro = await assemble_edited_reel(
             scenes=req.scenes,
             voice_id=req.metadata.get("voice", "adam"),
-            bgm_style=req.metadata.get("bgm_style", "cinematic")
+            bgm_style=req.metadata.get("bgm_style", "cinematic"),
+            audio_tracks=req.metadata.get("audio_tracks", []),
+            watermark_path=watermark_path
         )
         
         video_url = res_pro.get("video_url")
@@ -262,6 +279,71 @@ async def re_assemble_social_content(req: ReAssembleRequest, x_app_token: Option
     except Exception as e:
         logger.error(f"Re-assembly failed: {e}")
         raise HTTPException(500, f"Re-assembly failed: {str(e)}")
+
+@router.post("/social/generate-voice-file", tags=["Social Hub"])
+async def generate_voice_file(
+    req: GenerateVoiceFileReq,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    client_data = _get_client(x_app_token, db)
+    
+    try:
+        from app.services.video_engine import generate_elevenlabs_voiceover
+        
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, "custom_voice_work")
+        os.makedirs(work_dir, exist_ok=True)
+        
+        file_id = secrets.token_hex(6)
+        temp_audio_path = os.path.join(work_dir, f"raw_{file_id}.mp3")
+        final_audio_path = os.path.join(work_dir, f"voice_{file_id}.mp3")
+        
+        # Call generate_elevenlabs_voiceover helper
+        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id)
+        if audio_path and os.path.exists(audio_path):
+            if os.path.exists(temp_audio_path): os.remove(temp_audio_path)
+            os.rename(audio_path, temp_audio_path)
+        else:
+            # Fallback to gTTS
+            lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
+            gtts_lang = lang_map.get(req.language, "en")
+            logger.info(f"ElevenLabs custom voice synthesis failed, falling back to gTTS (lang={gtts_lang})")
+            tts = gTTS(text=req.text, lang=gtts_lang)
+            tts.save(temp_audio_path)
+            
+        if not os.path.exists(temp_audio_path) or os.path.getsize(temp_audio_path) < 100:
+            raise HTTPException(500, "Voice synthesis failed")
+            
+        # Run FFmpeg trim and broadcaster sound processing filters
+        try:
+            filter_str = "highpass=f=80,equalizer=f=120:g=3,equalizer=f=3500:g=2.5,compand"
+            proc_cmd = ["ffmpeg", "-y", "-i", temp_audio_path, "-af", filter_str, final_audio_path]
+            res_proc = subprocess.run(proc_cmd, capture_output=True)
+            if res_proc.returncode != 0:
+                logger.warning("Broadcaster filters failed. Copying raw TTS.")
+                shutil.copy2(temp_audio_path, final_audio_path)
+        except Exception as fe:
+            logger.warning(f"Audio filter process error: {fe}. Copying raw TTS.")
+            shutil.copy2(temp_audio_path, final_audio_path)
+            
+        # Clean up temp
+        if os.path.exists(temp_audio_path):
+            try: os.remove(temp_audio_path)
+            except: pass
+            
+        # Get duration of generated audio using ffprobe
+        duration = 5.0
+        probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", final_audio_path], capture_output=True, text=True)
+        if probe.returncode == 0 and probe.stdout.strip():
+            duration = float(probe.stdout.strip())
+            
+        audio_url = f"/uploads/social/custom_voice_work/voice_{file_id}.mp3"
+        return {"success": True, "audio_url": audio_url, "duration": round(duration, 2)}
+        
+    except Exception as e:
+        logger.error(f"Generate voice file failed: {str(e)}")
+        raise HTTPException(500, f"Generate voice file failed: {str(e)}")
 
 def _get_client(x_app_token: Optional[str], db: Session) -> dict:
     if not x_app_token:
@@ -350,42 +432,217 @@ async def suggest_social_topics(datastore_id: str, language: Optional[str] = "En
     return {"topics": ["Future of " + client_data["name"], "AI in Industry", "Success Secrets"]}
 
 @router.get("/social/voice-preview/{voice_id}", tags=["Social"])
-async def voice_preview(voice_id: str, text: Optional[str] = None):
-    """Proxy for ElevenLabs voice preview to keep API key secure."""
+async def voice_preview(voice_id: str, text: Optional[str] = None, language: Optional[str] = "English"):
+    """Proxy for ElevenLabs voice preview to keep API key secure, with a robust gTTS fallback."""
     api_key = settings.ELEVENLABS_API_KEY
-    if not api_key:
-        raise HTTPException(500, "ElevenLabs API Key missing")
+    lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
+    tts_lang = lang_map.get(language or "English", "en")
     
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
-    headers = {
-        "xi-api-key": api_key,
-        "Content-Type": "application/json",
-        "accept": "audio/mpeg"
-    }
-    data = {
-        "text": (text[:300] if text else "Hello! This is a voice preview sample for your reel narration."),
-        "model_id": "eleven_turbo_v2_5",
-        "voice_settings": {
-            "stability": 0.45,
-            "similarity_boost": 0.85,
-            "style": 0.15,
-            "use_speaker_boost": True
+    if api_key:
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+        headers = {
+            "xi-api-key": api_key,
+            "Content-Type": "application/json",
+            "accept": "audio/mpeg"
         }
-    }
+        data = {
+            "text": (text[:300] if text else "Hello! This is a voice preview sample for your reel narration."),
+            "model_id": "eleven_turbo_v2_5",
+            "voice_settings": {
+                "stability": 0.45,
+                "similarity_boost": 0.85,
+                "style": 0.15,
+                "use_speaker_boost": True
+            }
+        }
+        
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                logger.info(f"ElevenLabs Preview: Voice={voice_id} KeyLength={len(api_key)}")
+                res = await client.post(url, json=data, headers=headers, timeout=30.0)
+                if res.status_code == 200:
+                    from fastapi.responses import Response
+                    return Response(content=res.content, media_type="audio/mpeg")
+                else:
+                    logger.warning(f"ElevenLabs Preview Failed with status {res.status_code}: {res.text}. Falling back to gTTS (lang={tts_lang})...")
+        except Exception as e:
+            logger.warning(f"ElevenLabs Preview Exception: {str(e)}. Falling back to gTTS (lang={tts_lang})...")
+            
+    # Premium zero-cost, zero-fail gTTS Fallback Layer
+    try:
+        from gtts import gTTS
+        import io
+        preview_text = text or "Hello! This is a voice preview sample for your reel narration."
+        logger.info(f"Generating fallback voice preview with gTTS (lang={tts_lang}) for text: {preview_text[:50]}")
+        tts = gTTS(text=preview_text, lang=tts_lang)
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        from fastapi.responses import Response
+        return Response(content=fp.read(), media_type="audio/mpeg")
+    except Exception as ge:
+        logger.error(f"gTTS fallback failed in preview: {ge}")
+        raise HTTPException(500, f"Failed to generate voice preview: {str(ge)}")
+
+class UpgradeAudioReq(BaseModel):
+    reel_id: str
+    scene_idx: int
+    text: str
+    voice_id: Optional[str] = "adam"
+    language: Optional[str] = "English"
+
+def extract_clean_script(structured_text: str) -> str:
+    if not structured_text:
+        return ""
+    clean_lines = []
+    for line in structured_text.splitlines():
+        line_strip = line.strip()
+        if "🎙️ Dialogue:" in line_strip:
+            part = line_strip.split("🎙️ Dialogue:")[-1].strip()
+            clean_lines.append(part)
+        elif "Dialogue:" in line_strip:
+            part = line_strip.split("Dialogue:")[-1].strip()
+            clean_lines.append(part)
+    if clean_lines:
+        return " ".join(clean_lines)
+    
+    # Fallback: strip other markers
+    clean_lines = []
+    for line in structured_text.splitlines():
+        line_strip = line.strip()
+        if not line_strip:
+            continue
+        if any(marker in line_strip for marker in ["🎬", "Scene", "📸", "Visuals", "Footage", "🎥", "Editing Notes"]):
+            continue
+        clean_lines.append(line_strip)
+    return " ".join(clean_lines) if clean_lines else structured_text
+
+@router.post("/social/upgrade-audio", tags=["Social Hub"])
+async def upgrade_scene_audio(
+    req: UpgradeAudioReq,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    client_data = _get_client(x_app_token, db)
     
     try:
-        async with httpx.AsyncClient() as client:
-            logger.info(f"ElevenLabs Preview: Voice={voice_id} KeyLength={len(api_key)}")
-            res = await client.post(url, json=data, headers=headers, timeout=30.0)
-            if res.status_code == 200:
-                from fastapi.responses import Response
-                return Response(content=res.content, media_type="audio/mpeg")
+        from app.services.video_engine import generate_elevenlabs_voiceover
+        
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, f"edit_work_{req.reel_id}")
+        os.makedirs(work_dir, exist_ok=True)
+        
+        # 1. Synthesize TTS voiceover
+        voice_path = os.path.join(work_dir, f"voice_{req.scene_idx}.mp3")
+        temp_audio_path = os.path.join(work_dir, f"temp_voice_{req.scene_idx}_{secrets.token_hex(4)}.mp3")
+        
+        # Call generate_elevenlabs_voiceover helper
+        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id)
+        if audio_path and os.path.exists(audio_path):
+            if os.path.exists(temp_audio_path): os.remove(temp_audio_path)
+            os.rename(audio_path, temp_audio_path)
+        else:
+            # Fallback to gTTS
+            lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
+            gtts_lang = lang_map.get(req.language, "en")
+            logger.info(f"ElevenLabs upgrade failed, falling back to gTTS (lang={gtts_lang})")
+            tts = gTTS(text=req.text, lang=gtts_lang)
+            tts.save(temp_audio_path)
+            
+        if not os.path.exists(temp_audio_path) or os.path.getsize(temp_audio_path) < 100:
+            raise HTTPException(500, "Voice synthesis failed")
+            
+        # 2. Run FFmpeg trim and broadcaster sound processing filters
+        try:
+            filter_str = "highpass=f=80,equalizer=f=120:g=3,equalizer=f=3500:g=2.5,compand"
+            proc_cmd = ["ffmpeg", "-y", "-i", temp_audio_path, "-af", filter_str, voice_path]
+            res_proc = subprocess.run(proc_cmd, capture_output=True)
+            if res_proc.returncode != 0:
+                logger.warning("Broadcaster filters failed. Copying raw TTS.")
+                shutil.copy2(temp_audio_path, voice_path)
+        except Exception as fe:
+            logger.warning(f"Audio filter process error: {fe}. Copying raw TTS.")
+            shutil.copy2(temp_audio_path, voice_path)
+            
+        # Clean up temp
+        if os.path.exists(temp_audio_path):
+            try: os.remove(temp_audio_path)
+            except: pass
+            
+        # 3. Update Database SocialContent record scenes_json & commit (Commented out - save on Export only)
+        audio_url = f"/uploads/social/edit_work_{req.reel_id}/voice_{req.scene_idx}.mp3?t={secrets.token_hex(4)}"
+        logger.info(f"Generated upgraded audio for scene {req.scene_idx} temporarily. Will save to DB on Export & Render.")
+                
+        # 4. Probe upgraded duration
+        duration = 5.0
+        probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", voice_path], capture_output=True, text=True)
+        if probe.returncode == 0 and probe.stdout.strip():
+            duration = float(probe.stdout.strip()) + 0.3
+            
+        # 5. Recompile the single scene video clip with stereo audio so preview is updated
+        v_path = os.path.join(work_dir, f"scene_{req.scene_idx}_final.mp4")
+        img_path = os.path.join(work_dir, f"scene_{req.scene_idx}.jpg")
+        
+        effect = "zoom_in"
+        trans_effect = "fade"
+        raw_video = None
+        if db_item:
+            try:
+                scenes = json.loads(db_item.scenes_json) if db_item.scenes_json else []
+                if 0 <= req.scene_idx < len(scenes):
+                    scene = scenes[req.scene_idx]
+                    effect = scene.get('motion') or scene.get('effect') or "zoom_in"
+                    trans_effect = scene.get('transition') or "fade"
+                    raw_video = scene.get('raw_video')
+            except: pass
+            
+        zoom = "min(zoom+0.0015,1.5)" if effect == "zoom_in" else "max(1.5-0.0015*on,1)" if effect == "zoom_out" else "1"
+        trans_filter = ""
+        if trans_effect == "flash":
+            trans_filter = ",eq=brightness='1.0+0.5*exp(-8*t)':contrast='1.0+0.3*exp(-8*t)'"
+        elif trans_effect == "blur":
+            trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
+        elif trans_effect == "fade":
+            trans_filter = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0, duration-0.3):.2f}:d=0.3"
+            
+        enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
+        
+        if raw_video and os.path.exists(raw_video):
+            cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw_video, "-i", voice_path]
+            filter_v = f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1{trans_filter}{enhancement}"
+            cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+        else:
+            if not os.path.exists(img_path) and db_item:
+                logger.info(f"Image not found at {img_path}. Creating fallback from database thumb.")
+                try:
+                    scenes = json.loads(db_item.scenes_json)
+                    scene = scenes[req.scene_idx]
+                    thumb_url = scene.get('thumb') or scene.get('videoThumb')
+                    if thumb_url:
+                        if "uploads/" in thumb_url or thumb_url.startswith("/uploads"):
+                            clean_url = thumb_url.split("uploads/")[-1].lstrip("/")
+                            local_src = os.path.join(os.getcwd(), "uploads", clean_url)
+                            if os.path.exists(local_src):
+                                shutil.copy(local_src, img_path)
+                except: pass
+                
+            if not os.path.exists(img_path) or os.path.getsize(img_path) < 100:
+                cmd = ["ffmpeg", "-y", "-f", "lavfi", "-i", f"color=c=black:s=1080x1920:d={duration}", "-i", voice_path]
+                cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
-                logger.error(f"ElevenLabs Preview Failed: {res.status_code} - {res.text}")
-                raise HTTPException(res.status_code, f"ElevenLabs API Error: {res.text}")
+                cmd = ["ffmpeg", "-y", "-loop", "1", "-i", img_path, "-i", voice_path]
+                filter_v = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(duration*30)}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}"
+                cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+                
+        subprocess.run(cmd, capture_output=True)
+        logger.info(f"Recompiled scene_{req.scene_idx}_final.mp4 successfully.")
+        
+        return {"success": True, "audio_url": audio_url}
+        
     except Exception as e:
-        logger.error(f"Voice Preview Exception: {str(e)}")
-        raise HTTPException(500, str(e))
+        logger.error(f"Upgrade audio failed: {str(e)}")
+        raise HTTPException(500, f"Upgrade audio failed: {str(e)}")
 
 @router.post("/social/generate", tags=["Social"])
 async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
@@ -548,18 +805,19 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
             
             if video_url:
                 content_id = secrets.token_hex(8)
+                clean_script = extract_clean_script(structured_script)
                 db_item = SocialContent(
                     content_id=content_id,
                     client_id=client_data["client_id"],
                     content_type="reel",
                     title=req.topic or "Custom Reel",
-                    body=structured_script[:1000],
+                    body=clean_script[:1000],
                     media_url=video_url,
                     scenes_json=json.dumps(scenes_data),
                     metadata_json=json.dumps({
                         "bgm_url": res_adv.get("bgm_url"),
                         "voice_id": req.voice_id,
-                        "script": structured_script,
+                        "script": clean_script,
                         "exam_id": req.exam_id,
                         "subtopic_id": req.subtopic_id
                     })
@@ -1014,6 +1272,20 @@ async def get_social_history(
     client_data = _get_client(x_app_token, db)
     contents = db.query(SocialContent).filter(SocialContent.client_id == client_data["client_id"]).order_by(SocialContent.created_at.desc()).all()
     return [c.to_dict() for c in contents]
+
+
+@router.get("/social/content/{content_id}", tags=["Social Hub"])
+async def get_social_content_detail(
+    content_id: str,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    """Get detail of a specific social content item."""
+    client_data = _get_client(x_app_token, db)
+    content = db.query(SocialContent).filter(SocialContent.content_id == content_id, SocialContent.client_id == client_data["client_id"]).first()
+    if not content:
+        raise HTTPException(404, "Content not found")
+    return content.to_dict()
 
 @router.delete("/social/content/{content_id}", tags=["Social Hub"])
 async def delete_social_content(

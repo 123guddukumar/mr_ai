@@ -53,13 +53,6 @@ class Client(Base):
     notifications = relationship("Notification", back_populates="client", cascade="all, delete-orphan")
 
     def to_dict(self):
-        logo = self.logo_url or ""
-        avatar = self.avatar_url or ""
-        for prefix in ("http://127.0.0.1:8000", "http://localhost:8000"):
-            if logo.startswith(prefix):
-                logo = logo[len(prefix):]
-            if avatar.startswith(prefix):
-                avatar = avatar[len(prefix):]
         return {
             "client_id": self.client_id,
             "name": self.name,
@@ -67,7 +60,7 @@ class Client(Base):
             "token": self.token,
             "is_verified": self.is_verified,
             "login_method": self.login_method or "email",
-            "avatar_url": avatar,
+            "avatar_url": self.avatar_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "last_login": self.last_login.isoformat() if self.last_login else "",
             "created_by_admin_id": self.created_by_admin_id,
@@ -80,7 +73,7 @@ class Client(Base):
             "city": self.city or "",
             "pin_code": self.pin_code or "",
             "address": self.address or "",
-            "logo_url": logo,
+            "logo_url": self.logo_url or "",
             "created_by_client_id": self.created_by_client_id or "",
             "user_type": self.user_type or "New",
             "dob": self.dob or "",
@@ -555,16 +548,12 @@ class SocialContent(Base):
             return {}
 
     def to_dict(self):
-        media = self.media_url or ""
-        for prefix in ("http://127.0.0.1:8000", "http://localhost:8000"):
-            if media.startswith(prefix):
-                media = media[len(prefix):]
         return {
             "content_id": self.content_id,
             "content_type": self.content_type,
             "title": self.title or "",
             "body": self.body or "",
-            "media_url": media,
+            "media_url": self.media_url or "",
             "scenes": self.scenes,
             "metadata": self.metadata_info,
             "created_at": self.created_at.isoformat() if self.created_at else "",
@@ -603,15 +592,11 @@ class Exam(Base):
     subjects = relationship("Subject", back_populates="exam", cascade="all, delete-orphan")
 
     def to_dict(self):
-        img = self.image_url or ""
-        for prefix in ("http://127.0.0.1:8000", "http://localhost:8000"):
-            if img.startswith(prefix):
-                img = img[len(prefix):]
         return {
             "exam_id": self.exam_id,
             "name": self.name,
             "category": self.category or "",
-            "image_url": img,
+            "image_url": self.image_url or "",
             "description": self.description or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }

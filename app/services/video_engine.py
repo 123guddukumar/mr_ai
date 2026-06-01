@@ -183,6 +183,33 @@ def create_subtitle_file(script_text: str, total_duration: float, work_dir: str)
             
     return sub_path
 
+def build_xfade_filter_complex(video_count: int, durations: List[float], trans_dur: float = 0.5) -> tuple:
+    """
+    Generates a cascading FFmpeg filter_complex and the final video output label
+    using high-end transition effects from xfade.
+    """
+    if video_count <= 1:
+        return "[0:v]copy[v_out];", "[v_out]"
+        
+    # Curated pool of highly aesthetic, pro-editor transitions
+    transitions = ['fade', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'circlecrop', 'dissolve', 'pixelize', 'zoomin']
+    
+    filter_parts = []
+    current_label = "[0:v]"
+    
+    for i in range(video_count - 1):
+        next_label = f"[{i+1}:v]"
+        out_label = f"[v_trans_{i}]"
+        
+        # Calculate offset using sum of preceding durations minus overlaps
+        offset = sum(durations[:i+1]) - (i+1) * trans_dur
+        trans_name = transitions[i % len(transitions)]
+        
+        filter_parts.append(f"{current_label}{next_label}xfade=transition={trans_name}:duration={trans_dur}:offset={offset:.2f}{out_label}")
+        current_label = out_label
+        
+    return "; ".join(filter_parts) + ";", current_label
+
 async def assemble_pro_reel(
     script_text: str, 
     topic: str, 
@@ -332,8 +359,10 @@ async def assemble_pro_reel(
             logger.error("No video segments were created.")
             return None
             
-        # Calculate the exact segment duration based on succeeded assets
-        final_segment_dur = total_duration / len(succeeded_indices)
+        # Calculate the exact segment duration adjusted for xfade overlap (0.5s per transition)
+        num_succeeded = len(succeeded_indices)
+        trans_dur = 0.5 if num_succeeded > 1 else 0.0
+        final_segment_dur = (total_duration + (num_succeeded - 1) * trans_dur) / num_succeeded
         
         # Render the final clips to the exact duration sequentially to ensure perfect timing
         video_paths_ordered = [None] * target_scenes
@@ -354,7 +383,7 @@ async def assemble_pro_reel(
             elif trans_effect == "blur":
                 trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
             elif trans_effect == "fade":
-                trans_filter = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0, final_segment_dur-0.3):.2f}:d=0.3"
+                trans_filter = ",fade=t=in:st=0:d=0.3"
                 
             # Color Enhancer Grader: High contrast, vibrancy saturation, unsharp sharpening filter, and subtle vignette
             enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
@@ -429,15 +458,24 @@ async def assemble_pro_reel(
         output_path = os.path.join(base_uploads, output_filename)
         
         input_args = []
-        filter_parts = []
+        pre_filters = []
         for i, v_p in enumerate(video_paths):
             input_args.extend(["-i", v_p])
-            # Use final_segment_dur for perfect matching
-            filter_parts.append(f"[{i}:v]trim=duration={final_segment_dur},setpts=PTS-STARTPTS,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fade=t=in:st=0:d=0.3,fade=t=out:st={final_segment_dur-0.3}:d=0.3[v{i}];")
+            pre_filters.append(f"[{i}:v]trim=duration={final_segment_dur:.2f},setpts=PTS-STARTPTS,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[v_pre{i}];")
+            
+        # Build xfade cascade complex
+        xfade_complex, final_v_label = build_xfade_filter_complex(
+            video_count=len(video_paths),
+            durations=[final_segment_dur] * len(video_paths),
+            trans_dur=trans_dur
+        )
         
-        v_concat = "".join([f"[v{i}]" for i in range(len(video_paths))])
-        filter_parts.append(f"{v_concat}concat=n={len(video_paths)}:v=1:a=0[v_bg];")
-        filter_parts.append(f"[v_bg]ass='{safe_sub_path}'[v_sub];")
+        # Rewrite xfade complex inputs to map to our pre-filtered labels [v_preX]
+        for i in range(len(video_paths)):
+            xfade_complex = xfade_complex.replace(f"[{i}:v]", f"[v_pre{i}]")
+            
+        filter_parts = pre_filters + [xfade_complex]
+        filter_parts.append(f"{final_v_label}ass='{safe_sub_path}'[v_sub];")
         
         voice_idx = len(video_paths)
         filter_parts.append(f"[{voice_idx}:a]volume=1.8[a_pro];")
@@ -462,9 +500,17 @@ async def assemble_pro_reel(
         ])
         
         logger.info(f"Running Final Cinematic Assembly...")
-        final_res = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
+        assembly_log_path = os.path.join(work_dir, "ffmpeg_assembly.log")
+        with open(assembly_log_path, "w", encoding="utf-8") as log_file:
+            final_res = subprocess.run(cmd, cwd=work_dir, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
         if final_res.returncode != 0:
-            logger.error(f"FFmpeg Final Assembly Failed: {final_res.stderr}")
+            err_msg = "Unknown error"
+            if os.path.exists(assembly_log_path):
+                try:
+                    with open(assembly_log_path, "r", encoding="utf-8", errors="ignore") as f:
+                        err_msg = f.read()[-500:]
+                except: pass
+            logger.error(f"FFmpeg Final Assembly Failed: {err_msg}")
             return None
             
         if os.path.exists(output_path):
@@ -537,8 +583,10 @@ async def assemble_advanced_reel(
         capture_output=True, text=True
     )
     total_audio_dur = float(probe.stdout.strip()) if probe.returncode == 0 and probe.stdout.strip() else 60.0
-    scene_dur = total_audio_dur / len(scenes)  # each scene gets equal share of audio
-    logger.info(f"Total audio: {total_audio_dur:.2f}s | {len(scenes)} scenes | {scene_dur:.2f}s each")
+    num_scenes = len(scenes)
+    trans_dur = 0.5 if num_scenes > 1 else 0.0
+    scene_dur = (total_audio_dur + (num_scenes - 1) * trans_dur) / num_scenes
+    logger.info(f"Total audio: {total_audio_dur:.2f}s | {num_scenes} scenes | adjusted scene duration: {scene_dur:.2f}s each")
 
     # ── 3. Generate images in parallel ──────────────────────────────────────
     img_paths = [None] * len(scenes)
@@ -609,7 +657,7 @@ async def assemble_advanced_reel(
         elif trans_effect == "blur":
             trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
         elif trans_effect == "fade":
-            trans_filter = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0, dur-0.3):.2f}:d=0.3"
+            trans_filter = ",fade=t=in:st=0:d=0.3"
             
         # Color Enhancer Grader: High contrast, saturation, unsharp sharpening filter, and vignette
         enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
@@ -659,18 +707,36 @@ async def assemble_advanced_reel(
     if not scene_videos:
         return None
 
-    # ── 5. Concatenate video scenes ──────────────────────────────────────────
-    list_path = os.path.join(work_dir, "concat_list.txt")
-    with open(list_path, "w") as f:
-        for v in scene_videos:
-            f.write(f"file '{v.replace(chr(92), '/')}'"
-                    + "\n")
-
+    # ── 5. Concatenate video scenes with dynamic xfade transitions ───────────
     temp_video = os.path.join(work_dir, "temp_video.mp4")
-    subprocess.run(
-        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_path, "-c", "copy", temp_video],
-        capture_output=True
+    
+    input_args = []
+    pre_filters = []
+    for idx, v in enumerate(scene_videos):
+        input_args.extend(["-i", v])
+        pre_filters.append(f"[{idx}:v]trim=duration={scene_dur:.2f},setpts=PTS-STARTPTS,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1[v_pre{idx}];")
+        
+    xfade_complex, final_v_label = build_xfade_filter_complex(
+        video_count=len(scene_videos),
+        durations=[scene_dur] * len(scene_videos),
+        trans_dur=trans_dur
     )
+    
+    for idx in range(len(scene_videos)):
+        xfade_complex = xfade_complex.replace(f"[{idx}:v]", f"[v_pre{idx}]")
+        
+    filter_parts = pre_filters + [xfade_complex]
+    filter_parts.append(f"{final_v_label}copy[v]")
+    
+    concat_cmd = ["ffmpeg", "-y"] + input_args + [
+        "-filter_complex", "".join(filter_parts),
+        "-map", "[v]",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-an",
+        temp_video
+    ]
+    concat_log_path = os.path.join(work_dir, "ffmpeg_concat.log")
+    with open(concat_log_path, "w", encoding="utf-8") as log_file:
+        subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
 
     # ── 6. BGM ───────────────────────────────────────────────────────────────
     bgm_map = {
@@ -729,9 +795,17 @@ async def assemble_advanced_reel(
     )
 
     logger.info("Final assembly...")
-    res = subprocess.run(final_cmd, capture_output=True, text=True)
+    assembly_log_path = os.path.join(work_dir, "ffmpeg_assembly.log")
+    with open(assembly_log_path, "w", encoding="utf-8") as log_file:
+        res = subprocess.run(final_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
     if res.returncode != 0:
-        logger.error(f"Final assembly failed: {res.stderr[-500:]}")
+        err_msg = "Unknown error"
+        if os.path.exists(assembly_log_path):
+            try:
+                with open(assembly_log_path, "r", encoding="utf-8", errors="ignore") as f:
+                    err_msg = f.read()[-500:]
+            except: pass
+        logger.error(f"Final assembly failed: {err_msg}")
         return None
 
     return {
@@ -745,7 +819,9 @@ async def assemble_advanced_reel(
 async def assemble_edited_reel(
     scenes: List[Dict],
     voice_id: Optional[str] = None,
-    bgm_style: str = "cinematic"
+    bgm_style: str = "cinematic",
+    audio_tracks: Optional[List[Dict]] = None,
+    watermark_path: Optional[str] = None
 ) -> Dict:
     """
     Production-grade Editing Assembly: Compiles the edited/reordered scenes 
@@ -910,7 +986,7 @@ async def assemble_edited_reel(
             # Focus blur (lens focus focus-in from radius 12 to 0 in 0.4s)
             trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
         elif trans_effect == "fade":
-            trans_filter = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0, duration-0.3):.2f}:d=0.3"
+            trans_filter = ",fade=t=in:st=0:d=0.3"
             
         # Color Enhancer Grader: High contrast, vibrancy saturation, unsharp sharpening filter, and subtle vignette
         enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
@@ -989,7 +1065,11 @@ async def assemble_edited_reel(
             f.write(f"file '{v_fixed}'\n")
             
     temp_concat = os.path.join(work_dir, "temp_concat.mp4")
-    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_path, "-c", "copy", temp_concat], capture_output=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_path,
+         "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", temp_concat],
+        capture_output=True
+    )
 
     # 6. Fetch Background Music (BGM)
     bgm_map = {
@@ -1016,22 +1096,90 @@ async def assemble_edited_reel(
     sub_path = create_subtitle_file(full_text, total_dur, work_dir)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
-    # 8. Render Final Output with Subtitles and Music
+    # 8. Render Final Output with Subtitles, Watermark and Multi-Track Audio Mixing
     output_filename = f"edit_reel_{reel_id}.mp4"
     output_path = os.path.join(base_uploads, output_filename)
     
+    # Resolve local paths of custom audio tracks
+    valid_tracks = []
+    audio_tracks_list = audio_tracks or []
+    for idx, track in enumerate(audio_tracks_list):
+        track_url = track.get("url") or track.get("audio")
+        if not track_url:
+            continue
+        
+        local_track_path = None
+        if "uploads/" in track_url or track_url.startswith("/uploads"):
+            clean_url = track_url.split("uploads/")[-1].lstrip("/")
+            local_track_path = os.path.join(os.getcwd(), "uploads", clean_url)
+        elif os.path.exists(track_url):
+            local_track_path = track_url
+            
+        if local_track_path and os.path.exists(local_track_path):
+            valid_tracks.append({
+                "path": local_track_path,
+                "start": float(track.get("start", 0)),
+                "volume": float(track.get("volume", 1.0))
+            })
+            
     final_cmd = ["ffmpeg", "-y", "-i", temp_concat]
-    filters = [f"[0:v]ass='{safe_sub}'[v_sub];", "[0:a]volume=1.8[a_v];"]
     
+    # Dynamic input tracking
+    next_idx = 1
+    
+    bgm_idx = None
     if bgm_path and os.path.exists(bgm_path):
         final_cmd.extend(["-i", bgm_path])
-        filters.append(f"[1:a]volume=0.08,atrim=0:{total_dur}[a_bg]; [a_v][a_bg]amix=inputs=2:duration=first[a_fin];")
-        final_cmd.extend(["-map", "[v_sub]", "-map", "[a_fin]"])
-    else:
-        final_cmd.extend(["-map", "[v_sub]", "-map", "[a_v]"])
+        bgm_idx = next_idx
+        next_idx += 1
         
-    final_cmd.extend(["-filter_complex", "".join(filters), "-c:v", "libx264", "-pix_fmt", "yuv420p", output_path])
+    watermark_idx = None
+    if watermark_path and os.path.exists(watermark_path):
+        final_cmd.extend(["-loop", "1", "-i", watermark_path])
+        watermark_idx = next_idx
+        next_idx += 1
+        
+    track_indices = []
+    for track in valid_tracks:
+        final_cmd.extend(["-i", track["path"]])
+        track_indices.append((next_idx, track["start"], track["volume"]))
+        next_idx += 1
+        
+    filters = []
     
+    # Video Filters: Subtitles + Watermark Overlay
+    filters.append(f"[0:v]ass='{safe_sub}'[v_sub]")
+    current_v = "[v_sub]"
+    
+    if watermark_idx is not None:
+        filters.append(f"{current_v}[{watermark_idx}:v]overlay=0:0:shortest=1[v_wat]")
+        current_v = "[v_wat]"
+        
+    # Audio Filters: Main voiceover + BGM + Custom overlapping audio tracks
+    filters.append(f"[0:a]volume=1.8[a_v]")
+    audio_mix_inputs = ["[a_v]"]
+    
+    if bgm_idx is not None:
+        filters.append(f"[{bgm_idx}:a]volume=0.08,atrim=0:{total_dur}[a_bg]")
+        audio_mix_inputs.append("[a_bg]")
+        
+    for idx, (t_idx, t_start, t_vol) in enumerate(track_indices):
+        t_start_ms = int(max(0, t_start) * 1000)
+        filters.append(f"[{t_idx}:a]volume={t_vol},adelay={t_start_ms}|{t_start_ms}[a_track_{idx}]")
+        audio_mix_inputs.append(f"[a_track_{idx}]")
+        
+    if len(audio_mix_inputs) > 1:
+        mix_inputs_str = "".join(audio_mix_inputs)
+        filters.append(f"{mix_inputs_str}amix=inputs={len(audio_mix_inputs)}:duration=first:dropout_transition=0[a_fin]")
+        current_a = "[a_fin]"
+    else:
+        current_a = "[a_v]"
+        
+    filter_complex_str = "; ".join(filters)
+    final_cmd.extend(["-filter_complex", filter_complex_str, "-map", current_v, "-map", current_a])
+    final_cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", output_path])
+    
+    logger.info(f"Running Final Multi-Track Assembly: {' '.join(final_cmd)}")
     if subprocess.run(final_cmd, capture_output=True).returncode == 0:
         return {
             "video_url": f"/uploads/social/{output_filename}",

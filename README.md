@@ -120,6 +120,39 @@ curl -X POST http://localhost:8000/api/ask \
   -d '{"question":"What are the key findings?","top_k":5}'
 ```
 
+### `GET /api/classroom/public/subtopics/{subtopic_id}/reels` — Retrieve Generated Reels (Public/Unauthenticated)
+
+Allows other projects to easily fetch all generated reels for a specific subtopic. It is completely public and requires no authentication headers or `X-App-Token` tokens, making it extremely easy to query via Postman.
+
+* **Method:** `GET`
+* **URL:** `http://localhost:8000/api/classroom/public/subtopics/{subtopic_id}/reels`
+* **Headers:** *None required*
+
+**Curl Command:**
+```bash
+curl http://localhost:8000/api/classroom/public/subtopics/{subtopic_id}/reels
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "reels": [
+    {
+      "content_id": "job-01e001df6da16214",
+      "client_id": "client_abc123",
+      "content_type": "reel",
+      "title": "Topic Name — Subject Name",
+      "body": "Reel spoken narration script...",
+      "media_url": "/uploads/social/ext_reel_8bf91e3931ed.mp4",
+      "scenes_json": "[...]",
+      "metadata_json": "{\"subtopic_id\": \"subtopic_id\", \"exam_id\": \"exam_id\", \"voice_id\": \"pNInz6...\", \"language\": \"Hindi\"}",
+      "created_at": "2026-06-01T11:59:15"
+    }
+  ]
+}
+```
+
 ---
 
 ## 🎨 Frontend UI Features

@@ -542,6 +542,37 @@ async def get_subtopic_reels(subtopic_id: str, client: dict = Depends(_require_c
     return {"success": True, "reels": subtopic_reels}
 
 
+# ── Public Subtopic Reels Endpoint (No Auth Needed for other projects) ──
+
+@router.get("/classroom/public/subtopics/{subtopic_id}/reels", tags=["Classroom Public"])
+async def get_public_subtopic_reels(subtopic_id: str, db: Session = Depends(get_db)):
+    """
+    Publicly fetch all generated reels for a specific subtopic.
+    Requires no X-App-Token, making it extremely easy for other projects to consume.
+    """
+    subtopic = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == subtopic_id).first()
+    if not subtopic:
+        raise HTTPException(404, "Subtopic not found")
+        
+    from app.core.models import SocialContent
+    
+    # Fetch all reels without filtering by client_id to allow simple cross-project integration
+    reels = db.query(SocialContent).filter(
+        SocialContent.content_type == "reel"
+    ).order_by(SocialContent.created_at.desc()).all()
+    
+    subtopic_reels = []
+    for r in reels:
+        try:
+            meta = r.metadata_info
+            if meta and meta.get("subtopic_id") == subtopic_id:
+                subtopic_reels.append(r.to_dict())
+        except Exception as e:
+            logger.warning(f"Error parsing metadata for social content {r.content_id}: {e}")
+            
+    return {"success": True, "reels": subtopic_reels}
+
+
 # ── Exam History (Reels) Endpoint ─────────────────────────────────────────────
 
 @router.get("/classroom/exams/{exam_id}/history", tags=["Classroom"])
@@ -1006,6 +1037,29 @@ Do NOT include any intro, outro, headers, or markdown wrappers. Only output the 
     )
     db.add(db_item)
     db.commit()
+
+    # Copy to subtopic-specific permanent directory for easy integration with other projects
+    try:
+        import shutil
+        local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
+        if os.path.exists(local_video_path):
+            subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"subtopic_{subtopic_id}")
+            os.makedirs(subtopic_reels_dir, exist_ok=True)
+            
+            # Copy as a unique file
+            dest_unique = os.path.join(subtopic_reels_dir, f"reel_{content_id}.mp4")
+            shutil.copy2(local_video_path, dest_unique)
+            
+            # Copy as latest.mp4 for static integration
+            dest_latest = os.path.join(subtopic_reels_dir, "latest.mp4")
+            if os.path.exists(dest_latest):
+                try: os.remove(dest_latest)
+                except: pass
+            shutil.copy2(local_video_path, dest_latest)
+            
+            logger.info(f"Classroom Reel physically saved to: {dest_unique} and {dest_latest}")
+    except Exception as copy_err:
+        logger.error(f"Failed to copy classroom reel to subtopic directory: {copy_err}")
 
     return {
         "success": True,

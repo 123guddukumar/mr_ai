@@ -10,6 +10,7 @@ let state = {
   token: null,
   backendUrl: "https://test.3rdai.co",
   metaTabId: null,
+  singleAsset: null   // { assetId, mediaType, prompt, tabId, dashboardTabId }
 };
 
 // Global registry for tracking native (blob) downloads triggered via click in content scripts
@@ -20,26 +21,28 @@ async function saveState() {
   await chrome.storage.local.set({ sw_state: state });
 }
 
-async function loadState() {
-  const cfg = await chrome.storage.local.get(["sw_state", "token", "backendUrl"]);
-  if (cfg.sw_state) {
-    state = cfg.sw_state;
-    // Reset to idle if SW starts/restarts in any non-idle state (e.g. done, error, or mid-job)
-    // to ensure we are always ready to poll and process new jobs!
-    if (state.phase !== "idle") {
-      log(`SW loaded in phase: ${state.phase}, resetting to idle`);
-      notifyPopup(`🔄 Resetting extension phase from '${state.phase}' to 'idle'`, "info");
-      state.phase = "idle";
-      state.jobId = null;
-      await saveState();
+async function loadState(retryCount = 0) {
+  try {
+    const cfg = await chrome.storage.local.get(["sw_state", "token", "backendUrl"]);
+    if (cfg.sw_state) {
+      state = cfg.sw_state;
+    }
+    if (cfg.token) state.token = cfg.token;
+    if (cfg.backendUrl) state.backendUrl = cfg.backendUrl;
+
+    // Notify status and start the fast polling loop if idle
+    notifyPopup("🔌 Active and polling for dashboard...", "info");
+    if (state.phase === "idle") {
+      startFastPoll();
+    }
+  } catch (e) {
+    log(`loadState error: ${e.message}`);
+    // If it's a startup or SW-invalidated error, retry after 500ms
+    if (retryCount < 5) {
+      log(`Temporary context error. Retrying loadState in 500ms (attempt ${retryCount + 1}/5)...`);
+      setTimeout(() => loadState(retryCount + 1), 500);
     }
   }
-  if (cfg.token) state.token = cfg.token;
-  if (cfg.backendUrl) state.backendUrl = cfg.backendUrl;
-
-  // Notify status and start the fast polling loop automatically
-  notifyPopup("🔌 Active and polling for dashboard...", "info");
-  startFastPoll();
 }
 
 // ── Fast Polling Loop ────────────────────────────────────────────────────────
@@ -194,20 +197,69 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+  if (msg.type === "REGEN_SCENE_FROM_DASHBOARD") {
+    log(`Regen scene requested from dashboard: jobId=${msg.jobId}, sceneIdx=${msg.sceneIdx}`);
+    regenScene(msg.jobId, msg.sceneIdx);
+    sendResponse({ ok: true });
+    return true;
+  }
   if (msg.type === "GET_STATE") {
     sendResponse({ state });
   }
   if (msg.type === "IMAGE_DOWNLOADED") {
-    handleImageDownloaded(msg.filename);
-    sendResponse({ ok: true });
+    handleImageDownloaded(msg.filename).then((ok) => {
+      sendResponse({ ok });
+    });
+    return true; // Keep message channel open for async response
   }
   if (msg.type === "VIDEO_DOWNLOADED") {
-    handleVideoDownloaded(msg.filename);
-    sendResponse({ ok: true });
+    handleVideoDownloaded(msg.filename).then((ok) => {
+      sendResponse({ ok });
+    });
+    return true; // Keep message channel open for async response
+  }
+  if (msg.type === "SCENE_COMPLETED") {
+    handleSceneCompleted().then(() => {
+      sendResponse({ ok: true });
+    });
+    return true;
   }
   if (msg.type === "RESET") {
     resetState();
     sendResponse({ ok: true });
+  }
+  // ── Single Library Asset Generation ─────────────────────────────────────────
+  if (msg.type === "GENERATE_SINGLE_ASSET") {
+    log(`Single asset request: type=${msg.mediaType}, assetId=${msg.assetId}`);
+    if (msg.token) {
+      state.token = msg.token;
+      chrome.storage.local.set({ token: msg.token });
+    }
+    if (msg.backendUrl) {
+      state.backendUrl = msg.backendUrl;
+      chrome.storage.local.set({ backendUrl: msg.backendUrl });
+    }
+    // Store request in state so onDeterminingFilename can name the file correctly
+    state.singleAsset = {
+      assetId: msg.assetId,
+      mediaType: msg.mediaType,
+      prompt: msg.prompt,
+      tabId: null,
+      dashboardTabId: sender.tab ? sender.tab.id : null
+    };
+    saveState().then(() => startSingleAssetGeneration());
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg.type === "SINGLE_ASSET_REPLACED_CONFIRMED") {
+    log("Received SINGLE_ASSET_REPLACED_CONFIRMED from page.");
+    if (state.singleAsset && state.singleAsset.tabId) {
+      chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
+    }
+    state.singleAsset = null;
+    saveState();
+    sendResponse({ ok: true });
+    return true;
   }
   return true;
 });
@@ -242,6 +294,7 @@ async function startJob(jobId) {
     if (!data.success) throw new Error(data.detail || "Failed to fetch job");
 
     state.scenes = data.scenes;
+    state.subtopicName = data.subtopic_name || "";
     state.phase = "generating_images";
     await saveState();
     notifyPopup(`📋 ${state.scenes.length} scenes loaded. Opening Meta AI...`);
@@ -254,6 +307,43 @@ async function startJob(jobId) {
     await saveState();
     await reportError(e.message);
     startFastPoll();
+  }
+}
+
+// ── Single Scene Regeneration ────────────────────────────────────────────────
+async function regenScene(jobId, sceneIdx) {
+  state.jobId = jobId;
+  state.currentSceneIdx = sceneIdx;
+  state.singleSceneRegen = true;
+  state.phase = "generating_images";
+  await saveState();
+
+  notifyPopup(`🔄 Regenerating scene ${sceneIdx + 1}...`);
+
+  try {
+    const res = await fetch(`${state.backendUrl}/api/extension/job/${jobId}`, {
+      headers: { "X-App-Token": state.token }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.detail || "Failed to fetch job");
+
+    state.scenes = data.scenes;
+    state.subtopicName = data.subtopic_name || "";
+    await saveState();
+
+    const tabs = await chrome.tabs.query({ url: ["https://www.meta.ai/*", "https://meta.ai/*"] });
+    const tabId = tabs.length > 0 ? tabs[0].id : state.metaTabId;
+    if (tabId) {
+      await sendNextScene(tabId);
+    } else {
+      await openMetaAI();
+    }
+  } catch (e) {
+    notifyPopup(`❌ Regen failed: ${e.message}`, "error");
+    state.phase = "idle";
+    state.singleSceneRegen = false;
+    await saveState();
+    await reportError(e.message);
   }
 }
 
@@ -301,7 +391,8 @@ async function sendNextScene(tabId) {
     imagePrompt: scene.image_prompt || "",
     animationPrompt: scene.animation_prompt || "",
     dialogue: scene.dialogue || "",
-    jobId: state.jobId
+    jobId: state.jobId,
+    subtopicName: state.subtopicName || ""
   };
 
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -334,11 +425,32 @@ async function handleImageDownloaded(filename) {
   notifyPopup(`🖼️ Image ${state.imagesDone.length}/${state.scenes.length} done`);
   await saveState();
 
-  await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/image-done`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-App-Token": state.token },
-    body: JSON.stringify({ filename, index: state.imagesDone.length - 1 })
-  }).catch(() => {});
+  // Polling verification loop to ensure image is successfully saved and copied on backend
+  let verified = false;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    try {
+      log(`Verifying image on backend (attempt ${attempt + 1}/25)...`);
+      const res = await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/image-done`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-App-Token": state.token },
+        body: JSON.stringify({ filename, index: state.imagesDone.length - 1 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.copied) {
+          verified = true;
+          log(`Successfully verified and copied image on backend: ${filename}`);
+          notifyPopup(`🖼️ Image ${state.imagesDone.length}/${state.scenes.length} verified on dashboard!`);
+          break;
+        }
+      }
+    } catch (e) {
+      log(`Image verification connection error: ${e.message}`);
+    }
+    notifyPopup(`⏳ Syncing Image ${state.imagesDone.length} on dashboard... (${attempt + 1}/5)`);
+    await sleep(2000);
+  }
+  return verified;
 }
 
 // ── Video downloaded ──────────────────────────────────────────────────────────
@@ -346,11 +458,148 @@ async function handleVideoDownloaded(filename) {
   if (!state.videosDone.includes(filename)) state.videosDone.push(filename);
   notifyPopup(`✅ Video ${state.videosDone.length}/${state.scenes.length} done`);
 
-  await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/video-done`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-App-Token": state.token },
-    body: JSON.stringify({ filename, index: state.videosDone.length - 1 })
-  }).catch(() => {});
+  // Polling verification loop to ensure video is successfully saved and copied on backend
+  let verified = false;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    try {
+      log(`Verifying video on backend (attempt ${attempt + 1}/25)...`);
+      const res = await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/video-done`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-App-Token": state.token },
+        body: JSON.stringify({ filename, index: state.videosDone.length - 1 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.copied) {
+          verified = true;
+          log(`Successfully verified and copied video on backend: ${filename}`);
+          notifyPopup(`✅ Video ${state.videosDone.length}/${state.scenes.length} verified on dashboard!`);
+          break;
+        }
+      }
+    } catch (e) {
+      log(`Video verification connection error: ${e.message}`);
+    }
+    notifyPopup(`⏳ Syncing Video ${state.videosDone.length} on dashboard... (${attempt + 1}/5)`);
+    await sleep(2000);
+  }
+  return verified;
+}
+
+// ── Single Asset Generation (Library Edit) ───────────────────────────────────
+async function startSingleAssetGeneration() {
+  const sa = state.singleAsset;
+  if (!sa) return;
+
+  notifyPopup(`🖼️ Single asset generation started (${sa.mediaType})...`);
+
+  // Reuse existing Meta AI tab if available, otherwise open a new one
+  const tabs = await chrome.tabs.query({ url: ["https://www.meta.ai/*", "https://meta.ai/*"] });
+  let tabId;
+  if (tabs.length > 0) {
+    tabId = tabs[0].id;
+    chrome.tabs.update(tabId, { active: true });
+  } else {
+    const tab = await chrome.tabs.create({ url: "https://www.meta.ai", active: true });
+    tabId = tab.id;
+    await waitForTabLoad(tabId, 25000);
+    await sleep(4000);
+  }
+
+  state.singleAsset.tabId = tabId;
+  await saveState();
+
+  // Send GENERATE_SINGLE_ASSET command to the Meta AI content script
+  const assetId = sa.assetId;
+  const mediaType = sa.mediaType;
+  const fileExt = mediaType === 'video' ? 'mp4' : 'jpg';
+  const filename = `single-gen-${assetId}.${fileExt}`;
+
+  // Register the pending native download first
+  if (sa.dashboardTabId) {
+    pendingNativeDownloads[filename] = {
+      tabId: sa.dashboardTabId,
+      downloadId: null,
+      isSingleAsset: true,
+      assetId,
+      mediaType
+    };
+  }
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      const resp = await chrome.tabs.sendMessage(tabId, {
+        type: "GENERATE_SINGLE_ASSET",
+        prompt: sa.prompt,
+        mediaType: sa.mediaType,
+        filename
+      });
+      if (resp && resp.ok) {
+        log(`Single asset generation started on Meta AI tab ${tabId}`);
+        return;
+      }
+      if (resp && resp.reason === "busy") {
+        await sleep(5000);
+        continue;
+      }
+    } catch (e) { /* content script not ready */ }
+    await sleep(3000);
+  }
+
+  notifyPopup(`❌ Could not reach Meta AI tab for single asset`, "error");
+  state.singleAsset = null;
+  await saveState();
+}
+
+async function finishSingleAsset(filename) {
+  const sa = state.singleAsset;
+  if (!sa) return;
+
+  notifyPopup(`✅ Single asset downloaded: ${filename}. Syncing to backend...`);
+
+  // Post to backend to register the single asset and replace in library
+  const token = state.token;
+  const backendUrl = state.backendUrl;
+  const assetId = sa.assetId;
+  const mediaType = sa.mediaType;
+
+  try {
+    const res = await fetch(`${backendUrl}/api/extension/single-asset-done`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-App-Token": token },
+      body: JSON.stringify({ filename, asset_id: assetId, media_type: mediaType })
+    });
+    const data = await res.json();
+    log(`Backend single-asset-done: ${JSON.stringify(data)}`);
+
+    // Notify the dashboard content script to update the library UI
+    const dashTabId = sa.dashboardTabId;
+    if (dashTabId) {
+      chrome.tabs.sendMessage(dashTabId, {
+        type: "MR_AI_SINGLE_ASSET_DOWNLOADED",
+        assetId,
+        mediaType,
+        url: data.url || "",
+        thumb: data.thumb || data.url || ""
+      }).catch(() => {});
+    }
+  } catch (e) {
+    log(`Error syncing single asset: ${e.message}`);
+  }
+
+  // Keep singleAsset state alive until confirmed by the page window
+  await saveState();
+}
+
+// ── Handle Scene Completed ───────────────────────────────────────────────────
+async function handleSceneCompleted() {
+  if (state.singleSceneRegen) {
+    state.singleSceneRegen = false;
+    state.phase = "idle";
+    await saveState();
+    notifyPopup(`🎉 Single scene ${state.currentSceneIdx + 1} regenerated successfully!`, "success");
+    return;
+  }
 
   state.currentSceneIdx++;
   await saveState();
@@ -371,9 +620,22 @@ async function allDone() {
   await saveState();
   notifyPopup(`⚙️ All scenes done! Assembling reel...`);
 
-  if (state.metaTabId) {
-    chrome.tabs.remove(state.metaTabId).catch(() => {});
-    state.metaTabId = null;
+  // Wait for any active downloads related to this job to fully finish
+  try {
+    await waitForActiveDownloadsToComplete(state.jobId);
+  } catch (e) {
+    log(`Error waiting for active downloads: ${e.message}`);
+  }
+
+  // Delay closing the Meta AI tab to ensure the last scene is fully written/flushed to disk
+  const tabToRemove = state.metaTabId;
+  state.metaTabId = null;
+  if (tabToRemove) {
+    log(`Scheduling closure of Meta AI tab ${tabToRemove} in 15 seconds...`);
+    setTimeout(() => {
+      chrome.tabs.remove(tabToRemove).catch(() => {});
+      log(`Closed Meta AI tab ${tabToRemove} successfully.`);
+    }, 15000);
   }
 
   try {
@@ -427,7 +689,16 @@ async function reportError(msg) {
 }
 
 function notifyPopup(message, type = "info") {
-  chrome.runtime.sendMessage({ type: "LOG", message, logType: type }).catch(() => {});
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.runtime.sendMessage) {
+      const p = chrome.runtime.sendMessage({ type: "LOG", message, logType: type });
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {});
+      }
+    }
+  } catch (e) {
+    // Ignore SW context errors during startup/invalidation
+  }
 }
 
 function log(msg) { console.log(`[MR AI BG] ${msg}`); }
@@ -464,6 +735,82 @@ function waitForDownloadComplete(downloadId) {
   });
 }
 
+async function waitForActiveDownloadsToComplete(jobId, maxWaitMs = 60000) {
+  const start = Date.now();
+  log(`Checking for active downloads related to job ${jobId}...`);
+  while (Date.now() - start < maxWaitMs) {
+    const active = await new Promise((resolve) => {
+      chrome.downloads.search({ state: "in_progress" }, (items) => {
+        const hasJobDownload = items.some(item => {
+          const base = (item.filename || "").toLowerCase();
+          const url = (item.url || "").toLowerCase();
+          return jobId && (base.includes(jobId.toLowerCase()) || url.includes(jobId.toLowerCase()));
+        });
+        resolve(hasJobDownload);
+      });
+    });
+    if (!active) {
+      log("All active downloads for this job are complete.");
+      return;
+    }
+    log("Waiting for active downloads of this job to finish...");
+    await sleep(3000);
+  }
+  log("Warning: Active downloads wait timed out.");
+}
+
+// ── Intercept and rename downloads triggered natively by page context click ──
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  // If the filename is already formatted by our extension, let it through unchanged!
+  const isAlreadyRenamed = item.filename && (
+    item.filename.startsWith("meta-vid") || 
+    item.filename.startsWith("meta-img") || 
+    item.filename.startsWith("flow-image") ||
+    item.filename.startsWith("single-gen-")
+  );
+  if (isAlreadyRenamed) {
+    suggest();
+    return;
+  }
+
+  // Use the in-memory state synchronously to prevent MV3 async suggest crashes!
+  const isVideo = item.mimeType?.includes("video") || item.filename?.endsWith(".mp4") || item.url?.includes(".mp4");
+  const isImage = item.mimeType?.includes("image") || item.filename?.endsWith(".jpg") || item.filename?.endsWith(".jpeg") || item.url?.includes(".jpg") || item.url?.includes(".jpeg");
+
+  // Single-asset generation takes priority — rename and let it flow through
+  if (state.singleAsset && (isVideo || isImage)) {
+    const sa = state.singleAsset;
+    const fileExt = sa.mediaType === 'video' ? 'mp4' : 'jpg';
+    const newFilename = `single-gen-${sa.assetId}.${fileExt}`;
+    log(`Renaming single-asset download → ${newFilename}`);
+    suggest({ filename: newFilename, conflictAction: "overwrite" });
+    return;
+  }
+
+  const isTargetDownload = state.jobId && (isVideo || isImage);
+
+  if (isTargetDownload) {
+    let subtopicFirstWord = 'reel';
+    if (state.subtopicName) {
+      const cleanSubtopic = state.subtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
+      const parts = cleanSubtopic.split(/\s+/);
+      if (parts.length > 0 && parts[0]) {
+        subtopicFirstWord = parts[0];
+      }
+    }
+
+    const sceneNum = state.currentSceneIdx + 1;
+    const ext = isVideo ? "mp4" : "jpg";
+    const prefix = isVideo ? "meta-vid" : "meta-img";
+    const newFilename = `${prefix}-${sceneNum}-${state.jobId || 'nojob'}-${subtopicFirstWord}.${ext}`;
+
+    log(`Determining custom filename synchronously for target download: ${newFilename}`);
+    suggest({ filename: newFilename, conflictAction: "overwrite" });
+  } else {
+    suggest();
+  }
+});
+
 // ── Native (blob) downloads tracking & signal listeners ────────────────────────
 chrome.downloads.onCreated.addListener((item) => {
   checkAndMatchDownload(item);
@@ -490,14 +837,20 @@ function checkAndMatchDownload(item) {
       
       if (item.state === "complete") {
         log(`Native download completed: ${filename}`);
-        chrome.tabs.sendMessage(pending.tabId, {
-          type: "DOWNLOAD_COMPLETE_SIGNAL",
-          filename: filename,
-          ok: true
-        }).catch((err) => {
-          log(`Failed to send DOWNLOAD_COMPLETE_SIGNAL to tab ${pending.tabId}: ${err.message}`);
-        });
-        delete pendingNativeDownloads[filename];
+        // If this is a single-asset generation, call the dedicated handler
+        if (pending.isSingleAsset) {
+          delete pendingNativeDownloads[filename];
+          finishSingleAsset(filename);
+        } else {
+          chrome.tabs.sendMessage(pending.tabId, {
+            type: "DOWNLOAD_COMPLETE_SIGNAL",
+            filename: filename,
+            ok: true
+          }).catch((err) => {
+            log(`Failed to send DOWNLOAD_COMPLETE_SIGNAL to tab ${pending.tabId}: ${err.message}`);
+          });
+          delete pendingNativeDownloads[filename];
+        }
       } else if (item.state === "interrupted") {
         log(`Native download interrupted: ${filename} - ${item.error || "unknown"}`);
         chrome.tabs.sendMessage(pending.tabId, {

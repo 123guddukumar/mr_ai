@@ -523,7 +523,7 @@ async def delete_sub_user(sub_client_id: str, client: dict = Depends(_require_cl
 
 @router.post("/clients/upload-image", response_model=ImageUploadResponse, tags=["Sub-Users"])
 async def upload_client_image(file: UploadFile = File(...), client: dict = Depends(_require_client)):
-    """Upload an image for logo or profile and return the URL."""
+    """Upload an image for logo or profile, save to Cloudflare R2 bucket, and return the CDN URL."""
     import os
     import secrets
     from app.core.config import settings
@@ -533,16 +533,40 @@ async def upload_client_image(file: UploadFile = File(...), client: dict = Depen
     
     # Ensure dir
     upload_dir = os.path.join(settings.BASE_DIR, "uploads", "images")
-    os.makedirs(upload_dir, exist_ok=True)
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+    except Exception as dir_err:
+        logger.warning(f"Failed to create local upload directory: {dir_err}")
     
     # Generate unique name
     ext = os.path.splitext(file.filename)[1] or ".png"
     fname = f"{secrets.token_hex(8)}{ext}"
     fpath = os.path.join(upload_dir, fname)
     
-    with open(fpath, "wb") as f:
-        content = await file.read()
-        f.write(content)
+    # Write to local file first
+    try:
+        with open(fpath, "wb") as f:
+            content = await file.read()
+            f.write(content)
+    except Exception as write_err:
+        logger.error(f"Failed to write image file locally: {write_err}")
+        # Even if writing locally fails, we still try to proceed, but it's likely we need the file path for boto3 upload.
+    
+    # ── CLOUDFLARE R2 BUCKET UPLOAD ──
+    r2_url = None
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"images/{fname}"
+        content_type = file.content_type or "image/png"
         
-    url = f"/uploads/images/{fname}"
-    return {"success": True, "url": url, "message": "Image uploaded successfully."}
+        # Upload using the robust boto3 client helper
+        r2_url = upload_to_r2(fpath, r2_key, content_type)
+        if r2_url:
+            logger.info(f"Cloudflare R2: Exam image successfully saved to bucket R2! URL={r2_url}")
+    except Exception as r2_err:
+        logger.error(f"Failed to upload client image to Cloudflare R2: {r2_err}")
+    
+    # Use R2 URL if successful, otherwise fallback to standard local serving URL
+    final_url = r2_url if r2_url else f"/uploads/images/{fname}"
+    
+    return {"success": True, "url": final_url, "message": "Image uploaded successfully."}

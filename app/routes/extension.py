@@ -848,6 +848,29 @@ async def assemble_reel(
         video_url = res_data["video_url"]
         enriched_scenes = res_data["scenes"]
         
+        # ── CLOUDFLARE R2 UPLOAD ──
+        try:
+            from app.services.r2_storage import upload_to_r2
+            local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
+            subtopic_id = job.get("subtopic_id")
+            
+            # Key: reels/subtopic_{subtopic_id}/reel_{job_id}.mp4
+            r2_key_unique = f"reels/subtopic_{subtopic_id}/reel_{job_id}.mp4"
+            r2_key_latest = f"reels/subtopic_{subtopic_id}/latest.mp4"
+            
+            # Upload unique reel
+            r2_url = upload_to_r2(local_video_path, r2_key_unique, "video/mp4")
+            
+            # Upload latest.mp4 for static referencing
+            upload_to_r2(local_video_path, r2_key_latest, "video/mp4")
+            
+            if r2_url:
+                logger.info(f"R2 Storage: Successfully saved reel in Cloudflare R2! URL={r2_url}")
+                # Overwrite video_url so it is saved in database and returned to dashboard/extension
+                video_url = r2_url
+        except Exception as r2_err:
+            logger.error(f"Failed to upload to Cloudflare R2 (falling back to local storage): {r2_err}")
+        
         # Save to database SocialContent table so it appears in history and lists!
         from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam, SocialContent
         from app.core.database import get_session_local
@@ -930,7 +953,8 @@ async def assemble_reel(
             
         # Copy to subtopic-specific permanent directory for easy integration with other projects
         try:
-            local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
+            orig_filename = os.path.basename(res_data["video_url"])
+            local_video_path = os.path.join(os.getcwd(), "uploads", "social", orig_filename)
             if os.path.exists(local_video_path):
                 subtopic_id = job.get("subtopic_id")
                 subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"subtopic_{subtopic_id}")

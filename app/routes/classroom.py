@@ -1019,6 +1019,28 @@ Do NOT include any intro, outro, headers, or markdown wrappers. Only output the 
         raise HTTPException(500, "Reel generation failed")
 
     content_id = secrets.token_hex(8)
+
+    # ── CLOUDFLARE R2 UPLOAD ──
+    try:
+        from app.services.r2_storage import upload_to_r2
+        local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
+        
+        # Key: reels/subtopic_{subtopic_id}/reel_{content_id}.mp4
+        r2_key_unique = f"reels/subtopic_{subtopic_id}/reel_{content_id}.mp4"
+        r2_key_latest = f"reels/subtopic_{subtopic_id}/latest.mp4"
+        
+        # Upload unique reel
+        r2_url = upload_to_r2(local_video_path, r2_key_unique, "video/mp4")
+        
+        # Upload latest.mp4 for static referencing
+        upload_to_r2(local_video_path, r2_key_latest, "video/mp4")
+        
+        if r2_url:
+            logger.info(f"R2 Storage: Successfully saved classroom reel in Cloudflare R2! URL={r2_url}")
+            video_url = r2_url
+    except Exception as r2_err:
+        logger.error(f"Failed to upload to Cloudflare R2 (falling back to local storage): {r2_err}")
+
     db_item = SocialContent(
         content_id=content_id,
         client_id=client["client_id"],
@@ -1041,7 +1063,8 @@ Do NOT include any intro, outro, headers, or markdown wrappers. Only output the 
     # Copy to subtopic-specific permanent directory for easy integration with other projects
     try:
         import shutil
-        local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
+        orig_filename = os.path.basename(res.get("video_url"))
+        local_video_path = os.path.join(os.getcwd(), "uploads", "social", orig_filename)
         if os.path.exists(local_video_path):
             subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"subtopic_{subtopic_id}")
             os.makedirs(subtopic_reels_dir, exist_ok=True)
@@ -1068,3 +1091,58 @@ Do NOT include any intro, outro, headers, or markdown wrappers. Only output the 
         "scenes": scenes_data,
         "script": structured_script
     }
+
+
+# ── Granular Fetch Endpoints for Step-by-Step UI ─────────────────────────────
+
+@router.get("/classroom/exams/{exam_id}/papers", tags=["Classroom"])
+async def list_exam_papers(exam_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
+    if not exam:
+        raise HTTPException(404, "Exam not found or access denied")
+    papers = db.query(PaperClassroom).filter(PaperClassroom.exam_id == exam_id).order_by(PaperClassroom.created_at.desc()).all()
+    return {"success": True, "papers": [p.to_dict() for p in papers]}
+
+
+@router.get("/classroom/papers/{paper_id}/subjects", tags=["Classroom"])
+async def list_paper_subjects(paper_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
+    if not paper:
+        raise HTTPException(404, "Paper not found or access denied")
+    subjects = db.query(Subject).filter(Subject.paper_id == paper_id).order_by(Subject.created_at.desc()).all()
+    return {"success": True, "subjects": [s.to_dict() for s in subjects]}
+
+
+@router.get("/classroom/subjects/{subject_id}/chapters", tags=["Classroom"])
+async def list_subject_chapters(subject_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
+    if not subject:
+        raise HTTPException(404, "Subject not found or access denied")
+    chapters = db.query(ChapterClassroom).filter(ChapterClassroom.subject_id == subject_id).order_by(ChapterClassroom.created_at.asc()).all()
+    return {"success": True, "chapters": [c.to_dict() for c in chapters]}
+
+
+@router.get("/classroom/chapters/{chapter_id}/topics", tags=["Classroom"])
+async def list_chapter_topics(chapter_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    chapter = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == chapter_id, Exam.client_id == client["client_id"]).first()
+    if not chapter:
+        raise HTTPException(404, "Chapter not found or access denied")
+    topics = db.query(TopicClassroom).filter(TopicClassroom.chapter_id == chapter_id).order_by(TopicClassroom.created_at.asc()).all()
+    return {"success": True, "topics": [t.to_dict() for t in topics]}
+
+
+@router.get("/classroom/topics/{topic_id}/subtopics", tags=["Classroom"])
+async def list_topic_subtopics(topic_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == topic_id, Exam.client_id == client["client_id"]).first()
+    if not topic:
+        raise HTTPException(404, "Topic not found or access denied")
+    subtopics = db.query(SubtopicClassroom).filter(SubtopicClassroom.topic_id == topic_id).order_by(SubtopicClassroom.created_at.asc()).all()
+    return {"success": True, "subtopics": [s.to_dict() for s in subtopics]}
+
+
+@router.get("/classroom/subtopics/{subtopic_id}", tags=["Classroom"])
+async def get_subtopic_details(subtopic_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == subtopic_id, Exam.client_id == client["client_id"]).first()
+    if not subtopic:
+        raise HTTPException(404, "Subtopic not found or access denied")
+    return {"success": True, "subtopic": subtopic.to_dict()}

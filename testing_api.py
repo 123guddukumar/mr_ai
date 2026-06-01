@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "http://localhost:8000/api"
+BASE_URL = "https://test.3rdai.co/api"
 API_KEY  = "mrairag-Qil2qqbSwwz5d0tuEEmxaJfGk29jcUDLAFacOGmO"
 HEADERS  = {"X-API-Key": API_KEY}
 

@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
 
+    # Cloudflare R2 Cloud Storage
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = ""
+    R2_ENDPOINT: str = ""
+    R2_PUBLIC_URL: str = ""
+
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (
         "You are MR AI RAG. "

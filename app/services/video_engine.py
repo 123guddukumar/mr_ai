@@ -85,11 +85,11 @@ async def generate_elevenlabs_voiceover(text: str, work_dir: str, voice_id: Opti
     
     data = {
         "text": text,
-        "model_id": "eleven_turbo_v2_5", # ElevenLabs newest state-of-the-art multilingual model
+        "model_id": "eleven_multilingual_v2", # Gold-standard multilingual model for realistic emotion & pacing
         "voice_settings": {
-            "stability": 0.45,       # Lower stability allows more dynamic pitch, natural emotion and human-like inflection
-            "similarity_boost": 0.85, # Keep high clarity and likeness to original template
-            "style": 0.15,            # Boost the custom expressive styling slightly to sound more energetic
+            "stability": 0.65,       # Smooth delivery, stable tone, prevents speaking too fast
+            "similarity_boost": 0.85, # Keeps high clarity and matches selected voice character
+            "style": 0.05,            # Reduces digital exaggeration for ultra-realistic human feel
             "use_speaker_boost": True
         }
     }

@@ -192,9 +192,6 @@ if os.path.exists(frontend_path):
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
-        # Never serve HTML for /api/* paths — return proper 404 JSON so clients know the route doesn't exist
-        if full_path.startswith("api/"):
-            return JSONResponse(status_code=404, content={"error": "API endpoint not found", "path": f"/{full_path}"})
         index = os.path.join(frontend_path, "index.html")
         return FileResponse(index)
 

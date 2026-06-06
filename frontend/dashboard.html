@@ -1620,7 +1620,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-secondary" onclick="document.getElementById('pyq-pdf-upload-input').click()" style="font-size:11px;border-color:#10b981;color:#10b981;">📥 Upload PDF/Excel</button>
             <input type="file" id="pyq-pdf-upload-input" accept=".pdf,.xlsx,.xls" style="display:none" onchange="uploadPYQPdf(this)">
-            <button class="btn btn-secondary" id="btn-pyq-show-reels" onclick="togglePYQReelsPanel()" style="font-size:11px;border-color:#8b5cf6;color:#8b5cf6;">🎞️ Reels</button>
+            <button class="btn btn-secondary" id="btn-pyq-toggle-view" onclick="togglePYQDetailView()" style="font-size:11px;border-color:#e11d48;color:#e11d48;">🎥 View Reels</button>
             <button class="btn btn-secondary" id="btn-pyq-generate-overview" onclick="generatePYQOverview()" style="font-size:11px;border-color:#7c3aed;color:#7c3aed;">✨ Generate Full Overview</button>
             <button class="btn btn-primary" id="btn-pyq-generate-reel" onclick="openExtensionReelWizard('pyq')" style="font-size:11px;background:linear-gradient(135deg,#10b981,#06b6d4);border:none;">🎬 Extension Reel (≤5 min)</button>
             <button class="btn btn-danger" onclick="clearPYQFileAndQuestions()" style="font-size:11px;">🗑️ Clear File & Questions</button>
@@ -1633,23 +1633,19 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
         <div id="pyq-questions-empty" style="display:none;text-align:center;padding:30px;color:var(--text3)">No questions found. Upload a PDF or Excel file.</div>
 
+        <!-- PYQ Reels List (Initially Hidden) -->
+        <div id="pyq-reels-container" style="display:none; animation:fadeIn 0.3s ease;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:800;color:#e11d48;">🎞️ Generated Reels for this Set</div>
+          </div>
+          <div id="pyq-reels-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; max-height:70vh; overflow-y:auto; padding-bottom:10px;"></div>
+          <div id="pyq-reels-empty" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:13px;">No reels generated for this PYQ set yet.</div>
+        </div>
+
         <!-- PYQ Reel Result -->
         <div id="pyq-reel-result" style="display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
           <div style="font-size:13px;font-weight:800;color:#10b981;margin-bottom:12px;">🎬 Generated PYQ Overview Reel</div>
           <video id="pyq-reel-video" controls style="width:100%;max-width:400px;border-radius:10px;"></video>
-        </div>
-
-        <!-- PYQ Reels Panel (toggled by Reels button) -->
-        <div id="pyq-reels-section" style="display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <div style="font-size:14px; font-weight:800; color:#8b5cf6;">🎞️ Generated Reels for this PYQ Set</div>
-            <div style="display:flex; gap:8px;">
-              <button onclick="loadPYQReels(_currentPYQSetId)" style="background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text3);font-size:12px;padding:4px 10px;">↻ Refresh</button>
-              <button onclick="document.getElementById('pyq-reels-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
-            </div>
-          </div>
-          <div id="pyq-reels-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px;"></div>
-          <div id="pyq-reels-empty" style="display:none; text-align:center; padding:30px; color:var(--text3); font-size:13px;">No reels generated for this PYQ set yet. Use the 🎬 Extension Reel button to create one!</div>
         </div>
       </div>
 
@@ -11391,6 +11387,8 @@ function renderPYQSetCard(s) {
     </div>`;
 }
 
+let pyqDetailViewMode = 'questions'; // 'questions' or 'reels'
+
 async function openPYQSetDetail(setId, setName) {
     _currentPYQSetId = setId;
     _currentPYQSetName = setName;
@@ -11398,41 +11396,54 @@ async function openPYQSetDetail(setId, setName) {
     document.getElementById('classroom-pyq-detail-view').style.display = 'block';
     document.getElementById('pyq-detail-set-name').textContent = setName;
     document.getElementById('pyq-reel-result').style.display = 'none';
-    document.getElementById('pyq-reels-section').style.display = 'none';
+    
+    // Reset view mode to questions
+    pyqDetailViewMode = 'questions';
+    const btn = document.getElementById('btn-pyq-toggle-view');
+    if (btn) btn.innerHTML = '🎥 View Reels';
+    const qSection = document.getElementById('pyq-questions-container');
+    const qEmpty = document.getElementById('pyq-questions-empty');
+    const rSection = document.getElementById('pyq-reels-container');
+    if (qSection) qSection.style.display = 'flex';
+    if (rSection) rSection.style.display = 'none';
+    
     await loadPYQQuestions(setId);
 }
 
-function togglePYQReelsPanel() {
-    const panel = document.getElementById('pyq-reels-section');
-    if (panel.style.display === 'none' || !panel.style.display) {
-        panel.style.display = 'block';
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        loadPYQReels(_currentPYQSetId);
+async function togglePYQDetailView() {
+    const btn = document.getElementById('btn-pyq-toggle-view');
+    const qSection = document.getElementById('pyq-questions-container');
+    const qEmpty = document.getElementById('pyq-questions-empty');
+    const rSection = document.getElementById('pyq-reels-container');
+    
+    if (pyqDetailViewMode === 'questions') {
+        pyqDetailViewMode = 'reels';
+        if (btn) btn.innerHTML = '📝 View Questions';
+        if (qSection) qSection.style.display = 'none';
+        if (qEmpty) qEmpty.style.display = 'none';
+        if (rSection) rSection.style.display = 'block';
+        await loadPYQReels(_currentPYQSetId);
     } else {
-        panel.style.display = 'none';
+        pyqDetailViewMode = 'questions';
+        if (btn) btn.innerHTML = '🎥 View Reels';
+        if (rSection) rSection.style.display = 'none';
+        
+        await loadPYQQuestions(_currentPYQSetId);
     }
 }
 
 async function loadPYQReels(setId) {
     const grid = document.getElementById('pyq-reels-grid');
     const empty = document.getElementById('pyq-reels-empty');
-    if (!grid || !setId) return;
+    if (!grid) return;
     grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading reels...</div>';
     if (empty) empty.style.display = 'none';
     try {
         const resp = await fetch(`/api/classroom/pyq-sets/${setId}/reels`, {
             headers: { 'X-App-Token': session.token }
         });
-        let res = null;
-        try { res = await resp.json(); } catch(jsonErr) {
-            // Server returned non-JSON (e.g. HTML 404 page — server not restarted after deploy)
-            grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">
-                Server error (HTTP ${resp.status}). The server may need to be restarted to load the new endpoint.
-                <br><small style="color:var(--text3)">Tip: Restart the backend server on EC2 and try again.</small>
-            </div>`;
-            return;
-        }
-        if (resp.ok && res) {
+        const res = await resp.json();
+        if (resp.ok) {
             const reels = res.reels || [];
             if (reels.length === 0) {
                 grid.innerHTML = '';
@@ -11441,23 +11452,20 @@ async function loadPYQReels(setId) {
                 grid.innerHTML = reels.map(r => renderPYQReelCard(r)).join('');
             }
         } else {
-            grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">Failed to load reels (${resp.status}): ${res?.detail || 'Unknown error'}</div>`;
+            grid.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">Error: ${res.detail || 'Failed to load'}</div>`;
         }
-    } catch(e) {
-        console.error('loadPYQReels error:', e);
-        grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">Network error: ${e.message}</div>`;
+    } catch(e) { 
+        grid.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center;">Error loading reels</div>'; 
     }
 }
 
 function renderPYQReelCard(r) {
     const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
-    const title = r.title || 'PYQ Reel';
     return `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
       <video src="${r.media_url}" style="width:100%;aspect-ratio:9/16;object-fit:cover;display:block;" controls></video>
       <div style="padding:10px 12px;">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(title)}">${escHtml(title)}</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">${dateStr}</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">${dateStr}</div>
         <div style="display:flex;gap:6px;">
           <a href="${r.media_url}" download style="flex:1;text-align:center;background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:7px;padding:6px;font-size:10px;font-weight:700;text-decoration:none;">⬇️ Download</a>
           <button onclick="deletePYQReel('${r.reel_id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444;border-radius:7px;padding:6px 10px;font-size:10px;cursor:pointer;">🗑️</button>
@@ -11467,14 +11475,21 @@ function renderPYQReelCard(r) {
 }
 
 async function deletePYQReel(reelId) {
-    if (!confirm('Delete this PYQ reel?')) return;
+    if (!confirm('Delete this reel?')) return;
     try {
         const resp = await fetch(`/api/classroom/pyq-sets/reels/${reelId}`, {
-            method: 'DELETE', headers: { 'X-App-Token': session.token }
+            method: 'DELETE', 
+            headers: { 'X-App-Token': session.token }
         });
-        if (resp.ok) { toast('Reel deleted', 'success'); await loadPYQReels(_currentPYQSetId); }
-        else toast('Delete failed', 'error');
-    } catch(e) { toast('Network error', 'error'); }
+        if (resp.ok) { 
+            toast('Reel deleted', 'success'); 
+            await loadPYQReels(_currentPYQSetId); 
+        } else {
+            toast('Delete failed', 'error');
+        }
+    } catch(e) { 
+        toast('Delete failed: ' + e.message, 'error'); 
+    }
 }
 
 async function uploadPYQPdf(input) {
@@ -14895,12 +14910,6 @@ async function pollExtensionJob(jobId) {
                         videoEl.src = data.video_url;
                         resultDiv.style.display = 'block';
                         resultDiv.scrollIntoView({ behavior: 'smooth' });
-                    }
-                    // Also refresh the Reels panel to show the new reel
-                    const reelsPanel = document.getElementById('pyq-reels-section');
-                    if (reelsPanel) {
-                        reelsPanel.style.display = 'block';
-                        loadPYQReels(wizardContextId);
                     }
                 }
 

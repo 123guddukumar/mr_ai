@@ -509,7 +509,7 @@ Generates a detailed 3-minute narration tutorial script summarizing up to 15 que
   ```
 
 ### 6. Get Generated Reels for a PYQ Set
-Retrieve all extension reels previously generated for this PYQ set (stored in `SocialContent` table with `pyq_set_id` in metadata).
+Retrieve all generated reels matching this PYQ set ID (stored in `SocialContent` with `pyq_set_id` in metadata).
 * **HTTP Method:** `GET`
 * **Endpoint:** `/api/classroom/pyq-sets/{pyq_set_id}/reels`
 * **Header Required:** `X-App-Token`
@@ -519,16 +519,15 @@ Retrieve all extension reels previously generated for this PYQ set (stored in `S
     "success": true,
     "reels": [
       {
-        "reel_id": "job-f1e2d3c4b5a6",
-        "title": "BPSC 72 — PYQ Set",
-        "media_url": "https://pub-xxxx.r2.dev/reels/pyq_pyq-9e8d7c6b5a4/reel_job-f1.mp4",
-        "created_at": "2026-06-06T15:50:00"
+        "reel_id": "content-12345",
+        "pyq_set_id": "pyq-9e8d7c6b5a4",
+        "media_url": "https://pub-xxxx.r2.dev/reels/pyq_pyq-9e8d7c6b5a4/reel_abc123.mp4",
+        "script": "Detailed study narration script contents...",
+        "created_at": "2026-06-06T12:00:00"
       }
     ]
   }
   ```
-
-> **UI Access:** In the dashboard, open any PYQ Set → click the **🎞️ Reels** button to see all generated reels for that set. Reels are also auto-shown after a new reel is generated via the 🎬 Extension Reel wizard.
 
 ### 7. Delete a PYQ Reel
 Remove a specific PYQ reel from the database.
@@ -537,12 +536,15 @@ Remove a specific PYQ reel from the database.
 * **Header Required:** `X-App-Token`
 * **Response Example:**
   ```json
-  { "success": true, "message": "Reel deleted" }
+  {
+    "success": true
+  }
   ```
 
-> **Static File Access (Legacy):** Reel video files are also saved to local/R2 storage:
-> * **Latest Reel:** `/uploads/reels/pyq_{pyq_set_id}/latest.mp4`
-> * **Unique Reel:** `/uploads/reels/pyq_{pyq_set_id}/reel_{job_id}.mp4`
+### 8. Static Reel Video Storage Paths
+Reel video assets generated for a PYQ set are saved statically to local/R2 storage under directory paths:
+* **Latest Reel:** `/uploads/reels/pyq_{pyq_set_id}/latest.mp4`
+* **Unique Reel:** `/uploads/reels/pyq_{pyq_set_id}/reel_{job_id}.mp4`
 
 ---
 

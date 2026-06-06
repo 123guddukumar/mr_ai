@@ -11439,7 +11439,7 @@ async function loadPYQReels(setId) {
     grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading reels...</div>';
     if (empty) empty.style.display = 'none';
     try {
-        const resp = await fetch(`/api/classroom/pyq-sets/${setId}/reels`, {
+        const resp = await fetch(`/api/classroom/pyq-sets/${setId}/reels?t=${Date.now()}`, {
             headers: { 'X-App-Token': session.token }
         });
         const res = await resp.json();
@@ -11455,7 +11455,8 @@ async function loadPYQReels(setId) {
             grid.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">Error: ${res.detail || 'Failed to load'}</div>`;
         }
     } catch(e) { 
-        grid.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center;">Error loading reels</div>'; 
+        console.error('loadPYQReels error:', e);
+        grid.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">Error loading reels: ${e.message}</div>`; 
     }
 }
 

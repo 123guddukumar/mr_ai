@@ -317,7 +317,7 @@ async def generate_voice_file(
             
         # Run FFmpeg trim and broadcaster sound processing filters
         try:
-            filter_str = "highpass=f=80,equalizer=f=120:g=3,equalizer=f=3500:g=2.5,compand"
+            filter_str = "highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4"
             proc_cmd = ["ffmpeg", "-y", "-i", temp_audio_path, "-af", filter_str, final_audio_path]
             res_proc = subprocess.run(proc_cmd, capture_output=True)
             if res_proc.returncode != 0:
@@ -438,6 +438,14 @@ async def voice_preview(voice_id: str, text: Optional[str] = None, language: Opt
     lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
     tts_lang = lang_map.get(language or "English", "en")
     
+    # Strip bracketed emotional/pacing tags so it does not speak them!
+    import re
+    preview_text = text or "Hello! This is a voice preview sample for your reel narration."
+    preview_text = re.sub(r'\[[^\]]*\]', '', preview_text)
+    preview_text = re.sub(r'\s+', ' ', preview_text).strip()
+    if not preview_text:
+        preview_text = "Hello! This is a voice preview sample."
+    
     if api_key:
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
         headers = {
@@ -446,7 +454,7 @@ async def voice_preview(voice_id: str, text: Optional[str] = None, language: Opt
             "accept": "audio/mpeg"
         }
         data = {
-            "text": (text[:300] if text else "Hello! This is a voice preview sample for your reel narration."),
+            "text": preview_text[:300],
             "model_id": "eleven_turbo_v2_5",
             "voice_settings": {
                 "stability": 0.45,
@@ -473,7 +481,6 @@ async def voice_preview(voice_id: str, text: Optional[str] = None, language: Opt
     try:
         from gtts import gTTS
         import io
-        preview_text = text or "Hello! This is a voice preview sample for your reel narration."
         logger.info(f"Generating fallback voice preview with gTTS (lang={tts_lang}) for text: {preview_text[:50]}")
         tts = gTTS(text=preview_text, lang=tts_lang)
         fp = io.BytesIO()
@@ -555,7 +562,7 @@ async def upgrade_scene_audio(
             
         # 2. Run FFmpeg trim and broadcaster sound processing filters
         try:
-            filter_str = "highpass=f=80,equalizer=f=120:g=3,equalizer=f=3500:g=2.5,compand"
+            filter_str = "highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4"
             proc_cmd = ["ffmpeg", "-y", "-i", temp_audio_path, "-af", filter_str, voice_path]
             res_proc = subprocess.run(proc_cmd, capture_output=True)
             if res_proc.returncode != 0:
@@ -597,20 +604,12 @@ async def upgrade_scene_audio(
                     raw_video = scene.get('raw_video')
             except: pass
             
-        zoom = "min(zoom+0.0015,1.5)" if effect == "zoom_in" else "max(1.5-0.0015*on,1)" if effect == "zoom_out" else "1"
         trans_filter = ""
-        if trans_effect == "flash":
-            trans_filter = ",eq=brightness='1.0+0.5*exp(-8*t)':contrast='1.0+0.3*exp(-8*t)'"
-        elif trans_effect == "blur":
-            trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
-        elif trans_effect == "fade":
-            trans_filter = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0, duration-0.3):.2f}:d=0.3"
-            
-        enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
+        enhancement = ""
         
         if raw_video and os.path.exists(raw_video):
             cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw_video, "-i", voice_path]
-            filter_v = f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1{trans_filter}{enhancement}"
+            filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
             cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
         else:
             if not os.path.exists(img_path) and db_item:
@@ -632,7 +631,7 @@ async def upgrade_scene_audio(
                 cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
                 cmd = ["ffmpeg", "-y", "-loop", "1", "-i", img_path, "-i", voice_path]
-                filter_v = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(duration*30)}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}"
+                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
                 
         subprocess.run(cmd, capture_output=True)
@@ -798,7 +797,7 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                 structured_script,
                 language=lang,
                 voice_id=req.voice_id,
-                bgm_style="dramatic" # Default for advanced
+                bgm_style="ai" # Default for advanced
             )
             video_url = res_adv.get("video_url")
             scenes_data = res_adv.get("scenes", [])
@@ -851,7 +850,7 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                 f"3. SCENES: Split the content into exactly 5 to 7 sequential scenes.\n"
                 f"4. For EACH scene, provide:\n"
                 f"   - term: A search term for stock footages.\n"
-                f"   - prompt: A highly detailed 8k visual prompt for AI image generation.\n"
+                f"   - prompt: A highly detailed 8k cinematic visual prompt in English for AI image generation, which must perfectly match the visual context and exact meaning of the scene's script/dialogue to show a correct and relevant scene.\n"
                 f"   - source: 'ai' or 'stock'. Use 'ai' for brand names/dashboards/apps, and 'stock' for tech/office/nature/people visuals.\n"
                 f"   - script: The exact voice narration/dialogue to be spoken during this scene in {lang.upper()} (strictly 5-8 words, max 8 words, to fit in a 3-second duration limit).\n"
                 f"5. FORMAT: Output ONLY raw JSON.\n\n"
@@ -920,7 +919,7 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                 res_pro = await assemble_edited_reel(
                     scenes=scenes,
                     voice_id=req.voice_id,
-                    bgm_style=reel_data.get('bgm_style', 'cinematic')
+                    bgm_style=reel_data.get('bgm_style', 'ai')
                 )
                 video_url = res_pro.get("video_url")
                 scenes_data = res_pro.get("scenes", [])

@@ -66,9 +66,9 @@ class AdvancedReelPipeline:
         scene_idx = scene['scene_num']
         
         async with self.sem:
-            # 1. Generate Image Prompt
-            user_prompt = f"Visuals: {scene['visuals']}\nEditing Notes: {scene['editing_notes']}"
-            system_prompt = "Generate a highly detailed, cinematic image generation prompt for a historical documentary. English only. No text in image. 4k, realistic."
+            # 1. Generate Image Prompt matching the Dialogue and Visuals context
+            user_prompt = f"Dialogue: {scene['dialogue']}\nVisuals: {scene['visuals']}\nEditing Notes: {scene['editing_notes']}"
+            system_prompt = "Generate a highly detailed, cinematic image generation prompt for AI image generation. English only. No text in image. 4k, realistic. Make sure the visual prompt perfectly matches the scene dialogue and visuals context."
             
             try:
                 prompt = await generate_simple_response(user_prompt, system_prompt)
@@ -142,7 +142,7 @@ class AdvancedReelPipeline:
         if asset['voice_path']:
             cmd.extend(["-i", asset['voice_path']])
             
-        filter_complex = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom_effect}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(duration*30)}:s=1080x1920:fps=30,setsar=1"
+        filter_complex = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
         
         cmd.extend([
             "-vf", filter_complex,
@@ -218,11 +218,11 @@ class AdvancedReelPipeline:
         final_cmd = ["ffmpeg", "-y", "-i", temp_concat]
         filter_parts = []
         filter_parts.append(f"[0:v]ass='{safe_sub_path}'[v_sub];")
-        filter_parts.append("[0:a]compand=0.3|0.3:6:-90/-60/-60/-40/-40/-20/-20/0/-20/12,aecho=0.8:0.88:6:0.4[a_voice];")
+        filter_parts.append("[0:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[a_voice];")
         
         if bgm_path and os.path.exists(bgm_path):
             final_cmd.extend(["-i", bgm_path])
-            filter_parts.append("[1:a]volume=0.12,atrim=0:" + str(total_dur) + "[a_bgm];")
+            filter_parts.append("[1:a]volume=0.05,atrim=0:" + str(total_dur) + "[a_bgm];")
             filter_parts.append("[a_voice][a_bgm]amix=inputs=2:duration=first[a_final];")
             final_cmd.extend(["-map", "[v_sub]", "-map", "[a_final]"])
         else:

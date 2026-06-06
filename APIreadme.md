@@ -349,9 +349,174 @@ Build or modify your classroom curriculum tree using standard JSON REST requests
 
 ---
 
+## 📰 Current Affairs APIs
+
+Manage Current Affairs topics, upload source materials, generate news scripts, and compile short-form vertical news reels.
+
+### 1. List Current Affairs Topics
+Get all Current Affairs topics associated with your client account.
+* **HTTP Method:** `GET`
+* **Endpoint:** `/api/classroom/current-affairs`
+* **Response Example:**
+  ```json
+  {
+    "success": true,
+    "topics": [
+      {
+        "ca_topic_id": "ca-7b19de8a3b01a2f4",
+        "name": "India Launches New Space Mission",
+        "script": "Custom news narration script text...",
+        "created_at": "2026-06-06T12:00:00"
+      }
+    ]
+  }
+  ```
+
+### 2. Create Current Affairs Topic (with Option to Add Script)
+Create a new Current Affairs topic. You can optionally pass a custom news script in the body.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/current-affairs`
+* **JSON Request Body:**
+  ```json
+  {
+    "name": "G7 Summit 2026 Updates",
+    "script": "In today's headlines, world leaders gathered for the G7 summit..."
+  }
+  ```
+
+### 3. Update Current Affairs Topic
+Edit the topic name or script content.
+* **HTTP Method:** `PUT`
+* **Endpoint:** `/api/classroom/current-affairs/{ca_topic_id}`
+* **JSON Request Body:**
+  ```json
+  {
+    "name": "G7 Summit 2026 Key Takeaways",
+    "script": "Updated narration script focusing on climate resolutions..."
+  }
+  ```
+
+### 4. Upload PDF Source for Current Affairs
+Upload a news document or PDF source to extract context for this topic.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/current-affairs/{ca_topic_id}/upload-pdf`
+* **Multipart Form Parameter:**
+  - `file`: The PDF file.
+
+### 5. Generate Current Affairs Narration Transcript (Groq)
+Generates a 1-minute news script from the uploaded facts in your target language.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/current-affairs/{ca_topic_id}/generate-transcript`
+* **JSON Request Body:**
+  ```json
+  {
+    "language": "Hindi"
+  }
+  ```
+
+### 6. Get Generated Reels for a Current Affairs Topic
+Retrieve a list of all reels previously generated for a topic.
+* **HTTP Method:** `GET`
+* **Endpoint:** `/api/classroom/current-affairs/{ca_topic_id}/reels`
+* **Response Example:**
+  ```json
+  {
+    "success": true,
+    "reels": [
+      {
+        "reel_id": "job-f1e2d3c4b5a6",
+        "ca_topic_id": "ca-1a2b3c4d5e6f7g8h",
+        "media_url": "https://pub-4766722e137c4258a9233495746c4f5a.r2.dev/reels/ca_ca-1a2b3c4d5e6f7g8h/reel_job-f1e2d3c4b5a6.mp4",
+        "script": "Full voiceover script...",
+        "created_at": "2026-06-06T15:50:00"
+      }
+    ]
+  }
+  ```
+
+---
+
+## 📝 PYQ (Previous Year Questions) Sets APIs
+
+Organize exams by sets (e.g. "BPSC 70th Prelims"), upload question lists, verify parsed questions, and compile video reels.
+
+### 1. List PYQ Sets
+Retrieve all PYQ sets created under your client account.
+* **HTTP Method:** `GET`
+* **Endpoint:** `/api/classroom/pyq-sets`
+* **Response Example:**
+  ```json
+  {
+    "success": true,
+    "pyq_sets": [
+      {
+        "pyq_set_id": "pyq-9e8d7c6b5a4",
+        "name": "BPSC 70th Prelims Paper",
+        "created_at": "2026-06-06T14:00:00"
+      }
+    ]
+  }
+  ```
+
+### 2. Create PYQ Set (Add Set Name)
+Create a new empty set to hold question lists.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/pyq-sets`
+* **JSON Request Body:**
+  ```json
+  {
+    "name": "UPSC Prelims 2025 GS1"
+  }
+  ```
+
+### 3. Upload Questions PDF/Excel for a PYQ Set
+Upload a PDF or Excel spreadsheet containing exam questions. 
+- **Excel Schema:** Expected columns are `Question | Option A | Option B | Option C | Option D | Correct Answer`
+- **PDF Schema:** The backend automatically uses AI to extract and structure the questions into MCQ blocks.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/pyq-sets/{pyq_set_id}/upload-pdf`
+* **Multipart Form Parameter:**
+  - `file`: The PDF or Excel file.
+
+### 4. Retrieve Extracted Questions
+Get the parsed list of questions inside the set.
+* **HTTP Method:** `GET`
+* **Endpoint:** `/api/classroom/pyq-sets/{pyq_set_id}/questions`
+* **Response Example:**
+  ```json
+  {
+    "success": true,
+    "questions": [
+      {
+        "question_id": "q-12345",
+        "question_text": "Who is the head of the Union Council of Ministers in India?",
+        "options": ["President", "Prime Minister", "Speaker", "Chief Justice"],
+        "correct_answer": "Prime Minister"
+      }
+    ]
+  }
+  ```
+
+### 5. Generate PYQ Narrative Script (Groq)
+Generates a detailed 3-minute narration tutorial script summarizing up to 15 questions from the set.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/pyqs/{pyq_set_id}/generate-transcript`
+* **JSON Request Body:**
+  ```json
+  {
+    "language": "English"
+  }
+  ```
+
+### 6. Access Generated Reels for a PYQ Set
+Reel video assets generated for a PYQ set are saved statically to local/R2 storage under directory paths:
+* **Latest Reel:** `/uploads/reels/pyq_{pyq_set_id}/latest.mp4`
+* **Unique Reel:** `/uploads/reels/pyq_{pyq_set_id}/reel_{job_id}.mp4`
+
+---
+
 ## ⚡ API Best Practices & Performance Tips
 1. **Paging/Lazy Navigation:** For maximum responsiveness on the frontend, always load chapters only when a subject is clicked, and topics only when a chapter is expanded.
 2. **Public CDN Streaming:** All video files returned from `/generate-reel` leverage Cloudflare's edge CDN, enabling global buffering-free playback on web interfaces.
-
-
-### `GET /api/classroom/public/subtopics/{subtopic_id}/reels` — Retrieve Generated Reels (Public/Unauthenticated)
+3. **Public Reels Fetch:** Retrieve generated subtopic reels without authentication headers via:
+   `GET /api/classroom/public/subtopics/{subtopic_id}/reels`

@@ -75,6 +75,15 @@ async def generate_elevenlabs_voiceover(text: str, work_dir: str, voice_id: Opti
         logger.warning("ElevenLabs API Key missing.")
         return None
     
+    # Strip bracketed tags (e.g. [thoughtful], [excited]) so ElevenLabs does not speak them!
+    cleaned_text = re.sub(r'\[[^\]]*\]', '', text)
+    # Replace multiple dots (...) and dashes with a simple comma to prevent ElevenLabs from taking halting/awkward pauses
+    cleaned_text = re.sub(r'\.\.\.+', ', ', cleaned_text)
+    cleaned_text = cleaned_text.replace('—', ', ').replace('–', ', ')
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    if not cleaned_text:
+        cleaned_text = "Hello! This is your narration audio."
+    
     vid = voice_id or "pNInz6obpgDQGcFmaJgB" # Adam voice (default pro)
     url = f"{ELEVENLABS_TTS_URL}/{vid}"
     
@@ -84,12 +93,12 @@ async def generate_elevenlabs_voiceover(text: str, work_dir: str, voice_id: Opti
     }
     
     data = {
-        "text": text,
-        "model_id": "eleven_multilingual_v2", # Gold-standard multilingual model for realistic emotion & pacing
+        "text": cleaned_text,
+        "model_id": "eleven_turbo_v2_5", # Premium multilingual model with fast, natural pacing
         "voice_settings": {
-            "stability": 0.65,       # Smooth delivery, stable tone, prevents speaking too fast
-            "similarity_boost": 0.85, # Keeps high clarity and matches selected voice character
-            "style": 0.05,            # Reduces digital exaggeration for ultra-realistic human feel
+            "stability": 0.45,       # Low stability for highly expressive, human-like voice inflections
+            "similarity_boost": 0.85, 
+            "style": 0.15,            # Slight style boost for premium emotional expression
             "use_speaker_boost": True
         }
     }
@@ -161,8 +170,8 @@ def create_subtitle_file(script_text: str, total_duration: float, work_dir: str)
     with open(sub_path, "w", encoding="utf-8") as f:
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-        # CAPCUT STYLE: Impact font, size 85, Primary: Yellow (&H0000FFFF), Outline: Black (&H00000000) with thickness 5, Shadow 2, Alignment 2 (Bottom center)
-        f.write("Style: Default,Impact,85,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,5,2,2,30,30,350,1\n\n")
+        # CAPCUT STYLE: Arial font for universal multilingual support, size 85, Primary: Yellow (&H0000FFFF), Outline: Black (&H00000000) with thickness 5, Shadow 2, Alignment 2 (Bottom center)
+        f.write("Style: Default,Arial,85,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,5,2,2,30,30,350,1\n\n")
         f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
         
         for i, text in enumerate(chunks):
@@ -183,6 +192,52 @@ def create_subtitle_file(script_text: str, total_duration: float, work_dir: str)
             
     return sub_path
 
+def create_scene_subtitles_pro(scenes: List[dict], work_dir: str) -> str:
+    """Creates a premium CapCut-style .ass subtitle file with bold uppercase 3-word chunks synchronized per scene."""
+    sub_path = os.path.join(work_dir, "subs.ass")
+    
+    with open(sub_path, "w", encoding="utf-8") as f:
+        f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
+        f.write("[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+        # CAPCUT STYLE: Arial font for universal multilingual support, size 85, Primary: Yellow (&H0000FFFF), Outline: Black (&H00000000) with thickness 5, Shadow 2, Alignment 2 (Bottom center)
+        f.write("Style: Default,Arial,85,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,5,2,2,30,30,350,1\n\n")
+        f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+        
+        def format_time(s):
+            h = int(s // 3600)
+            m = int((s % 3600) // 60)
+            sec = s % 60
+            return f"{h}:{m:02d}:{sec:05.2f}"
+            
+        current_time = 0.0
+        for i, s in enumerate(scenes):
+            dialogue = (s.get("script") or s.get("dialogue") or "").strip()
+            scene_dur = float(s.get("duration") or s.get("suggested_duration") or 5.0)
+            
+            if dialogue:
+                # Clean and split into 3-word chunks (in uppercase)
+                words = [w.strip().upper() for w in dialogue.split() if w.strip()]
+                chunks = []
+                chunk_size = 3
+                for j in range(0, len(words), chunk_size):
+                    chunks.append(" ".join(words[j:j+chunk_size]))
+                
+                if not chunks:
+                    chunks = [dialogue.upper()]
+                
+                dur_per_chunk = scene_dur / len(chunks)
+                for j, chunk_text in enumerate(chunks):
+                    start_sec = current_time + (j * dur_per_chunk)
+                    end_sec = current_time + ((j + 1) * dur_per_chunk)
+                    
+                    # Pop-scale transition animation
+                    animated_text = f"{{\\fscx100\\fscy100\\t(0,100,\\fscx120\\fscy120)\\t(100,200,\\fscx100\\fscy100)}}{chunk_text}"
+                    f.write(f"Dialogue: 0,{format_time(start_sec)},{format_time(end_sec)},Default,,0,0,0,,{animated_text}\n")
+            
+            current_time += scene_dur
+            
+    return sub_path
+
 def build_xfade_filter_complex(video_count: int, durations: List[float], trans_dur: float = 0.5) -> tuple:
     """
     Generates a cascading FFmpeg filter_complex and the final video output label
@@ -192,7 +247,12 @@ def build_xfade_filter_complex(video_count: int, durations: List[float], trans_d
         return "[0:v]copy[v_out];", "[v_out]"
         
     # Curated pool of highly aesthetic, pro-editor transitions
-    transitions = ['fade', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'circlecrop', 'dissolve', 'pixelize', 'zoomin']
+    transitions = [
+        'smoothleft', 'smoothright', 'smoothup', 'smoothdown',
+        'radial', 'zoomin', 'rectcrop', 'circlecrop',
+        'hlslice', 'hrslice', 'squeezeh', 'squeezev',
+        'fadeblack', 'fadewhite', 'dissolve', 'pixelize'
+    ]
     
     filter_parts = []
     current_label = "[0:v]"
@@ -254,7 +314,12 @@ async def assemble_pro_reel(
         if not audio_path:
             logger.warning(f"ElevenLabs failed, using basic gTTS fallback...")
             from gtts import gTTS
-            tts = gTTS(text=script_text, lang=tts_lang)
+            # Strip bracketed tags so gTTS does not speak them!
+            cleaned_fallback = re.sub(r'\[[^\]]*\]', '', script_text)
+            cleaned_fallback = re.sub(r'\s+', ' ', cleaned_fallback).strip()
+            if not cleaned_fallback:
+                cleaned_fallback = "Hello!"
+            tts = gTTS(text=cleaned_fallback, lang=tts_lang)
             audio_path = os.path.join(work_dir, "voice.mp3")
             tts.save(audio_path)
             
@@ -371,28 +436,15 @@ async def assemble_pro_reel(
             asset = raw_assets_ordered[idx]
             v_path = os.path.join(work_dir, f"scene_{idx}.mp4")
             
-            # Determine Cinematic Transition (Flash, Focus Blur, Crossfade, Cut)
-            trans_effect = 'fade'
-            if idx > 0:
-                effects_pool = ['flash', 'blur', 'fade']
-                trans_effect = effects_pool[idx % len(effects_pool)]
-                
+            # Disable visual filters, transitions, and zoompans to ensure maximum visual clarity
             trans_filter = ""
-            if trans_effect == "flash":
-                trans_filter = ",eq=brightness='1.0+0.5*exp(-8*t)':contrast='1.0+0.3*exp(-8*t)'"
-            elif trans_effect == "blur":
-                trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
-            elif trans_effect == "fade":
-                trans_filter = ",fade=t=in:st=0:d=0.3"
-                
-            # Color Enhancer Grader: High contrast, vibrancy saturation, unsharp sharpening filter, and subtle vignette
-            enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
+            enhancement = ""
             
             if asset["type"] == "image":
-                # ANIMATION: Smooth Zoom-In (Ken Burns Effect) to exact duration
+                # Static loop scaled and cropped to 1080x1920 (no zoompan blur)
                 conv_cmd = [
                     "ffmpeg", "-y", "-loop", "1", "-i", asset["path"],
-                    "-vf", f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(final_segment_dur*30)+10}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}",
+                    "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1",
                     "-c:v", "libx264", "-t", str(final_segment_dur), "-pix_fmt", "yuv420p", "-r", "30",
                     v_path
                 ]
@@ -400,10 +452,10 @@ async def assemble_pro_reel(
                 if sub_res.returncode == 0:
                     video_paths_ordered[idx] = v_path
             else:
-                # Video: Loop and trim to exact duration to prevent gaps
+                # Video scaled and cropped to 1080x1920
                 conv_cmd = [
                     "ffmpeg", "-y", "-stream_loop", "-1", "-i", asset["path"],
-                    "-vf", f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1{trans_filter}{enhancement}",
+                    "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1",
                     "-t", str(final_segment_dur), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
                     v_path
                 ]
@@ -449,8 +501,9 @@ async def assemble_pro_reel(
                 else: bgm_path = None
             except: bgm_path = None
                 
-        # 5. Create Subtitles
-        sub_path = create_subtitle_file(sub_text, total_duration, work_dir)
+        # 5. Create Subtitles (synchronized by scene)
+        scenes_for_subtitles = [s for s in scene_data_ordered if s is not None]
+        sub_path = create_scene_subtitles_pro(scenes_for_subtitles, work_dir)
         
         # 6. Final Assembly
         safe_sub_path = sub_path.replace("\\", "/").replace(":", "\\:")
@@ -478,12 +531,13 @@ async def assemble_pro_reel(
         filter_parts.append(f"{final_v_label}ass='{safe_sub_path}'[v_sub];")
         
         voice_idx = len(video_paths)
-        filter_parts.append(f"[{voice_idx}:a]volume=1.8[a_pro];")
+        # Apply premium studio EQ and compression to the voiceover
+        filter_parts.append(f"[{voice_idx}:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[a_pro];")
         
         audio_inputs = ["-i", audio_path]
         if bgm_path:
             audio_inputs.extend(["-i", bgm_path])
-            filter_parts.append(f"[a_pro]volume=1.0[a1]; [{voice_idx+1}:a]volume=0.08[a2]; [a1][a2]amix=inputs=2:duration=first[a];")
+            filter_parts.append(f"[a_pro]volume=1.0[a1]; [{voice_idx+1}:a]volume=0.05[a2]; [a1][a2]amix=inputs=2:duration=first[a];")
         else:
             filter_parts.append(f"[a_pro]volume=1.0[a];")
 
@@ -574,7 +628,12 @@ async def assemble_advanced_reel(
         os.rename(voice_result, full_voice_path)
     else:
         from gtts import gTTS
-        gTTS(text=full_dialogue, lang=tts_lang).save(full_voice_path)
+        # Strip bracketed tags so gTTS does not speak them!
+        cleaned_fallback = re.sub(r'\[[^\]]*\]', '', full_dialogue)
+        cleaned_fallback = re.sub(r'\s+', ' ', cleaned_fallback).strip()
+        if not cleaned_fallback:
+            cleaned_fallback = "Hello!"
+        gTTS(text=cleaned_fallback, lang=tts_lang).save(full_voice_path)
 
     # Probe total audio duration
     probe = subprocess.run(
@@ -594,8 +653,8 @@ async def assemble_advanced_reel(
 
     async def fetch_image(idx: int, scene: dict):
         async with sem:
-            user_p = f"Visuals: {scene['visuals']}"
-            sys_p = "Expert cinematic prompt engineer. Create photorealistic 4K image prompt MAX 40 words. English only. No text in image."
+            user_p = f"Dialogue: {scene['dialogue']}\nVisuals: {scene['visuals']}"
+            sys_p = "You are an expert cinematic prompt engineer. Create a highly detailed photorealistic 4K image prompt (MAX 50 words) for AI image generation (English only, no text in image). The visual prompt MUST perfectly match the scene dialogue and visuals description to create a correct, matching, contextually accurate scene."
             try:
                 prompt = await generate_simple_response(user_p, sys_p)
             except:
@@ -645,30 +704,11 @@ async def assemble_advanced_reel(
         dur = scene_dur
         frames = int(dur * 30) + 5
 
-        # Determine Cinematic Transition (Flash, Focus Blur, Crossfade, Cut)
-        trans_effect = 'fade'
-        if i > 0:
-            effects_pool = ['flash', 'blur', 'fade']
-            trans_effect = effects_pool[i % len(effects_pool)]
-            
+        # Disable visual filters, transitions, and zoompans to ensure maximum visual clarity
         trans_filter = ""
-        if trans_effect == "flash":
-            trans_filter = ",eq=brightness='1.0+0.5*exp(-8*t)':contrast='1.0+0.3*exp(-8*t)'"
-        elif trans_effect == "blur":
-            trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
-        elif trans_effect == "fade":
-            trans_filter = ",fade=t=in:st=0:d=0.3"
-            
-        # Color Enhancer Grader: High contrast, saturation, unsharp sharpening filter, and vignette
-        enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
-
-        # Alternate zoom in / zoom out for cinematic feel
-        effect = "zoom_in" if i % 2 == 0 else "zoom_out"
-        zoom = "min(zoom+0.0012,1.4)" if i % 2 == 0 else "max(1.4-0.0012*on,1.0)"
-        # Pan direction alternates left/right
-        pan_x = "iw/2-(iw/zoom/2)+on*0.3" if i % 3 == 0 else "iw/2-(iw/zoom/2)-on*0.3" if i % 3 == 1 else "iw/2-(iw/zoom/2)"
-
-        vf = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom}':x='{pan_x}':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}"
+        enhancement = ""
+        
+        vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
 
         cmd = [
             "ffmpeg", "-y", "-loop", "1", "-i", img_path,
@@ -755,8 +795,8 @@ async def assemble_advanced_reel(
             else: bgm_path = None
     except: bgm_path = None
 
-    # ── 7. Subtitles from full dialogue ──────────────────────────────────────
-    sub_path = create_subtitle_file(full_dialogue, total_audio_dur, work_dir)
+    # ── 7. Subtitles from full dialogue (synchronized by scene) ──────────────
+    sub_path = create_scene_subtitles_pro(advanced_scenes_data, work_dir)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
     # ── 8. Final assembly: video + full_voice + bgm + subs ───────────────────
@@ -770,15 +810,15 @@ async def assemble_advanced_reel(
         inputs += ["-i", bgm_path]
         fc = (
             f"[0:v]ass='{safe_sub}'[v];"
-            f"[1:a]volume=1.8[av];"
-            f"[2:a]volume=0.07,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
+            f"[1:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[av];"
+            f"[2:a]volume=0.05,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
             f"[av][abg]amix=inputs=2:duration=first[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
     else:
         fc = (
             f"[0:v]ass='{safe_sub}'[v];"
-            f"[1:a]volume=1.8[a]"
+            f"[1:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
 
@@ -971,34 +1011,18 @@ async def assemble_edited_reel(
         v_path = os.path.join(work_dir, f"scene_{i}_final.mp4")
         zoom = "min(zoom+0.0015,1.5)" if effect == "zoom_in" else "max(1.5-0.0015*on,1)" if effect == "zoom_out" else "1"
         
-        # Determine Cinematic Transition (Flash, Focus Blur, Crossfade, Cut)
-        trans_effect = s.get('transition') or s.get('animation_prompt') or 'fade'
-        if i > 0 and (not s.get('transition') or s.get('transition') == 'fade'):
-            # Alternate transition effects dynamically for pro-editor pacing
-            effects_pool = ['flash', 'blur', 'fade']
-            trans_effect = effects_pool[i % len(effects_pool)]
-            
+        # Disable visual filters, transitions, and zoompans to ensure maximum visual clarity
         trans_filter = ""
-        if trans_effect == "flash":
-            # Glow white flash at start of scene (brightness pop decaying exponentially in 0.2s)
-            trans_filter = ",eq=brightness='1.0+0.5*exp(-8*t)':contrast='1.0+0.3*exp(-8*t)'"
-        elif trans_effect == "blur":
-            # Focus blur (lens focus focus-in from radius 12 to 0 in 0.4s)
-            trans_filter = ",boxblur=luma_radius='max(0,12-30*t)':luma_power=1"
-        elif trans_effect == "fade":
-            trans_filter = ",fade=t=in:st=0:d=0.3"
-            
-        # Color Enhancer Grader: High contrast, vibrancy saturation, unsharp sharpening filter, and subtle vignette
-        enhancement = ",eq=contrast=1.08:saturation=1.18,unsharp=3:3:0.5:3:3:0.5,vignette=angle=0.10"
+        enhancement = ""
         
         if "raw_video" in s and os.path.exists(s["raw_video"]):
             cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", s["raw_video"]]
             if os.path.exists(voice_path):
                 cmd.extend(["-i", voice_path])
-                filter_v = f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1{trans_filter}{enhancement}"
+                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
-                filter_v = f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1{trans_filter}{enhancement}"
+                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend([
                     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
                     "-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
@@ -1008,10 +1032,10 @@ async def assemble_edited_reel(
             cmd = ["ffmpeg", "-y", "-loop", "1", "-i", img_path]
             if os.path.exists(voice_path):
                 cmd.extend(["-i", voice_path])
-                filter_v = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(duration*30)}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}"
+                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
-                filter_v = f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(duration*30)}:s=1080x1920:fps=30,setsar=1{trans_filter}{enhancement}"
+                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend([
                     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
                     "-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
@@ -1089,11 +1113,8 @@ async def assemble_edited_reel(
             else: bgm_path = None
         except: bgm_path = None
 
-    # 7. Create Subtitles
-    full_text = " ".join([s['script'] for s in final_scenes_data])
-    probe_tot = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", temp_concat], capture_output=True, text=True)
-    total_dur = float(probe_tot.stdout.strip()) if probe_tot.returncode == 0 else sum([s["duration"] for s in final_scenes_data])
-    sub_path = create_subtitle_file(full_text, total_dur, work_dir)
+    # 7. Create Subtitles (synchronized by scene)
+    sub_path = create_scene_subtitles_pro(final_scenes_data, work_dir)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
     # 8. Render Final Output with Subtitles, Watermark and Multi-Track Audio Mixing
@@ -1156,11 +1177,11 @@ async def assemble_edited_reel(
         current_v = "[v_wat]"
         
     # Audio Filters: Main voiceover + BGM + Custom overlapping audio tracks
-    filters.append(f"[0:a]volume=1.8[a_v]")
+    filters.append(f"[0:a]volume=1.0[a_v]")
     audio_mix_inputs = ["[a_v]"]
     
     if bgm_idx is not None:
-        filters.append(f"[{bgm_idx}:a]volume=0.08,atrim=0:{total_dur}[a_bg]")
+        filters.append(f"[{bgm_idx}:a]volume=0.05,atrim=0:{total_dur}[a_bg]")
         audio_mix_inputs.append("[a_bg]")
         
     for idx, (t_idx, t_start, t_vol) in enumerate(track_indices):

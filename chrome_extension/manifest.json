@@ -10,7 +10,8 @@
     "downloads",
     "tabs",
     "alarms",
-    "notifications"
+    "notifications",
+    "clipboardRead"
   ],
   "host_permissions": [
     "http://localhost/*",
@@ -19,7 +20,10 @@
     "http://127.0.0.1:*/*",
     "https://labs.google/*",
     "https://www.meta.ai/*",
-    "https://meta.ai/*"
+    "https://meta.ai/*",
+    "https://www.epidemicsound.com/*",
+    "https://epidemicsound.com/*",
+    "https://test.3rdai.co/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -44,7 +48,18 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*", "http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "matches": ["https://www.epidemicsound.com/*", "https://epidemicsound.com/*"],
+      "js": ["hook_clipboard.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.epidemicsound.com/*", "https://epidemicsound.com/*"],
+      "js": ["content_epidemic.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "http://localhost:*/*", "http://127.0.0.1:*/*", "https://test.3rdai.co/*"],
       "js": ["content_dashboard.js"],
       "run_at": "document_start"
     }

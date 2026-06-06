@@ -48,12 +48,13 @@ function pollState() {
     document.getElementById('s-images').textContent = s.imagesDone?.length || 0;
     document.getElementById('s-videos').textContent = s.videosDone?.length || 0;
 
-    const phaseMap = { idle: 0, fetching: 1, generating_images: 2, generating_videos: 3, assembling: 4, done: 4, error: 0 };
+    const phaseMap = { idle: 0, fetching: 1, generating_images: 2, generating_videos: 3, generating_bgm: 3, assembling: 4, done: 4, error: 0 };
     const phaseLabels = {
       idle: 'Waiting for job...',
       fetching: '📥 Fetching scenes...',
       generating_images: '🖼️ Generating images...',
       generating_videos: '🎬 Generating videos...',
+      generating_bgm: '🎵 Generating background music...',
       assembling: '⚙️ Assembling reel...',
       done: '✅ Done!',
       error: '❌ Error'

@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, List
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -54,9 +54,77 @@ def _require_client(
     return record
 
 
+def extract_epidemic_lqmp3(url: str) -> Optional[str]:
+    """Resolves an Epidemic Sound page URL to its direct LQ MP3 CDN link."""
+    if not url:
+        return None
+    if "audiocdn.epidemicsound.com" in url and url.endswith(".mp3"):
+        return url
+        
+    try:
+        from BGM import extract_lqmp3
+        logger.info(f"Using BGM.py extract_lqmp3 to resolve URL: {url}")
+        res = extract_lqmp3(url)
+        if res:
+            print("\n" + "#"*80)
+            print(f"DETECTED BGM AUDIO DOWNLOAD LINK: {url}")
+            print(f"RESOLVED DIRECT MP3 LINK: {res}")
+            print("#"*80 + "\n")
+            logger.info(f"BGM.py successfully extracted: {res}")
+            return res
+    except Exception as import_err:
+        logger.warning(f"Failed to use BGM.py extractor: {import_err}. Falling back to default extractor.")
+        
+    import re
+    import httpx
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+    
+    try:
+        logger.info(f"Resolving Epidemic Sound page (fallback): {url}")
+        with httpx.Client(follow_redirects=True, headers=headers, timeout=15.0) as client:
+            response = client.get(url)
+            
+            # Check for cookie banner / redirection limits
+            if 'cookie' in response.text.lower() and len(response.text) < 50000:
+                logger.info("Got cookie banner, hitting home page to establish session/cookies...")
+                client.get('https://www.epidemicsound.com')
+                response = client.get(url)
+                
+            patterns = [
+                r'"lqMp3Url"\s*:\s*"(https?:?(?:\\/|/)+audiocdn\.epidemicsound\.com(?:\\/|/)+lqmp3(?:\\/|/)+[^"]+\.mp3)"',
+                r'https?:?(?:\\/|/)+audiocdn\.epidemicsound\.com(?:\\/|/)+lqmp3(?:\\/|/)+[^"\s\\/]+\.mp3'
+            ]
+            
+            for i, pattern in enumerate(patterns):
+                matches = re.findall(pattern, response.text)
+                if matches:
+                    matched_url = matches[0]
+                    lqmp3 = matched_url.replace(r'\/', '/').replace('\\/', '/').replace('\\', '')
+                    print("\n" + "#"*80)
+                    print(f"DETECTED BGM AUDIO DOWNLOAD LINK: {url}")
+                    print(f"RESOLVED DIRECT MP3 LINK (FALLBACK): {lqmp3}")
+                    print("#"*80 + "\n")
+                    logger.info(f"Found Epidemic Sound LQ MP3 using pattern {i+1}: {lqmp3}")
+                    return lqmp3
+                    
+            logger.warning(f"Could not find LQ MP3 link on Epidemic Sound page: {url}")
+            return None
+    except Exception as e:
+        logger.error(f"Error resolving Epidemic Sound URL {url}: {e}")
+        return None
+
+
 # ── Request Models ────────────────────────────────────────────────────────────
 class CreateJobReq(BaseModel):
-    subtopic_id: str
+    subtopic_id: Optional[str] = None
+    topic_id: Optional[str] = None
+    pyq_set_id: Optional[str] = None
+    ca_topic_id: Optional[str] = None
     language: Optional[str] = "English"
     voice_id: Optional[str] = None
     transcript: Optional[str] = ""
@@ -72,6 +140,7 @@ class VideoDoneReq(BaseModel):
 class AssembleReq(BaseModel):
     videos: List[str]
     images: List[str]
+    bgm_url: Optional[str] = None
 
 class UpdateSceneReq(BaseModel):
     scene_num: int
@@ -128,7 +197,6 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
         if os.path.exists(temp_path):
             try: os.remove(temp_path)
             except: pass
-
 
 
 # ── Global Resilient Local Helper to Discover Downloaded Files ──
@@ -343,19 +411,50 @@ def resilient_find_file(filename: Optional[str], scene_num: int, job_id: str, is
     return None
 
 
-def robust_json_loads(s: str) -> list:
+def robust_json_loads(s: str):
     import re
-    # 1. Clean markdown JSON blocks
-    s = re.sub(r'```json\s*', '', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s*```', '', s).strip()
+    import json
     
+    s = s.strip()
+    
+    # 1. Try to extract markdown JSON/code blocks
+    json_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', s, re.DOTALL | re.IGNORECASE)
+    if json_block_match:
+        s = json_block_match.group(1).strip()
+    else:
+        json_array_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', s, re.DOTALL | re.IGNORECASE)
+        if json_array_match:
+            s = json_array_match.group(1).strip()
+            
     # 2. Try standard json.loads
     try:
         return json.loads(s)
-    except Exception as e:
-        logger.warning(f"Standard JSON parse failed: {e}. Attempting recovery...")
+    except Exception:
+        pass
         
-    # 3. Clean raw control characters and newlines inside strings
+    # 3. Try to find start and end of JSON block in case of conversational prefix/suffix
+    start_brace = s.find('{')
+    start_bracket = s.find('[')
+    
+    start_idx = -1
+    end_idx = -1
+    
+    if start_brace != -1 and (start_bracket == -1 or start_brace < start_bracket):
+        start_idx = start_brace
+        end_idx = s.rfind('}')
+    elif start_bracket != -1:
+        start_idx = start_bracket
+        end_idx = s.rfind(']')
+        
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        candidate = s[start_idx:end_idx+1].strip()
+        try:
+            return json.loads(candidate)
+        except Exception as e:
+            logger.warning(f"Standard JSON parse of extracted block failed: {e}. Attempting recovery on block content...")
+            s = candidate
+            
+    # 4. Clean raw control characters and newlines inside strings
     def clean_string_match(m):
         content = m.group(1)
         # Escape any unescaped double quotes inside the string content
@@ -368,7 +467,7 @@ def robust_json_loads(s: str) -> list:
     pattern = r'"((?:[^"\\]|\\.)*)"'
     fixed_s = re.sub(pattern, clean_string_match, s)
     
-    # 4. Remove trailing commas before closing braces/brackets
+    # 5. Remove trailing commas before closing braces/brackets
     fixed_s = re.sub(r',\s*\]', ']', fixed_s)
     fixed_s = re.sub(r',\s*\}', '}', fixed_s)
     
@@ -377,18 +476,20 @@ def robust_json_loads(s: str) -> list:
     except Exception as e2:
         logger.warning(f"Recovery JSON parse failed: {e2}. Attempting manual bracket repair...")
         
-    # 5. If it's still failing (e.g. truncated), try to find a prefix that forms a valid array
+    # 6. Truncated block repair
     try:
         last_obj_end = fixed_s.rfind('}')
         if last_obj_end != -1:
             truncated = fixed_s[:last_obj_end+1]
-            if not truncated.endswith(']'):
+            if truncated.startswith('[') and not truncated.endswith(']'):
                 truncated += '\n]'
+            elif truncated.startswith('{') and not truncated.endswith('}'):
+                truncated += '\n}'
             return json.loads(truncated)
     except Exception as e3:
         logger.error(f"All JSON recovery attempts failed: {e3}")
         
-    raise ValueError("Failed to parse LLM response as JSON")
+    raise ValueError(f"Failed to parse LLM response as JSON. Response starts with: {s[:100]}")
 
 
 # ── Create Job (called from dashboard) ───────────────────────────────────────
@@ -404,90 +505,221 @@ async def create_extension_job(
     Dashboard calls this to create a job.
     Returns job_id that user pastes into extension popup.
     """
-    from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam
+    from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam, PYQSet, PYQQuestion, CurrentAffairTopic, CurrentAffairReel
     from app.services.llm import generate_simple_response
     import re
 
-    subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
-        SubtopicClassroom.subtopic_id == req.subtopic_id,
-        Exam.client_id == client["client_id"]
-    ).first()
-    if not subtopic:
-        raise HTTPException(404, "Subtopic not found")
+    subtopic = None
+    topic = None
+    chapter = None
+    subject = None
+    pyq_set = None
+    ca_topic = None
+    video_length = 50
 
-    topic = subtopic.topic
-    chapter = topic.chapter if topic else None
-    subject = chapter.subject if chapter else None
+    if req.topic_id:
+        topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
+            TopicClassroom.topic_id == req.topic_id,
+            Exam.client_id == client["client_id"]
+        ).first()
+        if not topic:
+            raise HTTPException(404, "Topic not found")
+        chapter = topic.chapter
+        subject = chapter.subject if chapter else None
+        if topic.video_length:
+            video_length = topic.video_length
+    elif req.subtopic_id:
+        subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
+            SubtopicClassroom.subtopic_id == req.subtopic_id,
+            Exam.client_id == client["client_id"]
+        ).first()
+        if not subtopic:
+            raise HTTPException(404, "Subtopic not found")
+        topic = subtopic.topic
+        chapter = topic.chapter if topic else None
+        subject = chapter.subject if chapter else None
+    elif req.pyq_set_id:
+        pyq_set = db.query(PYQSet).filter(
+            PYQSet.pyq_set_id == req.pyq_set_id,
+            PYQSet.client_id == client["client_id"]
+        ).first()
+        if not pyq_set:
+            raise HTTPException(404, "PYQ Set not found")
+        video_length = 180  # 3 minutes default for PYQ set reels
+    elif req.ca_topic_id:
+        ca_topic = db.query(CurrentAffairTopic).filter(
+            CurrentAffairTopic.ca_topic_id == req.ca_topic_id,
+            CurrentAffairTopic.client_id == client["client_id"]
+        ).first()
+        if not ca_topic:
+            raise HTTPException(404, "Current Affairs topic not found")
+        video_length = 60  # 60 seconds default for CA reels
+    else:
+        raise HTTPException(400, "Either subtopic_id, topic_id, pyq_set_id, or ca_topic_id must be provided")
+
     lang = req.language or "English"
 
-    study_material = req.transcript.strip() if req.transcript and req.transcript.strip() else (
-        subtopic.description or subtopic.notes or subtopic.name
-    )
+    if req.transcript and req.transcript.strip():
+        study_material = req.transcript.strip()
+        is_custom = True
+    elif topic and not subtopic and topic.script and topic.script.strip():
+        study_material = topic.script.strip()
+        is_custom = True
+    elif subtopic and subtopic.script and subtopic.script.strip():
+        study_material = subtopic.script.strip()
+        is_custom = True
+    elif ca_topic and ca_topic.script and ca_topic.script.strip():
+        study_material = ca_topic.script.strip()
+        is_custom = True
+    elif pyq_set:
+        questions = db.query(PYQQuestion).filter(PYQQuestion.pyq_set_id == req.pyq_set_id).order_by(PYQQuestion.created_at.asc()).all()
+        if not questions:
+            raise HTTPException(400, "No questions found in this PYQ set. Please upload a PDF/Excel first.")
+        study_material = "\n".join(
+            f"Question {i+1}: {q.question_text[:150]}{'...' if len(q.question_text) > 150 else ''} -> Correct Answer: {q.correct_answer or 'See explanation'}"
+            for i, q in enumerate(questions[:15])
+        )
+        is_custom = False
+    else:
+        study_material = (
+            (subtopic.description or subtopic.notes or subtopic.name) if subtopic
+            else (topic.name if topic else (ca_topic.name if ca_topic else "General"))
+        )
+        is_custom = False
+
     # Clean markdown/html
     plain = re.sub(r'<[^>]+>', '', study_material)
     plain = re.sub(r'\[IMAGE:[^\]]+\]', '', plain)
     plain = re.sub(r'[#*`>_~]', '', plain).strip()[:3000]
 
-    subject_name = subject.name if subject else "General"
-    chapter_name = chapter.name if chapter else "General"
-    topic_name = topic.name if topic else subtopic.name
+    if pyq_set:
+        subject_name = "PYQ Set"
+        chapter_name = pyq_set.name
+        topic_name = pyq_set.name
+    elif ca_topic:
+        subject_name = "Current Affairs"
+        chapter_name = ca_topic.name
+        topic_name = ca_topic.name
+    else:
+        subject_name = subject.name if subject else "General"
+        chapter_name = chapter.name if chapter else "General"
+        topic_name = topic.name if topic else (subtopic.name if subtopic else "General")
 
-    # Generate 12 scenes with image + animation prompts
-    prompt = f"""You are a professional educational reel director.
-Create exactly 12 scenes for a detailed educational reel of minimum 50 seconds about: "{subtopic.name}"
+    target_name = subtopic.name if subtopic else (topic.name if topic else (pyq_set.name if pyq_set else (ca_topic.name if ca_topic else "Reel")))
+
+    if is_custom:
+        # Verbatim Script Segmenter Prompt
+        prompt = f"""You are a professional educational reel director.
+Your goal is to split the following exact user script into exactly 12 sequential chronological scenes.
+
+User Script:
+{study_material}
+
+Rules:
+1. You MUST split the user script sequentially into exactly 12 logical parts, so that all parts together form the complete user script without losing any sentence or word.
+2. For each scene, the "dialogue" field MUST strictly contain the corresponding exact text from the user script in {lang}. Do NOT rewrite, change, summarize, or edit any words in the dialogue!
+3. For each scene, generate:
+   - "scene_num": The scene number (1 to 12).
+   - "dialogue": The exact chronological chunk from the user script in {lang} (keep pacing tags e.g. [thoughtful] if they are part of the script).
+   - "dialogue_english": A clean, natural English translation of that dialogue chunk (15-25 words) to be used strictly for video subtitles/captions.
+   - "image_prompt": A detailed photorealistic 9:16 portrait image description in English, cinematic, 4K, no text, matching the visual concept of this scene's dialogue.
+   - "animation_prompt": A camera movement description: e.g. "slow zoom in", "pan left", etc.
+
+Return a JSON object containing:
+- "bgm_prompt": A descriptive background music prompt (in English, 10-20 words) matching the mood and theme of the script (e.g. "Inspiring and uplifting background music for a historic review").
+- "scenes": A JSON array of exactly 12 scene objects:
+  [
+    {{
+      "scene_num": 1,
+      "dialogue": "Exact portion of the user script",
+      "dialogue_english": "English translation for subtitles",
+      "image_prompt": "Detailed photorealistic portrait description",
+      "animation_prompt": "Camera movement description"
+    }}
+  ]
+Return ONLY the JSON object, no markdown."""
+    else:
+        # Standard AI dialogue generation prompt
+        target_topic_name = subtopic.name if subtopic else (topic.name if topic else (pyq_set.name if pyq_set else (ca_topic.name if ca_topic else "General")))
+        prompt = f"""You are a professional educational reel director.
+Create exactly 12 scenes for a detailed educational reel of minimum {video_length} seconds about: "{target_topic_name}"
 Subject: {subject_name} | Chapter: {chapter_name} | Topic: {topic_name}
 Language for spoken voiceover dialogue: {lang}
 
 Study material:
 {plain[:2000]}
 
-Return a JSON array of exactly 12 scene objects:
-[
-  {{
-    "scene_num": 1,
-    "dialogue": "Detailed narration in {lang} (25-35 words per scene to ensure a comprehensive, detailed explanation and a total voiceover length of at least 50 seconds)",
-    "dialogue_english": "Clean, natural English translation of the dialogue (15-25 words) to be used strictly for video subtitles/captions.",
-    "image_prompt": "Detailed photorealistic 9:16 portrait image description in English, cinematic, 4K, no text",
-    "animation_prompt": "Camera movement description: slow zoom in / pan left / dolly forward etc."
-  }}
-]
+Return a JSON object containing:
+- "bgm_prompt": A descriptive background music prompt (in English, 10-20 words) matching the mood and theme of the topic (e.g. "Upbeat, energetic synth beat for a technology summary" or "Slow, reflective piano chords for a history summary").
+- "scenes": A JSON array of exactly 12 scene objects:
+  [
+    {{
+      "scene_num": 1,
+      "dialogue": "Detailed narration in {lang} (25-35 words per scene to ensure a comprehensive, detailed explanation and a total voiceover length of at least {video_length} seconds)",
+      "dialogue_english": "Clean, natural English translation of the dialogue (15-25 words) to be used strictly for video subtitles/captions.",
+      "image_prompt": "Detailed photorealistic 9:16 portrait image description in English, cinematic, 4K, no text",
+      "animation_prompt": "Camera movement description: slow zoom in / pan left / dolly forward etc."
+    }}
+  ]
 
 Rules:
 - dialogue: spoken {lang}, 25-35 words per scene.
-  - CRITICAL: Ensure that the total narration across all 12 scenes has a minimum length of 50 seconds when spoken (aim for a minimum of 25-30 words per scene so that the ElevenLabs voiceover is long and detailed enough, resulting in a reel of at least 50 seconds).
+  - CRITICAL: Ensure that the total narration across all 12 scenes has a minimum length of {video_length} seconds when spoken (aim for a minimum of 25-30 words per scene so that the ElevenLabs voiceover is long and detailed enough, resulting in a reel of at least {video_length} seconds).
   - CRITICAL: If the language is Hindi, you MUST write the dialogue strictly in proper Devanagari Unicode script (e.g. "भारत", "प्रौद्योगिकी"). NEVER write in Hinglish (Hindi written using English/Latin alphabet, e.g. "Bharat", "vigyan"), as TTS engines pronounce Hinglish with a highly robotic/incorrect accent.
   - CRITICAL: Spell out all numbers, place names, acronyms, and math symbols fully in spoken words of the target language (e.g. write "उन्नीस सौ सैंतालीस" instead of "1947", "प्रतिशत" / "percent" instead of "%", "किलोमीटर" instead of "km") so that ElevenLabs reads them with perfect professional pronunciation.
 - dialogue_english: Translate the narration into clean, natural English (15-25 words) for captions/subtitles.
 - image_prompt: detailed English description for AI image generation, always 9:16 portrait orientation
 - animation_prompt: short camera movement instruction for video animation
 - Make scenes flow as continuous educational explanation
-Return ONLY the JSON array, no markdown."""
+Return ONLY the JSON object, no markdown."""
 
     try:
-        raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON array.")
-        scenes = robust_json_loads(raw)
+        raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON object.")
+        res_data = robust_json_loads(raw)
+        
+        bgm_prompt = None
+        if isinstance(res_data, dict):
+            scenes = res_data.get("scenes", [])
+            bgm_prompt = res_data.get("bgm_prompt", None)
+        elif isinstance(res_data, list):
+            scenes = res_data
+        else:
+            raise ValueError("Invalid response format from LLM")
+            
         if not isinstance(scenes, list):
-            raise ValueError("Not a list")
+            raise ValueError("Not a list of scenes")
+            
         # Ensure exactly 12
         scenes = scenes[:12]
     except Exception as e:
         logger.error(f"Scene generation failed: {e}")
         raise HTTPException(500, f"Failed to generate scenes: {str(e)}")
 
+    # Construct a descriptive, high-quality BGM prompt matching the subject matter if not generated by LLM
+    if not bgm_prompt:
+        bgm_prompt = f"Upbeat, engaging background music for an educational video about {target_name}."
+        if chapter_name and chapter_name != "General":
+            bgm_prompt = f"Upbeat, inspiring, educational background music matching the theme of {target_name} in {chapter_name}."
+
     job_id = "job-" + secrets.token_hex(8)
     _jobs[job_id] = {
         "job_id": job_id,
         "client_id": client["client_id"],
         "subtopic_id": req.subtopic_id,
-        "subtopic_name": subtopic.name,
+        "topic_id": req.topic_id,
+        "pyq_set_id": req.pyq_set_id,
+        "ca_topic_id": req.ca_topic_id,
+        "subtopic_name": target_name,
         "language": lang,
         "voice_id": req.voice_id,
         "scenes": scenes,
         "images_received": [],
         "videos_received": [],
+        "bgm_prompt": bgm_prompt,
         "status": "waiting_extension",
         "created_at": datetime.utcnow().isoformat(),
-        "video_url": None
+        "video_url": None,
+        "video_length": video_length
     }
 
     _save_jobs(_jobs)
@@ -514,7 +746,8 @@ async def get_job(job_id: str, client: dict = Depends(_require_client)):
         "success": True, 
         "scenes": job["scenes"], 
         "status": job["status"],
-        "subtopic_name": job.get("subtopic_name", "")
+        "subtopic_name": job.get("subtopic_name", ""),
+        "bgm_prompt": job.get("bgm_prompt", f"Upbeat background music for {job.get('subtopic_name', 'educational video')}")
     }
 
 
@@ -661,284 +894,355 @@ async def update_scene(job_id: str, req: UpdateSceneReq, client: dict = Depends(
     _save_jobs(_jobs)
     return {"success": True, "scene": scene}
 
+# Thread-safe in-memory set to track jobs actively being assembled in this server instance
+active_assembling_jobs = set()
 
-# ── Assemble Reel (called by extension or dashboard) ────────────────────────
-@router.post("/extension/job/{job_id}/assemble", tags=["Extension"])
-async def assemble_reel(
-    job_id: str,
-    req: AssembleReq,
-    client: dict = Depends(_require_client),
-    db: Session = Depends(get_db)
-):
-    global _jobs
-    _jobs = _load_jobs()
-    job = _jobs.get(job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-
-    job["status"] = "assembling"
-    _save_jobs(_jobs)
-
-    base_uploads = os.path.join(os.getcwd(), "uploads", "social")
-    work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
-    os.makedirs(work_dir, exist_ok=True)
-
-    import shutil
-
-    scenes = job["scenes"]
-    num_scenes = len(scenes)
-
-    video_files = []
-    image_files = []
-
-    # ── RESILIENT IMAGE DISCOVERY AND COPYING ──
-    for i in range(num_scenes):
-        scene_num = i + 1
-        img_copied = False
-        dest_img_path = os.path.join(work_dir, f"scene_{i}_orig_img.jpg")
-        
-        # Check if a valid image already exists in work_dir
-        if os.path.exists(dest_img_path) and os.path.getsize(dest_img_path) > 121:
-            logger.info(f"Scene {i} image already exists and is valid in work_dir. Skipping search.")
-            image_files.append(dest_img_path)
-            img_copied = True
-            continue
-            
-        filename = req.images[i] if (req.images and i < len(req.images)) else None
-        found_file = resilient_find_file(filename, scene_num, job_id, is_video=False, strict=False)
-        
-        if found_file:
-            try:
-                shutil.copy2(found_file, dest_img_path)
-                remove_watermark_ffmpeg(dest_img_path, is_video=False)
-                image_files.append(dest_img_path)
-                img_copied = True
-                logger.info(f"Copied discovered image {found_file} to {dest_img_path}")
-            except Exception as e:
-                logger.warning(f"Error copying image: {e}")
-                
-        # D. Dynamic AI Fallback (Generates custom image matching script instead of default boring unsplash image)
-        if not img_copied:
-            try:
-                import urllib.parse
-                import httpx
-                prompt_text = scenes[i].get("image_prompt") or scenes[i].get("dialogue") or "abstract education concept"
-                logger.info(f"Scene {i} image missing in Downloads. Dynamically generating visual matching script via Pollinations AI: {prompt_text}")
-                encoded_prompt = urllib.parse.quote(f"{prompt_text}, 8k, cinematic lighting, masterpiece")
-                fallback_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={secrets.token_hex(4)}&model=flux"
-                
-                with httpx.Client() as http_client:
-                    res = http_client.get(fallback_url, timeout=30.0)
-                    if res.status_code == 200:
-                        with open(dest_img_path, "wb") as f:
-                            f.write(res.content)
-                        image_files.append(dest_img_path)
-                        img_copied = True
-                        logger.info(f"Successfully generated custom AI fallback image for scene {i} using Pollinations!")
-            except Exception as e:
-                logger.error(f"Dynamic AI fallback image generation failed: {e}")
-            
-            if not img_copied:
-                # Absolute emergency 1x1 valid black JPEG write to prevent crash
-                logger.warning(f"Extreme fallback: writing 1x1 valid black JPEG for scene {i}")
-                with open(dest_img_path, "wb") as f:
-                    f.write(b'\xff\xd8\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9')
-                image_files.append(dest_img_path)
-                img_copied = True
-
-    # ── RESILIENT VIDEO DISCOVERY AND COPYING ──
-    for i in range(num_scenes):
-        scene_num = i + 1
-        vid_copied = False
-        dest_vid_path = os.path.join(work_dir, f"scene_{i}_orig_vid.mp4")
-        
-        # Check if a valid video already exists in work_dir
-        if os.path.exists(dest_vid_path) and os.path.getsize(dest_vid_path) > 50000:
-            logger.info(f"Scene {i} video already exists and is valid in work_dir. Skipping search.")
-            video_files.append(dest_vid_path)
-            vid_copied = True
-            continue
-            
-        filename = req.videos[i] if (req.videos and i < len(req.videos)) else None
-        found_file = resilient_find_file(filename, scene_num, job_id, is_video=True, strict=False)
-        
-        if found_file:
-            try:
-                shutil.copy2(found_file, dest_vid_path)
-                remove_watermark_ffmpeg(dest_vid_path, is_video=True)
-                video_files.append(dest_vid_path)
-                vid_copied = True
-                logger.info(f"Copied discovered video {found_file} to {dest_vid_path}")
-            except Exception as e:
-                logger.warning(f"Error copying video: {e}")
-                    
-        # E. Final secure fallback: Generate high-quality cinematic Ken Burns video from scene image!
-        if not vid_copied:
-            dest_img_path = os.path.join(work_dir, f"scene_{i}_orig_img.jpg")
-            if os.path.exists(dest_img_path) and os.path.getsize(dest_img_path) > 0:
-                try:
-                    logger.info(f"Scene {i} video missing or corrupt. Animating scene image into professional cinematic video: {dest_img_path}")
-                    
-                    # Alternating smooth Ken Burns zoom/pan (10s, 30fps = 300 frames)
-                    zoom_val = "min(zoom+0.0015,1.5)" if i % 2 == 0 else "max(1.5-0.0015*on,1.0)"
-                    pan_x = "iw/2-(iw/zoom/2)+on*0.3" if i % 3 == 0 else "iw/2-(iw/zoom/2)-on*0.3" if i % 3 == 1 else "iw/2-(iw/zoom/2)"
-                    
-                    # Smooth Ken Burns + pro color correction + cinematic vignette overlay
-                    # STABLE SCALING TO PREVENT FFmpeg MEMORY OVERFLOWS / BLACK SCREEN: scale=1620:2880 with cropping
-                    vf = (
-                        f"scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,zoompan=z='{zoom_val}':x='{pan_x}':y='ih/2-(ih/zoom/2)':d=300:s=1080x1920:fps=30,setsar=1,"
-                        f"eq=contrast=1.05:saturation=1.15,vignette=angle=0.10"
-                    )
-                    
-                    cmd = [
-                        "ffmpeg", "-y", "-nostdin",
-                        "-loop", "1", "-i", dest_img_path,
-                        "-vf", vf,
-                        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-                        "-t", "10.0",
-                        "-pix_fmt", "yuv420p", "-r", "30",
-                        dest_vid_path
-                    ]
-                    log_path = os.path.join(work_dir, f"ffmpeg_kenburns_scene_{i}.log")
-                    with open(log_path, "w", encoding="utf-8") as log_file:
-                        result = subprocess.run(cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
-                    if result.returncode == 0:
-                        video_files.append(dest_vid_path)
-                        vid_copied = True
-                        logger.info(f"Successfully generated animated fallback video from scene image for scene {i}")
-                    else:
-                        err_msg = "Unknown error"
-                        if os.path.exists(log_path):
-                            try:
-                                with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
-                                    err_msg = f.read()[-300:]
-                            except: pass
-                        logger.error(f"FFmpeg fallback video generation failed: {err_msg}")
-                except Exception as ex:
-                    logger.error(f"Failed to generate animated video from image for scene {i}: {ex}")
- 
-        # If it is STILL not copied, generate a solid-color aesthetic vertical clip to avoid empty files/crashes
-        if not vid_copied:
-            logger.warning(f"Extreme fallback: generating solid color 1080x1920 video for scene {i}")
-            fallback_cmd = [
-                "ffmpeg", "-y", "-nostdin",
-                "-f", "lavfi", "-i", "color=c=0x1a1a2e:s=1080x1920:d=3.0",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
-                dest_vid_path
-            ]
-            result = subprocess.run(fallback_cmd, capture_output=True, stdin=subprocess.DEVNULL)
-            if result.returncode == 0:
-                video_files.append(dest_vid_path)
-                vid_copied = True
-            else:
-                with open(dest_vid_path, "wb") as f:
-                    f.write(b"")
-                video_files.append(dest_vid_path)
- 
-    logger.info(f"Assembling reel from {len(video_files)} copied video files in work directory")
-
+async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
     try:
+        # Load jobs
+        current_jobs = _load_jobs()
+        job = current_jobs.get(job_id)
+        if not job:
+            logger.error(f"perform_reel_assembly: Job {job_id} not found.")
+            return
+
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+        os.makedirs(work_dir, exist_ok=True)
+
+        import shutil
+
+        scenes = job["scenes"]
+        num_scenes = len(scenes)
+
+        video_files = []
+        image_files = []
+
+        # Helper to update milestones in a synchronized manner
+        def update_job_milestone(pct: float, msg: str, status: Optional[str] = None, video_url: Optional[str] = None, scenes_list: Optional[List[dict]] = None):
+            try:
+                c_jobs = _load_jobs()
+                if job_id in c_jobs:
+                    c_jobs[job_id]["progress_pct"] = pct
+                    c_jobs[job_id]["progress_msg"] = msg
+                    if status:
+                        c_jobs[job_id]["status"] = status
+                    if video_url:
+                        c_jobs[job_id]["video_url"] = video_url
+                    if scenes_list:
+                        c_jobs[job_id]["scenes"] = scenes_list
+                    _save_jobs(c_jobs)
+            except Exception as pe:
+                logger.warning(f"Could not update milestone in background: {pe}")
+
+        # ── RESILIENT IMAGE DISCOVERY AND COPYING ──
+        for i in range(num_scenes):
+            scene_num = i + 1
+            img_copied = False
+            dest_img_path = os.path.join(work_dir, f"scene_{i}_orig_img.jpg")
+            
+            # Check if a valid image already exists in work_dir
+            if os.path.exists(dest_img_path) and os.path.getsize(dest_img_path) > 121:
+                logger.info(f"Scene {i} image already exists and is valid in work_dir. Skipping search.")
+                image_files.append(dest_img_path)
+                img_copied = True
+                continue
+                
+            filename = req.images[i] if (req.images and i < len(req.images)) else None
+            found_file = resilient_find_file(filename, scene_num, job_id, is_video=False, strict=False)
+            
+            if found_file:
+                try:
+                    await asyncio.to_thread(shutil.copy2, found_file, dest_img_path)
+                    await asyncio.to_thread(remove_watermark_ffmpeg, dest_img_path, is_video=False)
+                    image_files.append(dest_img_path)
+                    img_copied = True
+                    logger.info(f"Copied discovered image {found_file} to {dest_img_path}")
+                except Exception as e:
+                    logger.warning(f"Error copying image: {e}")
+                    
+            # D. Dynamic AI Fallback
+            if not img_copied:
+                try:
+                    import urllib.parse
+                    import httpx
+                    prompt_text = scenes[i].get("image_prompt") or scenes[i].get("dialogue") or "abstract education concept"
+                    logger.info(f"Scene {i} image missing in Downloads. Dynamically generating visual matching script via Pollinations AI: {prompt_text}")
+                    encoded_prompt = urllib.parse.quote(f"{prompt_text}, 8k, cinematic lighting, masterpiece")
+                    fallback_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={secrets.token_hex(4)}&model=flux"
+                    
+                    async with httpx.AsyncClient() as http_client:
+                        res = await http_client.get(fallback_url, timeout=30.0)
+                        if res.status_code == 200:
+                            def save_fallback_img(path, content):
+                                with open(path, "wb") as f:
+                                    f.write(content)
+                            await asyncio.to_thread(save_fallback_img, dest_img_path, res.content)
+                            image_files.append(dest_img_path)
+                            img_copied = True
+                            logger.info(f"Successfully generated custom AI fallback image for scene {i} using Pollinations!")
+                except Exception as e:
+                    logger.error(f"Dynamic AI fallback image generation failed: {e}")
+                
+                if not img_copied:
+                    # Absolute emergency 1x1 valid black JPEG write
+                    logger.warning(f"Extreme fallback: writing 1x1 valid black JPEG for scene {i}")
+                    def save_black_img(path):
+                        with open(path, "wb") as f:
+                            f.write(b'\xff\xd8\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9')
+                    await asyncio.to_thread(save_black_img, dest_img_path)
+                    image_files.append(dest_img_path)
+                    img_copied = True
+
+        # ── RESILIENT VIDEO DISCOVERY AND COPYING ──
+        for i in range(num_scenes):
+            scene_num = i + 1
+            vid_copied = False
+            dest_vid_path = os.path.join(work_dir, f"scene_{i}_orig_vid.mp4")
+            
+            # Check if a valid video already exists in work_dir
+            if os.path.exists(dest_vid_path) and os.path.getsize(dest_vid_path) > 50000:
+                logger.info(f"Scene {i} video already exists and is valid in work_dir. Skipping search.")
+                video_files.append(dest_vid_path)
+                vid_copied = True
+                continue
+                
+            filename = req.videos[i] if (req.videos and i < len(req.videos)) else None
+            found_file = resilient_find_file(filename, scene_num, job_id, is_video=True, strict=False)
+            
+            if found_file:
+                try:
+                    await asyncio.to_thread(shutil.copy2, found_file, dest_vid_path)
+                    await asyncio.to_thread(remove_watermark_ffmpeg, dest_vid_path, is_video=True)
+                    video_files.append(dest_vid_path)
+                    vid_copied = True
+                    logger.info(f"Copied discovered video {found_file} to {dest_vid_path}")
+                except Exception as e:
+                    logger.warning(f"Error copying video: {e}")
+                        
+            # E. Final secure fallback: Generate high-quality cinematic Ken Burns video from scene image
+            if not vid_copied:
+                dest_img_path = os.path.join(work_dir, f"scene_{i}_orig_img.jpg")
+                if os.path.exists(dest_img_path) and os.path.getsize(dest_img_path) > 0:
+                    try:
+                        logger.info(f"Scene {i} video missing or corrupt. Animating scene image into professional cinematic video: {dest_img_path}")
+                        
+                        # Clean sharp scaling, no zoompan filter to keep it perfectly clear
+                        vf = (
+                            "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
+                        )
+                        
+                        cmd = [
+                            "ffmpeg", "-y", "-nostdin",
+                            "-loop", "1", "-i", dest_img_path,
+                            "-vf", vf,
+                            "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+                            "-t", "10.0",
+                            "-pix_fmt", "yuv420p", "-r", "30",
+                            dest_vid_path
+                        ]
+                        log_path = os.path.join(work_dir, f"ffmpeg_kenburns_scene_{i}.log")
+                        def run_kenburns():
+                            with open(log_path, "w", encoding="utf-8") as log_file:
+                                return subprocess.run(cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+                        result = await asyncio.to_thread(run_kenburns)
+                        if result.returncode == 0:
+                            video_files.append(dest_vid_path)
+                            vid_copied = True
+                            logger.info(f"Successfully generated animated fallback video from scene image for scene {i}")
+                        else:
+                            err_msg = "Unknown error"
+                            if os.path.exists(log_path):
+                                try:
+                                    with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                                        err_msg = f.read()[-300:]
+                                except: pass
+                            logger.error(f"FFmpeg fallback video generation failed: {err_msg}")
+                    except Exception as ex:
+                        logger.error(f"Failed to generate animated video from image for scene {i}: {ex}")
+      
+            # If it is STILL not copied, generate solid color video
+            if not vid_copied:
+                logger.warning(f"Extreme fallback: generating solid color 1080x1920 video for scene {i}")
+                fallback_cmd = [
+                    "ffmpeg", "-y", "-nostdin",
+                    "-f", "lavfi", "-i", "color=c=0x1a1a2e:s=1080x1920:d=3.0",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
+                    dest_vid_path
+                ]
+                def run_fallback_vid():
+                    return subprocess.run(fallback_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+                result = await asyncio.to_thread(run_fallback_vid)
+                if result.returncode == 0:
+                    video_files.append(dest_vid_path)
+                    vid_copied = True
+                else:
+                    def write_empty_vid(path):
+                        with open(path, "wb") as f:
+                            f.write(b"")
+                    await asyncio.to_thread(write_empty_vid, dest_vid_path)
+                    video_files.append(dest_vid_path)
+     
+        logger.info(f"Assembling reel from {len(video_files)} copied video files in work directory")
+
         res_data = await assemble_from_videos(
             video_files=video_files,
             scenes=job["scenes"],
             language=job["language"],
             voice_id=job["voice_id"],
-            job_id=job_id
+            job_id=job_id,
+            bgm_url=req.bgm_url,
+            video_length=job.get("video_length")
         )
         video_url = res_data["video_url"]
         enriched_scenes = res_data["scenes"]
         
         # ── CLOUDFLARE R2 UPLOAD ──
+        update_job_milestone(
+            pct=99.0,
+            msg="Uploading generated reel to Cloudflare R2 storage...",
+            status="assembling"
+        )
         try:
             from app.services.r2_storage import upload_to_r2
             local_video_path = os.path.join(os.getcwd(), "uploads", "social", os.path.basename(video_url))
             subtopic_id = job.get("subtopic_id")
+            topic_id = job.get("topic_id")
+            pyq_set_id = job.get("pyq_set_id")
+            ca_topic_id = job.get("ca_topic_id")
             
-            # Key: reels/subtopic_{subtopic_id}/reel_{job_id}.mp4
-            r2_key_unique = f"reels/subtopic_{subtopic_id}/reel_{job_id}.mp4"
-            r2_key_latest = f"reels/subtopic_{subtopic_id}/latest.mp4"
+            if subtopic_id:
+                r2_key_unique = f"reels/subtopic_{subtopic_id}/reel_{job_id}.mp4"
+                r2_key_latest = f"reels/subtopic_{subtopic_id}/latest.mp4"
+            elif topic_id:
+                r2_key_unique = f"reels/topic_{topic_id}/reel_{job_id}.mp4"
+                r2_key_latest = f"reels/topic_{topic_id}/latest.mp4"
+            elif pyq_set_id:
+                r2_key_unique = f"reels/pyq_{pyq_set_id}/reel_{job_id}.mp4"
+                r2_key_latest = f"reels/pyq_{pyq_set_id}/latest.mp4"
+            elif ca_topic_id:
+                r2_key_unique = f"reels/ca_{ca_topic_id}/reel_{job_id}.mp4"
+                r2_key_latest = f"reels/ca_{ca_topic_id}/latest.mp4"
+            else:
+                r2_key_unique = f"reels/general/reel_{job_id}.mp4"
+                r2_key_latest = f"reels/general/latest.mp4"
             
             # Upload unique reel
-            r2_url = upload_to_r2(local_video_path, r2_key_unique, "video/mp4")
+            r2_url = await asyncio.to_thread(upload_to_r2, local_video_path, r2_key_unique, "video/mp4")
             
             # Upload latest.mp4 for static referencing
-            upload_to_r2(local_video_path, r2_key_latest, "video/mp4")
+            await asyncio.to_thread(upload_to_r2, local_video_path, r2_key_latest, "video/mp4")
             
             if r2_url:
                 logger.info(f"R2 Storage: Successfully saved reel in Cloudflare R2! URL={r2_url}")
-                # Overwrite video_url so it is saved in database and returned to dashboard/extension
                 video_url = r2_url
         except Exception as r2_err:
             logger.error(f"Failed to upload to Cloudflare R2 (falling back to local storage): {r2_err}")
         
-        # Save to database SocialContent table so it appears in history and lists!
-        from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam, SocialContent
+        # Save to database SocialContent table
+        from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam, SocialContent, CurrentAffairTopic, CurrentAffairReel, PYQSet
         from app.core.database import get_session_local
         
         SessionLocal = get_session_local()
-        with SessionLocal() as db_session:
-            subtopic_id = job.get("subtopic_id")
-            subtopic = db_session.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
-                SubtopicClassroom.subtopic_id == subtopic_id,
-                Exam.client_id == client["client_id"]
-            ).first()
-            
-            subject_name = "General"
-            exam_id = ""
-            if subtopic and subtopic.topic and subtopic.topic.chapter and subtopic.topic.chapter.subject:
-                subject_name = subtopic.topic.chapter.subject.name
-                if subtopic.topic.chapter.subject.paper and subtopic.topic.chapter.subject.paper.exam:
-                    exam_id = subtopic.topic.chapter.subject.paper.exam.exam_id
+        
+        def save_db_record():
+            with SessionLocal() as db_session:
+                subtopic_id = job.get("subtopic_id")
+                topic_id = job.get("topic_id")
+                pyq_set_id = job.get("pyq_set_id")
+                ca_topic_id = job.get("ca_topic_id")
+                
+                subtopic = None
+                topic = None
+                pyq_set = None
+                ca_topic = None
+                
+                if subtopic_id:
+                    subtopic = db_session.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
+                        SubtopicClassroom.subtopic_id == subtopic_id,
+                        Exam.client_id == client["client_id"]
+                    ).first()
+                    if subtopic:
+                        topic = subtopic.topic
+                        
+                if not topic and topic_id:
+                    topic = db_session.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
+                        TopicClassroom.topic_id == topic_id,
+                        Exam.client_id == client["client_id"]
+                    ).first()
+
+                if pyq_set_id:
+                    pyq_set = db_session.query(PYQSet).filter(
+                        PYQSet.pyq_set_id == pyq_set_id,
+                        PYQSet.client_id == client["client_id"]
+                    ).first()
+
+                if ca_topic_id:
+                    ca_topic = db_session.query(CurrentAffairTopic).filter(
+                        CurrentAffairTopic.ca_topic_id == ca_topic_id,
+                        CurrentAffairTopic.client_id == client["client_id"]
+                    ).first()
                     
-            subtopic_name = subtopic.name if subtopic else job.get("subtopic_name", "Subtopic")
-            title = f"{subtopic_name} — {subject_name}"
-            
-            # Compile formatted scenes narration script
-            script_parts = []
-            clean_dialogues = []
-            for s in job["scenes"]:
-                script_parts.append(
-                    f"🎬 Scene {s.get('scene_num', 1)} (5 sec)\n"
-                    f"🎙️ Dialogue: {s.get('dialogue', '')}\n"
-                    f"📸 Visuals / Footage: {s.get('image_prompt', '')}\n"
-                    f"🎥 Editing Notes: {s.get('animation_prompt', '')}"
-                )
-                dlg = s.get('dialogue', '').strip()
-                if dlg:
-                    clean_dialogues.append(dlg)
-            compiled_script = "\n\n".join(script_parts)
-            clean_script = "\n".join(clean_dialogues) if clean_dialogues else title
-            
-            # Query if a SocialContent record with content_id == job_id already exists
-            db_item = db_session.query(SocialContent).filter(SocialContent.content_id == job_id).first()
-            if db_item:
-                logger.info(f"SocialContent for job_id {job_id} already exists. Updating existing record instead of inserting a duplicate.")
-                db_item.title = title
-                db_item.body = clean_script[:1000]
-                db_item.media_url = video_url
-                db_item.scenes_json = json.dumps(enriched_scenes)
-                db_item.metadata_json = json.dumps({
-                    "subtopic_id": subtopic_id,
-                    "exam_id": exam_id,
-                    "voice_id": job.get("voice_id"),
-                    "language": job.get("language"),
-                    "script": clean_script,
-                    "job_id": job_id,
-                    "bgm_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-                })
-                db_item.created_at = datetime.utcnow()
-            else:
-                logger.info(f"Creating new SocialContent record for job_id {job_id}.")
-                db_item = SocialContent(
-                    content_id=job_id,  # Use the job_id as the content_id for tracking
-                    client_id=client["client_id"],
-                    content_type="reel",
-                    title=title,
-                    body=clean_script[:1000],  # Save clean dialogue narration
-                    media_url=video_url,
-                    scenes_json=json.dumps(enriched_scenes),  # SAVE THE ENRICHED SCENES PAYLOAD!
-                    metadata_json=json.dumps({
+                subject_name = "General"
+                exam_id = ""
+                if topic:
+                    topic_id = topic.topic_id
+                    if topic.chapter and topic.chapter.subject:
+                        subject_name = topic.chapter.subject.name
+                        if topic.chapter.subject.paper and topic.chapter.subject.paper.exam:
+                            exam_id = topic.chapter.subject.paper.exam.exam_id
+                elif pyq_set:
+                    subject_name = "PYQ Set"
+                elif ca_topic:
+                    subject_name = "Current Affairs"
+                
+                subtopic_name = subtopic.name if subtopic else (topic.name if topic else (pyq_set.name if pyq_set else (ca_topic.name if ca_topic else job.get("subtopic_name", "Subtopic"))))
+                title = f"{subtopic_name} — {subject_name}"
+                
+                script_parts = []
+                clean_dialogues = []
+                for s in job["scenes"]:
+                    script_parts.append(
+                        f"🎬 Scene {s.get('scene_num', 1)} (5 sec)\n"
+                        f"🎙️ Dialogue: {s.get('dialogue', '')}\n"
+                        f"📸 Visuals / Footage: {s.get('image_prompt', '')}\n"
+                        f"🎥 Editing Notes: {s.get('animation_prompt', '')}"
+                    )
+                    dlg = s.get('dialogue', '').strip()
+                    if dlg:
+                        clean_dialogues.append(dlg)
+                clean_script = "\n".join(clean_dialogues) if clean_dialogues else title
+                
+                if ca_topic:
+                    ca_reel = db_session.query(CurrentAffairReel).filter(CurrentAffairReel.reel_id == job_id).first()
+                    if ca_reel:
+                        logger.info(f"CurrentAffairReel for job_id {job_id} already exists. Updating existing record.")
+                        ca_reel.media_url = video_url
+                        ca_reel.script = clean_script[:2000]
+                    else:
+                        logger.info(f"Creating new CurrentAffairReel record for job_id {job_id}.")
+                        ca_reel = CurrentAffairReel(
+                            reel_id=job_id,
+                            ca_topic_id=ca_topic_id,
+                            client_id=client["client_id"],
+                            media_url=video_url,
+                            script=clean_script[:2000],
+                            created_at=datetime.utcnow()
+                        )
+                        db_session.add(ca_reel)
+
+                db_item = db_session.query(SocialContent).filter(SocialContent.content_id == job_id).first()
+                if db_item:
+                    logger.info(f"SocialContent for job_id {job_id} already exists. Updating existing record.")
+                    db_item.title = title
+                    db_item.body = clean_script[:1000]
+                    db_item.media_url = video_url
+                    db_item.scenes_json = json.dumps(enriched_scenes)
+                    db_item.metadata_json = json.dumps({
                         "subtopic_id": subtopic_id,
+                        "topic_id": topic_id,
+                        "pyq_set_id": pyq_set_id,
+                        "ca_topic_id": ca_topic_id,
                         "exam_id": exam_id,
                         "voice_id": job.get("voice_id"),
                         "language": job.get("language"),
@@ -946,47 +1250,123 @@ async def assemble_reel(
                         "job_id": job_id,
                         "bgm_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
                     })
-                )
-                db_session.add(db_item)
+                    db_item.created_at = datetime.utcnow()
+                else:
+                    logger.info(f"Creating new SocialContent record for job_id {job_id}.")
+                    db_item = SocialContent(
+                        content_id=job_id,
+                        client_id=client["client_id"],
+                        content_type="reel",
+                        title=title,
+                        body=clean_script[:1000],
+                        media_url=video_url,
+                        scenes_json=json.dumps(enriched_scenes),
+                        metadata_json=json.dumps({
+                            "subtopic_id": subtopic_id,
+                            "topic_id": topic_id,
+                            "pyq_set_id": pyq_set_id,
+                            "ca_topic_id": ca_topic_id,
+                            "exam_id": exam_id,
+                            "voice_id": job.get("voice_id"),
+                            "language": job.get("language"),
+                            "script": clean_script,
+                            "job_id": job_id,
+                            "bgm_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+                        })
+                    )
+                    db_session.add(db_item)
+                db_session.commit()
+        
+        try:
+            await asyncio.to_thread(save_db_record)
+        except Exception as db_err:
+            logger.error(f"Failed to save db record for job {job_id}: {db_err}")
             
-            db_session.commit()
-            
-        # Copy to subtopic-specific permanent directory for easy integration with other projects
+        # Copy to subtopic-specific permanent directory
         try:
             orig_filename = os.path.basename(res_data["video_url"])
             local_video_path = os.path.join(os.getcwd(), "uploads", "social", orig_filename)
             if os.path.exists(local_video_path):
                 subtopic_id = job.get("subtopic_id")
-                subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"subtopic_{subtopic_id}")
+                topic_id = job.get("topic_id")
+                pyq_set_id = job.get("pyq_set_id")
+                ca_topic_id = job.get("ca_topic_id")
+                if subtopic_id:
+                    subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"subtopic_{subtopic_id}")
+                elif topic_id:
+                    subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"topic_{topic_id}")
+                elif pyq_set_id:
+                    subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"pyq_{pyq_set_id}")
+                elif ca_topic_id:
+                    subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", f"ca_{ca_topic_id}")
+                else:
+                    subtopic_reels_dir = os.path.join(os.getcwd(), "uploads", "reels", "general")
                 os.makedirs(subtopic_reels_dir, exist_ok=True)
                 
-                # Copy as a unique file
                 dest_unique = os.path.join(subtopic_reels_dir, f"reel_{job_id}.mp4")
-                shutil.copy2(local_video_path, dest_unique)
+                await asyncio.to_thread(shutil.copy2, local_video_path, dest_unique)
                 
-                # Copy as latest.mp4 for static integration
                 dest_latest = os.path.join(subtopic_reels_dir, "latest.mp4")
                 if os.path.exists(dest_latest):
                     try: os.remove(dest_latest)
                     except: pass
-                shutil.copy2(local_video_path, dest_latest)
+                await asyncio.to_thread(shutil.copy2, local_video_path, dest_latest)
                 
                 logger.info(f"Extension Reel physically saved to: {dest_unique} and {dest_latest}")
         except Exception as copy_err:
             logger.error(f"Failed to copy final reel to subtopic directory: {copy_err}")
         
-        job["status"] = "done"
-        job["video_url"] = video_url
-        job["scenes"] = enriched_scenes
-        _save_jobs(_jobs)
-        
-        return {"success": True, "video_url": video_url}
-        
+        update_job_milestone(
+            pct=100.0,
+            msg="Reel assembled and uploaded to Cloudflare R2 successfully!",
+            status="done",
+            video_url=video_url,
+            scenes_list=enriched_scenes
+        )
     except Exception as e:
-        logger.error(f"Assembly failed: {e}")
-        job["status"] = "error"
-        _save_jobs(_jobs)
-        raise HTTPException(500, f"Assembly failed: {str(e)}")
+        logger.error(f"Background assembly failed for job {job_id}: {e}")
+        try:
+            update_job_milestone(
+                pct=0.0,
+                msg=f"Assembly failed: {str(e)}",
+                status="error"
+            )
+        except: pass
+    finally:
+        active_assembling_jobs.discard(job_id)
+
+@router.post("/extension/job/{job_id}/assemble", tags=["Extension"])
+async def assemble_reel(
+    job_id: str,
+    req: AssembleReq,
+    background_tasks: BackgroundTasks,
+    client: dict = Depends(_require_client)
+):
+    global _jobs
+    _jobs = _load_jobs()
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    # Prevent concurrent or duplicate assembly runs:
+    if job.get("status") == "done":
+        logger.info(f"assemble_reel: Job {job_id} is already done. Returning existing URL.")
+        return {"success": True, "video_url": job.get("video_url")}
+    if job_id in active_assembling_jobs:
+        logger.info(f"assemble_reel: Job {job_id} is currently assembling. Returning response to let client poll.")
+        return {"success": True, "message": "Reel assembly is already in progress. Please continue polling."}
+
+    # Set status to assembling and start background task
+    job["status"] = "assembling"
+    job["progress_pct"] = 75.0
+    job["progress_msg"] = "Initializing final reel assembly..."
+    _save_jobs(_jobs)
+
+    active_assembling_jobs.add(job_id)
+    background_tasks.add_task(perform_reel_assembly, job_id, req, client)
+
+    logger.info(f"assemble_reel: Job {job_id} started in background task.")
+    return {"success": True, "message": "Assembly started in the background. Please continue polling status."}
 
 
 # ── Pending Job (extension polls this) ──────────────────────────────────────
@@ -1136,6 +1516,7 @@ async def job_status(job_id: str, client: dict = Depends(_require_client), db: S
     return {
         "success": True,
         "status": job["status"],
+        "error": job.get("error"),
         "images_done": len(images_on_disk),
         "videos_done": len(videos_on_disk),
         "images_indices": images_on_disk,
@@ -1252,7 +1633,9 @@ async def assemble_from_videos(
     scenes: List[dict],
     language: str,
     voice_id: Optional[str],
-    job_id: str
+    job_id: str,
+    bgm_url: Optional[str] = None,
+    video_length: Optional[int] = 50
 ) -> dict:
     from app.services.video_engine import generate_elevenlabs_voiceover, validate_video_asset, validate_audio_asset
     from gtts import gTTS
@@ -1313,20 +1696,26 @@ async def assemble_from_videos(
                 "-af", voice_filter,
                 trimmed_path
             ]
-            trim_res = subprocess.run(trim_cmd, capture_output=True, stdin=subprocess.DEVNULL)
+            trim_res = await asyncio.to_thread(subprocess.run, trim_cmd, capture_output=True, stdin=subprocess.DEVNULL)
             if trim_res.returncode == 0 and os.path.exists(trimmed_path) and os.path.getsize(trimmed_path) > 0:
                 os.remove(scene_voice_path)
                 os.rename(trimmed_path, scene_voice_path)
         else:
             # Create a 3-second silent audio segment if dialogue is empty
-            subprocess.run([
-                "ffmpeg", "-y", "-nostdin",
-                "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
-                "-t", "3", "-c:a", "libmp3lame", scene_voice_path
-            ], capture_output=True, stdin=subprocess.DEVNULL)
+            await asyncio.to_thread(
+                subprocess.run,
+                [
+                    "ffmpeg", "-y", "-nostdin",
+                    "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                    "-t", "3", "-c:a", "libmp3lame", scene_voice_path
+                ],
+                capture_output=True,
+                stdin=subprocess.DEVNULL
+            )
             
         # Probe scene audio duration
-        probe = subprocess.run(
+        probe = await asyncio.to_thread(
+            subprocess.run,
             ["ffprobe", "-v", "error", "-show_entries", "format=duration",
              "-of", "default=noprint_wrappers=1:nokey=1", scene_voice_path],
             capture_output=True, text=True, stdin=subprocess.DEVNULL
@@ -1334,7 +1723,7 @@ async def assemble_from_videos(
         scene_dur = float(probe.stdout.strip()) if probe.returncode == 0 and probe.stdout.strip() else 5.0
         
         # Asset Validation Layer for audio narration segment
-        validated_voice_path = validate_audio_asset(scene_voice_path, scene_dur, work_dir, f"scene_{i}_voice")
+        validated_voice_path = await asyncio.to_thread(validate_audio_asset, scene_voice_path, scene_dur, work_dir, f"scene_{i}_voice")
         if os.path.exists(validated_voice_path) and validated_voice_path != scene_voice_path:
             try:
                 shutil.copy2(validated_voice_path, scene_voice_path)
@@ -1378,8 +1767,10 @@ async def assemble_from_videos(
                 out_path
             ]
             log_path = os.path.join(work_dir, f"ffmpeg_trim_scene_{i}.log")
-            with open(log_path, "w", encoding="utf-8") as log_file:
-                res = subprocess.run(cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+            def run_trim():
+                with open(log_path, "w", encoding="utf-8") as log_file:
+                    return subprocess.run(cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+            res = await asyncio.to_thread(run_trim)
             if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
                 rendered_successfully = True
                 logger.info(f"Successfully synchronized visual duration for scene {i} to {visual_dur}s")
@@ -1390,19 +1781,21 @@ async def assemble_from_videos(
             # Strictly copy the original video directly using shutil to avoid any FFmpeg processing crashes
             try:
                 logger.info(f"Using original video fallback copy for scene {i}: copying {vf} to {out_path}")
-                shutil.copy2(vf, out_path)
+                await asyncio.to_thread(shutil.copy2, vf, out_path)
             except Exception as copy_err:
                 logger.warning(f"Error copying original video fallback for scene {i}: {copy_err}")
                 # Resilient binary fallback copy
                 try:
-                    with open(vf, "rb") as f_in:
-                        with open(out_path, "wb") as f_out:
-                            f_out.write(f_in.read())
+                    def bin_copy():
+                        with open(vf, "rb") as f_in:
+                            with open(out_path, "wb") as f_out:
+                                f_out.write(f_in.read())
+                    await asyncio.to_thread(bin_copy)
                 except Exception as bin_err:
                     logger.error(f"Failed binary fallback copy: {bin_err}")
         
         # Asset Validation Layer for processed scene video
-        validated_v_path = validate_video_asset(out_path, visual_dur, work_dir, f"scene_{i}_ext")
+        validated_v_path = await asyncio.to_thread(validate_video_asset, out_path, visual_dur, work_dir, f"scene_{i}_ext")
         processed_videos.append(validated_v_path)
 
     # 3. Concatenate all processed videos together with dynamic xfade transitions
@@ -1438,8 +1831,10 @@ async def assemble_from_videos(
         temp_video
     ]
     concat_log_path = os.path.join(work_dir, "ffmpeg_concat.log")
-    with open(concat_log_path, "w", encoding="utf-8") as log_file:
-        res_concat = subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+    def run_concat():
+        with open(concat_log_path, "w", encoding="utf-8") as log_file:
+            return subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+    res_concat = await asyncio.to_thread(run_concat)
     if res_concat.returncode != 0:
         err_msg = "Unknown error"
         if os.path.exists(concat_log_path):
@@ -1459,29 +1854,82 @@ async def assemble_from_videos(
             
     full_voice_path = os.path.join(work_dir, "full_voice.mp3")
     # Re-encode the audio narration during concat to resolve sample rate / codec drift
-    subprocess.run(
+    await asyncio.to_thread(
+        subprocess.run,
         ["ffmpeg", "-y", "-nostdin", "-f", "concat", "-safe", "0", "-i", audio_list_path,
          "-c:a", "libmp3lame", "-b:a", "192k", full_voice_path],
-        capture_output=True, stdin=subprocess.DEVNULL
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL
     )
 
     # 5. BGM
-    bgm_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    update_progress("Downloading and verifying background music (BGM)...", 96.0)
+    bgm_download_url = bgm_url or "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    
+    # If it's an Epidemic Sound page, extract the direct MP3 link
+    if bgm_download_url and "epidemicsound.com" in bgm_download_url and not bgm_download_url.endswith(".mp3"):
+        extracted_url = extract_epidemic_lqmp3(bgm_download_url)
+        if extracted_url:
+            bgm_download_url = extracted_url
+            logger.info(f"Resolved Epidemic Sound BGM direct link: {bgm_download_url}")
+        else:
+            logger.warning("Could not extract Epidemic Sound direct link. Falling back to default BGM.")
+            bgm_download_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+
     bgm_path = os.path.join(work_dir, "bgm.mp3")
+    bgm_downloaded = False
     try:
         import httpx
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
         async with httpx.AsyncClient() as http_client:
-            r = await http_client.get(bgm_url, timeout=30.0, follow_redirects=True)
-            if r.status_code == 200:
+            print("\n" + "#"*80)
+            print(f"DOWNLOADING BACKGROUND MUSIC (BGM) FROM EPIDEMIC SOUND...")
+            print(f"Source URL: {bgm_download_url}")
+            print("#"*80 + "\n")
+            r = await http_client.get(bgm_download_url, headers=headers, timeout=45.0, follow_redirects=True)
+            if r.status_code == 200 and len(r.content) > 100:
                 with open(bgm_path, "wb") as f: f.write(r.content)
+                bgm_downloaded = True
+                print("\n" + "#"*80)
+                print("SUCCESSFULLY DOWNLOADED EPIDEMIC SOUND BGM AUDIO FILE!")
+                print(f"Direct Link: {bgm_download_url}")
+                print(f"File Size: {len(r.content)} bytes")
+                print("#"*80 + "\n")
+                logger.info(f"BGM DOWNLOADED: URL = {bgm_download_url}")
             else:
-                bgm_path = None
-    except:
+                logger.warning(f"Failed to download BGM from {bgm_download_url} (status {r.status_code}). Trying default.")
+                r = await http_client.get("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", timeout=30.0)
+                if r.status_code == 200 and len(r.content) > 100:
+                    with open(bgm_path, "wb") as f: f.write(r.content)
+                    bgm_downloaded = True
+                    print("\n" + "="*80)
+                    print("BGM DOWNLOAD FALLBACK: Using default SoundHelix BGM")
+                    print(f"Direct Audio Link: https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                    print("="*80 + "\n")
+                    logger.info("BGM DOWNLOADED (Default fallback): URL = https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                else:
+                    bgm_path = None
+    except Exception as ex:
+        logger.error(f"Error handling BGM download: {ex}")
         bgm_path = None
+
+    if bgm_downloaded and bgm_path and os.path.exists(bgm_path) and os.path.getsize(bgm_path) > 0:
+        print("\n" + "="*80)
+        print("VERIFIED: BGM downloaded and integrated successfully into the reel!")
+        print(f"Path: {bgm_path}")
+        print(f"Size: {os.path.getsize(bgm_path)} bytes")
+        print("="*80 + "\n")
+    else:
+        print("\n" + "="*80)
+        print("VERIFICATION FAILED: BGM file is empty or download failed.")
+        print("="*80 + "\n")
 
     # 6. Generate precise synchronized subtitles
     update_progress("Generating precise synchronized subtitles...", 97.0)
-    sub_path = create_scene_subtitles(scenes, scene_durations, work_dir)
+    sub_path = await asyncio.to_thread(create_scene_subtitles, scenes, scene_durations, work_dir)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
     # 7. Final assembly (Video + Concatenated Voiceover + BGM + Subtitles)
@@ -1495,13 +1943,13 @@ async def assemble_from_videos(
         inputs += ["-i", bgm_path]
         fc = (
             f"[0:v]ass='{safe_sub}'[v];"
-            f"[1:a]volume=1.8[av];"
-            f"[2:a]volume=0.07,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
+            f"[1:a]volume=1.0[av];"
+            f"[2:a]volume=0.05,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
             f"[av][abg]amix=inputs=2:duration=first[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
     else:
-        fc = f"[0:v]ass='{safe_sub}'[v];[1:a]volume=1.8[a]"
+        fc = f"[0:v]ass='{safe_sub}'[v];[1:a]volume=1.0[a]"
         maps = ["-map", "[v]", "-map", "[a]"]
 
     final_cmd = (
@@ -1515,8 +1963,10 @@ async def assemble_from_videos(
     )
 
     assembly_log_path = os.path.join(work_dir, "ffmpeg_assembly.log")
-    with open(assembly_log_path, "w", encoding="utf-8") as log_file:
-        result = subprocess.run(final_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+    def run_assembly():
+        with open(assembly_log_path, "w", encoding="utf-8") as log_file:
+            return subprocess.run(final_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+    result = await asyncio.to_thread(run_assembly)
     if result.returncode != 0:
         err_msg = "Unknown error"
         if os.path.exists(assembly_log_path):

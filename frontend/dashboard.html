@@ -1466,27 +1466,176 @@ body{display:flex;min-height:100vh;overflow:hidden;
     <!-- ── CLASSROOM PANEL ── -->
     <div class="panel" id="panel-classroom" style="height: 100%; overflow-y: auto; padding-bottom: 50px;">
       
-      <!-- List View -->
+      <!-- List View: 3-section landing -->
       <div id="classroom-list-view">
         <div class="panel-header">
           <div>
             <div class="panel-title">📚 Classroom Management</div>
-            <div class="panel-sub" style="font-size:11px;color:var(--text3)">Create exams and manage subjects, chapters, topics, and subtopics</div>
+            <div class="panel-sub" style="font-size:11px;color:var(--text3)">Select a section to manage your content</div>
+          </div>
+        </div>
+
+        <!-- 3-Section Card Grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; margin-top:24px;">
+          <!-- Exams Card -->
+          <div onclick="showClassroomSubSection('exams')" style="cursor:pointer; border-radius:20px; border:1.5px solid var(--border); background:linear-gradient(135deg,rgba(79,70,229,0.13),rgba(16,185,129,0.08)); padding:32px 24px; display:flex; flex-direction:column; align-items:flex-start; gap:14px; transition:all 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.12);" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(79,70,229,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.12)'">
+            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 15px rgba(79,70,229,0.4)">🎓</div>
+            <div>
+              <div style="font-size:17px;font-weight:900;color:var(--text);margin-bottom:4px">Exams</div>
+              <div style="font-size:12px;color:var(--text3);line-height:1.5">Manage exam syllabi, papers, subjects, chapters, topics &amp; subtopics</div>
+            </div>
+            <div style="margin-top:auto;font-size:11px;font-weight:700;color:#7c3aed;display:flex;align-items:center;gap:5px">Open Exams <span>→</span></div>
+          </div>
+
+          <!-- Current Affairs Card -->
+          <div onclick="showClassroomSubSection('ca')" style="cursor:pointer; border-radius:20px; border:1.5px solid var(--border); background:linear-gradient(135deg,rgba(245,158,11,0.13),rgba(239,68,68,0.08)); padding:32px 24px; display:flex; flex-direction:column; align-items:flex-start; gap:14px; transition:all 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.12);" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(245,158,11,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.12)'">
+            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 15px rgba(245,158,11,0.4)">📰</div>
+            <div>
+              <div style="font-size:17px;font-weight:900;color:var(--text);margin-bottom:4px">Current Affairs</div>
+              <div style="font-size:12px;color:var(--text3);line-height:1.5">Upload PDFs/Excel, manage topics and generate short educational reels</div>
+            </div>
+            <div style="margin-top:auto;font-size:11px;font-weight:700;color:#f59e0b;display:flex;align-items:center;gap:5px">Open Current Affairs <span>→</span></div>
+          </div>
+
+          <!-- PYQ Card -->
+          <div onclick="showClassroomSubSection('pyq')" style="cursor:pointer; border-radius:20px; border:1.5px solid var(--border); background:linear-gradient(135deg,rgba(16,185,129,0.13),rgba(6,182,212,0.08)); padding:32px 24px; display:flex; flex-direction:column; align-items:flex-start; gap:14px; transition:all 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.12);" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(16,185,129,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.12)'">
+            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 15px rgba(16,185,129,0.4)">📝</div>
+            <div>
+              <div style="font-size:17px;font-weight:900;color:var(--text);margin-bottom:4px">PYQ</div>
+              <div style="font-size:12px;color:var(--text3);line-height:1.5">Upload previous year questions, generate AI solutions &amp; overview reels</div>
+            </div>
+            <div style="margin-top:auto;font-size:11px;font-weight:700;color:#10b981;display:flex;align-items:center;gap:5px">Open PYQ <span>→</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ EXAMS SUB-SECTION ══ -->
+      <div id="classroom-exams-view" style="display:none; animation:fadeIn 0.3s ease;">
+        <div class="panel-header" style="border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <button class="btn btn-secondary" onclick="showClassroomLanding()" style="padding:6px 12px; font-size:12px">◀ Back</button>
+            <div>
+              <div class="panel-title" style="font-size:18px; margin:0">🎓 Exams</div>
+              <div class="panel-sub" style="font-size:11px;color:var(--text3)">Create exams and manage subjects, chapters, topics, and subtopics</div>
+            </div>
           </div>
           <button class="btn btn-primary" onclick="showExamModal()">➕ Add New Exam</button>
         </div>
 
-        <!-- Categories Filter Container -->
-        <div id="exam-categories-filter" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:12px">
-          <!-- Dynamically populated category buttons -->
+        <!-- Categories Filter -->
+        <div id="exam-categories-filter" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:12px"></div>
+
+        <div class="agent-grid" id="exam-grid" style="margin-top:20px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;"></div>
+        <div id="exam-empty" class="history-empty" style="display:none">🎓 No exams added yet. Click "Add New Exam" to create your first classroom syllabus!</div>
+      </div>
+
+      <!-- ══ CURRENT AFFAIRS SUB-SECTION ══ -->
+      <div id="classroom-ca-view" style="display:none; animation:fadeIn 0.3s ease;">
+        <div class="panel-header" style="border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <button class="btn btn-secondary" onclick="showClassroomLanding()" style="padding:6px 12px; font-size:12px">◀ Back</button>
+            <div>
+              <div class="panel-title" style="font-size:18px; margin:0">📰 Current Affairs</div>
+              <div class="panel-sub" style="font-size:11px;color:var(--text3)">Upload PDFs/Excel per topic and generate short educational reels</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showAddCATopicModal()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;">➕ Add Topic</button>
         </div>
 
-        <div class="agent-grid" id="exam-grid" style="margin-top:20px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
-          <!-- Exam cards loaded dynamically -->
+        <!-- CA Topics List -->
+        <div id="ca-topics-container" style="display:flex; flex-direction:column; gap:14px;">
+          <div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Loading topics...</div>
+        </div>
+        <div id="ca-topics-empty" style="display:none; text-align:center;padding:40px;color:var(--text3)">📰 No current affairs topics yet. Click "Add Topic" to create one.</div>
+      </div>
+
+      <!-- CA Topic Reels Sub-panel (drill-in) -->
+      <div id="classroom-ca-reels-view" style="display:none; animation:fadeIn 0.3s ease;">
+        <div class="panel-header" style="border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <button class="btn btn-secondary" onclick="showClassroomSubSection('ca')" style="padding:6px 12px; font-size:12px">◀ Back</button>
+            <div>
+              <div style="font-size:11px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px">Current Affairs Topic</div>
+              <div class="panel-title" id="ca-reel-topic-name" style="font-size:18px; margin:0">Topic Name</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-ca-generate-reel" onclick="openExtensionReelWizard('current_affairs')" style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;">🎬 Generate Reel</button>
         </div>
 
-        <div id="exam-empty" class="history-empty" style="display:none">
-          🎓 No exams added yet. Click "+ Add New Exam" to create your first classroom syllabus!
+        <!-- Script textarea for the topic -->
+        <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px">📄 Topic Script / Content</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn btn-secondary" onclick="document.getElementById('ca-pdf-upload-input').click()" style="font-size:11px;padding:6px 12px;border-color:#10b981;color:#10b981;">📥 Upload PDF/Excel</button>
+              <input type="file" id="ca-pdf-upload-input" accept=".pdf,.xlsx,.xls" style="display:none" onchange="uploadCAPdf(this)">
+              <button class="btn btn-primary" onclick="saveCAScript()" style="font-size:11px;padding:6px 12px;">💾 Save Script</button>
+            </div>
+          </div>
+          <textarea id="ca-topic-script" style="width:100%;height:130px;font-size:13px;color:var(--text2);background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border);resize:vertical;line-height:1.5;font-family:inherit;box-sizing:border-box;" placeholder="Write or paste current affairs content here, or upload a PDF/Excel to auto-fill..."></textarea>
+          <div id="ca-pdf-status" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+        </div>
+
+        <!-- Reels Grid -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:800;color:#8b5cf6;">🎞️ Generated Reels</div>
+        </div>
+        <div id="ca-reels-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px;"></div>
+        <div id="ca-reels-empty" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:13px;">No reels generated for this topic yet.</div>
+      </div>
+
+      <!-- ══ PYQ SUB-SECTION ══ -->
+      <div id="classroom-pyq-view" style="display:none; animation:fadeIn 0.3s ease;">
+        <div class="panel-header" style="border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <button class="btn btn-secondary" onclick="showClassroomLanding()" style="padding:6px 12px; font-size:12px">◀ Back</button>
+            <div>
+              <div class="panel-title" style="font-size:18px; margin:0">📝 Previous Year Questions</div>
+              <div class="panel-sub" style="font-size:11px;color:var(--text3)">Create named PYQ sets, upload questions, and generate AI solutions</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showAddPYQSetModal()" style="background:linear-gradient(135deg,#10b981,#06b6d4);border:none;">➕ Add PYQ Set</button>
+        </div>
+
+        <!-- PYQ Sets List -->
+        <div id="pyq-sets-container" style="display:flex; flex-direction:column; gap:12px;">
+          <div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Loading PYQ sets...</div>
+        </div>
+        <div id="pyq-sets-empty" style="display:none; text-align:center;padding:40px;color:var(--text3)">📝 No PYQ sets yet. Click "Add PYQ Set" to create one (e.g. "BPSC 72").</div>
+      </div>
+
+      <!-- PYQ Set Detail View (drill-in) -->
+      <div id="classroom-pyq-detail-view" style="display:none; animation:fadeIn 0.3s ease;">
+        <div class="panel-header" style="border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px">
+          <div style="display:flex; align-items:center; gap:12px">
+            <button class="btn btn-secondary" onclick="showClassroomSubSection('pyq')" style="padding:6px 12px; font-size:12px">◀ Back</button>
+            <div>
+              <div style="font-size:11px;font-weight:800;color:#10b981;text-transform:uppercase;letter-spacing:0.5px">PYQ Set</div>
+              <div style="display:flex; align-items:center; gap:8px">
+                <div class="panel-title" id="pyq-detail-set-name" style="font-size:18px; margin:0">Set Name</div>
+                <button onclick="editPYQSetNameFromDetail()" style="background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:2px; display:inline-flex; align-items:center; justify-content:center;" title="Edit Set Name">✏️</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="document.getElementById('pyq-pdf-upload-input').click()" style="font-size:11px;border-color:#10b981;color:#10b981;">📥 Upload PDF/Excel</button>
+            <input type="file" id="pyq-pdf-upload-input" accept=".pdf,.xlsx,.xls" style="display:none" onchange="uploadPYQPdf(this)">
+            <button class="btn btn-secondary" id="btn-pyq-generate-overview" onclick="generatePYQOverview()" style="font-size:11px;border-color:#7c3aed;color:#7c3aed;">✨ Generate Full Overview</button>
+            <button class="btn btn-primary" id="btn-pyq-generate-reel" onclick="openExtensionReelWizard('pyq')" style="font-size:11px;background:linear-gradient(135deg,#10b981,#06b6d4);border:none;">🎬 Extension Reel (≤5 min)</button>
+            <button class="btn btn-danger" onclick="clearPYQFileAndQuestions()" style="font-size:11px;">🗑️ Clear File & Questions</button>
+          </div>
+        </div>
+
+        <!-- PYQ Questions List -->
+        <div id="pyq-questions-container" style="display:flex; flex-direction:column; gap:10px; max-height:70vh; overflow-y:auto; padding-right:4px;">
+          <div style="text-align:center;padding:20px;color:var(--text3)">Upload a PDF/Excel to import questions.</div>
+        </div>
+        <div id="pyq-questions-empty" style="display:none;text-align:center;padding:30px;color:var(--text3)">No questions found. Upload a PDF or Excel file.</div>
+
+        <!-- PYQ Reel Result -->
+        <div id="pyq-reel-result" style="display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
+          <div style="font-size:13px;font-weight:800;color:#10b981;margin-bottom:12px;">🎬 Generated PYQ Overview Reel</div>
+          <video id="pyq-reel-video" controls style="width:100%;max-width:400px;border-radius:10px;"></video>
         </div>
       </div>
 
@@ -1568,7 +1717,11 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <!-- Add Button and List -->
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
                 <span style="font-weight:700; font-size:13px; color:var(--text3)">📖 Chapters List</span>
-                <button class="btn btn-primary" onclick="showAddChapterModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Chapter</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="btn btn-secondary" onclick="document.getElementById('chapter-excel-file-input').click()" style="padding:6px 12px; font-size:11px; height:32px; border-color:#10b981; color:#10b981; background:transparent;" title="Upload syllabus structure from Excel (.xlsx/.xls) containing Chapter, Topic, Subtopic, and optional Script">📥 Upload Index (Excel)</button>
+                  <input type="file" id="chapter-excel-file-input" accept=".xlsx, .xls" style="display:none" onchange="handleExcelUpload(this)">
+                  <button class="btn btn-primary" onclick="showAddChapterModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Chapter</button>
+                </div>
               </div>
               <div id="chapters-list-container" style="display:flex; flex-direction:column; gap:8px;">
                 <!-- Chapters list loaded dynamically -->
@@ -1601,11 +1754,71 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <!-- Tab 4: Subtopics -->
           <div class="classroom-panel" id="panel-tab-4" style="display:none;">
             <div style="display:flex; flex-direction:column; gap:15px;">
-              <!-- Full-width border box with active Topic name -->
-              <div style="border:2px solid var(--border); border-radius:12px; padding:24px 28px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center;">
-                <div style="max-width: 75%;">
+              <!-- Full-width border box with active Topic name + all action buttons at top -->
+              <div style="border:2px solid var(--border); border-radius:12px; padding:20px 24px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
                   <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px">Active Topic</div>
-                  <div style="font-size:20px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-topic-name">Topic Name</div>
+                  <div style="font-size:18px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-topic-name">Topic Name</div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                  <button class="btn btn-secondary" onclick="generateTopicDescription()" id="btn-generate-topic-desc" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent); color:var(--accent);">✨ Generate Overview</button>
+                  <button class="btn btn-secondary" onclick="showTopicNotesLanguageModal()" id="btn-generate-topic-notes" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#eab308; color:#eab308;">📚 Generate Notes</button>
+                  <button class="btn btn-secondary" onclick="generateTopicQuiz()" id="btn-generate-topic-quiz" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent2); color:var(--accent2);">📝 Generate Quiz</button>
+                  <button class="btn btn-secondary" onclick="toggleTopicReelsPanel()" id="btn-topic-show-reels" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#8b5cf6; color:#8b5cf6;">🎞️ Reels</button>
+                  <button class="btn btn-secondary" onclick="openExtensionReelWizard('topic')" id="btn-topic-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
+                </div>
+              </div>
+
+              <!-- Topic Reels Section (hidden by default) -->
+              <div id="topic-reels-section" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                  <div style="font-size:14px; font-weight:800; color:#8b5cf6;">🎞️ Reels for this Topic</div>
+                  <button onclick="document.getElementById('topic-reels-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
+                </div>
+                <div id="topic-reels-list" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px;"></div>
+                <div id="topic-reels-empty" style="display:none; text-align:center; padding:30px; color:var(--text3); font-size:13px;">No reels generated for this topic yet.</div>
+              </div>
+
+              <!-- Topic Quiz Display Section (hidden by default) -->
+              <div id="topic-quiz-display-section" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                  <div style="font-size:14px; font-weight:800; color:var(--accent);">📝 Topic Quiz</div>
+                  <button onclick="document.getElementById('topic-quiz-display-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
+                </div>
+                <div id="topic-quiz-questions-container" style="display:flex; flex-direction:column; gap:20px;"></div>
+                <div id="topic-quiz-result-banner" style="display:none; margin-top:16px; padding:14px; border-radius:10px; text-align:center; font-weight:700; font-size:14px;"></div>
+                <button onclick="submitTopicQuizAnswers()" id="btn-submit-topic-quiz" style="margin-top:16px; width:100%; padding:12px; background:linear-gradient(135deg,var(--accent),#f59e0b); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">🚀 Submit & Check Answers</button>
+              </div>
+
+              <!-- Topic Description and Notes Container -->
+              <div id="topic-details-container" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; display:none; flex-direction:column; gap:20px;">
+                <!-- Description Section -->
+                <div id="topic-desc-section" style="display:none;">
+                  <div style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase; margin-bottom:10px; letter-spacing:0.5px">Overview / Study Material</div>
+                  <div id="active-topic-description" style="font-size:13px; color:var(--text2); line-height:1.6; white-space:pre-wrap; min-height: 80px;">No description provided.</div>
+                </div>
+                
+                <!-- Script & Timeline Section -->
+                <div id="topic-script-section" style="display:none; border-top:1px solid var(--border); padding-top:20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px">🎬 Custom Script & Timeline</div>
+                    <span id="active-topic-length" style="font-size:11px; font-weight:700; background:rgba(245,158,11,0.12); color:#fbbf24; padding:2px 8px; border-radius:99px;">Duration: 50s</span>
+                  </div>
+                  <textarea id="active-topic-script" style="width:100%; height:120px; font-size:13px; color:var(--text2); background:var(--bg2); padding:12px; border-radius:10px; border:1px solid var(--border); resize:vertical; line-height:1.5; font-family:inherit; box-sizing:border-box;" placeholder="No script uploaded. You can write/edit script here..."></textarea>
+                  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+                    <button class="btn btn-primary" onclick="saveTopicScriptAndTimeline()" style="padding:6px 12px; font-size:11px;">💾 Save Script</button>
+                  </div>
+                </div>
+                
+                <!-- Notes Section -->
+                <div id="active-topic-notes-container" style="border-top:1px solid var(--border); padding-top:20px; display:none;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="font-size:10px; font-weight:800; color:#eab308; text-transform:uppercase; letter-spacing:0.5px">📚 Detailed Revision Notes</div>
+                    <button class="btn btn-secondary" onclick="downloadTopicNotesPDF()" id="btn-download-topic-pdf" style="font-size:10px; padding:6px 12px; border-radius:8px; border-color:#ef4444; color:#ef4444; background:transparent;">📥 Download PDF</button>
+                  </div>
+                  <div id="active-topic-notes" style="font-size:13px; color:var(--text2); line-height:1.8; min-height:80px; background:var(--bg2); padding:20px; border-radius:12px; border:1px dashed var(--border)">
+                    No notes generated yet.
+                  </div>
                 </div>
               </div>
               
@@ -1669,6 +1882,17 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <div style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase; margin-bottom:10px; letter-spacing:0.5px">Description / Study Material</div>
                   <div id="active-subtopic-description" style="font-size:13px; color:var(--text2); line-height:1.6; white-space:pre-wrap; min-height: 80px;">No description provided.</div>
                 </div>
+
+                <!-- Script Section -->
+                <div id="subtopic-script-section" style="border-top:1px solid var(--border); padding-top:20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px">🎬 Custom Script</div>
+                  </div>
+                  <textarea id="active-subtopic-script" style="width:100%; height:120px; font-size:13px; color:var(--text2); background:var(--bg2); padding:12px; border-radius:10px; border:1px solid var(--border); resize:vertical; line-height:1.5; font-family:inherit; box-sizing:border-box;" placeholder="No script uploaded. You can write/edit script here..."></textarea>
+                  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+                    <button class="btn btn-primary" onclick="saveSubtopicScript()" style="padding:6px 12px; font-size:11px;">💾 Save Script</button>
+                  </div>
+                </div>
                 
                 <!-- Notes Section (Dynamically toggled if notes exist) -->
                 <div id="active-subtopic-notes-container" style="border-top:1px solid var(--border); padding-top:20px; display:none;">
@@ -1686,6 +1910,15 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
       </div>
 
+    </div>
+
+    <!-- Excel Uploading Modal -->
+    <div class="modal-overlay" id="excel-upload-modal" style="justify-content:center; align-items:center; z-index:99999;">
+      <div class="modal" style="width: 320px; text-align: center; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; border-radius: 16px;">
+        <span class="loader-spin" style="width: 48px; height: 48px; border-width: 4px; border-top-color: var(--accent);"></span>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text); margin-top: 10px;">Uploading & Parsing Syllabus...</div>
+        <div style="font-size: 12px; color: var(--text3); line-height: 1.4;">Please wait. We are extracting chapters, topics, subtopics and scripts from your Excel file.</div>
+      </div>
     </div>
 
     <!-- Exam Modal -->
@@ -1843,6 +2076,43 @@ body{display:flex;min-height:100vh;overflow:hidden;
       </div>
     </div>
 
+    <!-- ── Add Current Affairs Topic Modal ── -->
+    <div class="modal-overlay" id="ca-topic-modal">
+      <div class="modal" style="width: 460px;">
+        <div class="modal-title">📰 Add Current Affairs Topic</div>
+        <div class="modal-sub">Create a topic to upload PDFs and generate reels</div>
+        <input type="hidden" id="modal-ca-topic-id">
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Topic Name <span style="color:var(--red)">*</span></label>
+          <input type="text" class="form-input" id="modal-ca-topic-name" placeholder="e.g. Budget 2025, India-Pakistan Relations">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Script / Content <span style="color:var(--text3);font-weight:400;font-size:11px">(optional — can be added later)</span></label>
+          <textarea class="form-input" id="modal-ca-topic-script" style="height:100px" placeholder="Paste current affairs content here or leave blank to fill via PDF upload..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn secondary" onclick="closeCATopicModal()">Cancel</button>
+          <button class="modal-btn primary" onclick="saveCATopicFromModal()">Save Topic</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Add PYQ Set Modal ── -->
+    <div class="modal-overlay" id="pyq-set-modal">
+      <div class="modal" style="width: 420px;">
+        <div class="modal-title">📝 Add PYQ Set</div>
+        <div class="modal-sub">Name your Previous Year Question set</div>
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Set Name <span style="color:var(--red)">*</span></label>
+          <input type="text" class="form-input" id="modal-pyq-set-name" placeholder="e.g. BPSC 72, UPSC 2023, SSC CGL 2022">
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn secondary" onclick="closePYQSetModal()">Cancel</button>
+          <button class="modal-btn primary" onclick="savePYQSetFromModal()">Create Set</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Exam History Modal -->
     <div class="modal-overlay" id="classroom-history-modal">
       <div class="modal" style="width: 700px; max-height: 80vh; display: flex; flex-direction: column;">
@@ -1928,15 +2198,23 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <div style="display:flex; gap:8px;">
             <select id="modal-reel-voice" class="form-input" style="flex:1; margin-bottom:0;">
               <optgroup label="Male Voices">
-                <option value="WeK8ylKjTV2trMlayizC" selected>Shrikant</option>
-                <option value="bpkHhw4QrZFYIfahwsHh">Amit</option>
-                <option value="QCwUVw5fOJzf8t55fhmR">Irfan</option>
+                <option value="WeK8ylKjTV2trMlayizC" selected>Shrikant (Male - Warm Indian)</option>
+                <option value="bpkHhw4QrZFYIfahwsHh">Amit (Male - Clear Indian)</option>
+                <option value="QCwUVw5fOJzf8t55fhmR">Irfan (Male - Bold Indian)</option>
+                <option value="EitqXD7jgIy0K5Z1zGGp">Rudra - Deep & Trustworthy</option>
+                <option value="0mDYz2rpzUksQMbNcdCc">Rudra - Expressive & Upbeat</option>
+                <option value="tTZ0TVc9Q1bbWngiduLK">Rudra - Intense & Romantic</option>
+                <option value="xLm17wfwFDI3GeAaAOZA">Rudra - Energetic & Rapid</option>
+                <option value="N9rZ3GaL6nwOrNUEMppm">Rudra - Cinematic Luxury</option>
+                <option value="gO8Kb3hHPEPElVxVHDwT">Krishna - Calm Assistant</option>
+                <option value="AA997oQKgoifSmUaeVCr">Krishna – Friendly E-Com</option>
               </optgroup>
               <optgroup label="Female Voices">
-                <option value="p9aflnsbBe1o0aDeQa97">Kanika</option>
+                <option value="1zUSi8LeHs9M2mV8X6YS">Priyanka (Female - Hindi/Indian)</option>
+                <option value="p9aflnsbBe1o0aDeQa97">Kanika (Female - Dynamic Indian)</option>
               </optgroup>
               <optgroup label="Kid / Other Voices">
-                <option value="ibbx9zDYGvLgtYzRbqqG">Bunty</option>
+                <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (Male - Indian Kid)</option>
               </optgroup>
             </select>
             <button class="btn btn-secondary" style="padding:0 14px; white-space:nowrap;" onclick="previewClassroomVoice()" title="Test Voice">▶ Test</button>
@@ -1967,7 +2245,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
         <div class="modal-actions">
           <button class="modal-btn secondary" onclick="document.getElementById('classroom-notes-lang-modal').classList.remove('open')">Cancel</button>
-          <button class="modal-btn primary" onclick="generateSubtopicNotes()">Generate Notes</button>
+          <button class="modal-btn primary" onclick="handleNotesGeneration()">Generate Notes</button>
         </div>
       </div>
     </div>
@@ -10434,13 +10712,18 @@ function renderMarkdownToHTML(elementId, markdownText, fallbackText = '') {
 }
 
 async function loadClassroom() {
+    // Just show the 3-section landing screen — don't auto-load exams
+    showClassroomLanding();
+}
+
+async function loadExams() {
     const grid = document.getElementById('exam-grid');
     const empty = document.getElementById('exam-empty');
     if (!grid) return;
-    
+
     grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:20px; color:var(--text3)">Loading exams...</div>';
     empty.style.display = 'none';
-    
+
     try {
         const resp = await fetch('/api/classroom/exams', {
             headers: { 'X-App-Token': session.token }
@@ -10450,14 +10733,14 @@ async function loadClassroom() {
             const exams = res.exams || [];
             const catFilterContainer = document.getElementById('exam-categories-filter');
             if (catFilterContainer) catFilterContainer.innerHTML = '';
-            
+
             if (exams.length === 0) {
                 grid.innerHTML = '';
                 empty.style.display = 'block';
                 if (catFilterContainer) catFilterContainer.style.display = 'none';
                 return;
             }
-            
+
             // Generate category filter buttons
             const categories = new Set();
             exams.forEach(exam => {
@@ -10465,7 +10748,7 @@ async function loadClassroom() {
                     categories.add(exam.category.trim());
                 }
             });
-            
+
             if (catFilterContainer && categories.size > 0) {
                 let catHtml = `<button class="btn btn-primary btn-cat-filter" onclick="filterExamsByCategory('All', this)" style="border-radius:20px; padding:6px 16px; font-size:11px; margin-right:5px; transition:0.2s">All</button>`;
                 categories.forEach(cat => {
@@ -10476,14 +10759,13 @@ async function loadClassroom() {
             } else if (catFilterContainer) {
                 catFilterContainer.style.display = 'none';
             }
-            
+
             let html = '';
             exams.forEach(exam => {
                 const img = exam.image_url || '../assets/vectorize_logo.png';
                 const desc = exam.description || 'No description';
                 html += `
                 <div class="agent-card" id="exam-card-${exam.exam_id}" data-category="${escapeHTML(exam.category || '')}" onclick="showExamDetails('${exam.exam_id}')" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; height: 260px; border-radius: 16px; border: 1px solid var(--border); background: linear-gradient(145deg, var(--card), var(--bg2)); box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative;">
-                    <!-- Top header overlay for action button only -->
                     <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
                         <div class="ds-actions-wrap" onclick="event.stopPropagation()">
                             <div class="ds-dots" onclick="toggleExamDropdown(event, '${exam.exam_id}')" style="background: rgba(0,0,0,0.5); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); font-size: 14px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.1);">⋮</div>
@@ -10494,21 +10776,15 @@ async function loadClassroom() {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Category Badge -->
                     ${exam.category ? `
                     <div style="position: absolute; top: 12px; left: 12px; z-index: 10; background: var(--accent); color: #000; font-size: 9px; font-weight: 800; padding: 4px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(0,212,170,0.3); border: 1px solid rgba(255,255,255,0.2);">
                         ${escapeHTML(exam.category)}
                     </div>
                     ` : ''}
-                    
-                    <!-- Image container -->
                     <div style="height: 120px; width: 100%; overflow: hidden; position: relative;">
                         <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); z-index: 2;"></div>
                         <img class="exam-card-img" src="${img}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
                     </div>
-                    
-                    <!-- Content Body -->
                     <div style="padding: 12px 14px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background: transparent;">
                         <div style="margin-bottom: 4px;">
                             <div class="ac-name" style="font-size: 14px; font-weight: 800; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 4px;">
@@ -10518,8 +10794,6 @@ async function loadClassroom() {
                                 ${escapeHTML(desc)}
                             </div>
                         </div>
-                        
-                        <!-- Premium Action Indicator -->
                         <div style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--accent2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
                             <span>Enter Syllabus</span> ➔
                         </div>
@@ -10684,7 +10958,7 @@ async function saveExam() {
         if (resp.ok) {
             closeExamModal();
             toast(exam_id ? 'Exam updated successfully' : 'Exam created successfully', 'success');
-            loadClassroom();
+            loadExams();
         } else {
             toast(res.detail || 'Error saving exam', 'error');
         }
@@ -10707,7 +10981,7 @@ async function deleteExam(exam_id) {
         });
         if (resp.ok) {
             toast('Exam deleted successfully', 'success');
-            loadClassroom();
+            loadExams();
         } else {
             const res = await resp.json();
             toast(res.detail || 'Error deleting exam', 'error');
@@ -10731,7 +11005,7 @@ async function showExamDetails(exam_id) {
         currentActiveSubtopicId = null;
         currentActiveSubtopicData = null;
         
-        document.getElementById('classroom-list-view').style.display = 'none';
+        document.getElementById('classroom-exams-view').style.display = 'none';
         document.getElementById('classroom-detail-view').style.display = 'block';
         
         document.getElementById('detail-exam-name').textContent = 'Loading...';
@@ -10764,7 +11038,7 @@ async function showExamDetails(exam_id) {
 }
 
 function hideExamDetails() {
-    document.getElementById('classroom-list-view').style.display = 'block';
+    document.getElementById('classroom-exams-view').style.display = 'block';
     document.getElementById('classroom-detail-view').style.display = 'none';
     currentActiveExamId = null;
 }
@@ -10776,6 +11050,710 @@ function handleClassroomBackClick() {
     } else {
         goBackToTab(activeClassroomTab - 1);
     }
+}
+
+// ══════════════════════════════════════════════════════
+// ── CLASSROOM 3-SECTION NAVIGATION ──────────────────
+// ══════════════════════════════════════════════════════
+
+let _currentCATopicId = null;
+let _currentCATopicName = '';
+let _currentPYQSetId = null;
+let _currentPYQSetName = '';
+
+function _hideAllClassroomViews() {
+    const ids = [
+        'classroom-list-view', 'classroom-exams-view', 'classroom-detail-view',
+        'classroom-ca-view', 'classroom-ca-reels-view',
+        'classroom-pyq-view', 'classroom-pyq-detail-view'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+}
+
+function showClassroomLanding() {
+    _hideAllClassroomViews();
+    document.getElementById('classroom-list-view').style.display = 'block';
+}
+
+function showClassroomSubSection(section) {
+    _hideAllClassroomViews();
+    if (section === 'exams') {
+        document.getElementById('classroom-exams-view').style.display = 'block';
+        loadExams();
+    } else if (section === 'ca') {
+        document.getElementById('classroom-ca-view').style.display = 'block';
+        loadCATopics();
+    } else if (section === 'pyq') {
+        document.getElementById('classroom-pyq-view').style.display = 'block';
+        loadPYQSets();
+    }
+}
+
+// ══════════════════════════════════════════════════════
+// ── CURRENT AFFAIRS SECTION LOGIC ───────────────────
+// ══════════════════════════════════════════════════════
+
+async function loadCATopics() {
+    const container = document.getElementById('ca-topics-container');
+    const empty = document.getElementById('ca-topics-empty');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading...</div>';
+    empty.style.display = 'none';
+    try {
+        const resp = await fetch('/api/classroom/current-affairs', {
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            const topics = res.topics || [];
+            if (topics.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            container.innerHTML = topics.map(t => renderCATopic(t)).join('');
+        } else {
+            container.innerHTML = `<div style="color:var(--red);padding:12px">Error: ${res.detail || 'Failed'}</div>`;
+        }
+    } catch(e) {
+        container.innerHTML = '<div style="color:var(--red);padding:12px">Network error</div>';
+    }
+}
+
+function renderCATopic(t) {
+    const reelBadge = t.reel_count > 0 ? `<span style="background:rgba(139,92,246,0.15);color:#8b5cf6;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700">${t.reel_count} reels</span>` : '';
+    const pdfBadge = t.pdf_filename ? `<span style="background:rgba(16,185,129,0.12);color:#10b981;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700" title="${escHtml(t.pdf_filename)}">📄 PDF</span>` : '';
+    return `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;transition:all 0.2s ease" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px">${escHtml(t.name)}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${pdfBadge}${reelBadge}
+          ${t.script ? '<span style="background:rgba(245,158,11,0.1);color:#f59e0b;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700">✍️ Script</span>' : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button onclick="openCAReel('${t.ca_topic_id}', '${escHtml(t.name).replace(/'/g, "&apos;")}')"
+          style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer">🎬 Manage Reels</button>
+        <button onclick="deleteCATopic('${t.ca_topic_id}')"
+          style="background:none;border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer">🗑️</button>
+      </div>
+    </div>`;
+}
+
+async function openCAReel(topicId, topicName) {
+    _currentCATopicId = topicId;
+    _currentCATopicName = topicName;
+    _hideAllClassroomViews();
+    document.getElementById('classroom-ca-reels-view').style.display = 'block';
+    document.getElementById('ca-reel-topic-name').textContent = topicName;
+    document.getElementById('ca-topic-script').value = '';
+    document.getElementById('ca-pdf-status').textContent = '';
+    document.getElementById('ca-reels-grid').innerHTML = '';
+    document.getElementById('ca-reels-empty').style.display = 'none';
+
+    // Load topic details for script
+    try {
+        const resp = await fetch('/api/classroom/current-affairs', { headers: { 'X-App-Token': session.token } });
+        const res = await resp.json();
+        if (resp.ok) {
+            const topic = (res.topics || []).find(t => t.ca_topic_id === topicId);
+            if (topic && topic.script) {
+                document.getElementById('ca-topic-script').value = topic.script;
+            }
+        }
+    } catch(e) { console.error(e); }
+
+    await loadCAReels(topicId);
+}
+
+async function saveCAScript() {
+    if (!_currentCATopicId) return;
+    const script = document.getElementById('ca-topic-script').value.trim();
+    try {
+        const resp = await fetch(`/api/classroom/current-affairs/${_currentCATopicId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ script })
+        });
+        if (resp.ok) toast('Script saved!', 'success');
+        else toast('Failed to save script', 'error');
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+async function uploadCAPdf(input) {
+    if (!_currentCATopicId || !input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const fd = new FormData();
+    fd.append('file', file);
+    document.getElementById('ca-pdf-status').textContent = '⏳ Uploading and extracting text...';
+    try {
+        const resp = await fetch(`/api/classroom/current-affairs/${_currentCATopicId}/upload-pdf`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: fd
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            toast('PDF uploaded! Text extracted.', 'success');
+            document.getElementById('ca-pdf-status').textContent = `✅ ${file.name} uploaded — ${res.extracted_chars || 0} chars extracted`;
+            if (res.topic && res.topic.script) {
+                document.getElementById('ca-topic-script').value = res.topic.script;
+            }
+        } else {
+            document.getElementById('ca-pdf-status').textContent = `❌ ${res.detail || 'Upload failed'}`;
+        }
+    } catch(e) {
+        document.getElementById('ca-pdf-status').textContent = '❌ Network error';
+    }
+    input.value = '';
+}
+
+async function generateCAReel() {
+    if (!_currentCATopicId) return;
+    const btn = document.getElementById('btn-ca-generate-reel');
+    btn.textContent = '⏳ Generating...';
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('language', 'Hindi');
+        const resp = await fetch(`/api/classroom/current-affairs/${_currentCATopicId}/generate-reel`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: fd
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            toast('🎬 Reel generated!', 'success');
+            await loadCAReels(_currentCATopicId);
+        } else {
+            toast(res.detail || 'Reel generation failed', 'error');
+        }
+    } catch(e) { toast('Network error', 'error'); }
+    btn.textContent = '🎬 Generate Reel';
+    btn.disabled = false;
+}
+
+async function loadCAReels(topicId) {
+    const grid = document.getElementById('ca-reels-grid');
+    const empty = document.getElementById('ca-reels-empty');
+    if (!grid) return;
+    grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading reels...</div>';
+    empty.style.display = 'none';
+    try {
+        const resp = await fetch(`/api/classroom/current-affairs/${topicId}/reels`, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            const reels = res.reels || [];
+            if (reels.length === 0) {
+                grid.innerHTML = '';
+                empty.style.display = 'block';
+            } else {
+                grid.innerHTML = reels.map(r => renderCAReelCard(r)).join('');
+            }
+        }
+    } catch(e) { grid.innerHTML = '<div style="color:var(--red)">Error loading reels</div>'; }
+}
+
+function renderCAReelCard(r) {
+    const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+    return `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <video src="${r.media_url}" style="width:100%;aspect-ratio:9/16;object-fit:cover;display:block;" controls></video>
+      <div style="padding:10px 12px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">${dateStr}</div>
+        <div style="display:flex;gap:6px;">
+          <a href="${r.media_url}" download style="flex:1;text-align:center;background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:7px;padding:6px;font-size:10px;font-weight:700;text-decoration:none;">⬇️ Download</a>
+          <button onclick="deleteCAReel('${r.reel_id}')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444;border-radius:7px;padding:6px 10px;font-size:10px;cursor:pointer;">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function deleteCAReel(reelId) {
+    if (!confirm('Delete this reel?')) return;
+    try {
+        const resp = await fetch(`/api/classroom/current-affairs/reels/${reelId}`, {
+            method: 'DELETE', headers: { 'X-App-Token': session.token }
+        });
+        if (resp.ok) { toast('Reel deleted', 'success'); await loadCAReels(_currentCATopicId); }
+        else toast('Delete failed', 'error');
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+async function deleteCATopic(topicId) {
+    if (!confirm('Delete this topic and all its reels?')) return;
+    try {
+        const resp = await fetch(`/api/classroom/current-affairs/${topicId}`, {
+            method: 'DELETE', headers: { 'X-App-Token': session.token }
+        });
+        if (resp.ok) { toast('Topic deleted', 'success'); await loadCATopics(); }
+        else toast('Delete failed', 'error');
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+function showAddCATopicModal() {
+    document.getElementById('modal-ca-topic-name').value = '';
+    document.getElementById('modal-ca-topic-script').value = '';
+    document.getElementById('ca-topic-modal').classList.add('open');
+}
+function closeCATopicModal() {
+    document.getElementById('ca-topic-modal').classList.remove('open');
+}
+async function saveCATopicFromModal() {
+    const name = document.getElementById('modal-ca-topic-name').value.trim();
+    if (!name) { toast('Topic name is required', 'error'); return; }
+    const script = document.getElementById('modal-ca-topic-script').value.trim();
+    try {
+        const resp = await fetch('/api/classroom/current-affairs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ name, script: script || null })
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            closeCATopicModal();
+            toast('Topic created!', 'success');
+            await loadCATopics();
+        } else { toast(res.detail || 'Error', 'error'); }
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════
+// ── PYQ SECTION LOGIC ────────────────────────────────
+// ══════════════════════════════════════════════════════
+
+async function loadPYQSets() {
+    const container = document.getElementById('pyq-sets-container');
+    const empty = document.getElementById('pyq-sets-empty');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading...</div>';
+    empty.style.display = 'none';
+    try {
+        const resp = await fetch('/api/classroom/pyq-sets', {
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            const sets = res.pyq_sets || [];
+            if (sets.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            container.innerHTML = sets.map(s => renderPYQSetCard(s)).join('');
+        } else {
+            container.innerHTML = `<div style="color:var(--red);padding:12px">Error: ${res.detail || 'Failed'}</div>`;
+        }
+    } catch(e) {
+        container.innerHTML = '<div style="color:var(--red);padding:12px">Network error</div>';
+    }
+}
+
+function renderPYQSetCard(s) {
+    const overviewBadge = s.overview_generated ? '<span style="background:rgba(124,58,237,0.12);color:#7c3aed;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700">✅ Overview Ready</span>' : '';
+    return `
+    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;transition:all 0.2s ease" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:6px">${escHtml(s.name)}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="background:rgba(16,185,129,0.1);color:#10b981;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700">${s.question_count} questions</span>
+          ${overviewBadge}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button onclick="openPYQSetDetail('${s.pyq_set_id}', '${escHtml(s.name).replace(/'/g, "&apos;")}')"
+          style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer">📂 Open</button>
+        <button onclick="editPYQSetName('${s.pyq_set_id}', '${escHtml(s.name).replace(/'/g, "&apos;")}')"
+          style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer" title="Edit Name">✏️</button>
+        <button onclick="deletePYQSet('${s.pyq_set_id}')"
+          style="background:none;border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer">🗑️</button>
+      </div>
+    </div>`;
+}
+
+async function openPYQSetDetail(setId, setName) {
+    _currentPYQSetId = setId;
+    _currentPYQSetName = setName;
+    _hideAllClassroomViews();
+    document.getElementById('classroom-pyq-detail-view').style.display = 'block';
+    document.getElementById('pyq-detail-set-name').textContent = setName;
+    document.getElementById('pyq-reel-result').style.display = 'none';
+    await loadPYQQuestions(setId);
+}
+
+async function uploadPYQPdf(input) {
+    if (!_currentPYQSetId || !input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const fd = new FormData();
+    fd.append('file', file);
+    
+    // Create loading overlay that remains visible until request completes
+    const overlay = document.createElement('div');
+    overlay.id = 'pyq-upload-overlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(8px);';
+    overlay.innerHTML = `
+        <div style="text-align:center; animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+            <div style="font-size:60px; margin-bottom:20px; animation:spin 2s linear infinite">⚙️</div>
+            <div style="font-size:24px; font-weight:900; color:white; margin-bottom:10px">Uploading and parsing PDF...</div>
+            <div style="color:rgba(255,255,255,0.6); font-size:14px; margin-bottom:30px">Extracting text and parsing questions using AI. This may take a moment for scanned PDFs (OCR). Please wait...</div>
+            <div style="width:300px; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; margin:0 auto; overflow:hidden; position:relative">
+                <div style="position:absolute; top:0; left:0; height:100%; width:100%; background:var(--accent); animation:loadingBar 45s linear infinite"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const btn = document.getElementById('btn-pyq-generate-overview');
+    if (btn) btn.disabled = true;
+    
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${_currentPYQSetId}/upload-pdf`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: fd
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            // Update overlay with success state and CTA button as requested
+            overlay.innerHTML = `
+                <div style="text-align:center; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(0,0,0,0.5); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                    <div style="font-size:60px; margin-bottom:20px">✅</div>
+                    <div style="font-size:22px; font-weight:900; color:var(--text); margin-bottom:10px">Successfully Uploaded!</div>
+                    <div style="color:var(--text3); font-size:14px; margin-bottom:30px">${res.questions_added || 0} questions imported from PDF.</div>
+                    <button class="btn btn-primary" onclick="document.getElementById('pyq-upload-overlay').remove(); generatePYQOverview();" style="width:100%; padding:12px; border-radius:10px; margin-bottom:10px; background: linear-gradient(90deg, #8b5cf6, #4f46e5); border: none; font-weight: 700;">Generate Overview Now</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('pyq-upload-overlay').remove();" style="width:100%; padding:12px; border-radius:10px;">View Questions First</button>
+                </div>
+            `;
+            await loadPYQQuestions(_currentPYQSetId);
+        } else {
+            overlay.innerHTML = `
+                <div style="text-align:center; background:var(--card); border:1px solid var(--red); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(255,0,0,0.2); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                    <div style="font-size:60px; margin-bottom:20px">❌</div>
+                    <div style="font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px">Upload Failed</div>
+                    <div style="color:var(--text3); font-size:14px; margin-bottom:30px">${res.detail || "Failed to process PDF"}</div>
+                    <button class="btn btn-secondary" onclick="document.getElementById('pyq-upload-overlay').remove();" style="width:100%; padding:12px; border-radius:10px">Close</button>
+                </div>
+            `;
+        }
+    } catch(e) {
+        overlay.innerHTML = `
+            <div style="text-align:center; background:var(--card); border:1px solid var(--red); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(255,0,0,0.2); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                <div style="font-size:60px; margin-bottom:20px">🌐</div>
+                <div style="font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px">Network Error</div>
+                <div style="color:var(--text3); font-size:14px; margin-bottom:30px">A network error occurred while uploading.</div>
+                <button class="btn btn-secondary" onclick="document.getElementById('pyq-upload-overlay').remove();" style="width:100%; padding:12px; border-radius:10px">Close</button>
+            </div>
+        `;
+    }
+    if (btn) btn.disabled = false;
+    input.value = '';
+}
+
+async function generatePYQOverview() {
+    if (!_currentPYQSetId) return;
+
+    // Beautiful language selection modal
+    const langOverlay = document.createElement('div');
+    langOverlay.id = 'pyq-lang-select-overlay';
+    langOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:99999; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(8px);';
+    langOverlay.innerHTML = `
+        <div style="background:var(--card); border:1px solid var(--border); border-radius:20px; padding:32px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(0,0,0,0.5); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align:center;">
+            <div style="font-size:32px; margin-bottom:12px">🌐</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text); margin-bottom:8px">Select Explanation Language</div>
+            <div style="color:var(--text3); font-size:13px; margin-bottom:20px">Choose the language for the AI-generated solutions and explanations.</div>
+            <select id="pyq-overview-lang" class="form-input" style="margin-bottom:24px; text-align:center; font-weight:600;">
+                <option value="English">English</option>
+                <option value="Hindi">Hindi (हिंदी)</option>
+                <option value="Hinglish">Hinglish</option>
+            </select>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="document.getElementById('pyq-lang-select-overlay').remove();" style="flex:1; justify-content:center;">Cancel</button>
+                <button class="btn btn-primary" id="btn-confirm-lang" style="flex:1; justify-content:center; background:linear-gradient(135deg,#7c3aed,#4f46e5); border:none;">Generate</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(langOverlay);
+
+    document.getElementById('btn-confirm-lang').onclick = async () => {
+        const selectedLang = document.getElementById('pyq-overview-lang').value;
+        langOverlay.remove();
+        await proceedWithOverviewGeneration(selectedLang);
+    };
+}
+
+async function proceedWithOverviewGeneration(language) {
+    // Create loading overlay for overview generation
+    const overlay = document.createElement('div');
+    overlay.id = 'pyq-overview-overlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(8px);';
+    overlay.innerHTML = `
+        <div style="text-align:center; animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+            <div style="font-size:60px; margin-bottom:20px; animation:spin 2s linear infinite">⚙️</div>
+            <div style="font-size:24px; font-weight:900; color:white; margin-bottom:10px">Generating AI Overview...</div>
+            <div style="color:rgba(255,255,255,0.6); font-size:14px; margin-bottom:30px">Confirming correct answers and generating explanations in <b>${language}</b> question-by-question via Groq. Please wait...</div>
+            <div style="width:300px; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; margin:0 auto; overflow:hidden; position:relative">
+                <div style="position:absolute; top:0; left:0; height:100%; width:100%; background:var(--accent); animation:loadingBar 45s linear infinite"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const btn = document.getElementById('btn-pyq-generate-overview');
+    if (btn) {
+        btn.textContent = '⚙️ Generating...';
+        btn.disabled = true;
+    }
+    
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${_currentPYQSetId}/generate-overview?language=${encodeURIComponent(language)}`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            overlay.innerHTML = `
+                <div style="text-align:center; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(0,0,0,0.5); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                    <div style="font-size:60px; margin-bottom:20px">🎉</div>
+                    <div style="font-size:22px; font-weight:900; color:var(--text); margin-bottom:10px">Overview Generated!</div>
+                    <div style="color:var(--text3); font-size:14px; margin-bottom:30px">${res.message || "Explanations and solutions are ready."}</div>
+                    <button class="btn btn-primary" onclick="document.getElementById('pyq-overview-overlay').remove();" style="width:100%; padding:12px; border-radius:10px; background: linear-gradient(90deg, #8b5cf6, #4f46e5); border: none; font-weight: 700;">Awesome</button>
+                </div>
+            `;
+            await loadPYQQuestions(_currentPYQSetId);
+        } else {
+            overlay.innerHTML = `
+                <div style="text-align:center; background:var(--card); border:1px solid var(--red); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(255,0,0,0.2); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                    <div style="font-size:60px; margin-bottom:20px">❌</div>
+                    <div style="font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px">Generation Failed</div>
+                    <div style="color:var(--text3); font-size:14px; margin-bottom:30px">${res.detail || "Failed to generate explanations."}</div>
+                    <button class="btn btn-secondary" onclick="document.getElementById('pyq-overview-overlay').remove();" style="width:100%; padding:12px; border-radius:10px">Close</button>
+                </div>
+            `;
+        }
+    } catch(e) {
+        overlay.innerHTML = `
+            <div style="text-align:center; background:var(--card); border:1px solid var(--red); border-radius:20px; padding:40px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(255,0,0,0.2); animation:scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)">
+                <div style="font-size:60px; margin-bottom:20px">⚠️</div>
+                <div style="font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px">Network Error</div>
+                <div style="color:var(--text3); font-size:14px; margin-bottom:30px">A network error occurred.</div>
+                <button class="btn btn-secondary" onclick="document.getElementById('pyq-overview-overlay').remove();" style="width:100%; padding:12px; border-radius:10px">Close</button>
+            </div>
+        `;
+    }
+    if (btn) {
+        btn.textContent = '✨ Generate Full Overview';
+        btn.disabled = false;
+    }
+}
+
+async function generatePYQReel() {
+    if (!_currentPYQSetId) return;
+    const btn = document.getElementById('btn-pyq-generate-reel');
+    btn.textContent = '⏳ Generating (this may take a while)...';
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('language', 'Hindi');
+        const resp = await fetch(`/api/classroom/pyq-sets/${_currentPYQSetId}/generate-reel`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: fd
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            toast('🎬 PYQ Reel generated!', 'success');
+            const resultDiv = document.getElementById('pyq-reel-result');
+            const videoEl = document.getElementById('pyq-reel-video');
+            if (resultDiv && videoEl) {
+                videoEl.src = res.video_url;
+                resultDiv.style.display = 'block';
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+            }
+        } else { toast(res.detail || 'Reel generation failed', 'error'); }
+    } catch(e) { toast('Network error', 'error'); }
+    btn.textContent = '🎬 Extension Reel (≤5 min)';
+    btn.disabled = false;
+}
+
+async function loadPYQQuestions(setId) {
+    const container = document.getElementById('pyq-questions-container');
+    const empty = document.getElementById('pyq-questions-empty');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading questions...</div>';
+    empty.style.display = 'none';
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${setId}/questions`, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            const qs = res.questions || [];
+            if (qs.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            container.innerHTML = qs.map((q, i) => renderPYQQuestion(q, i + 1)).join('');
+        }
+    } catch(e) { container.innerHTML = '<div style="color:var(--red)">Error loading questions</div>'; }
+}
+
+function renderPYQQuestion(q, num) {
+    const opts = (q.options || []).map((o, i) => {
+        const isCorrect = q.correct_answer && o === q.correct_answer;
+        return `<span style="display:inline-block;margin:2px 4px;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:600;background:${isCorrect ? 'rgba(16,185,129,0.15)' : 'var(--bg2)'};color:${isCorrect ? '#10b981' : 'var(--text2)'};border:1px solid ${isCorrect ? 'rgba(16,185,129,0.3)' : 'var(--border)'};">${escHtml(o)}${isCorrect ? ' ✓' : ''}</span>`;
+    }).join('');
+    
+    const explanation = q.explanation ? `
+    <div style="margin-top:10px;">
+        <button onclick="togglePYQExplanation(this, 'exp-${q.question_id}')" style="background:none; border:none; color:#7c3aed; font-size:11px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:4px; padding:4px 0; outline:none;">
+            <span>📖 VIEW EXPLANATION</span>
+            <span class="arrow-icon" style="transition: transform 0.2s; display:inline-block;">▼</span>
+        </button>
+        <div id="exp-${q.question_id}" style="display:none; margin-top:8px; padding:12px; background:rgba(124,58,237,0.06); border-radius:10px; border-left:3.5px solid #7c3aed; animation: slideDown 0.2s ease;">
+            <div style="font-size:12px; color:var(--text2); line-height:1.6; white-space:pre-wrap;">${escHtml(q.explanation)}</div>
+        </div>
+    </div>
+    ` : '';
+
+    return `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
+        <div style="flex:1;">
+          <span style="font-size:10px;font-weight:800;color:#10b981;margin-right:8px">Q${num}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--text);line-height:1.5">${escHtml(q.question_text)}</span>
+        </div>
+        <button onclick="deletePYQQuestion('${q.question_id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0" title="Delete">🗑️</button>
+      </div>
+      ${opts ? `<div style="margin-bottom:6px">${opts}</div>` : ''}
+      ${explanation}
+    </div>`;
+}
+
+function togglePYQExplanation(btn, expId) {
+    const el = document.getElementById(expId);
+    if (!el) return;
+    const arrow = btn.querySelector('.arrow-icon');
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    } else {
+        el.style.display = 'none';
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+}
+
+async function editPYQSetName(setId, currentName) {
+    const newName = prompt("Enter new name for the PYQ Set:", currentName);
+    if (newName === null) return;
+    const trimmed = newName.trim();
+    if (!trimmed) {
+        toast("Name cannot be empty", "error");
+        return;
+    }
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${setId}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token 
+            },
+            body: JSON.stringify({ name: trimmed })
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            toast("Name updated successfully", "success");
+            await loadPYQSets();
+            if (_currentPYQSetId === setId) {
+                _currentPYQSetName = trimmed;
+                const titleEl = document.getElementById('pyq-detail-set-name');
+                if (titleEl) titleEl.textContent = trimmed;
+            }
+        } else {
+            toast(res.detail || "Failed to update name", "error");
+        }
+    } catch (e) {
+        toast("Network error", "error");
+    }
+}
+
+async function editPYQSetNameFromDetail() {
+    if (!_currentPYQSetId) return;
+    await editPYQSetName(_currentPYQSetId, _currentPYQSetName);
+}
+
+async function clearPYQFileAndQuestions() {
+    if (!_currentPYQSetId) return;
+    if (!confirm('Are you sure you want to delete the uploaded files and clear all questions for this set from the database? This cannot be undone.')) return;
+    
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${_currentPYQSetId}/reset`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            toast('Set reset successfully. Files and questions deleted.', 'success');
+            await loadPYQQuestions(_currentPYQSetId);
+        } else {
+            toast(res.detail || 'Reset failed', 'error');
+        }
+    } catch(e) {
+        toast('Network error', 'error');
+    }
+}
+
+async function deletePYQQuestion(questionId) {
+    if (!confirm('Delete this question?')) return;
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/questions/${questionId}`, {
+            method: 'DELETE', headers: { 'X-App-Token': session.token }
+        });
+        if (resp.ok) { toast('Question deleted', 'success'); await loadPYQQuestions(_currentPYQSetId); }
+        else toast('Delete failed', 'error');
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+async function deletePYQSet(setId) {
+    if (!confirm('Delete this PYQ set and all its questions?')) return;
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${setId}`, {
+            method: 'DELETE', headers: { 'X-App-Token': session.token }
+        });
+        if (resp.ok) { toast('PYQ set deleted', 'success'); await loadPYQSets(); }
+        else toast('Delete failed', 'error');
+    } catch(e) { toast('Network error', 'error'); }
+}
+
+function showAddPYQSetModal() {
+    document.getElementById('modal-pyq-set-name').value = '';
+    document.getElementById('pyq-set-modal').classList.add('open');
+}
+function closePYQSetModal() {
+    document.getElementById('pyq-set-modal').classList.remove('open');
+}
+async function savePYQSetFromModal() {
+    const name = document.getElementById('modal-pyq-set-name').value.trim();
+    if (!name) { toast('Set name is required', 'error'); return; }
+    try {
+        const resp = await fetch('/api/classroom/pyq-sets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ name })
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+            closePYQSetModal();
+            toast('PYQ set created!', 'success');
+            await loadPYQSets();
+        } else { toast(res.detail || 'Error', 'error'); }
+    } catch(e) { toast('Network error', 'error'); }
 }
 
 // Active state trackers for the tabbed drilldown layout
@@ -10921,6 +11899,61 @@ async function refreshExamTree() {
                         document.getElementById('active-subtopic-notes').innerHTML = 'No notes generated yet.';
                         document.getElementById('active-subtopic-notes-container').style.display = 'none';
                     }
+
+                    // Populate script field
+                    const subtopicScriptTextarea = document.getElementById('active-subtopic-script');
+                    if (subtopicScriptTextarea) {
+                        subtopicScriptTextarea.value = foundSub.script || '';
+                    }
+                }
+            }
+
+            // Refreshes the details page if currently viewed topic is updated
+            if (currentActiveTopicId) {
+                let foundTopic = null;
+                for (let p of currentExamTreeData) {
+                    for (let s of p.subjects) {
+                        for (let c of s.chapters) {
+                            const found = c.topics.find(tp => tp.topic_id === currentActiveTopicId);
+                            if (found) { foundTopic = found; break; }
+                        }
+                        if (foundTopic) break;
+                    }
+                    if (foundTopic) break;
+                }
+                if (foundTopic) {
+                    document.getElementById('active-topic-name').textContent = foundTopic.name;
+                    const detailsContainer = document.getElementById('topic-details-container');
+                    const descSection = document.getElementById('topic-desc-section');
+                    const notesContainer = document.getElementById('active-topic-notes-container');
+                    
+                    let hasDetails = false;
+                    
+                    if (foundTopic.description) {
+                        renderMarkdownToHTML('active-topic-description', foundTopic.description, 'No description provided.');
+                        if (descSection) descSection.style.display = 'block';
+                        hasDetails = true;
+                    } else {
+                        if (descSection) descSection.style.display = 'none';
+                    }
+                    
+                    if (foundTopic.notes) {
+                        renderMarkdownToHTML('active-topic-notes', foundTopic.notes, 'No notes generated yet.');
+                        if (notesContainer) notesContainer.style.display = 'block';
+                        hasDetails = true;
+                    } else {
+                        if (notesContainer) notesContainer.style.display = 'none';
+                    }
+
+                    // Populate script field
+                    const scriptTextarea = document.getElementById('active-topic-script');
+                    if (scriptTextarea) {
+                        scriptTextarea.value = foundTopic.script || '';
+                    }
+                    
+                    if (detailsContainer) {
+                        detailsContainer.style.display = hasDetails ? 'flex' : 'none';
+                    }
                 }
             }
         } else {
@@ -11053,7 +12086,10 @@ function renderSubjectsGrid() {
     const grid = document.getElementById('subjects-cards-grid');
     if (!grid) return;
     
+    const btnAddSubEl = document.getElementById('btn-add-subject-classroom');
+    
     if (!currentActivePaperId) {
+        if (btnAddSubEl) btnAddSubEl.style.display = 'none';
         grid.innerHTML = `
             <div style="grid-column:1/-1; text-align:center; padding:30px; color:var(--text3); font-size:12px">
                 Select a paper first.
@@ -11061,6 +12097,8 @@ function renderSubjectsGrid() {
         `;
         return;
     }
+    
+    if (btnAddSubEl) btnAddSubEl.style.display = 'inline-block';
     
     const paper = currentExamTreeData.find(p => p.paper_id === currentActivePaperId);
     if (!paper || !paper.subjects || paper.subjects.length === 0) {
@@ -11208,6 +12246,7 @@ function renderTopicsList() {
         <div class="classroom-item-row" onclick="selectTopic('${t.topic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <span style="font-size:13px; font-weight:700; color:var(--text)">📌 ${escapeHTML(t.name)}</span>
             <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#f59e0b; color:#f59e0b;" onclick="openExtensionReelWizard('topic', '${t.topic_id}')" title="Generate reels using Chrome Extension">🎬 Extension Reels</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditTopicModal('${t.topic_id}', '${escapeHTML(t.name)}')">✏️ Edit</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteTopic('${t.topic_id}')">🗑️ Delete</button>
             </div>
@@ -11224,17 +12263,70 @@ function selectTopic(topicId) {
     currentActiveSubtopicId = null;
     currentActiveSubtopicData = null;
     
-    let tpName = '';
+    let activeTopicObj = null;
     for (let p of currentExamTreeData) {
         for (let s of p.subjects) {
             for (let c of s.chapters) {
                 const t = c.topics.find(tp => tp.topic_id === topicId);
-                if (t) { tpName = t.name; break; }
+                if (t) { activeTopicObj = t; break; }
             }
+            if (activeTopicObj) break;
         }
+        if (activeTopicObj) break;
     }
     
+    const tpName = activeTopicObj ? activeTopicObj.name : 'Topic Name';
     document.getElementById('active-topic-name').textContent = tpName;
+    
+    // Reset topic details UI
+    const detailsContainer = document.getElementById('topic-details-container');
+    const descSection = document.getElementById('topic-desc-section');
+    const notesContainer = document.getElementById('active-topic-notes-container');
+    const quizDisplaySection = document.getElementById('topic-quiz-display-section');
+    
+    if (quizDisplaySection) quizDisplaySection.style.display = 'none';
+    
+    if (activeTopicObj) {
+        let hasDetails = false;
+        
+        if (activeTopicObj.description) {
+            renderMarkdownToHTML('active-topic-description', activeTopicObj.description, 'No description provided.');
+            if (descSection) descSection.style.display = 'block';
+            hasDetails = true;
+        } else {
+            if (descSection) descSection.style.display = 'none';
+        }
+        
+        // Populate script & timeline fields
+        const scriptTextarea = document.getElementById('active-topic-script');
+        if (scriptTextarea) {
+            scriptTextarea.value = activeTopicObj.script || '';
+        }
+        const lengthSpan = document.getElementById('active-topic-length');
+        if (lengthSpan) {
+            const lenSec = activeTopicObj.video_length || 50;
+            lengthSpan.textContent = `Duration: ${lenSec}s`;
+        }
+        const scriptSection = document.getElementById('topic-script-section');
+        if (scriptSection) {
+            scriptSection.style.display = 'block';
+        }
+        hasDetails = true;
+        
+        if (activeTopicObj.notes) {
+            renderMarkdownToHTML('active-topic-notes', activeTopicObj.notes, 'No notes generated yet.');
+            if (notesContainer) notesContainer.style.display = 'block';
+            hasDetails = true;
+        } else {
+            if (notesContainer) notesContainer.style.display = 'none';
+        }
+        
+        if (detailsContainer) {
+            detailsContainer.style.display = hasDetails ? 'flex' : 'none';
+        }
+    } else {
+        if (detailsContainer) detailsContainer.style.display = 'none';
+    }
     
     renderTopicsList();
     renderSubtopicsList();
@@ -11316,9 +12408,79 @@ function selectSubtopic(subtopicId) {
         document.getElementById('active-subtopic-notes').innerHTML = 'No notes generated yet.';
         document.getElementById('active-subtopic-notes-container').style.display = 'none';
     }
+
+    // Populate script field
+    const subtopicScriptTextarea = document.getElementById('active-subtopic-script');
+    if (subtopicScriptTextarea) {
+        subtopicScriptTextarea.value = foundSub.script || '';
+    }
     
     renderSubtopicsList();
     switchClassroomTab(5); // Go to Subtopic Details Tab
+}
+
+async function saveSubtopicScript() {
+    if (!currentActiveSubtopicId) return;
+    const scriptVal = document.getElementById('active-subtopic-script').value;
+    
+    // Find active subtopic object in tree data
+    let subtopicName = '';
+    let subtopicDesc = '';
+    let subtopicObj = null;
+    for (let p of currentExamTreeData) {
+        for (let s of p.subjects) {
+            for (let c of s.chapters) {
+                for (let t of c.topics) {
+                    const found = t.subtopics.find(sub => sub.subtopic_id === currentActiveSubtopicId);
+                    if (found) {
+                        subtopicObj = found;
+                        subtopicName = found.name;
+                        subtopicDesc = found.description;
+                        break;
+                    }
+                }
+                if (subtopicObj) break;
+            }
+            if (subtopicObj) break;
+        }
+        if (subtopicObj) break;
+    }
+    
+    if (!subtopicObj) {
+        toast('Active subtopic not found', 'error');
+        return;
+    }
+    
+    const bodyPayload = {
+        name: subtopicName,
+        description: subtopicDesc || '',
+        script: scriptVal
+    };
+    
+    try {
+        const resp = await fetch(`/api/classroom/subtopics/${currentActiveSubtopicId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify(bodyPayload)
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success) {
+            toast('Subtopic script saved successfully!', 'success');
+            // Update local tree cache
+            subtopicObj.script = scriptVal;
+            if (currentActiveSubtopicData && currentActiveSubtopicData.subtopic_id === currentActiveSubtopicId) {
+                currentActiveSubtopicData.script = scriptVal;
+            }
+        } else {
+            toast(res.detail || 'Error saving script', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        toast('Network error saving script', 'error');
+    }
 }
 
 // Paper Modal Actions
@@ -11856,7 +13018,7 @@ function editClassroomReelById(content_id) {
     }
 }
 
-// ── Guided Reels Wizard Global State & Core Functions ──
+// ── Guided Reels Wizard Guided Global State & Core Functions ──
 let wizardActiveStep = 1;
 let wizardTranscript = '';
 let wizardLanguage = 'English';
@@ -11865,6 +13027,8 @@ let wizardJobId = null;
 let wizardScenes = [];
 let wizardPollingInterval = null;
 let wizardRegeneratingScenes = [];
+let wizardContextType = 'subtopic'; // 'subtopic' or 'topic'
+let wizardContextId = null;
 
 // Restore wizardJobId from localStorage if available
 try {
@@ -11872,16 +13036,26 @@ try {
     if (savedJobId) wizardJobId = savedJobId;
 } catch(e) {}
 
-function openExtensionReelWizard() {
+function openExtensionReelWizard(contextType = 'subtopic', contextId = null) {
     const wizardOverlay = document.getElementById('extension-reel-wizard');
     if (wizardOverlay) {
         wizardOverlay.style.display = 'flex';
     }
     
-    const titleEl = document.getElementById('wizard-subtopic-title');
-    if (titleEl && currentActiveSubtopicData) {
-        titleEl.textContent = `🎬 Reels Wizard: ${currentActiveSubtopicData.name}`;
+    wizardContextType = contextType;
+    if (contextType === 'subtopic') {
+        wizardContextId = contextId || currentActiveSubtopicId;
+    } else if (contextType === 'topic') {
+        wizardContextId = contextId || currentActiveTopicId;
+    } else if (contextType === 'pyq') {
+        wizardContextId = contextId || _currentPYQSetId;
+    } else if (contextType === 'current_affairs') {
+        wizardContextId = contextId || _currentCATopicId;
+    } else {
+        wizardContextId = contextId;
     }
+    
+    const titleEl = document.getElementById('wizard-subtopic-title');
     
     // Reset state — but restore jobId from localStorage if user wants to resume
     wizardActiveStep = 1;
@@ -11898,10 +13072,51 @@ function openExtensionReelWizard() {
         wizardPollingInterval = null;
     }
     
-    if (currentActiveSubtopicData) {
-        const raw = currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
-        const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
-        wizardTranscript = plain.substring(0, 450);
+    if (wizardContextType === 'subtopic') {
+        if (titleEl && currentActiveSubtopicData) {
+            titleEl.textContent = `🎬 Reels Wizard: ${currentActiveSubtopicData.name}`;
+        }
+        if (currentActiveSubtopicData) {
+            const raw = currentActiveSubtopicData.script || currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
+            const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
+            wizardTranscript = plain.substring(0, 450);
+        }
+    } else if (wizardContextType === 'topic') {
+        // Find topic details in tree data
+        let topicObj = null;
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        const t = c.topics.find(tp => tp.topic_id === wizardContextId);
+                        if (t) { topicObj = t; break; }
+                    }
+                }
+            }
+        }
+        if (topicObj) {
+            if (titleEl) {
+                titleEl.textContent = `🎬 Reels Wizard: ${topicObj.name}`;
+            }
+            const raw = topicObj.script || '';
+            const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
+            wizardTranscript = plain.substring(0, 1000) || topicObj.name;
+        } else {
+            if (titleEl) {
+                titleEl.textContent = `🎬 Reels Wizard: Topic`;
+            }
+        }
+    } else if (wizardContextType === 'pyq') {
+        if (titleEl) {
+            titleEl.textContent = `🎬 Reels Wizard (PYQ): ${_currentPYQSetName || 'PYQ Set'}`;
+        }
+        wizardTranscript = ''; // Backend will compile questions summary
+    } else if (wizardContextType === 'current_affairs') {
+        if (titleEl) {
+            titleEl.textContent = `🎬 Reels Wizard (CA): ${_currentCATopicName || 'Current Affairs Topic'}`;
+        }
+        const scriptVal = document.getElementById('ca-topic-script')?.value || '';
+        wizardTranscript = scriptVal.substring(0, 1000);
     }
     
     goToWizardStep(1);
@@ -12213,21 +13428,27 @@ function goToWizardStep(stepNum) {
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:20px; flex:1;">
               <div style="font-size:18px; font-weight:800; color:var(--text);">📝 Step 1: Craft Dialogue & Script</div>
-              <p style="font-size:13px; color:var(--text2); line-height:1.6; max-width:700px;">Review and refine the narration script for your 1-minute educational reel. The script will be split into exactly 12 scenes. You can let AI auto-generate it from the subtopic notes, or type your own custom transcript below.</p>
+              <p style="font-size:13px; color:var(--text2); line-height:1.6; max-width:700px;">Review and refine the narration script for your 1-minute educational reel. The script will be split into exactly 12 scenes. You can let AI auto-generate it from the subtopic notes, enhance it with pro pacing/pronunciation, or type your own below.</p>
               
               <div style="flex:1; min-height:220px; display:flex; flex-direction:column; gap:10px; margin-top:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase;">Dialogue Script Editor</span>
-                  <button class="btn btn-secondary" onclick="generateWizardTranscript()" id="wizard-btn-gen-transcript" style="font-size:11px; padding:6px 14px; border-color:var(--accent); color:var(--accent);">✨ Auto Generate from Notes</button>
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn btn-secondary" onclick="generateWizardTranscript()" id="wizard-btn-gen-transcript" style="font-size:11px; padding:6px 14px; border-color:var(--accent); color:var(--accent);">✨ Auto Generate from Notes</button>
+                    <button class="btn btn-secondary" onclick="enhanceWizardTranscript(this)" id="wizard-btn-enhance-script" style="font-size:11px; padding:6px 14px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.05);" title="Enhance script pacing, hooks and formatting for premium voiceover models">✨ Enhance Script</button>
+                  </div>
                 </div>
-                <textarea id="wizard-reel-transcript" class="form-input" style="flex:1; font-size:13.5px; line-height:1.7; padding:20px; border-radius:12px; resize:none; background:var(--bg2);" placeholder="Script will be auto-generated from subtopic content, or write your own...">${wizardTranscript}</textarea>
+                <div style="position:relative; flex:1; min-height:150px; text-align:left;">
+                    <div id="wizard-transcript-backdrop" style="position:absolute; top:0; left:0; right:0; bottom:0; padding:20px; border-radius:12px; font-size:13.5px; line-height:1.7; font-family:inherit; white-space:pre-wrap; word-wrap:break-word; overflow-y:auto; pointer-events:none; background:var(--bg2); color:var(--text2); border:1px solid transparent; box-sizing:border-box;"></div>
+                    <textarea id="wizard-reel-transcript" class="form-input" oninput="syncScriptHighlighter('wizard-reel-transcript', 'wizard-transcript-backdrop')" onscroll="syncScriptScroll('wizard-reel-transcript', 'wizard-transcript-backdrop')" style="position:absolute; top:0; left:0; right:0; bottom:0; font-size:13.5px; line-height:1.7; padding:20px; border-radius:12px; resize:none; background:transparent; color:transparent; caret-color:#fff; border:1px solid var(--border); box-sizing:border-box; width:100%; height:100%; overflow-y:auto;" placeholder="Script will be auto-generated from subtopic content, or write your own...">${wizardTranscript}</textarea>
+                </div>
               </div>
               
               <!-- Select language and voice directly in Step 1 -->
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:10px; text-align:left;">
-                  <div>
-                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Select Language</label>
-                      <select id="wizard-reel-language-step1" class="form-input" onchange="handleWizardLangChangeStep1(this.value)" style="margin-bottom:0; font-size:13px;">
+                  <div style="grid-column: span 1;">
+                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3); margin-bottom:4px; display:block;">Select Language</label>
+                      <select id="wizard-reel-language-step1" class="form-input" onchange="handleWizardLangChangeStep1(this.value)" style="margin-bottom:0; font-size:13px; width:100%; height:40px;">
                           <option value="English" ${wizardLanguage === 'English' ? 'selected' : ''}>English</option>
                           <option value="Hindi" ${wizardLanguage === 'Hindi' ? 'selected' : ''}>Hindi (हिन्दी)</option>
                           <option value="Spanish" ${wizardLanguage === 'Spanish' ? 'selected' : ''}>Spanish</option>
@@ -12235,21 +13456,18 @@ function goToWizardStep(stepNum) {
                           <option value="Marathi" ${wizardLanguage === 'Marathi' ? 'selected' : ''}>Marathi</option>
                       </select>
                   </div>
-                  <div>
-                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">AI Voice Model</label>
-                      <select id="wizard-reel-voice-step1" class="form-input" style="margin-bottom:0; font-size:13px;">
-                          <optgroup label="Male Voices">
-                              <option value="WeK8ylKjTV2trMlayizC" ${wizardVoiceId === 'WeK8ylKjTV2trMlayizC' ? 'selected' : ''}>Shrikant</option>
-                              <option value="bpkHhw4QrZFYIfahwsHh" ${wizardVoiceId === 'bpkHhw4QrZFYIfahwsHh' ? 'selected' : ''}>Amit</option>
-                              <option value="QCwUVw5fOJzf8t55fhmR" ${wizardVoiceId === 'QCwUVw5fOJzf8t55fhmR' ? 'selected' : ''}>Irfan</option>
-                          </optgroup>
-                          <optgroup label="Female Voices">
-                              <option value="p9aflnsbBe1o0aDeQa97" ${wizardVoiceId === 'p9aflnsbBe1o0aDeQa97' ? 'selected' : ''}>Kanika</option>
-                          </optgroup>
-                          <optgroup label="Kid / Other Voices">
-                              <option value="ibbx9zDYGvLgtYzRbqqG" ${wizardVoiceId === 'ibbx9zDYGvLgtYzRbqqG' ? 'selected' : ''}>Bunty</option>
-                          </optgroup>
-                      </select>
+                  <div style="grid-column: span 1; position: relative;">
+                      <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3); margin-bottom:6px; display:block;">Select Narration Voice</label>
+                      <div class="custom-voice-dropdown" id="voice-dropdown-step1" style="position:relative; width:100%; text-align:left;">
+                          <div class="dropdown-trigger" onclick="toggleVoiceDropdown('step1')" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; font-size:13px; font-weight:700; transition:all 0.2s; height:40px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                              <div id="selected-voice-info-step1" style="display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+                              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                                  <button id="preview-btn-step1" onclick="event.stopPropagation(); previewWizardVoiceById(wizardVoiceId, this)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--accent); font-size:10px; transition:0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.color='var(--accent)';" title="Preview voice sample">▶</button>
+                                  <span id="chevron-step1" style="transition:transform 0.3s ease; color:var(--text3); display:inline-block; font-size:10px;">▼</span>
+                              </div>
+                          </div>
+                          <div id="wizard-voice-picker-grid" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); background:#080a0c; border:1px solid var(--border); border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.55); z-index:999; max-height:260px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
+                      </div>
                   </div>
               </div>
               
@@ -12265,12 +13483,23 @@ function goToWizardStep(stepNum) {
             if (wizardTranscript) {
                 transcriptEl.value = wizardTranscript;
             } else if (currentActiveSubtopicData) {
-                const raw = currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
-                const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
-                wizardTranscript = plain.substring(0, 450);
-                transcriptEl.value = wizardTranscript;
+                if (currentActiveSubtopicData.script) {
+                    wizardTranscript = currentActiveSubtopicData.script;
+                    transcriptEl.value = wizardTranscript;
+                } else {
+                    const raw = currentActiveSubtopicData.description || currentActiveSubtopicData.notes || '';
+                    const plain = raw.replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
+                    wizardTranscript = plain.substring(0, 450);
+                    transcriptEl.value = wizardTranscript;
+                }
             }
+            syncScriptHighlighter('wizard-reel-transcript', 'wizard-transcript-backdrop');
         }
+
+        // Render visual voice cards picker
+        setTimeout(() => {
+            renderWizardVoicePicker('wizard-voice-picker-grid');
+        }, 50);
     }
     
     else if (stepNum === 2) {
@@ -12307,13 +13536,16 @@ function goToWizardStep(stepNum) {
                   <div id="wizard-voice-upgrade-panel" style="display:none; flex-direction:column; gap:16px; padding:20px; border-top:1px solid var(--border); text-align:left;">
                       <div style="display:flex; flex-direction:column; gap:6px;">
                           <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Upgrade Narration Script</label>
-                          <textarea id="wizard-upgrade-script-input" class="form-input" style="height:100px; font-size:13px; line-height:1.6; resize:none; border-radius:8px; background:var(--bg2);" placeholder="Edit script...">${wizardTranscript}</textarea>
+                          <div style="position:relative; height:100px; text-align:left;">
+                              <div id="wizard-upgrade-transcript-backdrop" style="position:absolute; top:0; left:0; right:0; bottom:0; padding:10px 14px; border-radius:8px; font-size:13px; line-height:1.6; font-family:inherit; white-space:pre-wrap; word-wrap:break-word; overflow-y:auto; pointer-events:none; background:var(--bg2); color:var(--text2); border:1px solid transparent; box-sizing:border-box;"></div>
+                              <textarea id="wizard-upgrade-script-input" class="form-input" oninput="syncScriptHighlighter('wizard-upgrade-script-input', 'wizard-upgrade-transcript-backdrop')" onscroll="syncScriptScroll('wizard-upgrade-script-input', 'wizard-upgrade-transcript-backdrop')" style="position:absolute; top:0; left:0; right:0; bottom:0; height:100px; font-size:13px; line-height:1.6; resize:none; border-radius:8px; background:transparent; color:transparent; caret-color:#fff; border:1px solid var(--border); box-sizing:border-box; width:100%; overflow-y:auto;" placeholder="Edit script...">${wizardTranscript}</textarea>
+                          </div>
                       </div>
                       
-                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:end;">
                           <div>
-                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">Select Language</label>
-                              <select id="wizard-reel-language" class="form-input" onchange="handleWizardLangChangeStep2(this.value)" style="margin-bottom:0; font-size:13px;">
+                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3); margin-bottom:4px; display:block;">Select Language</label>
+                              <select id="wizard-reel-language" class="form-input" onchange="handleWizardLangChangeStep2(this.value)" style="margin-bottom:0; font-size:13px; width:100%; height:40px;">
                                   <option value="English" ${wizardLanguage === 'English' ? 'selected' : ''}>English</option>
                                   <option value="Hindi" ${wizardLanguage === 'Hindi' ? 'selected' : ''}>Hindi (हिन्दी)</option>
                                   <option value="Spanish" ${wizardLanguage === 'Spanish' ? 'selected' : ''}>Spanish</option>
@@ -12321,25 +13553,22 @@ function goToWizardStep(stepNum) {
                                   <option value="Marathi" ${wizardLanguage === 'Marathi' ? 'selected' : ''}>Marathi</option>
                               </select>
                           </div>
-                          <div>
-                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3);">AI Voice Model</label>
-                              <select id="wizard-reel-voice" class="form-input" style="margin-bottom:0; font-size:13px;">
-                                  <optgroup label="Male Voices">
-                                      <option value="WeK8ylKjTV2trMlayizC" ${wizardVoiceId === 'WeK8ylKjTV2trMlayizC' ? 'selected' : ''}>Shrikant</option>
-                                      <option value="bpkHhw4QrZFYIfahwsHh" ${wizardVoiceId === 'bpkHhw4QrZFYIfahwsHh' ? 'selected' : ''}>Amit</option>
-                                      <option value="QCwUVw5fOJzf8t55fhmR" ${wizardVoiceId === 'QCwUVw5fOJzf8t55fhmR' ? 'selected' : ''}>Irfan</option>
-                                  </optgroup>
-                                  <optgroup label="Female Voices">
-                                      <option value="p9aflnsbBe1o0aDeQa97" ${wizardVoiceId === 'p9aflnsbBe1o0aDeQa97' ? 'selected' : ''}>Kanika</option>
-                                  </optgroup>
-                                  <optgroup label="Kid / Other Voices">
-                                      <option value="ibbx9zDYGvLgtYzRbqqG" ${wizardVoiceId === 'ibbx9zDYGvLgtYzRbqqG' ? 'selected' : ''}>Bunty</option>
-                                  </optgroup>
-                              </select>
+                          <div style="position:relative;">
+                              <label class="form-label" style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text3); margin-bottom:6px; display:block;">Select Narration Voice</label>
+                              <div class="custom-voice-dropdown" id="voice-dropdown-step2" style="position:relative; width:100%; text-align:left;">
+                                  <div class="dropdown-trigger" onclick="toggleVoiceDropdown('step2')" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; font-size:13px; font-weight:700; transition:all 0.2; height:40px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                                      <div id="selected-voice-info-step2" style="display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+                                      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                                          <button id="preview-btn-step2" onclick="event.stopPropagation(); previewWizardVoiceById(wizardVoiceId, this)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--accent); font-size:10px; transition:0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.color='var(--accent)';" title="Preview voice sample">▶</button>
+                                          <span id="chevron-step2" style="transition:transform 0.3s ease; color:var(--text3); display:inline-block; font-size:10px;">▼</span>
+                                      </div>
+                                  </div>
+                                  <div id="wizard-voice-picker-grid-step2" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); background:var(--bg3); border:1px solid var(--border); border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.55); z-index:999; max-height:260px; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
+                              </div>
                           </div>
                       </div>
                       
-                      <button class="btn btn-secondary" onclick="applyWizardVoiceUpgrade(this)" style="align-self:flex-end; font-size:12px; font-weight:800; padding:8px 18px; border-color:var(--accent2); color:var(--accent2); background:transparent; border-radius:8px;">💾 Save and Re-generate</button>
+                      <button class="btn btn-secondary" onclick="applyWizardVoiceUpgrade(this)" style="align-self:flex-end; font-size:12px; font-weight:800; padding:8px 18px; border-color:var(--accent2); color:var(--accent2); background:transparent; border-radius:8px; margin-top:10px;">💾 Save and Re-generate</button>
                   </div>
               </div>
               
@@ -12349,6 +13578,12 @@ function goToWizardStep(stepNum) {
               </div>
             </div>
         `;
+
+        // Render voice cards for Step 2 upgrade panel
+        setTimeout(() => {
+            renderWizardVoicePicker('wizard-voice-picker-grid-step2');
+            syncScriptHighlighter('wizard-upgrade-script-input', 'wizard-upgrade-transcript-backdrop');
+        }, 50);
     }
     
     else if (stepNum === 3) {
@@ -12502,17 +13737,302 @@ function goToWizardStep(stepNum) {
     }
 }
 
+// ── Excel Index Syllabus Import & Voice Cards Pickers ───────────────────────
+
+const wizardVoicesList = [
+    { id: 'WeK8ylKjTV2trMlayizC', name: 'Shrikant', gender: 'Male', accent: 'Indian Warm' },
+    { id: '1zUSi8LeHs9M2mV8X6YS', name: 'Priyanka', gender: 'Female', accent: 'Indian Hindi' },
+    { id: 'bpkHhw4QrZFYIfahwsHh', name: 'Amit', gender: 'Male', accent: 'Indian Clear' },
+    { id: 'QCwUVw5fOJzf8t55fhmR', name: 'Irfan', gender: 'Male', accent: 'Indian Bold' },
+    { id: 'p9aflnsbBe1o0aDeQa97', name: 'Kanika', gender: 'Female', accent: 'Indian Dynamic' },
+    { id: 'ibbx9zDYGvLgtYzRbqqG', name: 'Bunty', gender: 'Male', accent: 'Indian Kid' },
+    { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', gender: 'Male', accent: 'US Deep' },
+    { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', gender: 'Female', accent: 'US Pleasant' },
+    { id: 'EitqXD7jgIy0K5Z1zGGp', name: 'Rudra - Deep', gender: 'Male', accent: 'Deep & Trustworthy' },
+    { id: '0mDYz2rpzUksQMbNcdCc', name: 'Rudra - Upbeat', gender: 'Male', accent: 'Expressive & Upbeat' },
+    { id: 'tTZ0TVc9Q1bbWngiduLK', name: 'Rudra - Intense', gender: 'Male', accent: 'Intense & Romantic' },
+    { id: 'xLm17wfwFDI3GeAaAOZA', name: 'Rudra - Rapid', gender: 'Male', accent: 'Energetic & Rapid' },
+    { id: 'N9rZ3GaL6nwOrNUEMppm', name: 'Rudra - Luxury', gender: 'Male', accent: 'Cinematic Luxury' },
+    { id: 'gO8Kb3hHPEPElVxVHDwT', name: 'Krishna - Calm', gender: 'Male', accent: 'Calm Assistant' },
+    { id: 'AA997oQKgoifSmUaeVCr', name: 'Krishna - E-Com', gender: 'Male', accent: 'Friendly E-Com' }
+];
+
+async function handleExcelUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const clearInput = () => { input.value = ''; };
+
+    if (!currentActiveSubjectId) {
+        toast('Please select a subject first!', 'warning');
+        clearInput();
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const loaderModal = document.getElementById('excel-upload-modal');
+    if (loaderModal) {
+        loaderModal.style.display = 'flex';
+        loaderModal.classList.add('open');
+    }
+
+    toast('📤 Uploading and parsing syllabus index file...', 'info');
+    try {
+        const res = await fetch(`/api/classroom/subjects/${currentActiveSubjectId}/upload-index`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast(`🎉 Index imported successfully! Created ${data.chapters_created} chapters, ${data.topics_created} topics, and ${data.subtopics_created} subtopics.`, 'success');
+            await refreshExamTree();
+        } else {
+            throw new Error(data.detail || 'Failed to upload syllabus index');
+        }
+    } catch(e) {
+        toast('Failed to upload index: ' + e.message, 'error');
+    } finally {
+        if (loaderModal) {
+            loaderModal.style.display = 'none';
+            loaderModal.classList.remove('open');
+        }
+        clearInput();
+    }
+}
+
+async function enhanceWizardTranscript(btn) {
+    const transcriptEl = document.getElementById('wizard-reel-transcript');
+    if (!transcriptEl) return;
+    const currentScript = transcriptEl.value.trim();
+    if (!currentScript) {
+        toast('Please enter or generate a script first', 'warning');
+        return;
+    }
+
+    const langSelect = document.getElementById('wizard-reel-language-step1');
+    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+
+    btn.disabled = true; btn.textContent = '⏳ Enhancing...';
+    try {
+        const res = await fetch('/api/classroom/enhance-script', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ script: currentScript, language: selectedLang })
+        });
+        const data = await res.json();
+        if (data.success && data.enhanced_script) {
+            transcriptEl.value = data.enhanced_script;
+            wizardTranscript = data.enhanced_script;
+            syncScriptHighlighter('wizard-reel-transcript', 'wizard-transcript-backdrop');
+            toast('✨ Script successfully enhanced with pro voiceover flow!', 'success');
+        } else {
+            throw new Error(data.detail || 'Failed to enhance script');
+        }
+    } catch(e) {
+        toast('Failed to enhance script: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = '✨ Enhance Script';
+    }
+}
+
+function syncScriptHighlighter(textareaId, backdropId) {
+    const textarea = document.getElementById(textareaId);
+    const backdrop = document.getElementById(backdropId);
+    if (textarea && backdrop) {
+        let text = textarea.value;
+        // Escape HTML
+        let escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+            
+        // Style bracketed tags in bold blue (only dynamic bracket tokens highlighted)
+        let html = escaped.replace(/\[([^\]]*)\]/g, '<strong style="color: #3b82f6; font-weight: 800; font-family: inherit;">[$1]</strong>');
+        backdrop.innerHTML = html + '\n';
+    }
+}
+
+function syncScriptScroll(textareaId, backdropId) {
+    const textarea = document.getElementById(textareaId);
+    const backdrop = document.getElementById(backdropId);
+    if (textarea && backdrop) {
+        backdrop.scrollTop = textarea.scrollTop;
+    }
+}
+
+function renderWizardVoicePicker(containerId) {
+    const grid = document.getElementById(containerId);
+    if (!grid) return;
+
+    // 1. Populate the dropdown trigger selected state
+    const isStep1 = containerId === 'wizard-voice-picker-grid';
+    const isStep2 = containerId === 'wizard-voice-picker-grid-step2';
+    const infoElId = isStep1 ? 'selected-voice-info-step1' : isStep2 ? 'selected-voice-info-step2' : null;
+    
+    const activeVoice = wizardVoicesList.find(v => v.id === wizardVoiceId) || wizardVoicesList[0];
+    if (activeVoice && infoElId) {
+        const infoEl = document.getElementById(infoElId);
+        if (infoEl) {
+            const badgeColor = activeVoice.gender === 'Male' ? '#3b82f6' : activeVoice.gender === 'Female' ? '#ec4899' : '#f59e0b';
+            infoEl.innerHTML = `
+                <span style="font-weight: 800; font-size: 13px; color: #fff; display: flex; align-items: center; gap: 6px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    🗣️ ${activeVoice.name}
+                    <span style="font-size: 8px; padding: 2px 4px; border-radius: 12px; background: ${badgeColor}; color: #fff; font-weight: 900; text-transform: uppercase; line-height: 1;">${activeVoice.gender[0]}</span>
+                </span>
+            `;
+        }
+    }
+
+    // Curated vivid gradients pool for the avatar circles to match a highly premium, modern interface
+    const gradientsList = [
+        ['#3b82f6', '#1d4ed8'], // Blue
+        ['#ec4899', '#be185d'], // Pink
+        ['#10b981', '#047857'], // Emerald
+        ['#f59e0b', '#b45309'], // Amber
+        ['#8b5cf6', '#6d28d9'], // Violet
+        ['#f43f5e', '#be123c'], // Rose
+        ['#06b6d4', '#0e7490'], // Cyan
+        ['#ef4444', '#b91c1c']  // Red
+    ];
+
+    // 2. Populate the voice list rows inside the dropdown
+    grid.innerHTML = wizardVoicesList.map((v, index) => {
+        const isSelected = wizardVoiceId === v.id;
+        const grad = gradientsList[index % gradientsList.length];
+        
+        // Premium list row style: matching user screenshot exactly!
+        const bgStyle = isSelected
+            ? 'background:rgba(168,85,247,0.08); border:1.5px solid var(--accent); box-shadow:0 0 10px rgba(168,85,247,0.15);'
+            : 'background:rgba(255,255,255,0.01); border:1.5px solid transparent;';
+            
+        return `
+            <div class="voice-list-row" onclick="selectWizardVoice('${v.id}')" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; cursor:pointer; transition:all 0.15s ease-in-out; ${bgStyle}" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="if(!${isSelected}) this.style.background='rgba(255,255,255,0.01)'">
+                <!-- Left: Circular avatar with vibrant gradient and initials, with active tick badge -->
+                <div style="position:relative; width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, ${grad[0]}, ${grad[1]}); display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:12.5px; flex-shrink:0; box-shadow: 0 2px 8px rgba(0,0,0,0.25);">
+                    ${v.name[0]}
+                    ${isSelected ? `<span style="position:absolute; top:-3px; right:-3px; background:#eab308; color:#fff; border-radius:50%; width:13px; height:13px; display:flex; align-items:center; justify-content:center; font-size:7.5px; border:1px solid var(--bg3); font-weight:900; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">✓</span>` : ''}
+                </div>
+                
+                <!-- Center: Voice name and detailed description -->
+                <div style="flex:1; display:flex; flex-direction:column; gap:2px; text-align:left; margin-left:12px; overflow:hidden;">
+                    <span style="font-size:12.5px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${v.name}
+                    </span>
+                    <span style="font-size:10px; color:var(--text3); font-weight:500; opacity:0.8; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">
+                        ${v.gender} · ${v.accent} Voice
+                    </span>
+                </div>
+                
+                <!-- Right: Borderless transparent play preview button -->
+                <button onclick="event.stopPropagation(); previewWizardVoiceById('${v.id}', this)" style="background:transparent; border:none; cursor:pointer; color:var(--text2); font-size:13px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; transition:0.2s; flex-shrink:0;" onmouseover="this.style.color='var(--accent)';" onmouseout="this.style.color='var(--text2)';" title="Preview voice sample">▶</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectWizardVoice(voiceId) {
+    wizardVoiceId = voiceId;
+    // Rerender active voice cards grid in both steps if present
+    renderWizardVoicePicker('wizard-voice-picker-grid');
+    renderWizardVoicePicker('wizard-voice-picker-grid-step2');
+    
+    // Auto-close dropdowns
+    const grid1 = document.getElementById('wizard-voice-picker-grid');
+    const grid2 = document.getElementById('wizard-voice-picker-grid-step2');
+    const chevron1 = document.getElementById('chevron-step1');
+    const chevron2 = document.getElementById('chevron-step2');
+    if (grid1) grid1.style.display = 'none';
+    if (grid2) grid2.style.display = 'none';
+    if (chevron1) chevron1.style.transform = 'rotate(0deg)';
+    if (chevron2) chevron2.style.transform = 'rotate(0deg)';
+    
+    toast('Narration voice updated successfully!', 'success');
+}
+
+function toggleVoiceDropdown(stepSuffix) {
+    const grid = document.getElementById(stepSuffix === 'step1' ? 'wizard-voice-picker-grid' : 'wizard-voice-picker-grid-step2');
+    const chevron = document.getElementById('chevron-' + stepSuffix);
+    if (!grid) return;
+    
+    if (grid.style.display === 'none' || grid.style.display === '') {
+        grid.style.display = 'flex';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+        grid.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Global click event to close dropdowns when clicking outside
+window.addEventListener('click', function(e) {
+    const dropdown1 = document.getElementById('voice-dropdown-step1');
+    const grid1 = document.getElementById('wizard-voice-picker-grid');
+    const chevron1 = document.getElementById('chevron-step1');
+    if (dropdown1 && grid1 && !dropdown1.contains(e.target)) {
+        grid1.style.display = 'none';
+        if (chevron1) chevron1.style.transform = 'rotate(0deg)';
+    }
+    
+    const dropdown2 = document.getElementById('voice-dropdown-step2');
+    const grid2 = document.getElementById('wizard-voice-picker-grid-step2');
+    const chevron2 = document.getElementById('chevron-step2');
+    if (dropdown2 && grid2 && !dropdown2.contains(e.target)) {
+        grid2.style.display = 'none';
+        if (chevron2) chevron2.style.transform = 'rotate(0deg)';
+    }
+});
+
+async function previewWizardVoiceById(voiceId, btn) {
+    const old = btn.textContent;
+    btn.textContent = '⏳'; btn.disabled = true;
+
+    const transcriptEl = document.getElementById('wizard-reel-transcript') || document.getElementById('wizard-upgrade-script-input');
+    const previewText = transcriptEl && transcriptEl.value.trim()
+        ? transcriptEl.value.trim().substring(0, 150)
+        : "Hello! This is a high-quality preview of my narration voice.";
+
+    const langSelect = document.getElementById('wizard-reel-language-step1') || document.getElementById('wizard-reel-language');
+    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+
+    try {
+        const res = await fetch(`/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(previewText)}&language=${encodeURIComponent(selectedLang)}`, { headers: hdrs() });
+        if (!res.ok) throw new Error('Preview synthesis failed');
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play();
+        toast('Playing narration voice preview...', 'info');
+    } catch(e) {
+        toast('Voice preview error: ' + e.message, 'error');
+    } finally {
+        btn.textContent = old; btn.disabled = false;
+    }
+}
+
+
 async function generateWizardTranscript() {
-    if (!currentActiveSubtopicData) return;
     const btn = document.getElementById('wizard-btn-gen-transcript');
     const transcriptEl = document.getElementById('wizard-reel-transcript');
+    if (!transcriptEl) return;
     
     const langSelect = document.getElementById('wizard-reel-language-step1');
     const selectedLang = langSelect ? langSelect.value : wizardLanguage;
     
     btn.disabled = true; btn.textContent = '⏳ Generating...';
     try {
-        const res = await fetch('/api/classroom/subtopics/' + currentActiveSubtopicId + '/generate-transcript', {
+        let url = '';
+        if (wizardContextType === 'subtopic') {
+            url = '/api/classroom/subtopics/' + wizardContextId + '/generate-transcript';
+        } else if (wizardContextType === 'topic') {
+            url = '/api/classroom/topics/' + wizardContextId + '/generate-transcript';
+        } else if (wizardContextType === 'pyq') {
+            url = '/api/classroom/pyqs/' + wizardContextId + '/generate-transcript';
+        } else if (wizardContextType === 'current_affairs') {
+            url = '/api/classroom/current-affairs/' + wizardContextId + '/generate-transcript';
+        }
+            
+        const res = await fetch(url, {
             method: 'POST',
             headers: hdrs(),
             body: JSON.stringify({ language: selectedLang })
@@ -12520,11 +14040,12 @@ async function generateWizardTranscript() {
         const data = await res.json();
         if (data.transcript) {
             transcriptEl.value = data.transcript;
+            syncScriptHighlighter('wizard-reel-transcript', 'wizard-transcript-backdrop');
         } else {
             throw new Error('No transcript returned');
         }
     } catch(e) {
-        toast('Transcript auto-generated from subtopic info', 'info');
+        toast('Failed to auto-generate transcript: ' + e.message, 'error');
     }
     btn.disabled = false; btn.textContent = '✨ Auto Generate from Notes';
 }
@@ -12594,15 +14115,25 @@ async function handleWizardLangChangeStep2(newLang) {
 
 async function generateWizardScenes(transcriptText, lang, voiceId) {
     try {
+        const bodyPayload = {
+            language: lang,
+            voice_id: voiceId,
+            transcript: transcriptText
+        };
+        if (wizardContextType === 'subtopic') {
+            bodyPayload.subtopic_id = wizardContextId;
+        } else if (wizardContextType === 'topic') {
+            bodyPayload.topic_id = wizardContextId;
+        } else if (wizardContextType === 'pyq') {
+            bodyPayload.pyq_set_id = wizardContextId;
+        } else if (wizardContextType === 'current_affairs') {
+            bodyPayload.ca_topic_id = wizardContextId;
+        }
+        
         const res = await fetch('/api/extension/create-job', {
             method: 'POST',
             headers: hdrs(),
-            body: JSON.stringify({
-                subtopic_id: currentActiveSubtopicId,
-                language: lang,
-                voice_id: voiceId,
-                transcript: transcriptText
-            })
+            body: JSON.stringify(bodyPayload)
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || 'Failed');
@@ -12671,12 +14202,13 @@ function pollWizardJob(jobId) {
             const res = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
             const data = await res.json();
             
+            const total = data.total_scenes || 12;
+            
             const pBar = document.getElementById('wizard-ext-bar');
             const pStatus = document.getElementById('wizard-ext-status-label');
             const pPct = document.getElementById('wizard-ext-percentage');
             
             if (data.status === 'extension_running' || data.status === 'generating_images' || data.status === 'waiting_extension') {
-                const total = data.total_scenes || 12;
                 const done = data.images_done || 0;
                 const pct = 5 + Math.floor((done / total) * 45); // 5% to 50%
                 
@@ -12699,7 +14231,6 @@ function pollWizardJob(jobId) {
             }
             
             else if (data.status === 'generating_videos') {
-                const total = data.total_scenes || 12;
                 const done = data.videos_done || 0;
                 const pct = 50 + Math.floor((done / total) * 45); // 50% to 95%
                 
@@ -12739,6 +14270,17 @@ function pollWizardJob(jobId) {
                     clearInterval(wizardPollingInterval);
                     wizardPollingInterval = null;
                 }
+            }
+            
+            else if (data.status === 'error') {
+                if (pBar) pBar.style.width = '100%';
+                if (pPct) pPct.textContent = 'Error';
+                if (pStatus) pStatus.textContent = `❌ Extension error: ${data.error || 'Unknown error'}`;
+                
+                renderWizardHarvestGrids(total, data.images_indices || [], data.videos_indices || [], data.status);
+                
+                clearInterval(wizardPollingInterval);
+                wizardPollingInterval = null;
             }
             
         } catch(e) {
@@ -12924,20 +14466,37 @@ function pollAssemblyProgress(jobId) {
                 clearInterval(wizardPollingInterval);
                 wizardPollingInterval = null;
                 
-                toast('🎉 Reel Assembled Successfully!', 'success');
+                if (bar) bar.style.width = '100%';
+                if (pctLabel) pctLabel.textContent = `Assembling — 100% completed`;
+                if (msgEl) msgEl.textContent = 'Upload complete! Reel stored in R2 successfully.';
                 
-                // Show the final preview video player
-                document.getElementById('wizard-assembly-progress').style.display = 'none';
-                const previewEl = document.getElementById('wizard-final-preview');
-                const videoEl = document.getElementById('wizard-final-video');
-                
-                if (previewEl && videoEl) {
-                    videoEl.src = data.video_url;
-                    previewEl.style.display = 'flex';
-                }
-                
-                // Refresh list of reels in classroom subtopics
-                showSubtopicReels();
+                setTimeout(() => {
+                    toast('🎉 Reel Assembled Successfully!', 'success');
+                    
+                    // Hide progress bar and close the Reels Wizard fullscreen overlay
+                    document.getElementById('wizard-assembly-progress').style.display = 'none';
+                    closeReelsWizard();
+                    
+                    const progressPopup = document.getElementById('reel-progress-popup');
+                    if (progressPopup) progressPopup.style.display = 'none';
+                    
+                    // Refresh and redirect to correct reels section based on context type
+                    if (wizardContextType === 'topic') {
+                        showTopicReels();
+                    } else if (wizardContextType === 'subtopic') {
+                        showSubtopicReels();
+                    } else if (wizardContextType === 'current_affairs') {
+                        loadCAReels(wizardContextId);
+                    } else if (wizardContextType === 'pyq') {
+                        const resultDiv = document.getElementById('pyq-reel-result');
+                        const videoEl = document.getElementById('pyq-reel-video');
+                        if (resultDiv && videoEl) {
+                            videoEl.src = data.video_url;
+                            resultDiv.style.display = 'block';
+                            resultDiv.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }
+                }, 1000);
             }
             
             else if (data.status === 'error') {
@@ -12995,6 +14554,13 @@ async function generateReelTranscript() {
     const lang = document.getElementById('modal-reel-language').value;
     const transcriptEl = document.getElementById('modal-reel-transcript');
     const subtopicName = currentActiveSubtopicData.name || '';
+    
+    // Prioritize existing script in database
+    if (currentActiveSubtopicData.script) {
+        if (transcriptEl) transcriptEl.value = currentActiveSubtopicData.script;
+        return;
+    }
+    
     const raw = (currentActiveSubtopicData.description || currentActiveSubtopicData.notes || subtopicName)
         .replace(/<[^>]+>/g,'').replace(/[#*`>_~]/g,'').replace(/\[IMAGE:[^\]]+\]/g,'').trim();
 
@@ -13221,14 +14787,33 @@ async function pollExtensionJob(jobId) {
                 progressStatus.textContent = 'Successfully Generated Reel!';
                 
                 toast('🎉 Successfully Generated Reel!', 'success');
-                showSubtopicReels();
+                
+                // Close Reels Wizard fullscreen overlay
+                closeReelsWizard();
+                
+                // Refresh list of reels based on context type
+                if (wizardContextType === 'topic') {
+                    showTopicReels();
+                } else if (wizardContextType === 'subtopic') {
+                    showSubtopicReels();
+                } else if (wizardContextType === 'current_affairs') {
+                    loadCAReels(wizardContextId);
+                } else if (wizardContextType === 'pyq') {
+                    const resultDiv = document.getElementById('pyq-reel-result');
+                    const videoEl = document.getElementById('pyq-reel-video');
+                    if (resultDiv && videoEl) {
+                        videoEl.src = data.video_url;
+                        resultDiv.style.display = 'block';
+                        resultDiv.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
 
                 // Automatically download the final assembled video file to the user's computer
                 try {
                     const dlLink = document.createElement('a');
                     dlLink.href = data.video_url;
-                    const subClean = (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'Reel').replace(/[^a-zA-Z0-9]/g, '_');
-                    dlLink.download = `${subClean}_Final_Reel.mp4`;
+                    const titleClean = (wizardContextType === 'pyq' ? (_currentPYQSetName || 'PYQ') : (wizardContextType === 'current_affairs' ? (_currentCATopicName || 'CA') : (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'Reel'))).replace(/[^a-zA-Z0-9]/g, '_');
+                    dlLink.download = `${titleClean}_Final_Reel.mp4`;
                     document.body.appendChild(dlLink);
                     dlLink.click();
                     document.body.removeChild(dlLink);
@@ -13240,9 +14825,10 @@ async function pollExtensionJob(jobId) {
                 // Close popup and show preview modal
                 setTimeout(() => {
                     popup.style.display = 'none';
+                    const titleVal = wizardContextType === 'pyq' ? (_currentPYQSetName || 'PYQ Set') : (wizardContextType === 'current_affairs' ? (_currentCATopicName || 'Current Affairs topic') : (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'AI Reel'));
                     const mappedReel = {
                         content_id: jobId,
-                        title: (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'AI Reel') + ' — Extension Reel',
+                        title: titleVal + ' — Extension Reel',
                         body: data.metadata?.script || '',
                         video_url: data.video_url,
                         media_url: data.video_url,
@@ -13275,6 +14861,78 @@ async function pollExtensionJob(jobId) {
         }
     };
     check();
+}
+
+async function saveTopicScriptAndTimeline() {
+    if (!currentActiveTopicId) return;
+    const scriptVal = document.getElementById('active-topic-script').value;
+    
+    // Find active topic object in tree data
+    let topicName = '';
+    let topicObj = null;
+    for (let p of currentExamTreeData) {
+        for (let s of p.subjects) {
+            for (let c of s.chapters) {
+                const t = c.topics.find(tp => tp.topic_id === currentActiveTopicId);
+                if (t) { 
+                    topicObj = t;
+                    topicName = t.name; 
+                    break; 
+                }
+            }
+            if (topicObj) break;
+        }
+        if (topicObj) break;
+    }
+    
+    if (!topicObj) {
+        toast('Active topic not found', 'error');
+        return;
+    }
+    
+    const bodyPayload = {
+        name: topicName,
+        script: scriptVal,
+        video_length: topicObj.video_length || 50
+    };
+    
+    try {
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify(bodyPayload)
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success) {
+            toast('Topic script saved successfully!', 'success');
+            // Update local tree cache
+            topicObj.script = scriptVal;
+        } else {
+            toast(res.detail || 'Error saving script', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        toast('Network error saving script', 'error');
+    }
+}
+
+function openReelGeneratorSettingsModal() {
+    const modal = document.getElementById('classroom-reel-generator-modal');
+    if (modal) modal.classList.add('open');
+    
+    // Set default values based on current active subtopic
+    if (currentActiveSubtopicData) {
+        document.getElementById('modal-reel-topic').value = currentActiveSubtopicData.name || '';
+        
+        // Populate script: Use subtopic script first, then fallback to empty or generate
+        const transcriptEl = document.getElementById('modal-reel-transcript');
+        if (transcriptEl) {
+            transcriptEl.value = currentActiveSubtopicData.script || '';
+        }
+    }
 }
 
 function closeReelGeneratorModal() {
@@ -13427,13 +15085,93 @@ async function showSubtopicReels() {
                     <div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(r.title || 'Reel')}">${escapeHTML(r.title || 'Reel')}</div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
                         <span style="font-size:10px;color:var(--text3);">${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
-                        <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;height:auto;line-height:1;border-radius:6px;background:rgba(255,122,0,0.06);border-color:rgba(255,122,0,0.2);color:var(--accent);" onclick='event.stopPropagation();editClassroomReelFromSubtopic(${safeR})'>✏️ Edit</button>
+                        <div style="display:flex;gap:4px;">
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;height:auto;line-height:1;border-radius:6px;background:rgba(255,122,0,0.06);border-color:rgba(255,122,0,0.2);color:var(--accent);" onclick='event.stopPropagation();editClassroomReelFromSubtopic(${safeR})'>✏️ Edit</button>
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;height:auto;line-height:1;border-radius:6px;background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.2);color:var(--red);" onclick='event.stopPropagation();deleteClassroomReel("${r.content_id || r.id}", "subtopic")'>🗑️ Delete</button>
+                        </div>
                     </div>
                 </div>
             </div>`;
         }).join('');
     } catch(err) {
         list.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">Failed to load reels.</div>';
+    }
+}
+
+function toggleTopicReelsPanel() {
+    const section = document.getElementById('topic-reels-section');
+    if (section.style.display === 'none' || !section.style.display) {
+        showTopicReels();
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+async function showTopicReels() {
+    if (!currentActiveTopicId) { toast('Please select a topic first.', 'error'); return; }
+    const section = document.getElementById('topic-reels-section');
+    const list = document.getElementById('topic-reels-list');
+    const empty = document.getElementById('topic-reels-empty');
+    section.style.display = 'block';
+    list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:10px;">Loading reels...</div>';
+    empty.style.display = 'none';
+    section.scrollIntoView({behavior:'smooth', block:'start'});
+    try {
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}/reels`, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        const reels = data.reels || [];
+        if (reels.length === 0) {
+            list.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        list.innerHTML = reels.map(r => {
+            const safeR = JSON.stringify(r).replace(/"/g, '&quot;');
+            return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                <div style="aspect-ratio:9/16;background:#000;position:relative;max-height:200px;overflow:hidden;cursor:pointer;" onclick='showReelPreview(${safeR})'>
+                    <video src="${r.media_url || r.video_url || ''}" style="width:100%;height:100%;object-fit:cover;" muted></video>
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);font-size:28px;">&#9654;</div>
+                </div>
+                <div style="padding:10px;display:flex;flex-direction:column;gap:6px;background:var(--card);">
+                    <div style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(r.title || 'Reel')}">${escapeHTML(r.title || 'Reel')}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                        <span style="font-size:10px;color:var(--text3);">${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
+                        <div style="display:flex;gap:4px;">
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;height:auto;line-height:1;border-radius:6px;background:rgba(255,122,0,0.06);border-color:rgba(255,122,0,0.2);color:var(--accent);" onclick='event.stopPropagation();editClassroomReelFromSubtopic(${safeR})'>✏️ Edit</button>
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;height:auto;line-height:1;border-radius:6px;background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.2);color:var(--red);" onclick='event.stopPropagation();deleteClassroomReel("${r.content_id || r.id}", "topic")'>🗑️ Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(err) {
+        list.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px;">Failed to load reels.</div>';
+    }
+}
+
+async function deleteClassroomReel(id, type) {
+    if (!confirm('Are you sure you want to permanently delete this reel?')) return;
+    try {
+        const res = await fetch(`/api/social/content/${id}`, {
+            method: 'DELETE',
+            headers: hdrs()
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            toast('Reel deleted successfully!', 'success');
+            if (type === 'subtopic') {
+                showSubtopicReels();
+            } else {
+                showTopicReels();
+            }
+        } else {
+            toast(data.detail || 'Failed to delete reel', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        toast('Network error deleting reel', 'error');
     }
 }
 
@@ -13763,6 +15501,269 @@ function submitQuizAnswers() {
 }
 
 function submitQuiz() { submitQuizAnswers(); }
+
+// --- TOPIC ACTION LOGIC ---
+async function generateTopicDescription() {
+    if (!currentActiveTopicId) { toast("Please select a topic first.", "error"); return; }
+    
+    const btn = document.getElementById('btn-generate-topic-desc');
+    const oldText = btn ? btn.innerHTML : '';
+    if (btn) { btn.innerHTML = '⏳ Generating...'; btn.disabled = true; }
+    
+    try {
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}/generate-description`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            toast("Topic Overview generated successfully!", "success");
+            
+            // Render to active-topic-description container
+            renderMarkdownToHTML('active-topic-description', data.description, 'No description provided.');
+            
+            // Show description section and details container
+            const descSection = document.getElementById('topic-desc-section');
+            if (descSection) descSection.style.display = 'block';
+            
+            const detailsContainer = document.getElementById('topic-details-container');
+            if (detailsContainer) detailsContainer.style.display = 'flex';
+            
+            // Sync tree data
+            if (currentActiveExamId) refreshExamTree();
+        } else {
+            toast(data.detail || "Failed to generate topic description", "error");
+        }
+    } catch(err) {
+        console.error(err);
+        toast("Network error generating topic overview", "error");
+    } finally {
+        if (btn) { btn.innerHTML = oldText; btn.disabled = false; }
+    }
+}
+
+let activeNotesContext = 'subtopic';
+
+function showNotesLanguageModal() {
+    if (!currentActiveSubtopicId) { toast('Please select a subtopic first.', 'error'); return; }
+    activeNotesContext = 'subtopic';
+    document.getElementById('classroom-notes-lang-modal').classList.add('open');
+}
+
+function showTopicNotesLanguageModal() {
+    if (!currentActiveTopicId) { toast('Please select a topic first.', 'error'); return; }
+    activeNotesContext = 'topic';
+    document.getElementById('classroom-notes-lang-modal').classList.add('open');
+}
+
+function handleNotesGeneration() {
+    if (activeNotesContext === 'topic') {
+        generateTopicNotes();
+    } else {
+        generateSubtopicNotes();
+    }
+}
+
+async function generateTopicNotes() {
+    if (!currentActiveTopicId) { toast("Please select a topic first.", "error"); return; }
+    document.getElementById('classroom-notes-lang-modal').classList.remove('open');
+    
+    const lang = document.getElementById('modal-notes-language') ? document.getElementById('modal-notes-language').value : 'English';
+    const btn = document.getElementById('btn-generate-topic-notes');
+    const oldText = btn ? btn.innerHTML : '';
+    if (btn) { btn.innerHTML = 'Generating...'; btn.disabled = true; }
+    
+    try {
+        const formData = new FormData();
+        formData.append('language', lang);
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}/generate-notes`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: formData
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            toast("Topic Revision Notes generated!", "success");
+            
+            renderMarkdownToHTML('active-topic-notes', data.notes, 'No notes generated yet.');
+            
+            const notesContainer = document.getElementById('active-topic-notes-container');
+            if (notesContainer) notesContainer.style.display = 'block';
+            
+            const detailsContainer = document.getElementById('topic-details-container');
+            if (detailsContainer) detailsContainer.style.display = 'flex';
+            
+            if (currentActiveExamId) refreshExamTree();
+        } else {
+            toast(data.detail || "Failed to generate notes", "error");
+        }
+    } catch(err) {
+        console.error(err);
+        toast("Network error generating notes", "error");
+    } finally {
+        if (btn) { btn.innerHTML = oldText; btn.disabled = false; }
+    }
+}
+
+async function downloadTopicNotesPDF() {
+    if (!currentActiveTopicId) {
+        toast("Please select a topic first.", "error");
+        return;
+    }
+    
+    const btn = document.getElementById('btn-download-topic-pdf');
+    const oldText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '⏳ Downloading...';
+        btn.disabled = true;
+    }
+    
+    try {
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}/download-notes-pdf`, {
+            method: 'GET',
+            headers: { 'X-App-Token': session.token }
+        });
+        
+        if (resp.ok) {
+            const blob = await resp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            let filename = 'topic_notes.pdf';
+            const disposition = resp.headers.get('content-disposition');
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) { 
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            toast("Topic PDF downloaded successfully!", "success");
+        } else {
+            const res = await resp.json();
+            toast(res.detail || "Failed to download PDF", "error");
+        }
+    } catch(err) {
+        console.error(err);
+        toast("Network error downloading PDF", "error");
+    } finally {
+        if (btn) {
+            btn.innerHTML = oldText;
+            btn.disabled = false;
+        }
+    }
+}
+
+let currentTopicQuizData = null;
+
+async function generateTopicQuiz() {
+    if (!currentActiveTopicId) {
+        toast("Please select a topic first.", "error");
+        return;
+    }
+    
+    const btn = document.getElementById('btn-generate-topic-quiz');
+    const oldText = btn ? btn.innerHTML : '';
+    if (btn) { btn.innerHTML = '⏳ Generating...'; btn.disabled = true; }
+    
+    try {
+        const resp = await fetch(`/api/classroom/topics/${currentActiveTopicId}/quiz/generate`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        
+        if (resp.ok && data.success) {
+            currentTopicQuizData = data.quiz;
+            renderTopicQuiz();
+        } else {
+            toast(data.detail || "Failed to generate topic quiz", "error");
+        }
+    } catch(err) {
+        console.error(err);
+        toast("Network error generating quiz", "error");
+    } finally {
+        if (btn) { btn.innerHTML = oldText; btn.disabled = false; }
+    }
+}
+
+function renderTopicQuiz() {
+    const container = document.getElementById('topic-quiz-questions-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const resultBanner = document.getElementById('topic-quiz-result-banner');
+    if (resultBanner) resultBanner.style.display = 'none';
+    
+    const submitBtn = document.getElementById('btn-submit-topic-quiz');
+    if (submitBtn) submitBtn.style.display = 'block';
+    
+    currentTopicQuizData.forEach((q, index) => {
+        let optionsHtml = '';
+        q.options.forEach((opt) => {
+            optionsHtml += `<label class="quiz-option" style="display:flex;align-items:center;gap:10px;padding:11px 14px;margin:6px 0;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;background:var(--bg3);transition:0.2s;font-size:13px;" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">
+                <input type="radio" name="topic-q${index}" value="${escapeHTML(opt)}" style="accent-color:var(--accent2);width:16px;height:16px;">
+                ${escapeHTML(opt)}
+            </label>`;
+        });
+        container.innerHTML += `
+        <div class="topic-quiz-question" data-answer="${escapeHTML(q.answer)}" style="background:var(--bg2);padding:18px;border-radius:12px;border:1px solid var(--border);">
+            <div style="font-weight:700;margin-bottom:12px;color:var(--text);font-size:14px;">Q${index + 1}: ${escapeHTML(q.question)}</div>
+            ${optionsHtml}
+        </div>`;
+    });
+    
+    const section = document.getElementById('topic-quiz-display-section');
+    if (section) {
+        section.style.display = 'block';
+        section.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+}
+
+function submitTopicQuizAnswers() {
+    if (!currentTopicQuizData) return;
+    let score = 0;
+    const questionDivs = document.querySelectorAll('#topic-quiz-questions-container .topic-quiz-question');
+    
+    questionDivs.forEach((qDiv, index) => {
+        const correctAnswer = qDiv.dataset.answer;
+        const selected = qDiv.querySelector(`input[name="topic-q${index}"]:checked`);
+        const labels = qDiv.querySelectorAll('label');
+        labels.forEach(lbl => {
+            const val = lbl.querySelector('input')?.value;
+            if (val === correctAnswer) {
+                lbl.style.background = 'rgba(52,211,153,0.15)';
+                lbl.style.borderColor = '#34d399';
+            }
+            if (selected && val === selected.value && val !== correctAnswer) {
+                lbl.style.background = 'rgba(248,113,113,0.15)';
+                lbl.style.borderColor = '#f87171';
+            }
+        });
+        if (selected && selected.value === correctAnswer) score++;
+    });
+    
+    const total = currentTopicQuizData.length;
+    const pct = Math.round((score / total) * 100);
+    const banner = document.getElementById('topic-quiz-result-banner');
+    const passed = pct >= 60;
+    
+    if (banner) {
+        banner.style.display = 'block';
+        banner.style.background = passed ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)';
+        banner.style.border = passed ? '1px solid #34d399' : '1px solid #f87171';
+        banner.style.color = passed ? '#34d399' : '#f87171';
+        banner.innerHTML = `${passed ? '🎉' : '📖'} You scored <strong>${score}/${total}</strong> (${pct}%) — ${passed ? 'Great job!' : 'Keep studying!'}`;
+    }
+    
+    const submitBtn = document.getElementById('btn-submit-topic-quiz');
+    if (submitBtn) submitBtn.style.display = 'none';
+}
 
 // Add CSS for modal animation
 const style = document.createElement('style');

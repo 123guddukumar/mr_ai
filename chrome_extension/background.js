@@ -10,7 +10,10 @@ let state = {
   token: null,
   backendUrl: "https://test.3rdai.co",
   metaTabId: null,
-  singleAsset: null   // { assetId, mediaType, prompt, tabId, dashboardTabId }
+  singleAsset: null,   // { assetId, mediaType, prompt, tabId, dashboardTabId }
+  bgmTabId: null,
+  bgmUrl: null,
+  bgmPrompt: null
 };
 
 // Global registry for tracking native (blob) downloads triggered via click in content scripts
@@ -261,6 +264,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+  if (msg.type === "BGM_LINK_ACQUIRED") {
+    log(`BGM link acquired from Epidemic Sound: ${msg.url}`);
+    state.bgmUrl = msg.url || null;
+    const tabToRemove = state.bgmTabId;
+    state.bgmTabId = null;
+    if (tabToRemove) {
+      chrome.tabs.remove(tabToRemove).catch(() => {});
+    }
+    saveState().then(() => allDone());
+    sendResponse({ ok: true });
+    return true;
+  }
   return true;
 });
 
@@ -295,6 +310,9 @@ async function startJob(jobId) {
 
     state.scenes = data.scenes;
     state.subtopicName = data.subtopic_name || "";
+    state.bgmPrompt = data.bgm_prompt || `Upbeat cinematic background music for a short educational video about ${state.subtopicName || 'learning'}`;
+    state.bgmUrl = null;
+    state.bgmTabId = null;
     state.phase = "generating_images";
     await saveState();
     notifyPopup(`📋 ${state.scenes.length} scenes loaded. Opening Meta AI...`);
@@ -605,7 +623,10 @@ async function handleSceneCompleted() {
   await saveState();
 
   if (state.currentSceneIdx >= state.scenes.length) {
-    await allDone();
+    state.phase = "generating_bgm";
+    await saveState();
+    notifyPopup("🎬 All video scenes generated! Opening Epidemic Sound for BGM...");
+    await openEpidemicSound();
     return;
   }
 
@@ -642,7 +663,11 @@ async function allDone() {
     const res = await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/assemble`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-App-Token": state.token },
-      body: JSON.stringify({ videos: state.videosDone, images: state.imagesDone })
+      body: JSON.stringify({
+        videos: state.videosDone,
+        images: state.imagesDone,
+        bgm_url: state.bgmUrl || null
+      })
     });
     const data = await res.json();
     if (data.success) {
@@ -667,13 +692,51 @@ async function allDone() {
   }
 }
 
+// ── Open Epidemic Sound ──────────────────────────────────────────────────────
+async function openEpidemicSound() {
+  try {
+    const tab = await chrome.tabs.create({ url: "https://www.epidemicsound.com/assistant/", active: true });
+    state.bgmTabId = tab.id;
+    await saveState();
+
+    notifyPopup("🎵 Epidemic Sound opened. Waiting for page load...");
+    await waitForTabLoad(tab.id, 25000);
+    await sleep(4000); // extra buffer
+
+    const msg = {
+      type: "GENERATE_BGM",
+      bgmPrompt: state.bgmPrompt || `Upbeat background music for an educational video about ${state.subtopicName || 'learning'}`
+    };
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        const resp = await chrome.tabs.sendMessage(tab.id, msg);
+        if (resp && resp.ok) {
+          log("BGM generation instruction sent successfully to Epidemic Sound");
+          return;
+        }
+      } catch (e) { /* content script not ready yet */ }
+      notifyPopup(`⏳ Waiting for Epidemic Sound tab... (${attempt + 1}/8)`);
+      await sleep(3000);
+    }
+    
+    throw new Error("Could not contact content script after 8 attempts");
+  } catch (e) {
+    notifyPopup("⚠️ Epidemic Sound failed, skipping to assembly with default BGM", "error");
+    log(`openEpidemicSound error: ${e.message}`);
+    state.bgmUrl = null;
+    await allDone();
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function resetState() {
   state = {
     jobId: null, scenes: [], imagesDone: [], videosDone: [],
     phase: "idle", currentSceneIdx: 0,
     token: state.token, backendUrl: state.backendUrl,
-    metaTabId: null
+    metaTabId: null,
+    bgmTabId: null, bgmUrl: null, bgmPrompt: null
   };
   await saveState();
   notifyPopup("🔌 Active and waiting for dashboard...", "info");

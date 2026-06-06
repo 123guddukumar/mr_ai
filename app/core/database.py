@@ -120,6 +120,11 @@ def init_db():
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS paper_id VARCHAR(64)"))
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS color VARCHAR(50) DEFAULT '#4f46e5'"))
             conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS notes TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS script TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS video_length INTEGER"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS script TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS description TEXT"))
+            conn.execute(__import__('sqlalchemy').text("ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS notes TEXT"))
             
             conn.commit()
     except Exception:

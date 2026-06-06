@@ -186,5 +186,26 @@ curl -fsSL https://ollama.com/install.sh | sh
 # Pull a model
 ollama pull llama3
 
+
+Current Affairs:
+
+GET /classroom/current-affairs — list all CA topics
+POST /classroom/current-affairs — create a CA topic (name, optional script)
+DELETE /classroom/current-affairs/{ca_topic_id} — delete topic
+POST /classroom/current-affairs/{ca_topic_id}/upload-pdf — upload PDF/Excel
+POST /classroom/current-affairs/{ca_topic_id}/generate-reel — generate reel (calls existing video pipeline)
+GET /classroom/current-affairs/{ca_topic_id}/reels — list reels for a topic
+DELETE /classroom/current-affairs/reels/{reel_id} — delete a reel
+PYQ:
+
+GET /classroom/pyq-sets — list all PYQ sets
+POST /classroom/pyq-sets — create a new PYQ set (just a name)
+DELETE /classroom/pyq-sets/{pyq_set_id} — delete a PYQ set
+POST /classroom/pyq-sets/{pyq_set_id}/upload-pdf — upload PDF/Excel → parse questions
+GET /classroom/pyq-sets/{pyq_set_id}/questions — list questions in a set
+POST /classroom/pyq-sets/{pyq_set_id}/generate-overview — AI generates solutions & explanations for all questions
+POST /classroom/pyq-sets/{pyq_set_id}/generate-reel — generate a max-5-min overview reel
+DELETE /classroom/pyq-sets/questions/{question_id} — delete a question
+
 # Then in the UI: select Ollama, enter model name, click Apply
 ```

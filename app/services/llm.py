@@ -110,7 +110,7 @@ async def generate_answer(question: str, context: str) -> str:
 
 
 async def _call_groq(question: str, context: str) -> str:
-    """Groq API (OpenAI compatible)."""
+    """Groq API (OpenAI compatible) with automatic fallbacks for rate limits."""
     api_key = get_active_api_key("groq")
     model = get_active_model()
     if not api_key: return "Groq API Key missing."
@@ -130,8 +130,69 @@ async def _call_groq(question: str, context: str) -> str:
         )
         return resp.choices[0].message.content
     except Exception as e:
-        logger.error(f"Groq error: {e}")
-        return f"Error connecting to Groq: {str(e)}"
+        logger.error(f"Groq error: {e}. Checking for rate limits and trying fallbacks...")
+        err_msg = str(e).lower()
+        if "rate limit" in err_msg or "429" in err_msg:
+            # Try alternative Groq models first
+            alt_groq_models = ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"]
+            for alt_model in alt_groq_models:
+                if alt_model != model:
+                    try:
+                        logger.info(f"RAG Groq fallback: trying model {alt_model}")
+                        resp = await client.chat.completions.create(
+                            model=alt_model,
+                            messages=[
+                                {"role": "system", "content": settings.SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=settings.OPENAI_MAX_TOKENS,
+                            temperature=settings.OPENAI_TEMPERATURE
+                        )
+                        return resp.choices[0].message.content
+                    except Exception as alt_err:
+                        logger.warning(f"RAG Groq fallback {alt_model} failed: {alt_err}")
+            
+            # Try Google Gemini fallback
+            gemini_key = settings.GEMINI_API_KEY
+            if gemini_key:
+                try:
+                    gemini_model = settings.GEMINI_MODEL or "gemini-2.5-flash"
+                    logger.info(f"RAG Gemini fallback: trying model {gemini_model}")
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+                    payload = {
+                        "system_instruction": {"parts": [{"text": settings.SYSTEM_PROMPT}]},
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}
+                    }
+                    async with httpx.AsyncClient(timeout=60.0) as cl:
+                        response = await cl.post(url, json=payload)
+                        response.raise_for_status()
+                        return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                except Exception as gemini_err:
+                    logger.warning(f"RAG Gemini fallback failed: {gemini_err}")
+            
+            # Try OpenAI fallback
+            openai_key = settings.OPENAI_API_KEY
+            if openai_key:
+                try:
+                    openai_model = settings.OPENAI_MODEL or "gpt-4o-mini"
+                    logger.info(f"RAG OpenAI fallback: trying model {openai_model}")
+                    from openai import AsyncOpenAI as AsyncOpenAIClient
+                    openai_client = AsyncOpenAIClient(api_key=openai_key)
+                    resp = await openai_client.chat.completions.create(
+                        model=openai_model,
+                        messages=[
+                            {"role": "system", "content": settings.SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=settings.OPENAI_MAX_TOKENS,
+                        temperature=settings.OPENAI_TEMPERATURE,
+                    )
+                    return resp.choices[0].message.content.strip()
+                except Exception as openai_err:
+                    logger.warning(f"RAG OpenAI fallback failed: {openai_err}")
+                    
+        return f"Error connecting to Groq (429 Rate Limit): {str(e)}"
 
 
 async def generate_answer_with_config(
@@ -234,27 +295,171 @@ async def generate_answer_with_config(
 
 
 async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.") -> str:
-    """Generates a response without RAG boilerplate."""
+    """Generates a response without RAG boilerplate, with automatic rate limit fallbacks."""
     provider = get_active_provider()
     model = get_active_model()
     api_key = get_active_api_key(provider)
     
-    if provider == "groq":
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
-        resp = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1024,
-            temperature=0.7
-        )
-        return resp.choices[0].message.content.strip()
-    
-    # Fallback to general generate_answer but with no context
-    return await generate_answer(prompt, "")
+    try:
+        if provider == "groq":
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+            resp = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=4096,
+                temperature=0.7
+            )
+            return resp.choices[0].message.content.strip()
+        
+        elif provider == "openai":
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=api_key)
+            resp = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=4096,
+                temperature=0.7
+            )
+            return resp.choices[0].message.content.strip()
+            
+        elif provider == "gemini":
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "system_instruction": {"parts": [{"text": system_prompt}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096}
+            }
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                
+        elif provider == "claude":
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+            payload = {
+                "model": model,
+                "max_tokens": 4096,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7
+            }
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return data["content"][0]["text"].strip()
+                
+        elif provider == "ollama":
+            base_url = _runtime.get("ollama_url") or settings.OLLAMA_BASE_URL
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                "stream": False,
+                "options": {"temperature": 0.7}
+            }
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(f"{base_url}/api/chat", json=payload)
+                response.raise_for_status()
+                return response.json()["message"]["content"].strip()
+                
+        elif provider == "huggingface":
+            full_prompt = f"<s>[INST] {system_prompt}\n\n{prompt} [/INST]"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            payload = {"inputs": full_prompt, "parameters": {"max_new_tokens": 1024, "temperature": 0.7, "return_full_text": False}}
+            url = f"https://api-inference.huggingface.co/models/{model}"
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                return response.json()[0]["generated_text"].strip()
+
+        # Fallback to general generate_answer but with no context
+        return await generate_answer(prompt, "")
+
+    except Exception as primary_exc:
+        # Rate limit or API error fallback layer
+        err_msg = str(primary_exc).lower()
+        logger.warning(f"Primary LLM generation failed ({provider}/{model}): {primary_exc}. Running fallbacks...")
+        
+        # --- Fallback 1: Try alternative Groq models
+        if provider == "groq" or "groq" in err_msg:
+            alt_groq_models = ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"]
+            for alt_model in alt_groq_models:
+                if alt_model != model:
+                    try:
+                        logger.info(f"Fallback: trying Groq model {alt_model}")
+                        from openai import AsyncOpenAI
+                        client = AsyncOpenAI(api_key=get_active_api_key("groq"), base_url="https://api.groq.com/openai/v1")
+                        resp = await client.chat.completions.create(
+                            model=alt_model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=4096,
+                            temperature=0.7
+                        )
+                        return resp.choices[0].message.content.strip()
+                    except Exception as alt_err:
+                        logger.warning(f"Fallback Groq model {alt_model} failed: {alt_err}")
+                        
+        # --- Fallback 2: Try Google Gemini
+        gemini_key = settings.GEMINI_API_KEY
+        if gemini_key:
+            try:
+                gemini_model = settings.GEMINI_MODEL or "gemini-2.5-flash"
+                logger.info(f"Fallback: trying Gemini model {gemini_model}")
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+                payload = {
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096}
+                }
+                async with httpx.AsyncClient(timeout=60.0) as cl:
+                    response = await cl.post(url, json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            except Exception as gemini_err:
+                logger.warning(f"Fallback Gemini failed: {gemini_err}")
+                
+        # --- Fallback 3: Try OpenAI
+        openai_key = settings.OPENAI_API_KEY
+        if openai_key:
+            try:
+                openai_model = settings.OPENAI_MODEL or "gpt-4o-mini"
+                logger.info(f"Fallback: trying OpenAI model {openai_model}")
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=openai_key)
+                resp = await client.chat.completions.create(
+                    model=openai_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=4096,
+                    temperature=0.7
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as openai_err:
+                logger.warning(f"Fallback OpenAI failed: {openai_err}")
+                
+        # Raise the original error if all fallbacks failed
+        raise primary_exc
 
 # ── OpenAI ────────────────────────────────────────────────────────────────────
 

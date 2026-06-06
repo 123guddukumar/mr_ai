@@ -675,6 +675,10 @@ class TopicClassroom(Base):
     topic_id = Column(String(64), unique=True, index=True, nullable=False)
     chapter_id = Column(String(64), ForeignKey("classroom_chapters.chapter_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
+    video_length = Column(Integer, nullable=True)
+    script = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     chapter = relationship("ChapterClassroom", back_populates="topics")
@@ -685,6 +689,10 @@ class TopicClassroom(Base):
             "topic_id": self.topic_id,
             "chapter_id": self.chapter_id,
             "name": self.name,
+            "video_length": self.video_length,
+            "script": self.script,
+            "description": self.description or "",
+            "notes": self.notes or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -696,6 +704,7 @@ class SubtopicClassroom(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    script = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     topic = relationship("TopicClassroom", back_populates="subtopics")
@@ -707,6 +716,120 @@ class SubtopicClassroom(Base):
             "name": self.name,
             "description": self.description or "",
             "notes": self.notes or "",
+            "script": self.script or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+# ── Current Affairs Models ────────────────────────────────────────────────────
+
+class CurrentAffairTopic(Base):
+    """A Current Affairs topic with optional PDF/Excel upload and reel generation."""
+    __tablename__ = "ca_topics"
+    id = Column(Integer, primary_key=True, index=True)
+    ca_topic_id = Column(String(64), unique=True, index=True, nullable=False)
+    client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    script = Column(Text, nullable=True)           # Optional user-provided script
+    pdf_filename = Column(String(500), nullable=True)  # Original uploaded file name
+    pdf_path = Column(String(1000), nullable=True)     # Server-side file path
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    reels = relationship("CurrentAffairReel", back_populates="topic", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "ca_topic_id": self.ca_topic_id,
+            "client_id": self.client_id,
+            "name": self.name,
+            "script": self.script or "",
+            "pdf_filename": self.pdf_filename or "",
+            "pdf_path": self.pdf_path or "",
+            "reel_count": len(self.reels) if self.reels else 0,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class CurrentAffairReel(Base):
+    """A generated reel linked to a Current Affairs topic."""
+    __tablename__ = "ca_reels"
+    id = Column(Integer, primary_key=True, index=True)
+    reel_id = Column(String(64), unique=True, index=True, nullable=False)
+    ca_topic_id = Column(String(64), ForeignKey("ca_topics.ca_topic_id", ondelete="CASCADE"), nullable=False, index=True)
+    client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    media_url = Column(Text, nullable=True)        # URL or local path to the video
+    script = Column(Text, nullable=True)           # Script used for generation
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    topic = relationship("CurrentAffairTopic", back_populates="reels")
+
+    def to_dict(self):
+        return {
+            "reel_id": self.reel_id,
+            "ca_topic_id": self.ca_topic_id,
+            "client_id": self.client_id,
+            "media_url": self.media_url or "",
+            "script": self.script or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+# ── PYQ (Previous Year Questions) Models ─────────────────────────────────────
+
+class PYQSet(Base):
+    """A named collection of Previous Year Questions, e.g. 'BPSC 72'."""
+    __tablename__ = "pyq_sets"
+    id = Column(Integer, primary_key=True, index=True)
+    pyq_set_id = Column(String(64), unique=True, index=True, nullable=False)
+    client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)     # e.g. "BPSC 72", "BPSC 62"
+    overview_generated = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    questions = relationship("PYQQuestion", back_populates="pyq_set", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "pyq_set_id": self.pyq_set_id,
+            "client_id": self.client_id,
+            "name": self.name,
+            "question_count": len(self.questions) if self.questions else 0,
+            "overview_generated": self.overview_generated,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class PYQQuestion(Base):
+    """An individual question inside a PYQ set."""
+    __tablename__ = "pyq_questions"
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(String(64), unique=True, index=True, nullable=False)
+    pyq_set_id = Column(String(64), ForeignKey("pyq_sets.pyq_set_id", ondelete="CASCADE"), nullable=False, index=True)
+    question_text = Column(Text, nullable=False)
+    options_json = Column(Text, nullable=True)     # JSON array of answer options
+    correct_answer = Column(Text, nullable=True)   # Correct option text or key
+    explanation = Column(Text, nullable=True)      # AI-generated solution explanation
+    pdf_filename = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    pyq_set = relationship("PYQSet", back_populates="questions")
+
+    @property
+    def options(self):
+        try:
+            return json.loads(self.options_json or "[]")
+        except Exception:
+            return []
+
+    def to_dict(self):
+        return {
+            "question_id": self.question_id,
+            "pyq_set_id": self.pyq_set_id,
+            "question_text": self.question_text,
+            "options": self.options,
+            "correct_answer": self.correct_answer or "",
+            "explanation": self.explanation or "",
+            "pdf_filename": self.pdf_filename or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 

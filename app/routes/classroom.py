@@ -2326,6 +2326,54 @@ async def delete_ca_reel(reel_id: str, client: dict = Depends(_require_client), 
     return {"success": True, "message": "Reel deleted"}
 
 
+@router.get("/classroom/pyq-sets/{pyq_set_id}/reels", tags=["Classroom PYQ"])
+async def list_pyq_reels(pyq_set_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """List all extension reels generated for a PYQ set (stored in SocialContent with pyq_set_id in metadata)."""
+    from app.core.models import SocialContent
+    import json as _json
+    pyq_set = db.query(PYQSet).filter(
+        PYQSet.pyq_set_id == pyq_set_id,
+        PYQSet.client_id == client["client_id"]
+    ).first()
+    if not pyq_set:
+        raise HTTPException(404, "PYQ set not found")
+    # Fetch all reels for this client that are type reel
+    all_reels = db.query(SocialContent).filter(
+        SocialContent.client_id == client["client_id"],
+        SocialContent.content_type == "reel"
+    ).order_by(SocialContent.created_at.desc()).all()
+    # Filter by pyq_set_id in metadata_json
+    pyq_reels = []
+    for r in all_reels:
+        try:
+            meta = _json.loads(r.metadata_json or "{}")
+            if meta.get("pyq_set_id") == pyq_set_id:
+                pyq_reels.append({
+                    "reel_id": r.content_id,
+                    "title": r.title,
+                    "media_url": r.media_url,
+                    "created_at": r.created_at.isoformat() if r.created_at else None
+                })
+        except Exception:
+            pass
+    return {"success": True, "reels": pyq_reels}
+
+
+@router.delete("/classroom/pyq-sets/reels/{reel_id}", tags=["Classroom PYQ"])
+async def delete_pyq_reel(reel_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    """Delete a specific PYQ reel (SocialContent record)."""
+    from app.core.models import SocialContent
+    reel = db.query(SocialContent).filter(
+        SocialContent.content_id == reel_id,
+        SocialContent.client_id == client["client_id"]
+    ).first()
+    if not reel:
+        raise HTTPException(404, "Reel not found")
+    db.delete(reel)
+    db.commit()
+    return {"success": True, "message": "Reel deleted"}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ── PYQ (PREVIOUS YEAR QUESTIONS) SECTION ─────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2983,49 +3031,3 @@ Do NOT add any markdown headers or extra text. Only output the scene blocks."""
         "script": structured_script,
         "questions_covered": min(len(questions), 15)
     }
-
-
-@router.get("/classroom/pyq-sets/{pyq_set_id}/reels", tags=["Classroom PYQ"])
-async def list_pyq_reels(pyq_set_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    """List all extension reels generated for a PYQ set (stored in SocialContent with pyq_set_id in metadata)."""
-    from app.core.models import SocialContent
-    import json as _json
-    pyq_set = db.query(PYQSet).filter(
-        PYQSet.pyq_set_id == pyq_set_id,
-        PYQSet.client_id == client["client_id"]
-    ).first()
-    if not pyq_set:
-        raise HTTPException(404, "PYQ set not found")
-    all_reels = db.query(SocialContent).filter(
-        SocialContent.client_id == client["client_id"],
-        SocialContent.content_type == "reel"
-    ).order_by(SocialContent.created_at.desc()).all()
-    pyq_reels = []
-    for r in all_reels:
-        try:
-            meta = _json.loads(r.metadata_json or "{}")
-            if meta.get("pyq_set_id") == pyq_set_id:
-                pyq_reels.append({
-                    "reel_id": r.content_id,
-                    "title": r.title,
-                    "media_url": r.media_url,
-                    "created_at": r.created_at.isoformat() if r.created_at else None
-                })
-        except Exception:
-            pass
-    return {"success": True, "reels": pyq_reels}
-
-
-@router.delete("/classroom/pyq-sets/reels/{reel_id}", tags=["Classroom PYQ"])
-async def delete_pyq_reel(reel_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    """Delete a specific PYQ reel (SocialContent record)."""
-    from app.core.models import SocialContent
-    reel = db.query(SocialContent).filter(
-        SocialContent.content_id == reel_id,
-        SocialContent.client_id == client["client_id"]
-    ).first()
-    if not reel:
-        raise HTTPException(404, "Reel not found")
-    db.delete(reel)
-    db.commit()
-    return {"success": True, "message": "Reel deleted"}

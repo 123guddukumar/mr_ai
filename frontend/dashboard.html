@@ -11418,24 +11418,35 @@ async function loadPYQReels(setId) {
     const empty = document.getElementById('pyq-reels-empty');
     if (!grid || !setId) return;
     grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Loading reels...</div>';
-    empty.style.display = 'none';
+    if (empty) empty.style.display = 'none';
     try {
         const resp = await fetch(`/api/classroom/pyq-sets/${setId}/reels`, {
             headers: { 'X-App-Token': session.token }
         });
-        const res = await resp.json();
-        if (resp.ok) {
+        let res = null;
+        try { res = await resp.json(); } catch(jsonErr) {
+            // Server returned non-JSON (e.g. HTML 404 page — server not restarted after deploy)
+            grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">
+                Server error (HTTP ${resp.status}). The server may need to be restarted to load the new endpoint.
+                <br><small style="color:var(--text3)">Tip: Restart the backend server on EC2 and try again.</small>
+            </div>`;
+            return;
+        }
+        if (resp.ok && res) {
             const reels = res.reels || [];
             if (reels.length === 0) {
                 grid.innerHTML = '';
-                empty.style.display = 'block';
+                if (empty) empty.style.display = 'block';
             } else {
                 grid.innerHTML = reels.map(r => renderPYQReelCard(r)).join('');
             }
         } else {
-            grid.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;">Failed to load reels.</div>';
+            grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">Failed to load reels (${resp.status}): ${res?.detail || 'Unknown error'}</div>`;
         }
-    } catch(e) { grid.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;">Error loading reels</div>'; }
+    } catch(e) {
+        console.error('loadPYQReels error:', e);
+        grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">Network error: ${e.message}</div>`;
+    }
 }
 
 function renderPYQReelCard(r) {

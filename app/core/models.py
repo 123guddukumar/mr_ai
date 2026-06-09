@@ -628,6 +628,7 @@ class Subject(Base):
     paper_id = Column(String(64), ForeignKey("classroom_papers.paper_id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     color = Column(String(50), nullable=True, default="#4f46e5")
+    image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     exam = relationship("Exam", back_populates="subjects", foreign_keys=[exam_id])
@@ -644,6 +645,7 @@ class Subject(Base):
             "paper_id": self.paper_id or "",
             "name": self.name,
             "color": self.color or "#4f46e5",
+            "image_url": self.image_url or "",
             "chapter_count": chapter_count,
             "topic_count": topic_count,
             "subtopic_count": subtopic_count,
@@ -656,6 +658,7 @@ class ChapterClassroom(Base):
     chapter_id = Column(String(64), unique=True, index=True, nullable=False)
     subject_id = Column(String(64), ForeignKey("subjects.subject_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
+    image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     subject = relationship("Subject", back_populates="chapters")
@@ -666,8 +669,10 @@ class ChapterClassroom(Base):
             "chapter_id": self.chapter_id,
             "subject_id": self.subject_id,
             "name": self.name,
+            "image_url": self.image_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
+
 
 class TopicClassroom(Base):
     __tablename__ = "classroom_topics"
@@ -733,6 +738,7 @@ class CurrentAffairTopic(Base):
     script = Column(Text, nullable=True)           # Optional user-provided script
     pdf_filename = Column(String(500), nullable=True)  # Original uploaded file name
     pdf_path = Column(String(1000), nullable=True)     # Server-side file path
+    image_url = Column(String(500), nullable=True)     # Cover image
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     reels = relationship("CurrentAffairReel", back_populates="topic", cascade="all, delete-orphan")
@@ -745,6 +751,7 @@ class CurrentAffairTopic(Base):
             "script": self.script or "",
             "pdf_filename": self.pdf_filename or "",
             "pdf_path": self.pdf_path or "",
+            "image_url": self.image_url or "",
             "reel_count": len(self.reels) if self.reels else 0,
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }

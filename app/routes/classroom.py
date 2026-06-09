@@ -307,9 +307,248 @@ class CreatePaperReq(BaseModel):
 class CreateSubjectReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     color: Optional[str] = "#4f46e5"
+    image_url: Optional[str] = ""
 
 class CreateChapterReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    image_url: Optional[str] = ""
+
+class GenerateImageReq(BaseModel):
+    name: str = Field(..., min_length=1, max_length=500)
+    type: str  # "subject" or "chapter"
+    context: Optional[str] = ""
+
+def fetch_wikimedia_image_url(keyword: str) -> Optional[str]:
+    import httpx
+    import urllib.parse
+    headers = {"User-Agent": "ClassroomImageGen/1.0 (admin@mr-ai.com)"}
+    try:
+        cleaned = urllib.parse.quote(keyword.replace("/", " "))
+        url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch={cleaned}&gsrlimit=10&prop=imageinfo&iiprop=url&format=json"
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                pages = data.get("query", {}).get("pages", {})
+                for page_id, page_info in pages.items():
+                    image_info = page_info.get("imageinfo", [])
+                    if image_info:
+                        img_url = image_info[0].get("url", "")
+                        lower_url = img_url.lower()
+                        if lower_url.endswith((".jpg", ".jpeg", ".png")):
+                            return img_url
+    except Exception as e:
+        logger.warning(f"Error searching Wikimedia for keyword '{keyword}': {e}")
+    return None
+
+def generate_premium_image_locally(title: str, subtitle: str = "Subject") -> str:
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
+    import os
+    import secrets
+    import httpx
+    
+    w, h = 512, 512
+    img = None
+    headers = {"User-Agent": "ClassroomImageGen/1.0 (admin@mr-ai.com)"}
+    
+    # 1. Search Wikimedia Commons for a relevant illustration matching the title
+    wikimedia_url = fetch_wikimedia_image_url(title)
+    if wikimedia_url:
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.get(wikimedia_url, headers=headers)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    from io import BytesIO
+                    raw_img = Image.open(BytesIO(resp.content))
+                    # Crop and fit image centered
+                    img = ImageOps.fit(raw_img, (w, h)).convert("RGB")
+        except Exception as e:
+            logger.warning(f"Failed to load Wikimedia image '{wikimedia_url}': {e}")
+            
+    # 2. Fallback to royal linear gradient background if download failed or no match found
+    if img is None:
+        img = Image.new("RGB", (w, h), "#0b192c")
+        draw = ImageDraw.Draw(img)
+        for y in range(h):
+            r = int(11 + (30 - 11) * (y / h))
+            g = int(25 + (62 - 25) * (y / h))
+            b = int(44 + (98 - 44) * (y / h))
+            draw.line([(0, y), (w, y)], fill=(r, g, b))
+    else:
+        # Create a beautiful dark blue transparent glassmorphic overlay for contrast
+        overlay = Image.new("RGBA", (w, h), (11, 25, 44, 175)) # Navy overlay (approx 68% opacity)
+        img.paste(overlay, (0, 0), overlay)
+        
+    draw = ImageDraw.Draw(img)
+    border_color = "#D4AF37"  # Gold
+    
+    # Outer elegant frame
+    draw.rectangle([(20, 20), (w - 20, h - 20)], outline=border_color, width=3)
+    draw.rectangle([(26, 26), (w - 26, h - 26)], outline=border_color, width=1)
+    
+    # Corner ornaments
+    draw.line([(12, 32), (42, 32)], fill=border_color, width=2)
+    draw.line([(32, 12), (32, 42)], fill=border_color, width=2)
+    
+    draw.line([(w - 42, 32), (w - 12, 32)], fill=border_color, width=2)
+    draw.line([(w - 32, 12), (w - 32, 42)], fill=border_color, width=2)
+    
+    draw.line([(12, h - 32), (42, h - 32)], fill=border_color, width=2)
+    draw.line([(32, h - 42), (32, h - 12)], fill=border_color, width=2)
+    
+    draw.line([(w - 42, h - 32), (w - 12, h - 32)], fill=border_color, width=2)
+    draw.line([(w - 32, h - 42), (w - 32, h - 12)], fill=border_color, width=2)
+    
+    # Font path
+    font_path = "C:\\Windows\\Fonts\\georgiab.ttf"
+    if not os.path.exists(font_path):
+        font_path = "C:\\Windows\\Fonts\\timesbd.ttf"
+    if not os.path.exists(font_path):
+        font_path = "C:\\Windows\\Fonts\\arial.ttf"
+        
+    try:
+        title_font = ImageFont.truetype(font_path, 34)
+        sub_font = ImageFont.truetype(font_path, 18)
+    except Exception:
+        title_font = ImageFont.load_default()
+        sub_font = ImageFont.load_default()
+        
+    # Central geometric medallion outline
+    draw.ellipse([(w//2 - 90, h//2 - 120), (w//2 + 90, h//2 + 60)], outline=border_color, width=2)
+    
+    # Center coordinates of the medallion
+    cx, cy = w // 2, h // 2 - 30
+    title_lower = title.lower()
+    
+    # Draw keyword-specific gold vector icons
+    if any(k in title_lower for k in ["history", "itihas", "ancient", "medieval", "modern", "war", "struggle", "movement", "period", "empire"]):
+        draw.line([(cx, cy - 25), (cx, cy + 25)], fill=border_color, width=2) # Spine
+        draw.polygon([(cx, cy - 25), (cx - 35, cy - 20), (cx - 35, cy + 20), (cx, cy + 25)], outline=border_color, width=2) # Left
+        draw.polygon([(cx, cy - 25), (cx + 35, cy - 20), (cx + 35, cy + 20), (cx, cy + 25)], outline=border_color, width=2) # Right
+        draw.line([(cx - 28, cy - 10), (cx - 8, cy - 7)], fill=border_color, width=1)
+        draw.line([(cx - 28, cy), (cx - 8, cy + 3)], fill=border_color, width=1)
+        draw.line([(cx - 28, cy + 10), (cx - 8, cy + 13)], fill=border_color, width=1)
+        draw.line([(cx + 8, cy - 7), (cx + 28, cy - 10)], fill=border_color, width=1)
+        draw.line([(cx + 8, cy + 3), (cx + 28, cy)], fill=border_color, width=1)
+        draw.line([(cx + 8, cy + 13), (cx + 28, cy + 10)], fill=border_color, width=1)
+        
+    elif any(k in title_lower for k in ["geography", "bhugol", "climate", "resource", "earth", "settlement", "map", "space", "astronomy", "physical", "atmosphere"]):
+        r = 30
+        draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], outline=border_color, width=2)
+        draw.line([(cx - r, cy), (cx + r, cy)], fill=border_color, width=1)
+        draw.line([(cx, cy - r), (cx, cy + r)], fill=border_color, width=1)
+        draw.ellipse([(cx - r, cy - r//2), (cx + r, cy + r//2)], outline=border_color, width=1)
+        draw.ellipse([(cx - r//2, cy - r), (cx + r//2, cy + r)], outline=border_color, width=1)
+        
+    elif any(k in title_lower for k in ["polity", "constitution", "samvidhan", "law", "government", "parliament", "executive", "judiciary", "rights", "bodies", "institutions", "citizenship"]):
+        draw.line([(cx, cy - 25), (cx, cy + 25)], fill=border_color, width=3)
+        draw.line([(cx - 15, cy + 25), (cx + 15, cy + 25)], fill=border_color, width=3)
+        draw.line([(cx - 35, cy - 15), (cx + 35, cy - 15)], fill=border_color, width=3)
+        draw.line([(cx - 30, cy - 15), (cx - 40, cy + 5)], fill=border_color, width=1)
+        draw.line([(cx - 30, cy - 15), (cx - 20, cy + 5)], fill=border_color, width=1)
+        draw.arc([(cx - 40, cy + 3), (cx - 20, cy + 23)], start=0, end=180, fill=border_color, width=2)
+        draw.line([(cx - 40, cy + 13), (cx - 20, cy + 13)], fill=border_color, width=2)
+        draw.line([(cx + 30, cy - 15), (cx + 20, cy + 5)], fill=border_color, width=1)
+        draw.line([(cx + 30, cy - 15), (cx + 40, cy + 5)], fill=border_color, width=1)
+        draw.arc([(cx + 20, cy + 3), (cx + 40, cy + 23)], start=0, end=180, fill=border_color, width=2)
+        draw.line([(cx + 20, cy + 13), (cx + 40, cy + 13)], fill=border_color, width=2)
+        
+    elif any(k in title_lower for k in ["economy", "arthvyavastha", "economics", "budget", "finance", "fiscal", "money", "trade", "banking", "planning", "unemployment", "poverty"]):
+        draw.line([(cx - 25, cy - 25), (cx - 25, cy + 25)], fill=border_color, width=2)
+        draw.line([(cx - 25, cy + 25), (cx + 25, cy + 25)], fill=border_color, width=2)
+        draw.line([(cx - 20, cy + 20), (cx - 8, cy + 8), (cx, cy + 14), (cx + 20, cy - 18)], fill=border_color, width=3)
+        draw.polygon([(cx + 20, cy - 18), (cx + 10, cy - 18), (cx + 20, cy - 8)], fill=border_color)
+        
+    elif any(k in title_lower for k in ["science", "physics", "chemistry", "biology", "vigyan", "measurement", "motion", "force", "energy", "body", "health", "ecology", "environment", "plant", "animal", "genetics"]):
+        draw.ellipse([(cx - 8, cy - 8), (cx + 8, cy + 8)], fill=border_color)
+        draw.ellipse([(cx - 30, cy - 12), (cx + 30, cy + 12)], outline=border_color, width=2)
+        draw.ellipse([(cx - 12, cy - 30), (cx + 12, cy + 30)], outline=border_color, width=2)
+        
+    elif any(k in title_lower for k in ["math", "mathematics", "ganit", "quantitative", "quant", "aptitude", "reasoning", "puzzle", "series", "matrix", "cube", "dice", "coding", "decoding", "relations"]):
+        draw.polygon([(cx, cy - 25), (cx - 25, cy + 20), (cx + 25, cy + 20)], outline=border_color, width=2)
+        draw.ellipse([(cx - 12, cy - 4), (cx + 12, cy + 18)], outline=border_color, width=2)
+        
+    else:
+        draw.line([(cx, cy - 20), (cx, cy + 20)], fill=border_color, width=2)
+        draw.polygon([(cx, cy - 20), (cx - 25, cy - 15), (cx - 25, cy + 15), (cx, cy + 20)], outline=border_color, width=2)
+        draw.polygon([(cx, cy - 20), (cx + 25, cy - 15), (cx + 25, cy + 15), (cx, cy + 20)], outline=border_color, width=2)
+        
+    # Decorative diamond cluster
+    for dx in [-24, 0, 24]:
+        dcx = w // 2 + dx
+        dcy = h // 2 - 90
+        draw.polygon([(dcx, dcy - 5), (dcx + 5, dcy), (dcx, dcy + 5), (dcx - 5, dcy)], fill=border_color)
+    
+    # Text wrapping
+    words = title.split()
+    lines = []
+    current_line = []
+    for word in words:
+        current_line.append(word)
+        try:
+            line_str = " ".join(current_line)
+            bbox = draw.textbbox((0, 0), line_str, font=title_font)
+            line_w = bbox[2] - bbox[0]
+            if line_w > w - 120:
+                current_line.pop()
+                lines.append(" ".join(current_line))
+                current_line = [word]
+        except Exception:
+            if len(current_line) > 3:
+                current_line.pop()
+                lines.append(" ".join(current_line))
+                current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+        
+    start_y = h // 2 - 10
+    line_height = 42
+    for i, line in enumerate(lines):
+        y_pos = start_y + (i - len(lines)/2) * line_height
+        # Draw shadow
+        draw.text((w//2 + 2, y_pos + 2), line, fill="#040811", font=title_font, anchor="mm")
+        # Draw text
+        draw.text((w//2, y_pos), line, fill="#FFFFFF", font=title_font, anchor="mm")
+        
+    # Subtitle banner
+    draw.text((w//2, h//2 + 110), subtitle.upper(), fill=border_color, font=sub_font, anchor="mm")
+    
+    filename = f"classroom_{secrets.token_hex(8)}.jpg"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "images")
+    os.makedirs(uploads_dir, exist_ok=True)
+    filepath = os.path.join(uploads_dir, filename)
+    img.save(filepath, "JPEG", quality=92)
+    return f"/uploads/images/{filename}"
+
+
+
+def download_and_save_image(image_url: str, fallback_keyword: str = None, subtitle: str = "Subject") -> str:
+    import httpx
+    try:
+        filename = f"classroom_{secrets.token_hex(8)}.jpg"
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "images")
+        os.makedirs(uploads_dir, exist_ok=True)
+        filepath = os.path.join(uploads_dir, filename)
+        
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(image_url)
+            if resp.status_code == 200 and len(resp.content) > 1000:  # Avoid error HTML/JSON responses
+                with open(filepath, "wb") as f:
+                    f.write(resp.content)
+                return f"/uploads/images/{filename}"
+    except Exception as e:
+        logger.warning(f"Error downloading image locally: {e}")
+        
+    # Fallback to local premium generation if Pollinations fails
+    if fallback_keyword:
+        try:
+            return generate_premium_image_locally(fallback_keyword, subtitle)
+        except Exception as ex:
+            logger.error(f"Local premium image generation failed: {ex}")
+            
+    return image_url
+
+
 
 class CreateTopicReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -463,6 +702,13 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
     paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
     if not paper:
         raise HTTPException(404, "Paper not found or access denied")
+    
+    image_url = req.image_url
+    if not image_url:
+        image_url = generate_premium_image_locally(req.name, subtitle="Subject")
+    elif image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
     subject_id = "subject-" + secrets.token_hex(8)
     subject = Subject(
         subject_id=subject_id,
@@ -470,6 +716,7 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
         exam_id=paper.exam_id,
         name=req.name,
         color=req.color,
+        image_url=image_url,
         created_at=datetime.utcnow()
     )
     db.add(subject)
@@ -483,8 +730,14 @@ async def update_subject(subject_id: str, req: CreateSubjectReq, client: dict = 
     subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
     if not subject:
         raise HTTPException(404, "Subject not found or access denied")
+    
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
     subject.name = req.name
     subject.color = req.color
+    subject.image_url = image_url
     db.commit()
     db.refresh(subject)
     return {"success": True, "subject": subject.to_dict()}
@@ -500,6 +753,18 @@ async def delete_subject(subject_id: str, client: dict = Depends(_require_client
     return {"success": True, "message": "Subject deleted"}
 
 
+@router.post("/classroom/generate-image", tags=["Classroom"])
+async def generate_classroom_image(req: GenerateImageReq, client: dict = Depends(_require_client)):
+    if req.type == "subject":
+        subtitle = "Subject"
+    elif req.type == "current_affair":
+        subtitle = "Current Affair"
+    else:
+        subtitle = "Chapter"
+    local_url = generate_premium_image_locally(req.name, subtitle=subtitle)
+    return {"success": True, "image_url": local_url}
+
+
 # ── Chapter Endpoints ─────────────────────────────────────────────────────────
 
 @router.post("/classroom/subjects/{subject_id}/chapters", tags=["Classroom"])
@@ -507,11 +772,19 @@ async def create_chapter(subject_id: str, req: CreateChapterReq, client: dict = 
     subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
     if not subject:
         raise HTTPException(404, "Subject not found or access denied")
+        
+    image_url = req.image_url
+    if not image_url:
+        image_url = generate_premium_image_locally(req.name, subtitle="Chapter")
+    elif image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
     chapter_id = "chapter-" + secrets.token_hex(8)
     chapter = ChapterClassroom(
         chapter_id=chapter_id,
         subject_id=subject_id,
         name=req.name,
+        image_url=image_url,
         created_at=datetime.utcnow()
     )
     db.add(chapter)
@@ -525,7 +798,13 @@ async def update_chapter(chapter_id: str, req: CreateChapterReq, client: dict = 
     chapter = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == chapter_id, Exam.client_id == client["client_id"]).first()
     if not chapter:
         raise HTTPException(404, "Chapter not found or access denied")
+    
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
     chapter.name = req.name
+    chapter.image_url = image_url
     db.commit()
     db.refresh(chapter)
     return {"success": True, "chapter": chapter.to_dict()}
@@ -2079,10 +2358,12 @@ async def upload_subject_index(
 class CreateCATopicReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     script: Optional[str] = None
+    image_url: Optional[str] = ""
 
 class UpdateCATopicReq(BaseModel):
     name: Optional[str] = None
     script: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 @router.get("/classroom/current-affairs", tags=["Classroom CA"])
@@ -2097,12 +2378,19 @@ async def list_ca_topics(client: dict = Depends(_require_client), db: Session = 
 @router.post("/classroom/current-affairs", tags=["Classroom CA"])
 async def create_ca_topic(req: CreateCATopicReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     """Create a new Current Affairs topic."""
+    image_url = req.image_url
+    if not image_url:
+        image_url = generate_premium_image_locally(req.name, subtitle="Current Affair")
+    elif image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+
     ca_topic_id = "ca-" + secrets.token_hex(8)
     topic = CurrentAffairTopic(
         ca_topic_id=ca_topic_id,
         client_id=client["client_id"],
         name=req.name,
         script=req.script,
+        image_url=image_url,
         created_at=datetime.utcnow()
     )
     db.add(topic)
@@ -2122,8 +2410,16 @@ async def update_ca_topic(ca_topic_id: str, req: UpdateCATopicReq, client: dict 
         raise HTTPException(404, "Topic not found")
     if req.name is not None:
         topic.name = req.name
+        # Automatically update/regenerate the cover image to match the new name
+        topic.image_url = generate_premium_image_locally(req.name, subtitle="Current Affair")
     if req.script is not None:
         topic.script = req.script
+    if req.image_url is not None:
+        image_url = req.image_url
+        if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+            image_url = download_and_save_image(image_url, fallback_keyword=topic.name)
+        topic.image_url = image_url
+        
     db.commit()
     db.refresh(topic)
     return {"success": True, "topic": topic.to_dict()}

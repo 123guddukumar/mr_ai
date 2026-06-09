@@ -73,6 +73,7 @@ Get all subjects related to a specific exam paper.
         "paper_id": "paper-83cfd10f",
         "name": "Physics",
         "color": "#ff5722",
+        "image_url": "/uploads/images/classroom_502e96e8d429ef45.jpg",
         "chapter_count": 12,
         "topic_count": 48,
         "subtopic_count": 142,
@@ -95,6 +96,7 @@ Get all chapters matching a given subject.
         "chapter_id": "chapter-de88f01b",
         "subject_id": "subject-ab45f210",
         "name": "Kinematics",
+        "image_url": "/uploads/images/classroom_f14d0fd9fdab230f.jpg",
         "created_at": "2026-06-01T12:15:00"
       }
     ]
@@ -346,6 +348,46 @@ Build or modify your classroom curriculum tree using standard JSON REST requests
     "description": "Updated detail notes..."
   }
   ```
+
+---
+
+### 5. Subject & Chapter Cover Image Generation
+
+#### Generate Subject/Chapter Cover Image
+Generates a premium, local textbook-style cover image featuring a topic-relevant background (sourced from Wikimedia Commons based on the title) and the title text overlaid on top.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/classroom/generate-image`
+* **JSON Request Body:**
+  ```json
+  {
+    "name": "History of India",
+    "type": "subject", // "subject" or "chapter"
+    "context": "Paper 1" // Optional context string (e.g. Paper name or Subject name)
+  }
+  ```
+* **Response Example:**
+  ```json
+  {
+    "success": true,
+    "image_url": "/uploads/images/classroom_502e96e8d429ef45.jpg"
+  }
+  ```
+
+---
+
+## 🖼️ Accessing Subject & Chapter Images
+
+All generated subject and chapter cover images are saved locally on the server under the `/uploads/images/` directory.
+
+### Accessing Image Assets via HTTP
+To view or display an image, append the `image_url` path returned by the API to your server's host domain.
+* **Local Example:** If the server is running on `http://localhost:8000` and the API returns `"image_url": "/uploads/images/classroom_502e96e8d429ef45.jpg"`, you can access the file directly at:
+  `http://localhost:8000/uploads/images/classroom_502e96e8d429ef45.jpg`
+
+### Key Visual Cover Features:
+1. **Topic-Relevance:** The background is automatically retrieved from Wikimedia Commons matching the subject/chapter title name (e.g., historical maps/drawings for History, earth/globe wireframes for Geography, atom lines for Physics).
+2. **Title Overlay:** The title text is wrapped and printed directly on the image with a solid drop shadow on top of a dark semi-transparent blue glassmorphic mask for maximum legibility.
+3. **Gold Ornaments:** Drawn completely as sharp vector lines (gold frame, corner lines, central medallion icon, and decorative diamonds).
 
 ---
 

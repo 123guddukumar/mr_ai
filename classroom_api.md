@@ -124,6 +124,39 @@ Subtopics are the final leaf nodes of the syllabus (e.g. "Sarkaria Commission", 
 
 ---
 
+### 3.7. Subject & Chapter Cover Image Generation
+
+- **`POST /api/classroom/generate-image`**
+  - **Description:** Automatically generates a premium textbook-style cover illustration locally on the server (using Pillow and Wikimedia Commons for topic matching) with title name overlays.
+  - **Body (JSON):**
+    ```json
+    {
+      "name": "Subject/Chapter Title String",
+      "type": "subject", // "subject" or "chapter"
+      "context": "Optional parent context string (e.g. paper or subject name)"
+    }
+    ```
+  - **Response Example:**
+    ```json
+    {
+      "success": true,
+      "image_url": "/uploads/images/classroom_502e96e8d429ef45.jpg"
+    }
+    ```
+
+---
+
+## 🖼️ Accessing Subject & Chapter Images
+
+All generated subject and chapter cover images are saved locally on the server under the `/uploads/images/` directory.
+
+### Accessing Image Assets via HTTP
+To render/display an image in your application, append the `image_url` path returned in the Subject or Chapter JSON payloads to your server's host domain.
+- **Local Development Example:** If the server is running on `http://localhost:8000` and the API returns `"image_url": "/uploads/images/classroom_502e96e8d429ef45.jpg"`, you can access the file directly at:
+  `http://localhost:8000/uploads/images/classroom_502e96e8d429ef45.jpg`
+
+---
+
 ## 🧠 4. Educational AI & RAG Generation Endpoints
 
 These endpoints perform contextual retrieval against vectorized knowledge stores (PDFs, URLs) and synthesize advanced study aids.

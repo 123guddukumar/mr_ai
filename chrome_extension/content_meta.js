@@ -475,17 +475,17 @@ function getModifiedPrompt(dialogue, attempt) {
   const style = styles[attempt % styles.length];
   
   if (attempt <= 1) {
-    return `Generate a beautiful vertical 9:16 image of ${safe.substring(0, 120)}. Cinematic lighting, 4K, no text.`;
+    return `Generate a beautiful square 1:1 image of ${safe.substring(0, 120)}. Cinematic lighting, 4K, no text, no letters.`;
   } else if (attempt <= 3) {
-    return `Create a vertical 9:16 illustration depicting: ${keywords}. ${style}, no text.`;
+    return `Create a square 1:1 illustration depicting: ${keywords}. ${style}, no text, no letters.`;
   } else if (attempt <= 6) {
-    return `A vertical 9:16 portrait concept of learning: ${keywords || 'knowledge'}. ${style}, no text.`;
+    return `A square 1:1 concept of learning: ${keywords || 'knowledge'}. ${style}, no text.`;
   } else {
     const abstracts = [
-      `A beautiful vertical 9:16 background representing science and technology. ${style}, no text.`,
-      `A majestic vertical 9:16 library of books and glowing lights. ${style}, no text.`,
-      `An inspiring vertical 9:16 scene of a desk with an open book and glowing ideas. ${style}, no text.`,
-      `Abstract lines of light flowing on a dark vertical 9:16 background. ${style}, no text.`
+      `A beautiful square 1:1 background representing science and technology. ${style}, no text.`,
+      `A majestic square 1:1 library of books and glowing lights. ${style}, no text.`,
+      `An inspiring square 1:1 scene of a desk with an open book and glowing ideas. ${style}, no text.`,
+      `Abstract lines of light flowing on a dark square 1:1 background. ${style}, no text.`
     ];
     return abstracts[attempt % abstracts.length];
   }
@@ -570,7 +570,7 @@ async function waitForNewImage(maxSec, initialCardsCount = 0) {
 
           if (metaRetries >= 15) {
             log("❌ Max retries reached (15). Using a completely generic safe visual.");
-            const superSafePrompt = "Cinematic educational abstract background, vertical 9:16, soft ambient lighting, high quality, 4K, no text.";
+            const superSafePrompt = "Cinematic educational abstract background, square 1:1 format 1080x1080, soft ambient lighting, high quality, 4K, no text.";
             log(`✍️ Sending super safe prompt: "${superSafePrompt}"`);
             await typeInChat(superSafePrompt);
             await sleep(500);
@@ -1041,7 +1041,9 @@ async function generateSingleAsset(prompt, mediaType, filename) {
     const initialCardsCount = getAssistantMessageCards().length;
     log(`Initial assistant message cards count before single image generation: ${initialCardsCount}`);
 
-    const fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
+    // Backend sends complete image description. Use prompt directly — no format suffix added here.
+    // The backend controls format (1:1 for images via Pollinations URL size, 16:9 for banners).
+    const fullPrompt = prompt;
     await typeInChat(fullPrompt);
     await sleep(500);
     await clickSend();

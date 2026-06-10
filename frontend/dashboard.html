@@ -555,6 +555,370 @@ body{display:flex;min-height:100vh;overflow:hidden;
   font-size: 0.9em;
   border: 1px solid var(--border);
 }
+
+/* Classroom Chatbot Slide-out Drawer Panel */
+.classroom-chat-drawer {
+  position: fixed;
+  top: 0;
+  right: -420px; /* Hidden by default */
+  width: 400px;
+  height: 100%;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+.classroom-chat-drawer.open {
+  right: 0;
+}
+.classroom-chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+}
+.classroom-chat-header h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.classroom-chat-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.classroom-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.classroom-chat-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.chat-input-row textarea {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  height: 40px;
+  transition: border-color 0.2s;
+}
+.chat-input-row textarea:focus {
+  outline: none;
+  border-color: var(--accent2);
+}
+.chat-btn-send {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.chat-btn-send:hover {
+  transform: scale(1.05);
+}
+.chat-btn-voice {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+}
+.chat-btn-voice:hover {
+  transform: scale(1.05);
+  background: rgba(16, 185, 129, 0.25);
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+  word-wrap: break-word;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(255, 122, 0, 0.15), rgba(255, 179, 71, 0.15));
+  border: 1px solid rgba(255, 122, 0, 0.3);
+  color: var(--text);
+  border-bottom-right-radius: 2px;
+}
+.chat-bubble.assistant {
+  align-self: flex-start;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-bottom-left-radius: 2px;
+}
+.chat-bubble .fallback-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.chat-bubble .sources-section {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  font-size: 10.5px;
+  color: var(--text3);
+}
+.chat-bubble .sources-section a {
+  color: var(--accent2);
+  text-decoration: none;
+}
+.chat-bubble .sources-section a:hover {
+  text-decoration: underline;
+}
+
+/* Voice Chat Full-screen Overlay */
+.voice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(17, 20, 38, 0.98) 0%, rgba(8, 9, 16, 0.99) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.voice-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.voice-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 120px;
+  margin: 20px 0;
+  position: relative;
+}
+.voice-bar {
+  width: 6px;
+  height: 20px;
+  background: linear-gradient(180deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: opacity 0.3s ease, transform 0.3s ease, height 0.2s ease;
+  animation: none;
+}
+.voice-thinking-emoji {
+  display: none;
+  font-size: 64px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  user-select: none;
+}
+
+/* 1. Listening Mode (Cyan/Blue, gentle animation) */
+.voice-visualizer.listening-mode .voice-bar {
+  background: linear-gradient(180deg, #3b82f6, #06b6d4);
+  animation: pulseGentle 1.4s ease-in-out infinite alternate;
+}
+.voice-visualizer.listening-mode .voice-bar:nth-child(1) { animation-delay: 0.0s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(2) { animation-delay: 0.15s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(3) { animation-delay: 0.3s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(4) { animation-delay: 0.45s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(5) { animation-delay: 0.45s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(6) { animation-delay: 0.3s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(7) { animation-delay: 0.15s; }
+.voice-visualizer.listening-mode .voice-bar:nth-child(8) { animation-delay: 0.0s; }
+
+/* 2. Speaking Mode (Violet/Pink, energetic animation) */
+.voice-visualizer.speaking-mode .voice-bar {
+  background: linear-gradient(180deg, #a78bfa, #ec4899);
+  animation: pulseWave 0.8s ease-in-out infinite alternate;
+}
+.voice-visualizer.speaking-mode .voice-bar:nth-child(1) { animation-delay: 0.0s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(2) { animation-delay: 0.1s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(3) { animation-delay: 0.2s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(4) { animation-delay: 0.3s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(5) { animation-delay: 0.3s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(6) { animation-delay: 0.2s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(7) { animation-delay: 0.1s; }
+.voice-visualizer.speaking-mode .voice-bar:nth-child(8) { animation-delay: 0.0s; }
+
+/* 3. Thinking Mode (Brain emoji, breathing and glowing, bars hidden) */
+.voice-visualizer.thinking-mode .voice-bar {
+  opacity: 0;
+  transform: scaleY(0.1);
+  pointer-events: none;
+}
+.voice-visualizer.thinking-mode .voice-thinking-emoji {
+  display: block;
+  animation: floatThinking 1.5s ease-in-out infinite alternate, pulseThinking 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGentle {
+  0% { height: 15px; }
+  100% { height: 50px; }
+}
+
+@keyframes pulseWave {
+  0% { height: 10px; }
+  100% { height: 100px; }
+}
+
+@keyframes floatThinking {
+  0% {
+    transform: translate(-50%, -42%) scale(0.9);
+  }
+  100% {
+    transform: translate(-50%, -58%) scale(1.1);
+  }
+}
+
+@keyframes pulseThinking {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.4)) drop-shadow(0 0 20px rgba(167, 139, 250, 0.2));
+  }
+  100% {
+    filter: drop-shadow(0 0 25px rgba(167, 139, 250, 0.8)) drop-shadow(0 0 40px rgba(167, 139, 250, 0.5));
+  }
+}
+
+.voice-status-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 5px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.voice-display-card {
+  width: 90%;
+  max-width: 540px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 15px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.voice-trans-bubble {
+  font-size: 16px;
+  color: #f3f4f6;
+  line-height: 1.5;
+  font-weight: 500;
+  text-align: center;
+}
+
+.voice-resp-bubble {
+  font-size: 14px;
+  color: #c084fc;
+  line-height: 1.6;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 14px;
+  text-align: center;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.voice-resp-bubble .prefix {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.voice-helper-tip {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.voice-close-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 15px;
+}
+.voice-close-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
 </style>
 </head>
 <body>
@@ -1706,7 +2070,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
                 <span id="subjects-header-title" style="font-weight:700; font-size:13px; color:var(--text3)">🧪 Subjects List</span>
                 <div style="display:flex; gap:8px; align-items:center;">
-                  <button class="btn btn-secondary" id="btn-gen-all-subject-images" onclick="generateAllSubjectImages()" style="padding:6px 12px; font-size:11px; height:32px; display: none;">🖼️ Generate All Images</button>
+                  <button class="btn btn-secondary" id="btn-gen-all-subject-images" onclick="generateAllSubjectImages()" style="padding:6px 12px; font-size:11px; height:32px;">🖼️ Generate All Images</button>
                   <button class="btn btn-primary" id="btn-add-subject-classroom" onclick="showAddSubjectModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Subject</button>
                 </div>
               </div>
@@ -1758,7 +2122,10 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <!-- Add Button and List -->
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
                 <span style="font-weight:700; font-size:13px; color:var(--text3)">📌 Topics List</span>
-                <button class="btn btn-primary" onclick="showAddTopicModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Topic</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="btn btn-secondary" onclick="generateAllImagesForType('topic')" style="padding:6px 12px; font-size:11px; height:32px;">🖼️ Generate All Images</button>
+                  <button class="btn btn-primary" onclick="showAddTopicModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Topic</button>
+                </div>
               </div>
               <div id="topics-list-container" style="display:flex; flex-direction:column; gap:8px;">
                 <!-- Topics list loaded dynamically -->
@@ -1840,7 +2207,10 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <!-- Add Button and List -->
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
                 <span style="font-weight:700; font-size:13px; color:var(--text3)">📝 Subtopics List</span>
-                <button class="btn btn-primary" onclick="showAddSubtopicModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Subtopic</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="btn btn-secondary" onclick="generateAllImagesForType('subtopic')" style="padding:6px 12px; font-size:11px; height:32px;">🖼️ Generate All Images</button>
+                  <button class="btn btn-primary" onclick="showAddSubtopicModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Subtopic</button>
+                </div>
               </div>
               <div id="subtopics-list-container" style="display:flex; flex-direction:column; gap:8px;">
                 <!-- Subtopics list loaded dynamically -->
@@ -1851,6 +2221,23 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <!-- Tab 5: Subtopic Detail & Reel Generation -->
           <div class="classroom-panel" id="panel-tab-5" style="display:none;">
             <div style="display:flex; flex-direction:column; gap:15px;">
+              <!-- 16:9 Banner Image Container -->
+              <div id="subtopic-banner-container" style="display:none; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: var(--bg2); position: relative;">
+                <!-- Loading indicator overlay -->
+                <div id="subtopic-banner-loader" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); z-index: 2; color: #fff;">
+                  <div style="box-sizing: border-box; display: block; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; animation: banner-spin 1s linear infinite; margin-bottom: 12px;"></div>
+                  <style>
+                    @keyframes banner-spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  </style>
+                  <div style="font-size: 14px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">🎨 Creating Professional Banner...</div>
+                  <div style="font-size: 11px; opacity: 0.8; margin-top: 4px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Generating high-resolution cover image</div>
+                </div>
+                <img id="subtopic-banner-image" src="" alt="Subtopic Banner" style="width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease;">
+              </div>
+
               <!-- Full-width border box with active Subtopic name + all action buttons at top -->
               <div style="border:2px solid var(--border); border-radius:12px; padding:20px 24px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <div>
@@ -1863,6 +2250,8 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <button class="btn btn-secondary" onclick="generateQuiz()" id="btn-generate-quiz" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent2); color:var(--accent2);">📝 Generate Quiz</button>
                   <button class="btn btn-secondary" onclick="toggleSubtopicReelsPanel()" id="btn-show-reels" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#8b5cf6; color:#8b5cf6;">🎞️ Reels</button>
                   <button class="btn btn-secondary" onclick="openExtensionReelWizard()" id="btn-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
+                  <button class="btn btn-secondary" onclick="regenerateSubtopicBannerFromDetail()" id="btn-regenerate-subtopic-banner" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#3b82f6; color:#3b82f6;">🖼️ Regenerate Banner (Flux)</button>
+                  <button class="btn btn-secondary" onclick="regenerateSubtopicBannerFromDetailMetaAI()" id="btn-regenerate-subtopic-banner-meta" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 Meta AI Banner</button>
                 </div>
               </div>
 
@@ -2021,9 +2410,10 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
         <div class="form-group">
           <label class="form-label">Subject Image</label>
-          <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
             <img id="modal-subject-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateSubjectImageAI()">✨ Auto Generate Image</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateSubjectImageAI()">✨ Auto Generate (Flux)</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateSubjectImageMetaAI()">🤖 Meta AI (Extension)</button>
           </div>
           <input type="text" class="form-input" id="modal-subject-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalSubjectImagePreview(this.value)">
         </div>
@@ -2050,12 +2440,14 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
         <div class="form-group">
           <label class="form-label">Chapter Image</label>
-          <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
             <img id="modal-chapter-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateChapterImageAI()">✨ Auto Generate Image</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateChapterImageAI()">✨ Auto Generate (Flux)</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateChapterImageMetaAI()">🤖 Meta AI (Extension)</button>
           </div>
           <input type="text" class="form-input" id="modal-chapter-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalChapterImagePreview(this.value)">
         </div>
+
         <div class="modal-actions">
 
           <button class="modal-btn secondary" onclick="closeChapterModal()">Cancel</button>
@@ -2073,6 +2465,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <div class="modal-title" id="loading-modal-title" style="font-size: 16px; margin-bottom: 5px;">Generating Images...</div>
           <div class="modal-sub" id="loading-modal-sub" style="font-size: 11px; line-height: 1.4;">Please wait while the AI generates and links educational images for you.</div>
         </div>
+        <button class="btn btn-secondary" style="font-size: 10px; padding: 4px 8px; margin-top: 5px;" onclick="document.getElementById('classroom-loading-modal').classList.remove('open')">Cancel</button>
       </div>
     </div>
 
@@ -2090,6 +2483,16 @@ body{display:flex;min-height:100vh;overflow:hidden;
         <div class="form-group">
           <label class="form-label">Topic Name</label>
           <input type="text" class="form-input" id="modal-topic-name" placeholder="e.g. Projectile Motion, Causes of the Revolution">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Topic Image</label>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+            <img id="modal-topic-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateTopicImageAI()">✨ Auto Generate (Flux)</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateTopicImageMetaAI()">🤖 Meta AI (Extension)</button>
+          </div>
+          <input type="text" class="form-input" id="modal-topic-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalTopicImagePreview(this.value)">
         </div>
 
         <div class="modal-actions">
@@ -2115,6 +2518,16 @@ body{display:flex;min-height:100vh;overflow:hidden;
         <div class="form-group">
           <label class="form-label">Description (Script/Content)</label>
           <textarea class="form-input" id="modal-subtopic-desc" style="height: 120px;" placeholder="Enter details or study material for this subtopic..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Subtopic Image</label>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+            <img id="modal-subtopic-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateSubtopicImageAI()">✨ Auto Generate (Flux)</button>
+            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateSubtopicImageMetaAI()">🤖 Meta AI (Extension)</button>
+          </div>
+          <input type="text" class="form-input" id="modal-subtopic-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalSubtopicImagePreview(this.value)">
         </div>
 
         <div class="modal-actions">
@@ -11569,6 +11982,10 @@ function renderPYQSetCard(s) {
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button onclick="vectorizePYQSet('${s.pyq_set_id}')"
+          style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.4);color:#a78bfa;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer">🧠 Vectorize</button>
+        <button onclick="openPYQChat('${s.pyq_set_id}', '${escHtml(s.name).replace(/'/g, "&apos;")}')"
+          style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.4);color:#10b981;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer">💬 Chat</button>
         <button onclick="openPYQSetDetail('${s.pyq_set_id}', '${escHtml(s.name).replace(/'/g, "&apos;")}')"
           style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer">📂 Open</button>
         <button onclick="editPYQSetName('${s.pyq_set_id}', '${escHtml(s.name).replace(/'/g, "&apos;")}')"
@@ -12297,6 +12714,8 @@ function renderPapersList() {
         <div class="classroom-item-row" onclick="selectPaper('${p.paper_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-radius:10px; border:${activeBorder}; background:${activeBg}; cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <span style="font-size:13px; font-weight:700; color:${activeColor}">📄 ${escapeHTML(p.name)}</span>
             <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:#a78bfa; border-color:#a78bfa" onclick="vectorizePaper('${p.paper_id}')">🧠 Vectorize</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:#10b981; border-color:#10b981" onclick="openPaperChat('${p.paper_id}', '${escapeHTML(p.name)}')">💬 Chat</button>
                 <button class="btn btn-primary" style="padding:4px 8px; font-size:11px; background: linear-gradient(90deg, #8b5cf6, #4f46e5); border: none;" onclick="autoGenerateCourse('${p.paper_id}')">✨ Auto-Generate</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditPaperModal('${p.paper_id}', '${escapeHTML(p.name)}')">✏️ Edit</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deletePaper('${p.paper_id}')">🗑️ Delete</button>
@@ -12422,18 +12841,22 @@ function renderSubjectsGrid() {
         const stCount = s.subtopic_count || 0;
         const imgUrl = s.image_url || '';
         html += `
-        <div class="subject-small-card" onclick="selectSubject('${s.subject_id}')" style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; transition:0.2s; position:relative; overflow:hidden; min-height:160px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            ${imgUrl ? `<div style="height: 80px; width: 100%; overflow: hidden; position: relative;">
-                <img src="${imgUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
-                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: ${themeColor}"></div>
-            </div>` : `<div style="height: 80px; width: 100%; background: linear-gradient(135deg, ${themeColor}dd, ${themeColor}44); display:flex; align-items:center; justify-content:center; font-size:24px; color:#fff;">📚</div>`}
-            <div style="padding:12px; display:flex; flex-direction:column; gap:8px; flex-grow:1; justify-content:space-between;">
-                <div style="font-weight:700; font-size:12px; color:var(--text); line-height:1.4; word-break:break-word">${escapeHTML(s.name)}</div>
-                <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top: auto;">
-                    <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(79,70,229,0.12);color:#818cf8;">${chCount} Ch</span>
-                    <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(16,185,129,0.12);color:#34d399;">${tCount} Topics</span>
+        <div class="subject-small-card" onclick="selectSubject('${s.subject_id}')" style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; cursor:pointer; display:flex; flex-direction:column; transition:0.2s; position:relative; overflow:hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            ${imgUrl 
+              ? `<div style="width:100%; aspect-ratio:1/1; overflow:hidden; position:relative; background:#000;">
+                  <img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover; display:block;" />
+                  <div style="position:absolute; bottom:0; left:0; width:100%; height:3px; background:${themeColor};"></div>
+                </div>`
+              : `<div style="width:100%; aspect-ratio:1/1; background:linear-gradient(135deg,${themeColor}dd,${themeColor}44); display:flex; align-items:center; justify-content:center; font-size:32px; color:#fff;">📚</div>`
+            }
+            <div style="padding:8px 10px; background:var(--bg2); border-top:1px solid var(--border);">
+                <div style="font-weight:700; font-size:12px; color:var(--text); text-align:center; line-height:1.3; word-break:break-word; margin-bottom:6px;">${escapeHTML(s.name)}</div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin-bottom:6px;">
+                    <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(79,70,229,0.12);color:#818cf8;">${chCount} Ch</span>
+                    <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(16,185,129,0.12);color:#34d399;">${tCount} Topics</span>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:6px" onclick="event.stopPropagation()">
+                <div style="display:flex; justify-content:center; gap:5px" onclick="event.stopPropagation()">
+                    <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${s.subject_id}', 'subject')">🔄</button>
                     <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px" onclick="showEditSubjectModal('${s.subject_id}', '${escapeHTML(s.name)}', '${escapeHTML(themeColor)}', '${escapeHTML(imgUrl)}')">Edit</button>
                     <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px; color:var(--red)" onclick="deleteSubject('${s.subject_id}')">Del</button>
                 </div>
@@ -12494,12 +12917,21 @@ function renderChaptersList() {
         const imgUrl = c.image_url || '';
 
         html += `
-        <div class="classroom-item-row" onclick="selectChapter('${c.chapter_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
+        <div class="classroom-item-row" onclick="selectChapter('${c.chapter_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <div style="display:flex; align-items:center; gap:12px;">
-                ${imgUrl ? `<img src="${imgUrl}" style="width:36px; height:36px; border-radius:6px; object-fit:cover; border:1px solid var(--border);" />` : `<div style="width:36px; height:36px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px;">📖</div>`}
-                <span style="font-size:13px; font-weight:700; color:var(--text)">${escapeHTML(c.name)}</span>
+                ${imgUrl 
+                  ? `<div style="position:relative; flex-shrink:0;">
+                       <img src="${imgUrl}" style="width:44px; height:44px; border-radius:6px; object-fit:cover; border:1px solid var(--border); display:block;" />
+                     </div>`
+                  : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📖</div>`
+                }
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(c.name)}</span>
+                    ${imgUrl ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image ready</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                </div>
             </div>
             <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${c.chapter_id}', 'chapter')">🔄 Regenerate</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditChapterModal('${c.chapter_id}', '${escapeHTML(c.name)}', '${escapeHTML(imgUrl)}')">✏️ Edit</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteChapter('${c.chapter_id}')">🗑️ Delete</button>
             </div>
@@ -12558,13 +12990,35 @@ function renderTopicsList() {
     
     let html = '';
     topics.forEach(t => {
+        const subtopicCount = (t.subtopics || []).length;
+        const hasBanner = !!(t.banner_url);
         html += `
-        <div class="classroom-item-row" onclick="selectTopic('${t.topic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
-            <span style="font-size:13px; font-weight:700; color:var(--text)">📌 ${escapeHTML(t.name)}</span>
-            <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#f59e0b; color:#f59e0b;" onclick="openExtensionReelWizard('topic', '${t.topic_id}')" title="Generate reels using Chrome Extension">🎬 Extension Reels</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditTopicModal('${t.topic_id}', '${escapeHTML(t.name)}')">✏️ Edit</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteTopic('${t.topic_id}')">🗑️ Delete</button>
+        <div class="classroom-item-row" onclick="selectTopic('${t.topic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                ${t.image_url 
+                  ? `<div style="position:relative; flex-shrink:0;">
+                       <img src="${t.image_url}" style="width:44px; height:44px; border-radius:6px; object-fit:cover; border:1px solid var(--border); display:block;" />
+                     </div>`
+                  : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📌</div>`
+                }
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(t.name)}</span>
+                    <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                        ${t.image_url ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                        ${subtopicCount > 0 
+                          ? `<span style="font-size:9px; font-weight:700; padding:1px 5px; border-radius:99px; background:rgba(99,102,241,0.12); color:#818cf8;">${subtopicCount} subtopics</span>`
+                          : `<span style="font-size:9px; font-weight:700; padding:1px 5px; border-radius:99px; background:rgba(245,158,11,0.12); color:#f59e0b;">No subtopics</span>`
+                        }
+                        ${hasBanner ? `<span style="font-size:9px; color:#34d399; font-weight:600;">🖼️ Banner</span>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${t.topic_id}', 'topic')">🔄 Image</button>
+                ${subtopicCount === 0 ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#10b981; color:#10b981; font-weight:700;" onclick="generateTopicBanner('${t.topic_id}', '${escapeHTML(t.name)}')">🖼️ Banner 16:9</button>` : ''}
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#f59e0b; color:#f59e0b;" onclick="openExtensionReelWizard('topic', '${t.topic_id}')" title="Generate reels using Chrome Extension">🎬 Reels</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditTopicModal('${t.topic_id}', '${escapeHTML(t.name)}', '${escapeHTML(t.image_url || '')}')">✏️ Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteTopic('${t.topic_id}')">🗑️ Del</button>
             </div>
         </div>
         `;
@@ -12679,12 +13133,22 @@ function renderSubtopicsList() {
     subtopics.forEach(sub => {
         const subStr = JSON.stringify(sub).replace(/"/g, '&quot;');
         html += `
-        <div class="classroom-item-row" onclick="selectSubtopic('${sub.subtopic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
-            <div style="flex:1">
-                <span style="font-size:13px; font-weight:700; color:var(--text)">📝 ${escapeHTML(sub.name)}</span>
-                ${sub.description ? `<div style="font-size:11px; color:var(--text3); margin-top:4px">${escapeHTML(sub.description)}</div>` : ''}
+        <div class="classroom-item-row" onclick="selectSubtopic('${sub.subtopic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
+            <div style="display:flex; align-items:center; gap:12px; flex:1">
+                ${sub.image_url 
+                  ? `<div style="position:relative; flex-shrink:0;">
+                       <img src="${sub.image_url}" style="width:44px; height:44px; border-radius:6px; object-fit:cover; border:1px solid var(--border); display:block;" />
+                     </div>`
+                  : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📝</div>`
+                }
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(sub.name)}</span>
+                    ${sub.image_url ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image ready</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                    ${sub.description ? `<div style="font-size:11px; color:var(--text3);">${escapeHTML(sub.description)}</div>` : ''}
+                </div>
             </div>
             <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${sub.subtopic_id}', 'subtopic')">🔄 Regenerate</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditSubtopicModal(${subStr})">✏️ Edit</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteSubtopic('${sub.subtopic_id}')">🗑️ Delete</button>
             </div>
@@ -12695,7 +13159,7 @@ function renderSubtopicsList() {
 }
 
 // Select Subtopic
-function selectSubtopic(subtopicId) {
+async function selectSubtopic(subtopicId) {
     currentActiveSubtopicId = subtopicId;
     
     let foundSub = null;
@@ -12733,6 +13197,515 @@ function selectSubtopic(subtopicId) {
     
     renderSubtopicsList();
     switchClassroomTab(5); // Go to Subtopic Details Tab
+
+    // Dynamic 16:9 Banner Logic (Cloudflare R2 / Pollinations AI integration)
+    const bannerContainer = document.getElementById('subtopic-banner-container');
+    const bannerLoader = document.getElementById('subtopic-banner-loader');
+    const bannerImage = document.getElementById('subtopic-banner-image');
+    
+    if (bannerContainer && bannerLoader && bannerImage) {
+        bannerContainer.style.display = 'block';
+        if (foundSub.banner_url) {
+            bannerImage.src = foundSub.banner_url;
+            bannerImage.style.opacity = '1';
+            bannerLoader.style.display = 'none';
+        } else {
+            bannerImage.src = '';
+            bannerImage.style.opacity = '0';
+            bannerLoader.style.display = 'flex';
+        }
+    }
+
+    try {
+        const res = await fetch(`/api/classroom/subtopics/${subtopicId}`, {
+            headers: hdrs()
+        });
+        if (!res.ok) throw new Error("Failed to fetch subtopic details");
+        
+        const data = await res.json();
+        if (data.success && data.subtopic) {
+            const updatedSub = data.subtopic;
+            
+            // Sync updated subtopic into currentExamTreeData
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        for (let t of c.topics) {
+                            const idx = t.subtopics.findIndex(sub => sub.subtopic_id === subtopicId);
+                            if (idx !== -1) {
+                                t.subtopics[idx] = updatedSub;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Update UI elements if this is still the active subtopic
+            if (currentActiveSubtopicId === subtopicId) {
+                currentActiveSubtopicData = updatedSub;
+                renderMarkdownToHTML('active-subtopic-description', updatedSub.description, 'No description provided.');
+                
+                if (updatedSub.notes) {
+                    renderMarkdownToHTML('active-subtopic-notes', updatedSub.notes, 'No notes generated yet.');
+                    document.getElementById('active-subtopic-notes-container').style.display = 'block';
+                } else {
+                    document.getElementById('active-subtopic-notes').innerHTML = 'No notes generated yet.';
+                    document.getElementById('active-subtopic-notes-container').style.display = 'none';
+                }
+                
+                if (subtopicScriptTextarea) {
+                    subtopicScriptTextarea.value = updatedSub.script || '';
+                }
+                
+                if (bannerContainer && bannerImage && bannerLoader) {
+                    if (updatedSub.banner_url) {
+                        bannerImage.src = updatedSub.banner_url;
+                        const handleLoad = () => {
+                            if (currentActiveSubtopicId === subtopicId) {
+                                bannerImage.style.opacity = '1';
+                                bannerLoader.style.display = 'none';
+                            }
+                        };
+                        bannerImage.onload = handleLoad;
+                        if (bannerImage.complete) {
+                            handleLoad();
+                        }
+                    } else {
+                        bannerContainer.style.display = 'none';
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error loading subtopic details/banner:", err);
+        if (bannerLoader) {
+            bannerLoader.style.display = 'none';
+        }
+        if (bannerContainer && (!foundSub || !foundSub.banner_url)) {
+            bannerContainer.style.display = 'none';
+        }
+    }
+}
+
+// ── Meta AI Based regenerateImage (uses extension instead of Pollinations) ──────
+async function regenerateImage(entityId, type) {
+    const isBanner = type === 'subtopic_banner';
+    
+    // Find entity name from tree data
+    let entityName = entityId;
+    let contextStr = '';
+    for (let p of (currentExamTreeData || [])) {
+        for (let s of (p.subjects || [])) {
+            if (type === 'subject' && s.subject_id === entityId) { entityName = s.name; contextStr = p.name || ''; break; }
+            for (let c of (s.chapters || [])) {
+                if (type === 'chapter' && c.chapter_id === entityId) { entityName = c.name; contextStr = s.name || ''; break; }
+                for (let t of (c.topics || [])) {
+                    if (type === 'topic' && t.topic_id === entityId) { entityName = t.name; contextStr = c.name || ''; break; }
+                    for (let sub of (t.subtopics || [])) {
+                        if ((type === 'subtopic' || type === 'subtopic_banner') && sub.subtopic_id === entityId) {
+                            entityName = sub.name; contextStr = t.name || ''; break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    const assetId = isBanner ? `subtopic_banner-${entityId}` : entityId;
+    const metaType = isBanner ? 'subtopic_banner' : type;
+    
+    document.getElementById('loading-modal-title').textContent = '🤖 Generating via Meta AI...';
+    document.getElementById('loading-modal-sub').textContent = `Opening Meta AI for: "${entityName}". Image will auto-save when done.`;
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    if (isBanner) {
+        const bannerLoader = document.getElementById('subtopic-banner-loader');
+        const bannerImage = document.getElementById('subtopic-banner-image');
+        if (bannerLoader && bannerImage) {
+            bannerImage.style.opacity = '0';
+            bannerLoader.style.display = 'flex';
+        }
+    }
+
+    // Get LLM prompt then trigger Meta AI extension
+    try {
+        const resp = await fetch('/api/classroom/generate-educational-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ name: entityName, type: metaType, context: contextStr })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success && res.prompt) {
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: res.prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            toast('🤖 Meta AI opened! Image will auto-save when ready.', 'success');
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate prompt', 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during image generation', 'error');
+    }
+}
+
+// ── Topic Banner Generation (16:9 for topics with no subtopics) ───────────────
+async function generateTopicBanner(topicId, topicName) {
+    // Find context from tree
+    let contextStr = '';
+    for (let p of (currentExamTreeData || [])) {
+        for (let s of (p.subjects || [])) {
+            for (let c of (s.chapters || [])) {
+                const t = c.topics.find(tp => tp.topic_id === topicId);
+                if (t) { contextStr = `${p.name || ''} ${s.name || ''}`.trim(); break; }
+            }
+        }
+    }
+
+    document.getElementById('loading-modal-title').textContent = '🖼️ Generating Topic Banner (16:9)...';
+    document.getElementById('loading-modal-sub').textContent = `Generating banner for: "${topicName}". Meta AI will create a 16:9 cinematic image.`;
+    document.getElementById('classroom-loading-modal').classList.add('open');
+
+    try {
+        const resp = await fetch('/api/classroom/generate-educational-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ name: topicName, type: 'topic_banner', context: contextStr })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success && res.prompt) {
+            const assetId = `topic_banner-${topicId}`;
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: res.prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            toast('🖼️ Meta AI opened! Topic Banner 16:9 will auto-save when ready.', 'success');
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate banner prompt', 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during banner generation', 'error');
+    }
+}
+
+async function regenerateSubtopicBannerFromDetail() {
+    if (!currentActiveSubtopicId) return;
+    await regenerateImage(currentActiveSubtopicId, 'subtopic_banner');
+}
+
+// ── Meta AI Extension Integration for Classroom Assets ──────────────────────────
+async function requestMetaAIAsset(name, type, context, assetId) {
+    document.getElementById('loading-modal-title').textContent = 'Generating Image via Meta AI...';
+    document.getElementById('loading-modal-sub').textContent = 'Please wait while Meta AI generates a premium educational illustration...';
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch('/api/classroom/generate-educational-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({ name, type, context })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success && res.prompt) {
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: res.prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            toast('🤖 Meta AI generation started! Please check your Meta AI tab.', 'success');
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate prompt from LLM.', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during prompt generation', 'error');
+    }
+}
+
+async function generateSubjectImageMetaAI() {
+    const name = document.getElementById('modal-subject-name').value.trim();
+    if (!name) return toast('Please enter a subject name first', 'warning');
+    
+    let subjectId = document.getElementById('modal-subject-id').value.trim();
+    if (!subjectId) {
+        subjectId = 'subject-temp-' + Math.random().toString(36).substr(2, 9);
+        document.getElementById('modal-subject-id').value = subjectId;
+    }
+    
+    const paperName = document.getElementById('active-paper-name')?.textContent || '';
+    const paperContext = (paperName && paperName !== 'Paper Name') ? paperName : '';
+    
+    await requestMetaAIAsset(name, 'subject', paperContext, subjectId);
+}
+
+async function generateChapterImageMetaAI() {
+    const name = document.getElementById('modal-chapter-name').value.trim();
+    if (!name) return toast('Please enter a chapter name first', 'warning');
+    
+    let chapterId = document.getElementById('modal-chapter-id').value.trim();
+    if (!chapterId) {
+        chapterId = 'chapter-temp-' + Math.random().toString(36).substr(2, 9);
+        document.getElementById('modal-chapter-id').value = chapterId;
+    }
+    
+    const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+    const subjectContext = (subjectName && subjectName !== 'Subject Name') ? subjectName : '';
+    
+    await requestMetaAIAsset(name, 'chapter', subjectContext, chapterId);
+}
+
+async function generateTopicImageMetaAI() {
+    const name = document.getElementById('modal-topic-name').value.trim();
+    if (!name) return toast('Please enter a topic name first', 'warning');
+    
+    let topicId = document.getElementById('modal-topic-id').value.trim();
+    if (!topicId) {
+        topicId = 'topic-temp-' + Math.random().toString(36).substr(2, 9);
+        document.getElementById('modal-topic-id').value = topicId;
+    }
+    
+    const chapterName = document.getElementById('active-chapter-name')?.textContent || '';
+    const chapterContext = (chapterName && chapterName !== 'Chapter Name') ? chapterName : '';
+    
+    await requestMetaAIAsset(name, 'topic', chapterContext, topicId);
+}
+
+async function generateSubtopicImageMetaAI() {
+    const name = document.getElementById('modal-subtopic-name').value.trim();
+    if (!name) return toast('Please enter a subtopic name first', 'warning');
+    
+    let subtopicId = document.getElementById('modal-subtopic-id').value.trim();
+    if (!subtopicId) {
+        subtopicId = 'subtopic-temp-' + Math.random().toString(36).substr(2, 9);
+        document.getElementById('modal-subtopic-id').value = subtopicId;
+    }
+    
+    const topicName = document.getElementById('active-topic-name')?.textContent || '';
+    const topicContext = (topicName && topicName !== 'Topic Name') ? topicName : '';
+    
+    await requestMetaAIAsset(name, 'subtopic', topicContext, subtopicId);
+}
+
+async function regenerateSubtopicBannerFromDetailMetaAI() {
+    if (!currentActiveSubtopicId) return;
+    if (!currentActiveSubtopicData) return;
+    
+    const bannerLoader = document.getElementById('subtopic-banner-loader');
+    const bannerImage = document.getElementById('subtopic-banner-image');
+    if (bannerLoader && bannerImage) {
+        bannerImage.style.opacity = '0';
+        bannerLoader.style.display = 'flex';
+        const statusEl = bannerLoader.querySelector('div:last-child');
+        if (statusEl) statusEl.textContent = '⏳ Creating banner via Meta AI...';
+    }
+    
+    const topicName = document.getElementById('active-topic-name')?.textContent || '';
+    const topicContext = (topicName && topicName !== 'Topic Name') ? topicName : '';
+    
+    const assetId = 'subtopic_banner-' + currentActiveSubtopicId;
+    
+    try {
+        const resp = await fetch('/api/classroom/generate-educational-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({
+                name: currentActiveSubtopicData.name,
+                type: 'subtopic_banner',
+                context: topicContext
+            })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success && res.prompt) {
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: res.prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            toast('🤖 Meta AI banner generation started! Check your Meta AI tab.', 'success');
+        } else {
+            if (bannerLoader && bannerImage && currentActiveSubtopicData) {
+                bannerImage.src = currentActiveSubtopicData.banner_url || '';
+                bannerImage.style.opacity = currentActiveSubtopicData.banner_url ? '1' : '0';
+                bannerLoader.style.display = currentActiveSubtopicData.banner_url ? 'none' : 'flex';
+            }
+            toast(res.detail || 'Failed to generate prompt from LLM.', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        if (bannerLoader && bannerImage && currentActiveSubtopicData) {
+            bannerImage.src = currentActiveSubtopicData.banner_url || '';
+            bannerImage.style.opacity = currentActiveSubtopicData.banner_url ? '1' : '0';
+            bannerLoader.style.display = currentActiveSubtopicData.banner_url ? 'none' : 'flex';
+        }
+        toast('Network error during prompt generation', 'error');
+    }
+}
+
+// ── Meta AI Bulk Queue – processes one item at a time via extension ──────────
+let _metaAIBulkQueue = [];
+let _metaAIBulkResolvers = {}; // assetId -> resolve function
+let _metaAIBulkActive = false;
+
+async function generateAllImagesForType(type) {
+    let itemsToProcess = [];
+    
+    if (type === 'subject') {
+        const paper = currentExamTreeData.find(p => p.paper_id === currentActivePaperId);
+        if (!paper || !paper.subjects) return;
+        itemsToProcess = paper.subjects;
+    } else if (type === 'chapter') {
+        let chapters = [];
+        for (let p of currentExamTreeData) {
+            const s = p.subjects.find(sub => sub.subject_id === currentActiveSubjectId);
+            if (s) { chapters = s.chapters || []; break; }
+        }
+        itemsToProcess = chapters;
+    } else if (type === 'topic') {
+        let topics = [];
+        for (let p of currentExamTreeData) {
+            for (let s of p.subjects) {
+                const c = s.chapters.find(ch => ch.chapter_id === currentActiveChapterId);
+                if (c) { topics = c.topics || []; break; }
+            }
+        }
+        itemsToProcess = topics;
+    } else if (type === 'subtopic') {
+        let subtopics = [];
+        for (let p of currentExamTreeData) {
+            for (let s of p.subjects) {
+                for (let c of s.chapters) {
+                    const t = c.topics.find(tp => tp.topic_id === currentActiveTopicId);
+                    if (t) { subtopics = t.subtopics || []; break; }
+                }
+            }
+        }
+        itemsToProcess = subtopics;
+    }
+    
+    const idField = type === 'subject' ? 'subject_id' : (type === 'chapter' ? 'chapter_id' : (type === 'topic' ? 'topic_id' : 'subtopic_id'));
+    const missingItems = itemsToProcess.filter(item => !item.image_url);
+    
+    if (missingItems.length === 0) {
+        toast(`All ${type}s already have images!`, 'success');
+        return;
+    }
+    
+    if (_metaAIBulkActive) {
+        toast('Bulk generation already running! Please wait.', 'warning');
+        return;
+    }
+    _metaAIBulkActive = true;
+    
+    document.getElementById('loading-modal-title').textContent = '🤖 Meta AI Bulk Generation';
+    document.getElementById('loading-modal-sub').textContent = `Queuing ${missingItems.length} ${type}(s) for Meta AI generation. Processing one by one...`;
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    // Build context map from tree
+    const contextMap = {};
+    for (let p of (currentExamTreeData || [])) {
+        for (let s of (p.subjects || [])) {
+            if (type === 'subject') contextMap[s.subject_id] = p.name || '';
+            for (let c of (s.chapters || [])) {
+                if (type === 'chapter') contextMap[c.chapter_id] = s.name || '';
+                for (let t of (c.topics || [])) {
+                    if (type === 'topic') contextMap[t.topic_id] = c.name || '';
+                    for (let sub of (t.subtopics || [])) {
+                        if (type === 'subtopic') contextMap[sub.subtopic_id] = t.name || '';
+                    }
+                }
+            }
+        }
+    }
+    
+    for (let i = 0; i < missingItems.length; i++) {
+        const item = missingItems[i];
+        const itemId = item[idField];
+        const assetId = itemId; // actual DB id e.g. subject-xxx, chapter-xxx
+        const ctx = contextMap[itemId] || '';
+        
+        document.getElementById('loading-modal-sub').textContent =
+            `🤖 Meta AI: item ${i+1}/${missingItems.length} — "${item.name}". Waiting for image...`;
+        
+        // Fetch LLM prompt
+        let prompt = null;
+        try {
+            const resp = await fetch('/api/classroom/generate-educational-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+                body: JSON.stringify({ name: item.name, type: type, context: ctx })
+            });
+            const res = await resp.json();
+            if (resp.ok && res.success) prompt = res.prompt;
+        } catch(e) { console.error('Prompt fetch error:', e); }
+        
+        if (!prompt) { console.warn(`Skipping ${item.name} - no prompt`); continue; }
+        
+        // Wait for extension to confirm image downloaded and saved
+        await new Promise((resolve) => {
+            _metaAIBulkResolvers[assetId] = resolve;
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            // Safety timeout – if extension takes > 120s, skip and continue
+            setTimeout(() => {
+                if (_metaAIBulkResolvers[assetId]) {
+                    console.warn(`Timeout waiting for Meta AI asset: ${assetId}`);
+                    delete _metaAIBulkResolvers[assetId];
+                    resolve();
+                }
+            }, 120000);
+        });
+        
+        // Small pause between items
+        await new Promise(r => setTimeout(r, 1500));
+    }
+    
+    _metaAIBulkActive = false;
+    document.getElementById('classroom-loading-modal').classList.remove('open');
+    toast(`✅ Meta AI bulk generation done for ${missingItems.length} ${type}(s)!`, 'success');
+    await refreshExamTree();
+}
+
+async function generateAllSubjectImages() {
+    await generateAllImagesForType('subject');
+}
+
+async function generateAllChapterImages() {
+    await generateAllImagesForType('chapter');
 }
 
 async function saveSubtopicScript() {
@@ -13159,6 +14132,138 @@ function updateModalChapterImagePreview(url) {
     }
 }
 
+// Topic & Subtopic Image Helpers
+async function generateTopicImageAI() {
+    const name = document.getElementById('modal-topic-name').value.trim();
+    if (!name) {
+        toast('Please enter a topic name first', 'warning');
+        return;
+    }
+    
+    const chapterName = document.getElementById('active-chapter-name')?.textContent || '';
+    const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+    const contextStr = `${subjectName} ${chapterName}`.trim();
+    
+    document.getElementById('loading-modal-title').textContent = 'Generating Image...';
+    document.getElementById('loading-modal-sub').textContent = 'Please wait while we generate a premium illustration for this topic.';
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch('/api/classroom/generate-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({
+                name: name,
+                type: 'topic',
+                context: contextStr
+            })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.image_url) {
+            const img = new Image();
+            img.src = res.image_url;
+            img.onload = () => {
+                document.getElementById('classroom-loading-modal').classList.remove('open');
+                document.getElementById('modal-topic-image-url').value = res.image_url;
+                updateModalTopicImagePreview(res.image_url);
+                toast('Image generated successfully!', 'success');
+            };
+            img.onerror = () => {
+                document.getElementById('classroom-loading-modal').classList.remove('open');
+                document.getElementById('modal-topic-image-url').value = res.image_url;
+                updateModalTopicImagePreview(res.image_url);
+                toast('Image generated and saved.', 'success');
+            };
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate image.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during image generation', 'error');
+    }
+}
+
+function updateModalTopicImagePreview(url) {
+    const img = document.getElementById('modal-topic-image-preview');
+    if (url) {
+        img.src = url;
+        img.style.display = 'block';
+    } else {
+        img.style.display = 'none';
+    }
+}
+
+async function generateSubtopicImageAI() {
+    const name = document.getElementById('modal-subtopic-name').value.trim();
+    if (!name) {
+        toast('Please enter a subtopic name first', 'warning');
+        return;
+    }
+    
+    const topicName = document.getElementById('active-topic-name')?.textContent || '';
+    const chapterName = document.getElementById('active-chapter-name')?.textContent || '';
+    const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+    const contextStr = `${subjectName} ${chapterName} ${topicName}`.trim();
+    
+    document.getElementById('loading-modal-title').textContent = 'Generating Image...';
+    document.getElementById('loading-modal-sub').textContent = 'Please wait while we generate a premium illustration for this subtopic.';
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch('/api/classroom/generate-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({
+                name: name,
+                type: 'subtopic',
+                context: contextStr
+            })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.image_url) {
+            const img = new Image();
+            img.src = res.image_url;
+            img.onload = () => {
+                document.getElementById('classroom-loading-modal').classList.remove('open');
+                document.getElementById('modal-subtopic-image-url').value = res.image_url;
+                updateModalSubtopicImagePreview(res.image_url);
+                toast('Image generated successfully!', 'success');
+            };
+            img.onerror = () => {
+                document.getElementById('classroom-loading-modal').classList.remove('open');
+                document.getElementById('modal-subtopic-image-url').value = res.image_url;
+                updateModalSubtopicImagePreview(res.image_url);
+                toast('Image generated and saved.', 'success');
+            };
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate image.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during image generation', 'error');
+    }
+}
+
+function updateModalSubtopicImagePreview(url) {
+    const img = document.getElementById('modal-subtopic-image-preview');
+    if (url) {
+        img.src = url;
+        img.style.display = 'block';
+    } else {
+        img.style.display = 'none';
+    }
+}
+
 async function generateAllSubjectImages() {
     if (!currentActivePaperId) return;
     const paper = currentExamTreeData.find(p => p.paper_id === currentActivePaperId);
@@ -13307,13 +14412,18 @@ async function deleteChapter(chapter_id) {
 function showAddTopicModal() {
     document.getElementById('modal-topic-id').value = '';
     document.getElementById('modal-topic-name').value = '';
+    document.getElementById('modal-topic-image-url').value = '';
+    updateModalTopicImagePreview('');
     document.getElementById('topic-modal-title').textContent = 'Add Topic';
     document.getElementById('classroom-topic-modal').classList.add('open');
 }
 
-function showEditTopicModal(topic_id, name) {
+function showEditTopicModal(topic_id, name, image_url) {
     document.getElementById('modal-topic-id').value = topic_id;
     document.getElementById('modal-topic-name').value = name;
+    const imgUrl = image_url || '';
+    document.getElementById('modal-topic-image-url').value = imgUrl;
+    updateModalTopicImagePreview(imgUrl);
     document.getElementById('topic-modal-title').textContent = 'Edit Topic';
     document.getElementById('classroom-topic-modal').classList.add('open');
 }
@@ -13328,6 +14438,7 @@ async function saveTopic() {
         toast('Topic name is required', 'error');
         return;
     }
+    const image_url = document.getElementById('modal-topic-image-url').value.trim();
     const topic_id = document.getElementById('modal-topic-id').value;
     let url = `/api/classroom/chapters/${currentActiveChapterId}/topics`;
     let method = 'POST';
@@ -13342,7 +14453,7 @@ async function saveTopic() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, image_url })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -13386,20 +14497,28 @@ function showAddSubtopicModal() {
     document.getElementById('modal-subtopic-id').value = '';
     document.getElementById('modal-subtopic-name').value = '';
     document.getElementById('modal-subtopic-desc').value = '';
+    document.getElementById('modal-subtopic-image-url').value = '';
+    updateModalSubtopicImagePreview('');
     document.getElementById('subtopic-modal-title').textContent = 'Add Subtopic';
     document.getElementById('classroom-subtopic-modal').classList.add('open');
 }
 
-function showEditSubtopicModal(subtopic_id, name, description) {
+function showEditSubtopicModal(subtopic_id, name, description, image_url) {
+    let imgUrl = '';
     if (typeof subtopic_id === 'object' && subtopic_id !== null) {
         const obj = subtopic_id;
         subtopic_id = obj.subtopic_id;
         name = obj.name;
         description = obj.description;
+        imgUrl = obj.image_url || '';
+    } else {
+        imgUrl = image_url || '';
     }
     document.getElementById('modal-subtopic-id').value = subtopic_id;
     document.getElementById('modal-subtopic-name').value = name;
     document.getElementById('modal-subtopic-desc').value = description || '';
+    document.getElementById('modal-subtopic-image-url').value = imgUrl;
+    updateModalSubtopicImagePreview(imgUrl);
     document.getElementById('subtopic-modal-title').textContent = 'Edit Subtopic';
     document.getElementById('classroom-subtopic-modal').classList.add('open');
 }
@@ -13415,6 +14534,7 @@ async function saveSubtopic() {
         toast('Subtopic name is required', 'error');
         return;
     }
+    const image_url = document.getElementById('modal-subtopic-image-url').value.trim();
     const subtopic_id = document.getElementById('modal-subtopic-id').value;
     let url = `/api/classroom/topics/${currentActiveTopicId}/subtopics`;
     let method = 'POST';
@@ -13429,7 +14549,7 @@ async function saveSubtopic() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, description })
+            body: JSON.stringify({ name, description, image_url })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -16400,21 +17520,99 @@ window.addEventListener("message", (event) => {
     // ── Single asset generation completed by extension ──────────────────────────
     if (event.data && event.data.type === "MR_AI_SINGLE_ASSET_DOWNLOADED") {
         const { assetId, url, thumb, mediaType } = event.data;
-        // Find and update the asset in _stUploadedAssets
-        const idx = _stUploadedAssets.findIndex(a => (a.id || `asset-${_stUploadedAssets.indexOf(a)}`) === assetId);
-        if (idx !== -1) {
-            _stUploadedAssets[idx].url = url || thumb;
-            _stUploadedAssets[idx].thumb = thumb || url;
-            toast('✅ Library asset regenerated and replaced!', 'success');
-            
-            // Force re-render of library tab!
-            _stActiveTab = null;
-            switchStudioTab('library');
-            
-            // Post confirmation that the asset was successfully replaced!
+        console.log("[MR AI Page] Received single asset downloaded:", assetId, url);
+        
+        let handled = false;
+        
+        if (assetId.startsWith("subject-")) {
+            handled = true;
+            document.getElementById('modal-subject-image-url').value = url || thumb;
+            updateModalSubjectImagePreview(url || thumb);
+            toast('✅ Subject image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
             window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!assetId.includes("-temp-")) {
+                refreshExamTree();
+            }
+        } else if (assetId.startsWith("chapter-")) {
+            handled = true;
+            document.getElementById('modal-chapter-image-url').value = url || thumb;
+            updateModalChapterImagePreview(url || thumb);
+            toast('✅ Chapter image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!assetId.includes("-temp-")) {
+                refreshExamTree();
+            }
+        } else if (assetId.startsWith("topic-")) {
+            handled = true;
+            document.getElementById('modal-topic-image-url').value = url || thumb;
+            updateModalTopicImagePreview(url || thumb);
+            toast('✅ Topic image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!assetId.includes("-temp-")) {
+                refreshExamTree();
+            }
+        } else if (assetId.startsWith("subtopic_banner-")) {
+            handled = true;
+            const subtopicId = assetId.replace("subtopic_banner-", "");
+            toast('✅ Subtopic banner generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            
+            const bannerLoader = document.getElementById('subtopic-banner-loader');
+            const bannerImage = document.getElementById('subtopic-banner-image');
+            if (bannerImage && bannerLoader) {
+                bannerImage.src = url || thumb;
+                bannerImage.onload = () => {
+                    bannerImage.style.opacity = '1';
+                    bannerLoader.style.display = 'none';
+                };
+            }
+            
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            refreshExamTree().then(() => {
+                if (currentActiveSubtopicId === subtopicId) {
+                    showSubtopicDetail(subtopicId);
+                }
+            });
+        } else if (assetId.startsWith("subtopic-")) {
+            handled = true;
+            document.getElementById('modal-subtopic-image-url').value = url || thumb;
+            updateModalSubtopicImagePreview(url || thumb);
+            toast('✅ Subtopic image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!assetId.includes("-temp-")) {
+                refreshExamTree();
+            }
         }
-        closeLibraryEditModal();
+        
+        if (!handled) {
+            // Find and update the asset in _stUploadedAssets
+            const idx = _stUploadedAssets.findIndex(a => (a.id || `asset-${_stUploadedAssets.indexOf(a)}`) === assetId);
+            if (idx !== -1) {
+                _stUploadedAssets[idx].url = url || thumb;
+                _stUploadedAssets[idx].thumb = thumb || url;
+                toast('✅ Library asset regenerated and replaced!', 'success');
+                
+                // Force re-render of library tab!
+                _stActiveTab = null;
+                switchStudioTab('library');
+                
+                // Post confirmation that the asset was successfully replaced!
+                window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            }
+            closeLibraryEditModal();
+        }
+        
+        // ── Resolve bulk queue promise if this asset was being awaited ──
+        if (typeof _metaAIBulkResolvers !== 'undefined' && _metaAIBulkResolvers[assetId]) {
+            console.log('[Bulk] Resolving bulk resolver for:', assetId);
+            const resolve = _metaAIBulkResolvers[assetId];
+            delete _metaAIBulkResolvers[assetId];
+            resolve();
+        }
     }
 });
 
@@ -17094,6 +18292,791 @@ async function generateWatermarkOverlayImage() {
     return canvas.toDataURL('image/png');
 }
 
+// ── CLASSROOM & PYQ CHATBOT LOGIC ───────────────────────────────────────────
+let activeChatType = null; // 'paper' or 'pyq'
+let activeChatTargetId = null; 
+let activeChatTargetName = '';
+let activeExamName = '';
+let voiceSpeechRecognition = null;
+let currentVoiceAudio = null;
+let isSpeaking = false;
+let isListening = false;
+let autoRestartRecognition = false;
+let voiceChatAbortController = null;
+let currentVoiceRequestId = 0;
+const ELEVENLABS_VOICE_ID = 'ypnkIsDASPgHZuanrF0q'; // Rudra
+
+
+// Vectorizing Overlay helpers
+function showVectorizingOverlay(message) {
+    let overlay = document.getElementById('vectorizing-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'vectorizing-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,15,23,0.92); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(10px); transition:opacity 0.3s ease; opacity:0;';
+        overlay.innerHTML = `
+            <div style="text-align:center; max-width:400px; padding:20px;">
+                <div style="font-size:60px; margin-bottom:24px; animation: pulse 1.5s infinite">🧠</div>
+                <div id="vectorizing-overlay-text" style="font-size:18px; font-weight:800; color:var(--text); margin-bottom:12px; line-height:1.4;">Extracting paper content & building vector store...</div>
+                <div style="color:var(--text3); font-size:12px;">This will take a few moments as we build the RAG database.</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.offsetWidth; // force reflow
+        overlay.style.opacity = '1';
+    } else {
+        document.getElementById('vectorizing-overlay-text').textContent = message;
+        overlay.style.display = 'flex';
+        overlay.offsetWidth;
+        overlay.style.opacity = '1';
+    }
+}
+
+function hideVectorizingOverlay() {
+    const overlay = document.getElementById('vectorizing-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+}
+
+// Trigger Paper Vectorization
+async function vectorizePaper(paperId, silent = false) {
+    let toastId = null;
+    if (!silent) toastId = toast('🧠 Extracting paper content & building vector store...', 'info');
+    try {
+        const resp = await fetch(`/api/classroom/papers/${paperId}/vectorize`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            if (!silent) toast('✅ ' + (data.message || 'Paper successfully vectorized!'), 'success');
+            return true;
+        } else {
+            if (!silent) toast('❌ Failed: ' + (data.detail || 'Could not vectorize'), 'error');
+            return false;
+        }
+    } catch(err) {
+        console.error("Vectorize paper error:", err);
+        if (!silent) toast('🌐 Network error vectorizing paper', 'error');
+        return false;
+    }
+}
+
+// Trigger PYQ Set Vectorization
+async function vectorizePYQSet(pyqSetId, silent = false) {
+    let toastId = null;
+    if (!silent) toastId = toast('🧠 Indexing questions & solutions in vector database...', 'info');
+    try {
+        const resp = await fetch(`/api/classroom/pyq-sets/${pyqSetId}/vectorize`, {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            if (!silent) toast('✅ ' + (data.message || 'PYQ set successfully vectorized!'), 'success');
+            return true;
+        } else {
+            if (!silent) toast('❌ Failed: ' + (data.detail || 'Could not vectorize'), 'error');
+            return false;
+        }
+    } catch(err) {
+        console.error("Vectorize PYQ error:", err);
+        if (!silent) toast('🌐 Network error vectorizing PYQ set', 'error');
+        return false;
+    }
+}
+
+// Open Paper Chat Drawer
+async function openPaperChat(paperId, paperName) {
+    activeChatType = 'paper';
+    activeChatTargetId = paperId;
+    activeChatTargetName = paperName;
+    const examEl = document.getElementById('detail-exam-name');
+    activeExamName = examEl ? examEl.textContent.trim() : 'Exam';
+    
+    // Check vector status and vectorize if needed
+    const endpoint = `/api/classroom/papers/${paperId}/chat/history`;
+    try {
+        showVectorizingOverlay('Checking vector store status...');
+        const resp = await fetch(endpoint, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        
+        if (resp.ok && data.success) {
+            if (!data.is_vectorized) {
+                showVectorizingOverlay('🧠 Extracting paper content & building vector store...');
+                const success = await vectorizePaper(paperId, true);
+                hideVectorizingOverlay();
+                if (!success) {
+                    toast('❌ Failed to build paper vector store. Cannot open chat.', 'error');
+                    return;
+                }
+            } else {
+                hideVectorizingOverlay();
+            }
+            
+            // Show Chat Drawer
+            document.getElementById('classroom-chat-title').textContent = '📄 ' + paperName;
+            document.getElementById('classroom-chat-drawer').classList.add('open');
+            
+            const container = document.getElementById('classroom-chat-messages');
+            container.innerHTML = '';
+            const history = data.history || [];
+            if (history.length === 0) {
+                container.innerHTML = `<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px;">No messages yet. Start chatting!</div>`;
+            } else {
+                history.forEach(msg => {
+                    appendChatMessageToUI(msg.role, msg.content, msg.sources_json);
+                });
+            }
+            scrollToChatBottom();
+        } else {
+            hideVectorizingOverlay();
+            toast('❌ Failed to verify paper status.', 'error');
+        }
+    } catch(err) {
+        console.error("Open paper chat error:", err);
+        hideVectorizingOverlay();
+        toast('🌐 Network error checking status.', 'error');
+    }
+}
+
+// Open PYQ Chat Drawer
+async function openPYQChat(pyqSetId, pyqSetName) {
+    activeChatType = 'pyq';
+    activeChatTargetId = pyqSetId;
+    activeChatTargetName = pyqSetName;
+    activeExamName = ''; 
+    
+    // Check vector status and vectorize if needed
+    const endpoint = `/api/classroom/pyq-sets/${pyqSetId}/chat/history`;
+    try {
+        showVectorizingOverlay('Checking vector store status...');
+        const resp = await fetch(endpoint, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        
+        if (resp.ok && data.success) {
+            if (!data.is_vectorized) {
+                showVectorizingOverlay('🧠 Extracting paper content & building vector store...');
+                const success = await vectorizePYQSet(pyqSetId, true);
+                hideVectorizingOverlay();
+                if (!success) {
+                    toast('❌ Failed to build PYQ vector store. Cannot open chat.', 'error');
+                    return;
+                }
+            } else {
+                hideVectorizingOverlay();
+            }
+            
+            // Show Chat Drawer
+            document.getElementById('classroom-chat-title').textContent = '📝 ' + pyqSetName;
+            document.getElementById('classroom-chat-drawer').classList.add('open');
+            
+            const container = document.getElementById('classroom-chat-messages');
+            container.innerHTML = '';
+            const history = data.history || [];
+            if (history.length === 0) {
+                container.innerHTML = `<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px;">No messages yet. Start chatting!</div>`;
+            } else {
+                history.forEach(msg => {
+                    appendChatMessageToUI(msg.role, msg.content, msg.sources_json);
+                });
+            }
+            scrollToChatBottom();
+        } else {
+            hideVectorizingOverlay();
+            toast('❌ Failed to verify PYQ set status.', 'error');
+        }
+    } catch(err) {
+        console.error("Open PYQ chat error:", err);
+        hideVectorizingOverlay();
+        toast('🌐 Network error checking status.', 'error');
+    }
+}
+
+// Close Chat Drawer
+function closeClassroomChat() {
+    document.getElementById('classroom-chat-drawer').classList.remove('open');
+    activeChatType = null;
+    activeChatTargetId = null;
+    activeChatTargetName = '';
+    stopVoiceChat();
+}
+
+// Load Chat History
+async function loadClassroomChatHistory() {
+    if (!activeChatType || !activeChatTargetId) return;
+    const container = document.getElementById('classroom-chat-messages');
+    const endpoint = activeChatType === 'paper' 
+        ? `/api/classroom/papers/${activeChatTargetId}/chat/history`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history`;
+        
+    try {
+        const resp = await fetch(endpoint, {
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            container.innerHTML = '';
+            const history = data.history || [];
+            if (history.length === 0) {
+                container.innerHTML = `<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px;">No messages yet. Start chatting!</div>`;
+                return;
+            }
+            history.forEach(msg => {
+                appendChatMessageToUI(msg.role, msg.content, msg.sources_json);
+            });
+            scrollToChatBottom();
+        } else {
+            container.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;">Failed to load chat history.</div>`;
+        }
+    } catch(err) {
+        console.error("Load history error:", err);
+        container.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;">Network error loading history.</div>`;
+    }
+}
+
+// Helper to Append Message Bubble
+function appendChatMessageToUI(role, content, sourcesJson) {
+    const container = document.getElementById('classroom-chat-messages');
+    
+    // Remove empty placeholder if any
+    const placeholder = container.querySelector('div[style*="text-align:center"]');
+    if (placeholder) placeholder.remove();
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (role === 'user' ? 'user' : 'assistant');
+    
+    let formattedText = content;
+    
+    // Check for fallback indicator
+    const fallbackPrefix = "ye apke data se nhi h apne traf se bata raha hu\n\n";
+    if (role === 'assistant' && content.startsWith(fallbackPrefix)) {
+        const badge = document.createElement('div');
+        badge.className = 'fallback-badge';
+        badge.textContent = '⚠️ Out of Context';
+        bubble.appendChild(badge);
+        formattedText = content.substring(fallbackPrefix.length);
+    }
+    
+    const textNode = document.createElement('div');
+    // Simple markdown parsing / formatting for newlines
+    textNode.innerHTML = typeof marked !== 'undefined' ? marked.parse(formattedText) : formattedText.replace(/\n/g, '<br>');
+    bubble.appendChild(textNode);
+    
+    // Sources handling
+    if (role === 'assistant' && sourcesJson) {
+        try {
+            const sources = typeof sourcesJson === 'string' ? JSON.parse(sourcesJson) : sourcesJson;
+            if (sources && sources.length > 0) {
+                const srcDiv = document.createElement('div');
+                srcDiv.className = 'sources-section';
+                srcDiv.innerHTML = '<strong>Sources:</strong> ';
+                const links = sources.map(s => {
+                    const label = s.source_file || 'Context Document';
+                    return `<span style="display:inline-block;margin-right:8px;">• ${escapeHTML(label)}</span>`;
+                });
+                srcDiv.innerHTML += links.join(' ');
+                bubble.appendChild(srcDiv);
+            }
+        } catch(e) {}
+    }
+    
+    container.appendChild(bubble);
+    scrollToChatBottom();
+}
+
+function scrollToChatBottom() {
+    const container = document.getElementById('classroom-chat-messages');
+    container.scrollTop = container.scrollHeight;
+}
+
+// Send Text Message
+async function sendClassroomChatMessage() {
+    if (!activeChatType || !activeChatTargetId) return;
+    const inputEl = document.getElementById('classroom-chat-input');
+    const question = inputEl.value.trim();
+    if (!question) return;
+    
+    inputEl.value = '';
+    appendChatMessageToUI('user', question);
+    
+    // Append a typing indicator
+    const typingBubble = document.createElement('div');
+    typingBubble.className = 'chat-bubble assistant';
+    typingBubble.id = 'classroom-chat-typing';
+    typingBubble.innerHTML = '<span style="animation:pulse 1s infinite">Thinking...</span>';
+    document.getElementById('classroom-chat-messages').appendChild(typingBubble);
+    scrollToChatBottom();
+    
+    const endpoint = activeChatType === 'paper'
+        ? `/api/classroom/papers/${activeChatTargetId}/chat`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat`;
+        
+    try {
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({ question })
+        });
+        const data = await resp.json();
+        
+        // Remove typing indicator
+        const typingEl = document.getElementById('classroom-chat-typing');
+        if (typingEl) typingEl.remove();
+        
+        if (resp.ok && data.success) {
+            appendChatMessageToUI('assistant', data.answer, data.sources);
+        } else {
+            appendChatMessageToUI('assistant', '⚠️ Sorry, there was an error processing your query: ' + (data.detail || 'Unknown error'));
+        }
+    } catch(err) {
+        console.error("Send message error:", err);
+        const typingEl = document.getElementById('classroom-chat-typing');
+        if (typingEl) typingEl.remove();
+        appendChatMessageToUI('assistant', '🌐 Network error. Please check your connection.');
+    }
+}
+
+// Clear Chat History
+async function clearClassroomChatHistory() {
+    if (!activeChatType || !activeChatTargetId) return;
+    if (!confirm('Are you sure you want to clear your chat history for this set/paper?')) return;
+    
+    const endpoint = activeChatType === 'paper'
+        ? `/api/classroom/papers/${activeChatTargetId}/chat/history`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history`;
+        
+    try {
+        const resp = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: { 'X-App-Token': session.token }
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            toast('✅ Chat history cleared!', 'success');
+            document.getElementById('classroom-chat-messages').innerHTML = `<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px;">No messages yet. Start chatting!</div>`;
+        } else {
+            toast('❌ Failed to clear history', 'error');
+        }
+    } catch(err) {
+        console.error("Clear history error:", err);
+        toast('🌐 Network error clearing history', 'error');
+    }
+}
+
+// ── Voice Chat Web Speech API Implementation ─────────────────────────────────
+
+// Voice State UI Helper
+function setVoiceState(state) {
+    const visualizer = document.getElementById('voice-visualizer');
+    const statusText = document.getElementById('voice-status');
+    if (!visualizer || !statusText) return;
+    
+    // Remove all states
+    visualizer.classList.remove('listening-mode', 'speaking-mode', 'thinking-mode');
+    
+    if (state === 'starting') {
+        statusText.textContent = '🔊 Starting...';
+    } else if (state === 'listening') {
+        visualizer.classList.add('listening-mode');
+        statusText.textContent = '🎙️ Listening...';
+    } else if (state === 'thinking') {
+        visualizer.classList.add('thinking-mode');
+        statusText.textContent = '🧠 Thinking...';
+    } else if (state === 'speaking') {
+        visualizer.classList.add('speaking-mode');
+        statusText.textContent = '🔊 AI Speaking...';
+    }
+}
+
+function initVoiceSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        toast('⚠️ Your browser does not support Web Speech Recognition.', 'error');
+        return null;
+    }
+    const rec = new SpeechRecognition();
+    rec.continuous = true;         // Keep listening even while bot speaks → enables interrupt
+    rec.interimResults = true;     // Show live text while speaking
+    rec.lang = 'hi-IN';            // Hindi/Hinglish/English
+    rec.maxAlternatives = 1;
+    
+    rec.onstart = () => {
+        isListening = true;
+        setVoiceState('listening');
+    };
+    
+    rec.onerror = (e) => {
+        console.error('Speech recognition error:', e.error);
+        isListening = false;
+        const visualizer = document.getElementById('voice-visualizer');
+        if (visualizer) visualizer.classList.remove('listening-mode', 'speaking-mode', 'thinking-mode');
+        
+        if (e.error === 'no-speech') {
+            setVoiceState('listening');
+        } else if (e.error !== 'aborted') {
+            document.getElementById('voice-status').textContent = 'Mic error: ' + e.error;
+        }
+        
+        // Auto-restart on non-fatal errors
+        if (autoRestartRecognition && e.error !== 'not-allowed') {
+            setTimeout(() => {
+                if (autoRestartRecognition) {
+                    try { rec.start(); } catch(err) {}
+                }
+            }, 800);
+        }
+    };
+    
+    rec.onend = () => {
+        isListening = false;
+        if (autoRestartRecognition) {
+            setTimeout(() => {
+                if (autoRestartRecognition) {
+                    try { rec.start(); } catch(err) {}
+                }
+            }, 300);
+        }
+    };
+    
+    let processingQuestion = false; // Prevent double-processing
+    
+    rec.onresult = async (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += t;
+            } else {
+                interimTranscript += t;
+            }
+        }
+        
+        const transcriptEl = document.getElementById('voice-transcript');
+        
+        // Show live interim text
+        if (interimTranscript && !finalTranscript) {
+            transcriptEl.innerHTML = `<span style="opacity:0.5;font-style:italic;">${escapeHTML(interimTranscript)}</span>`;
+            
+            // If bot is speaking and user has started talking → INTERRUPT immediately
+            if (isSpeaking && interimTranscript.length > 3) {
+                interruptBotSpeech();
+            }
+        }
+        
+        if (finalTranscript) {
+            const myRequestId = ++currentVoiceRequestId;
+            
+            // Abort previous active request
+            if (voiceChatAbortController) {
+                try {
+                    voiceChatAbortController.abort();
+                } catch(e) {}
+            }
+            voiceChatAbortController = new AbortController();
+            
+            transcriptEl.innerHTML = `<span style="color:#fff;font-weight:600;">🗣️ ${escapeHTML(finalTranscript)}</span>`;
+            
+            // Clear and hide previous bot response text while thinking
+            const botResponseEl = document.getElementById('voice-bot-response');
+            if (botResponseEl) {
+                botResponseEl.style.display = 'none';
+                botResponseEl.innerHTML = '';
+            }
+            
+            // If bot is still speaking, interrupt it now
+            if (isSpeaking) {
+                interruptBotSpeech();
+            }
+            
+            setVoiceState('thinking');
+            
+            try {
+                // Get response and speak it
+                const responseText = await getVoiceChatResponse(finalTranscript, voiceChatAbortController.signal);
+                
+                // Discard if a newer request was started
+                if (myRequestId !== currentVoiceRequestId) {
+                    console.log(`Discarding response for request ${myRequestId} since active is ${currentVoiceRequestId}`);
+                    return;
+                }
+                
+                // Show the response in the overlay!
+                if (botResponseEl) {
+                    botResponseEl.style.display = 'block';
+                    botResponseEl.innerHTML = `<span class="prefix">Mr. AI:</span>${escapeHTML(responseText)}`;
+                }
+                
+                // Check if user closed overlay while we were waiting
+                if (!document.getElementById('voice-overlay').classList.contains('open')) {
+                    console.log("Voice chat closed during LLM fetch. Aborting speech.");
+                    return;
+                }
+                
+                await speakVoiceTextElevenLabs(responseText);
+            } catch(err) {
+                if (err.name === 'AbortError') {
+                    console.log(`Voice request ${myRequestId} was aborted.`);
+                } else {
+                    console.error("Error in voice chat response sequence:", err);
+                    if (myRequestId === currentVoiceRequestId) {
+                        if (botResponseEl) {
+                            botResponseEl.style.display = 'block';
+                            botResponseEl.innerHTML = `<span class="prefix" style="color:#ef4444;">Error:</span>Sorry, there was an error. Please try again.`;
+                        }
+                        await speakVoiceTextElevenLabs("Sorry, there was an error. Please try again.");
+                    }
+                }
+            } finally {
+                if (myRequestId === currentVoiceRequestId) {
+                    voiceChatAbortController = null;
+                }
+            }
+        }
+    };
+    
+    return rec;
+}
+
+// Immediately stop bot speaking (interrupt)
+function interruptBotSpeech() {
+    if (currentVoiceAudio) {
+        try {
+            currentVoiceAudio.onended = null;
+            currentVoiceAudio.onerror = null;
+            currentVoiceAudio.pause();
+            currentVoiceAudio.src = '';
+        } catch(e) {}
+        currentVoiceAudio = null;
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    isSpeaking = false;
+    setVoiceState('listening');
+}
+
+async function getVoiceChatResponse(question, signal) {
+    const endpoint = activeChatType === 'paper'
+        ? `/api/classroom/papers/${activeChatTargetId}/chat`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat`;
+        
+    const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-App-Token': session.token
+        },
+        body: JSON.stringify({ question }),
+        signal: signal
+    });
+    
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+        // Show in chat drawer too
+        appendChatMessageToUI('user', question);
+        appendChatMessageToUI('assistant', data.answer, data.sources);
+        
+        let speakText = data.answer;
+        // Clean fallback prefix for voice (shorter, natural)
+        const fallbackPrefix = "ye apke data se nhi h apne traf se bata raha hu\n\n";
+        if (speakText.startsWith(fallbackPrefix)) {
+            speakText = "Ye apke data se nhi h. " + speakText.substring(fallbackPrefix.length);
+        }
+        // Strip markdown
+        speakText = speakText.replace(/#{1,6}\s/g, '').replace(/[*_`~]/g, '').replace(/\n+/g, ' ').trim();
+        
+        // ⚡ Trim to 250 chars for fastest ElevenLabs flash TTS
+        if (speakText.length > 250) {
+            const cutAt = speakText.lastIndexOf(' ', 250);
+            speakText = speakText.substring(0, cutAt > 100 ? cutAt : 250);
+        }
+        return speakText;
+    } else {
+        throw new Error(data.message || "Failed to fetch response");
+    }
+}
+
+// ElevenLabs Rudra TTS via backend proxy (direct GET stream)
+async function speakVoiceTextElevenLabs(text) {
+    // Stop any currently playing audio
+    if (currentVoiceAudio) {
+        try {
+            currentVoiceAudio.onended = null;
+            currentVoiceAudio.onerror = null;
+            currentVoiceAudio.pause();
+            currentVoiceAudio.src = '';
+        } catch(e) {}
+        currentVoiceAudio = null;
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    
+    isSpeaking = true;
+    setVoiceState('speaking');
+    document.getElementById('voice-transcript').textContent = '';
+    
+    // Stop speech recognition temporarily while speaking to avoid feedback loop (mic hearing speaker)
+    if (voiceSpeechRecognition && isListening) {
+        autoRestartRecognition = false;
+        try {
+            voiceSpeechRecognition.abort();
+        } catch(e) {}
+    }
+    
+    let cleanText = text.replace(/#{1,6}\s/g, '').replace(/[*_`~]/g, '').replace(/\n+/g, ' ').trim();
+    if (!cleanText) { resumeListeningAfterSpeech(); return; }
+    
+    // Check if user closed overlay before speech setup
+    if (!document.getElementById('voice-overlay').classList.contains('open')) {
+        isSpeaking = false;
+        const visualizer = document.getElementById('voice-visualizer');
+        if (visualizer) visualizer.classList.remove('listening-mode', 'speaking-mode', 'thinking-mode');
+        return;
+    }
+    
+    try {
+        const audioUrl = `/api/classroom/tts/speak?text=${encodeURIComponent(cleanText)}&voice_id=${ELEVENLABS_VOICE_ID}&token=${encodeURIComponent(session.token)}`;
+        currentVoiceAudio = new Audio();
+        currentVoiceAudio.src = audioUrl;
+        
+        currentVoiceAudio.onended = () => {
+            currentVoiceAudio = null;
+            resumeListeningAfterSpeech();
+        };
+        currentVoiceAudio.onerror = (e) => {
+            console.warn('ElevenLabs streaming failed.', e);
+            currentVoiceAudio = null;
+            toast('⚠️ ElevenLabs streaming failed.', 'error');
+            resumeListeningAfterSpeech();
+        };
+        
+        // Start streaming & playing
+        await currentVoiceAudio.play();
+    } catch(err) {
+        console.error('ElevenLabs TTS error:', err);
+        resumeListeningAfterSpeech();
+    }
+}
+
+function resumeListeningAfterSpeech() {
+    isSpeaking = false;
+    const visualizer = document.getElementById('voice-visualizer');
+    if (visualizer) visualizer.classList.remove('speaking-mode', 'thinking-mode');
+    
+    if (document.getElementById('voice-overlay').classList.contains('open')) {
+        autoRestartRecognition = true;
+        setVoiceState('listening');
+        if (!isListening) {
+            try {
+                if (voiceSpeechRecognition) voiceSpeechRecognition.start();
+            } catch(e) {}
+        }
+    }
+}
+
+// Start Full page Voice Chat
+async function startVoiceChat() {
+    if (!activeChatType || !activeChatTargetId) return;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Web Speech API is not supported in this browser. Please use Chrome.");
+        return;
+    }
+    
+    document.getElementById('voice-overlay').classList.add('open');
+    document.getElementById('voice-transcript').textContent = '🗣️ Speak now...';
+    const botResponseEl = document.getElementById('voice-bot-response');
+    if (botResponseEl) {
+        botResponseEl.style.display = 'none';
+        botResponseEl.innerHTML = '';
+    }
+    setVoiceState('starting');
+    
+    // Always create a fresh recognition instance
+    voiceSpeechRecognition = initVoiceSpeechRecognition();
+    autoRestartRecognition = true;
+    
+    // Build greeting
+    let greeting = activeChatType === 'paper'
+        ? `I am ${activeChatTargetName} of ${activeExamName} helper. How can I help you?`
+        : `I am ${activeChatTargetName} helper. How can I help you?`;
+    
+    // Speak greeting via ElevenLabs Rudra
+    await speakVoiceTextElevenLabs(greeting);
+}
+
+// Stop Voice Chat — kills everything, recognition will NOT restart
+function stopVoiceChat() {
+    autoRestartRecognition = false;
+    isSpeaking = false;
+    isListening = false;
+    
+    const botResponseEl = document.getElementById('voice-bot-response');
+    if (botResponseEl) {
+        botResponseEl.style.display = 'none';
+        botResponseEl.innerHTML = '';
+    }
+    
+    // Abort active fetch if any
+    if (voiceChatAbortController) {
+        try {
+            voiceChatAbortController.abort();
+        } catch(e) {}
+        voiceChatAbortController = null;
+    }
+    
+    // Stop & discard the recognition instance
+    if (voiceSpeechRecognition) {
+        try {
+            voiceSpeechRecognition.onend   = null;   // Remove restart handler
+            voiceSpeechRecognition.onerror = null;   // Remove error handler
+            voiceSpeechRecognition.onresult = null;  // Remove result handler
+            voiceSpeechRecognition.abort();          // Force stop
+        } catch(e) {}
+        voiceSpeechRecognition = null;
+    }
+    
+    // Stop audio
+    if (currentVoiceAudio) {
+        try {
+            currentVoiceAudio.onended = null;
+            currentVoiceAudio.onerror = null;
+            currentVoiceAudio.pause();
+            currentVoiceAudio.src = '';
+        } catch(e) {}
+        currentVoiceAudio = null;
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    
+    // Reset visualizer state classes
+    const visualizer = document.getElementById('voice-visualizer');
+    if (visualizer) {
+        visualizer.classList.remove('listening-mode', 'speaking-mode', 'thinking-mode');
+    }
+    
+    document.getElementById('voice-overlay').classList.remove('open');
+}
+
+function handleVoiceOverlayClick(event) {
+    if (event.target.closest('.voice-close-btn')) {
+        return;
+    }
+    if (isSpeaking) {
+        console.log("Tap to interrupt activated.");
+        interruptBotSpeech();
+    }
+}
 </script>
 
 <!-- AI Quiz Modal -->
@@ -17115,6 +19098,59 @@ async function generateWatermarkOverlayImage() {
       </button>
     </div>
   </div>
+</div>
+<!-- Classroom Chatbot Drawer -->
+<div class="classroom-chat-drawer" id="classroom-chat-drawer">
+  <div class="classroom-chat-header">
+    <h3 id="classroom-chat-title">Chat with Paper</h3>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="clearClassroomChatHistory()" style="padding:4px 8px; font-size:11px; border-color:var(--red); color:var(--red);" title="Clear Chat History">🗑️ Clear</button>
+      <button class="btn btn-secondary" onclick="closeClassroomChat()" style="padding:4px 8px; font-size:11px;" title="Close Chat">✕</button>
+    </div>
+  </div>
+  <div class="classroom-chat-body" id="classroom-chat-messages">
+    <!-- Messages dynamic content -->
+  </div>
+  <div class="classroom-chat-footer">
+    <div class="chat-input-row">
+      <textarea id="classroom-chat-input" placeholder="Ask a question..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClassroomChatMessage();}"></textarea>
+      <button class="chat-btn-voice" onclick="startVoiceChat()" title="Start Voice Chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+      </button>
+      <button class="chat-btn-send" onclick="sendClassroomChatMessage()" title="Send Message">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Full-screen Voice Chat Overlay -->
+<div class="voice-overlay" id="voice-overlay" onclick="handleVoiceOverlayClick(event)">
+  <div class="voice-status-text" id="voice-status">🔊 Starting...</div>
+  <div class="voice-visualizer" id="voice-visualizer">
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-bar"></div>
+    <div class="voice-thinking-emoji" id="voice-thinking-emoji">🧠</div>
+  </div>
+  
+  <div class="voice-display-card">
+    <!-- Live transcript of what user says -->
+    <div id="voice-transcript" class="voice-trans-bubble">🗣️ Speak now...</div>
+    <!-- Live response of what bot says -->
+    <div id="voice-bot-response" class="voice-resp-bubble" style="display:none;"></div>
+  </div>
+
+  <div class="voice-helper-tip">
+    <span>💡 Tip: Tap anywhere to interrupt Mr. AI</span>
+  </div>
+
+  <button class="voice-close-btn" onclick="stopVoiceChat()">✕ Stop Voice Chat</button>
 </div>
 
 </body>

@@ -9,3 +9,7 @@ uploads/*.pdf
 *.log
 uploads/*
 /uploads
+# Dev/scratch files — do not commit
+scratch/
+test_flux.py
+work_report.md

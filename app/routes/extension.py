@@ -150,7 +150,9 @@ class UpdateSceneReq(BaseModel):
 
 class SingleAssetDoneReq(BaseModel):
     filename: str
-    asset_type: str
+    asset_type: Optional[str] = "image"
+    asset_id: Optional[str] = None
+    media_type: Optional[str] = None
 
 def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
@@ -160,8 +162,10 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
     # We will use temporary file
     temp_path = file_path + ".temp.mp4" if is_video else file_path + ".temp.jpg"
     
-    # Crop the bottom 60 pixels and scale back to 1080x1920 (stretches by <3%, completely invisible!)
-    crop_filter = "crop=iw:ih-60:0:0,scale=1080:1920"
+    if "banner" in file_path.lower():
+        crop_filter = "crop=iw:ih-60:0:0,scale=2560:1440"
+    else:
+        crop_filter = "crop=iw:ih-60:0:0,scale=1080:1920"
     
     if is_video:
         cmd = [
@@ -1531,25 +1535,32 @@ async def job_status(job_id: str, client: dict = Depends(_require_client), db: S
 
 
 @router.post("/extension/single-asset-done", tags=["Extension"])
-async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_require_client)):
+async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     import re
     import shutil
+    from pathlib import Path
     
-    # We can parse the index from the filename e.g. single-gen-{index}-{timestamp}.jpg
-    match = re.search(r'single-gen-(\d+)-', req.filename)
-    index = int(match.group(1)) if match else 0
-    
+    asset_id = req.asset_id
+    if not asset_id:
+        # We can parse the index/id from the filename e.g. single-gen-{asset_id}-{timestamp}.jpg
+        match = re.search(r'single-gen-([a-zA-Z0-9_\-]+)\.', req.filename)
+        if match:
+            asset_id = match.group(1)
+            
     base_uploads = os.path.join(os.getcwd(), "uploads", "social")
     os.makedirs(base_uploads, exist_ok=True)
     
-    is_video = req.asset_type == 'video'
+    is_video = (req.asset_type == 'video') or (req.media_type == 'video')
     ext = 'mp4' if is_video else 'jpg'
     
-    dest_filename = f"single_gen_{secrets.token_hex(4)}.{ext}"
+    if asset_id and "banner" in asset_id.lower():
+        dest_filename = f"single_gen_banner_{secrets.token_hex(4)}.{ext}"
+    else:
+        dest_filename = f"single_gen_{secrets.token_hex(4)}.{ext}"
     dest_path = os.path.join(base_uploads, dest_filename)
     
     # Discovery of the downloaded file locally
-    found_file = resilient_find_file(req.filename, scene_num=index+1, job_id="", is_video=is_video, strict=False)
+    found_file = resilient_find_file(req.filename, scene_num=1, job_id="", is_video=is_video, strict=False)
     
     if not found_file:
         downloads_dirs = [
@@ -1572,6 +1583,62 @@ async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_req
             remove_watermark_ffmpeg(dest_path, is_video=is_video)
             
             url = f"/uploads/social/{dest_filename}"
+            
+            # Upload to Cloudflare R2 if configured
+            try:
+                from app.services.r2_storage import upload_to_r2
+                r2_key = f"classroom/images/{dest_filename}"
+                r2_url = upload_to_r2(dest_path, r2_key, "image/jpeg" if not is_video else "video/mp4")
+                if r2_url:
+                    url = r2_url
+            except Exception as r2_err:
+                logger.error(f"R2 upload failed for single asset: {r2_err}")
+                
+            # If asset_id matches classroom elements, update DB directly!
+            if asset_id:
+                updated_db = False
+                if asset_id.startswith("subject-"):
+                    from app.core.models import Subject
+                    subject = db.query(Subject).filter(Subject.subject_id == asset_id).first()
+                    if subject:
+                        subject.image_url = url
+                        updated_db = True
+                elif asset_id.startswith("chapter-"):
+                    from app.core.models import ChapterClassroom
+                    chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == asset_id).first()
+                    if chapter:
+                        chapter.image_url = url
+                        updated_db = True
+                elif asset_id.startswith("topic_banner-"):
+                    # Topic banner (16:9) — save to banner_url
+                    clean_id = asset_id.replace("topic_banner-", "")
+                    from app.core.models import TopicClassroom
+                    topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == clean_id).first()
+                    if topic:
+                        topic.banner_url = url
+                        updated_db = True
+                        logger.info(f"Updated topic banner_url: {clean_id} → {url}")
+                elif asset_id.startswith("topic-"):
+                    from app.core.models import TopicClassroom
+                    topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == asset_id).first()
+                    if topic:
+                        topic.image_url = url
+                        updated_db = True
+                elif "subtopic" in asset_id:
+                    clean_id = asset_id.replace("subtopic_banner-", "")
+                    from app.core.models import SubtopicClassroom
+                    subtopic = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == clean_id).first()
+                    if subtopic:
+                        if "banner" in asset_id or "banner" in req.filename.lower():
+                            subtopic.banner_url = url
+                        else:
+                            subtopic.image_url = url
+                        updated_db = True
+                
+                if updated_db:
+                    db.commit()
+                    logger.info(f"Auto-updated classroom DB: {asset_id} to {url}")
+            
             return {"success": True, "url": url}
         except Exception as e:
             logger.error(f"Failed to copy single asset: {e}")

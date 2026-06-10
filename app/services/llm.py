@@ -134,7 +134,7 @@ async def _call_groq(question: str, context: str) -> str:
         err_msg = str(e).lower()
         if "rate limit" in err_msg or "429" in err_msg:
             # Try alternative Groq models first
-            alt_groq_models = ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"]
+            alt_groq_models = ["llama-3.1-8b-instant"]
             for alt_model in alt_groq_models:
                 if alt_model != model:
                     try:
@@ -294,7 +294,7 @@ async def generate_answer_with_config(
         raise ValueError(f"Unsupported provider: {provider}")
 
 
-async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.") -> str:
+async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.", max_tokens: int = 4096) -> str:
     """Generates a response without RAG boilerplate, with automatic rate limit fallbacks."""
     provider = get_active_provider()
     model = get_active_model()
@@ -310,7 +310,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=4096,
+                max_tokens=max_tokens,
                 temperature=0.7
             )
             return resp.choices[0].message.content.strip()
@@ -324,7 +324,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=4096,
+                max_tokens=max_tokens,
                 temperature=0.7
             )
             return resp.choices[0].message.content.strip()
@@ -334,7 +334,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
             payload = {
                 "system_instruction": {"parts": [{"text": system_prompt}]},
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096}
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": max_tokens}
             }
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(url, json=payload)
@@ -350,7 +350,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
             }
             payload = {
                 "model": model,
-                "max_tokens": 4096,
+                "max_tokens": max_tokens,
                 "system": system_prompt,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.7
@@ -380,7 +380,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
         elif provider == "huggingface":
             full_prompt = f"<s>[INST] {system_prompt}\n\n{prompt} [/INST]"
             headers = {"Authorization": f"Bearer {api_key}"}
-            payload = {"inputs": full_prompt, "parameters": {"max_new_tokens": 1024, "temperature": 0.7, "return_full_text": False}}
+            payload = {"inputs": full_prompt, "parameters": {"max_new_tokens": min(max_tokens, 1024), "temperature": 0.7, "return_full_text": False}}
             url = f"https://api-inference.huggingface.co/models/{model}"
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(url, json=payload, headers=headers)
@@ -397,7 +397,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
         
         # --- Fallback 1: Try alternative Groq models
         if provider == "groq" or "groq" in err_msg:
-            alt_groq_models = ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"]
+            alt_groq_models = ["llama-3.1-8b-instant"]
             for alt_model in alt_groq_models:
                 if alt_model != model:
                     try:
@@ -410,7 +410,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
                                 {"role": "system", "content": system_prompt},
                                 {"role": "user", "content": prompt}
                             ],
-                            max_tokens=4096,
+                            max_tokens=max_tokens,
                             temperature=0.7
                         )
                         return resp.choices[0].message.content.strip()
@@ -427,7 +427,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
                 payload = {
                     "system_instruction": {"parts": [{"text": system_prompt}]},
                     "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096}
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": max_tokens}
                 }
                 async with httpx.AsyncClient(timeout=60.0) as cl:
                     response = await cl.post(url, json=payload)
@@ -451,7 +451,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt}
                     ],
-                    max_tokens=4096,
+                    max_tokens=max_tokens,
                     temperature=0.7
                 )
                 return resp.choices[0].message.content.strip()

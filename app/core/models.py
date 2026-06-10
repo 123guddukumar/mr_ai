@@ -611,6 +611,7 @@ class PaperClassroom(Base):
 
     exam = relationship("Exam", back_populates="papers")
     subjects = relationship("Subject", back_populates="paper", cascade="all, delete-orphan")
+    chats = relationship("PaperChat", back_populates="paper", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -684,6 +685,7 @@ class TopicClassroom(Base):
     script = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     chapter = relationship("ChapterClassroom", back_populates="topics")
@@ -698,6 +700,7 @@ class TopicClassroom(Base):
             "script": self.script,
             "description": self.description or "",
             "notes": self.notes or "",
+            "image_url": self.image_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -710,6 +713,8 @@ class SubtopicClassroom(Base):
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     script = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    banner_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     topic = relationship("TopicClassroom", back_populates="subtopics")
@@ -722,6 +727,8 @@ class SubtopicClassroom(Base):
             "description": self.description or "",
             "notes": self.notes or "",
             "script": self.script or "",
+            "image_url": self.image_url or "",
+            "banner_url": self.banner_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -794,6 +801,7 @@ class PYQSet(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     questions = relationship("PYQQuestion", back_populates="pyq_set", cascade="all, delete-orphan")
+    chats = relationship("PYQChat", back_populates="pyq_set", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -838,5 +846,65 @@ class PYQQuestion(Base):
             "explanation": self.explanation or "",
             "pdf_filename": self.pdf_filename or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class PaperChat(Base):
+    __tablename__ = "paper_chats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    paper_id = Column(String(64), ForeignKey("classroom_papers.paper_id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)    # user | assistant
+    content = Column(Text, nullable=False)
+    sources_json = Column(Text, default="[]")
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    paper = relationship("PaperClassroom", back_populates="chats")
+
+    @property
+    def sources(self):
+        try:
+            return json.loads(self.sources_json or "[]")
+        except Exception:
+            return []
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paper_id": self.paper_id,
+            "role": self.role,
+            "content": self.content,
+            "sources": self.sources,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else "",
+        }
+
+
+class PYQChat(Base):
+    __tablename__ = "pyq_chats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pyq_set_id = Column(String(64), ForeignKey("pyq_sets.pyq_set_id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)    # user | assistant
+    content = Column(Text, nullable=False)
+    sources_json = Column(Text, default="[]")
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    pyq_set = relationship("PYQSet", back_populates="chats")
+
+    @property
+    def sources(self):
+        try:
+            return json.loads(self.sources_json or "[]")
+        except Exception:
+            return []
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "pyq_set_id": self.pyq_set_id,
+            "role": self.role,
+            "content": self.content,
+            "sources": self.sources,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else "",
         }
 

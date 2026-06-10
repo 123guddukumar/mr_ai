@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.clients import validate_client_token
-from app.core.models import Exam, PaperClassroom, Subject, ChapterClassroom, TopicClassroom, SubtopicClassroom, CurrentAffairTopic, CurrentAffairReel, PYQSet, PYQQuestion
+from app.core.models import Exam, PaperClassroom, Subject, ChapterClassroom, TopicClassroom, SubtopicClassroom, CurrentAffairTopic, CurrentAffairReel, PYQSet, PYQQuestion, PaperChat, PYQChat
 import os
 
 logger = logging.getLogger(__name__)
@@ -283,14 +283,17 @@ async def generate_groq_response(prompt: str, system_prompt: str = "You are a he
 
 def _require_client(
     x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    token: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    if not x_app_token:
-        raise HTTPException(401, "Missing X-App-Token header.")
-    record = validate_client_token(x_app_token, db=db)
+    actual_token = x_app_token or token
+    if not actual_token:
+        raise HTTPException(401, "Missing X-App-Token header or token parameter.")
+    record = validate_client_token(actual_token, db=db)
     if not record:
         raise HTTPException(401, "Invalid or expired token. Please login again.")
     return record
+
 
 
 # ── Pydantic Request Models ───────────────────────────────────────────────────
@@ -318,6 +321,15 @@ class GenerateImageReq(BaseModel):
     type: str  # "subject" or "chapter"
     context: Optional[str] = ""
 
+class RegenerateImageReq(BaseModel):
+    entity_id: str
+    type: str  # "subject" | "chapter" | "topic" | "subtopic" | "subtopic_banner" | "topic_banner"
+
+class GeneratePromptReq(BaseModel):
+    name: str = Field(..., min_length=1, max_length=500)
+    type: str  # "subject" | "chapter" | "topic" | "subtopic" | "subtopic_banner"
+    context: Optional[str] = ""
+
 def fetch_wikimedia_image_url(keyword: str) -> Optional[str]:
     import httpx
     import urllib.parse
@@ -340,6 +352,356 @@ def fetch_wikimedia_image_url(keyword: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Error searching Wikimedia for keyword '{keyword}': {e}")
     return None
+
+async def generate_educational_image_prompt(title: str, subtitle: str = "Subject", context: str = "") -> str:
+    """
+    Generates a highly detailed, professional educational image description.
+    Returns ONLY visual description — no aspect ratio, no format, no size instructions.
+    The calling function (extension or Pollinations URL) handles format/size separately.
+    """
+    from app.services.llm import generate_simple_response
+    
+    system_prompt = (
+        "You are an expert visual artist and prompt engineer for AI image generators (Midjourney, Flux, SDXL).\n"
+        "Write a vivid, detailed image description for an educational illustration.\n"
+        "Rules:\n"
+        "- Output ONLY the visual description. No intro, no outro, no explanations.\n"
+        "- Do NOT mention aspect ratio, image size, format, width, height, 9:16, 1:1, 16:9, portrait, landscape.\n"
+        "- Do NOT include text, words, titles, letters in the described image.\n"
+        "- Focus on objects, colors, lighting, textures, composition.\n"
+        "- Be specific and vivid — name exact objects, monuments, scientific instruments, etc."
+    )
+    
+    is_banner = "banner" in subtitle.lower()
+    context_str = f" for {context} Exam Preparation" if context else ""
+    
+    if is_banner:
+        style_hint = "wide cinematic panoramic composition, ultra-wide landscape view"
+    else:
+        style_hint = "centered square composition, symmetrical layout, hero element in center"
+    
+    user_prompt = (
+        f"Write a detailed image generation description for:\n"
+        f"Subject: {title}\n"
+        f"Context: {context}\n\n"
+        f"Style: {style_hint}\n\n"
+        f"The description must:\n"
+        f"- Feature 4-6 specific symbolic objects/structures representing '{title}' (e.g., for History: ancient stone pillars, Mughal dome, spinning wheel, ruined fort arches; for Geography: Himalayan peaks, globe, compass, river map; for Science: DNA helix, telescope, test tubes, atomic model)\n"
+        f"- Specify 2-3 harmonious colors (e.g., saffron gold and navy blue, or forest green and terracotta)\n"
+        f"- Include a specific texture/material (parchment, marble, dark stone, leather atlas)\n"
+        f"- Describe dramatic cinematic lighting (god rays, golden hour, soft studio)\n"
+        f"- End with: ultra-detailed 4K photorealistic artwork, premium educational illustration, no text, no words\n\n"
+        f"Output the description directly. No brackets, no instructions, no format words."
+    )
+    
+    try:
+        prompt = await generate_simple_response(user_prompt, system_prompt=system_prompt, max_tokens=300)
+        prompt = prompt.strip().strip('"').strip("'")
+        if prompt and len(prompt) > 30:
+            logger.info(f"Generated educational image prompt: {prompt[:100]}...")
+            return prompt
+    except Exception as e:
+        logger.warning(f"LLM prompt generation failed, using fallback: {e}")
+    
+    # Fallback — pure visual description, no format/size words
+    if is_banner:
+        return (
+            f"Panoramic cinematic educational illustration representing {title}{context_str}. "
+            f"Wide landscape scene with symbolic elements of {title}, dramatic golden hour lighting, "
+            f"rich colors, ultra-detailed 4K photorealistic artwork, no text, no words"
+        )
+    else:
+        return (
+            f"Centered photorealistic educational illustration representing {title}{context_str}. "
+            f"Grand collage of symbolic objects related to {title}, dramatic cinematic lighting, "
+            f"rich colors, premium artwork, ultra-detailed 4K quality, no text, no words"
+        )
+
+
+async def generate_ai_image_and_upload(title: str, subtitle: str = "Subject", context: str = "") -> str:
+    import urllib.parse
+    import secrets
+    import httpx
+    import os
+    import time
+    
+    # Construct a professional realistic prompt based on the title & context using LLM
+    prompt = await generate_educational_image_prompt(title, subtitle=subtitle, context=context)
+    encoded = urllib.parse.quote(prompt)
+    seed = secrets.token_hex(4)
+    # Use Flux or standard pollinations
+    image_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true&seed={seed}&model=flux"
+    
+    filename = f"classroom_{secrets.token_hex(8)}.jpg"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "images")
+    os.makedirs(uploads_dir, exist_ok=True)
+    filepath = os.path.join(uploads_dir, filename)
+    
+    max_retries = 20
+    retry_delay = 3.0 # seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Attempting to fetch image from Pollinations AI (Attempt {attempt}/{max_retries})...")
+            with httpx.Client(timeout=45.0) as client:
+                resp = client.get(image_url)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    with open(filepath, "wb") as f:
+                        f.write(resp.content)
+                    
+                    # Upload to R2 if configured
+                    try:
+                        from app.services.r2_storage import upload_to_r2
+                        r2_key = f"classroom/images/{filename}"
+                        r2_url = upload_to_r2(filepath, r2_key, "image/jpeg")
+                        if r2_url:
+                            return r2_url
+                    except Exception as r2_err:
+                        logger.error(f"R2 upload failed for AI generated image: {r2_err}")
+                    
+                    return f"/uploads/images/{filename}"
+                else:
+                    logger.warning(f"Pollinations AI returned status {resp.status_code} (attempt {attempt}/{max_retries})")
+        except Exception as e:
+            logger.warning(f"Error fetching from Pollinations AI on attempt {attempt}: {e}")
+        
+        # If not successful, wait and retry
+        if attempt < max_retries:
+            logger.info(f"Waiting {retry_delay}s before retrying Pollinations AI...")
+            time.sleep(retry_delay)
+        
+    # If AI generation fails, fall back to locally drawn premium image
+    return generate_premium_image_locally(title, subtitle)
+
+
+async def generate_banner_image_and_upload(title: str, subtitle: str = "Subtopic Banner", context: str = "") -> str:
+    import urllib.parse
+    import secrets
+    import httpx
+    import os
+    import time
+    
+    # Construct a professional realistic prompt based on the title & context using LLM
+    prompt = await generate_educational_image_prompt(title, subtitle=subtitle, context=context)
+    encoded = urllib.parse.quote(prompt)
+    seed = secrets.token_hex(4)
+    # Use Flux, 16:9 ratio (2560x1440 high resolution)
+    image_url = f"https://image.pollinations.ai/prompt/{encoded}?width=2560&height=1440&nologo=true&seed={seed}&model=flux"
+    
+    filename = f"banner_{secrets.token_hex(8)}.jpg"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "images")
+    os.makedirs(uploads_dir, exist_ok=True)
+    filepath = os.path.join(uploads_dir, filename)
+    
+    max_retries = 20
+    retry_delay = 3.0 # seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Attempting to fetch banner from Pollinations AI (Attempt {attempt}/{max_retries})...")
+            with httpx.Client(timeout=45.0) as client:
+                resp = client.get(image_url)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    with open(filepath, "wb") as f:
+                        f.write(resp.content)
+                    
+                    # Upload to R2 if configured
+                    try:
+                        from app.services.r2_storage import upload_to_r2
+                        r2_key = f"classroom/banners/{filename}"
+                        r2_url = upload_to_r2(filepath, r2_key, "image/jpeg")
+                        if r2_url:
+                            return r2_url
+                    except Exception as r2_err:
+                        logger.error(f"R2 upload failed for AI generated banner: {r2_err}")
+                    
+                    return f"/uploads/images/{filename}"
+                else:
+                    logger.warning(f"Pollinations AI returned status {resp.status_code} for banner (attempt {attempt}/{max_retries})")
+        except Exception as e:
+            logger.warning(f"Error fetching banner from Pollinations AI on attempt {attempt}: {e}")
+            
+        if attempt < max_retries:
+            logger.info(f"Waiting {retry_delay}s before retrying Pollinations AI banner...")
+            time.sleep(retry_delay)
+            
+    return generate_premium_banner_locally(title, subtitle)
+
+
+def generate_premium_banner_locally(title: str, subtitle: str = "Subtopic Banner") -> str:
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
+    import os
+    import secrets
+    import httpx
+    
+    w, h = 1280, 720
+    img = None
+    headers = {"User-Agent": "ClassroomImageGen/1.0 (admin@mr-ai.com)"}
+    
+    # 1. Search Wikimedia Commons for a relevant illustration matching the title
+    wikimedia_url = fetch_wikimedia_image_url(title)
+    if wikimedia_url:
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.get(wikimedia_url, headers=headers)
+                if resp.status_code == 200 and len(resp.content) > 1000:
+                    from io import BytesIO
+                    raw_img = Image.open(BytesIO(resp.content))
+                    # Crop and fit image centered
+                    img = ImageOps.fit(raw_img, (w, h)).convert("RGB")
+        except Exception as e:
+            logger.warning(f"Failed to load Wikimedia image '{wikimedia_url}' for banner: {e}")
+            
+    # 2. Fallback to royal linear gradient background if download failed or no match found
+    if img is None:
+        img = Image.new("RGB", (w, h), "#0b192c")
+        draw = ImageDraw.Draw(img)
+        for y in range(h):
+            r = int(11 + (30 - 11) * (y / h))
+            g = int(25 + (62 - 25) * (y / h))
+            b = int(44 + (98 - 44) * (y / h))
+            draw.line([(0, y), (w, y)], fill=(r, g, b))
+    else:
+        # Create a beautiful dark blue transparent glassmorphic overlay for contrast
+        overlay = Image.new("RGBA", (w, h), (11, 25, 44, 185)) # Navy overlay (approx 72% opacity)
+        img.paste(overlay, (0, 0), overlay)
+        
+    draw = ImageDraw.Draw(img)
+    border_color = "#D4AF37"  # Gold
+    
+    # Outer elegant frame
+    draw.rectangle([(30, 30), (w - 30, h - 30)], outline=border_color, width=4)
+    draw.rectangle([(38, 38), (w - 38, h - 38)], outline=border_color, width=1)
+    
+    # Corner ornaments
+    draw.line([(20, 50), (60, 50)], fill=border_color, width=3)
+    draw.line([(50, 20), (50, 60)], fill=border_color, width=3)
+    
+    draw.line([(w - 60, 50), (w - 20, 50)], fill=border_color, width=3)
+    draw.line([(w - 50, 20), (w - 50, 60)], fill=border_color, width=3)
+    
+    draw.line([(20, h - 50), (60, h - 50)], fill=border_color, width=3)
+    draw.line([(50, h - 60), (50, h - 20)], fill=border_color, width=3)
+    
+    draw.line([(w - 60, h - 50), (w - 20, h - 50)], fill=border_color, width=3)
+    draw.line([(w - 50, h - 60), (w - 50, h - 20)], fill=border_color, width=3)
+    
+    # Font path
+    font_path = "C:\\Windows\\Fonts\\georgiab.ttf"
+    if not os.path.exists(font_path):
+        font_path = "C:\\Windows\\Fonts\\timesbd.ttf"
+    if not os.path.exists(font_path):
+        font_path = "C:\\Windows\\Fonts\\arial.ttf"
+        
+    try:
+        title_font = ImageFont.truetype(font_path, 54)
+        sub_font = ImageFont.truetype(font_path, 24)
+    except Exception:
+        title_font = ImageFont.load_default()
+        sub_font = ImageFont.load_default()
+        
+    # Central geometric medallion outline
+    draw.ellipse([(w//2 - 140, h//2 - 160), (w//2 + 140, h//2 + 80)], outline=border_color, width=2)
+    
+    # Center coordinates of the medallion
+    cx, cy = w // 2, h // 2 - 40
+    title_lower = title.lower()
+    
+    # Draw keyword-specific gold vector icons
+    if any(k in title_lower for k in ["history", "itihas", "ancient", "medieval", "modern", "war", "struggle", "movement", "period", "empire"]):
+        draw.line([(cx, cy - 35), (cx, cy + 35)], fill=border_color, width=3) # Spine
+        draw.polygon([(cx, cy - 35), (cx - 45, cy - 28), (cx - 45, cy + 28), (cx, cy + 35)], outline=border_color, width=2) # Left
+        draw.polygon([(cx, cy - 35), (cx + 45, cy - 28), (cx + 45, cy + 28), (cx, cy + 35)], outline=border_color, width=2) # Right
+        
+    elif any(k in title_lower for k in ["geography", "bhugol", "climate", "resource", "earth", "settlement", "map", "space", "astronomy", "physical", "atmosphere"]):
+        r = 40
+        draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], outline=border_color, width=2)
+        draw.line([(cx - r, cy), (cx + r, cy)], fill=border_color, width=1)
+        draw.line([(cx, cy - r), (cx, cy + r)], fill=border_color, width=1)
+        draw.ellipse([(cx - r, cy - r//2), (cx + r, cy + r//2)], outline=border_color, width=1)
+        draw.ellipse([(cx - r//2, cy - r), (cx + r//2, cy + r)], outline=border_color, width=1)
+        
+    elif any(k in title_lower for k in ["polity", "constitution", "samvidhan", "law", "government", "parliament", "executive", "judiciary", "rights", "bodies", "institutions", "citizenship"]):
+        draw.line([(cx, cy - 35), (cx, cy + 35)], fill=border_color, width=4)
+        draw.line([(cx - 20, cy + 35), (cx + 20, cy + 35)], fill=border_color, width=4)
+        draw.line([(cx - 45, cy - 20), (cx + 45, cy - 20)], fill=border_color, width=4)
+        
+    elif any(k in title_lower for k in ["economy", "arthvyavastha", "economics", "budget", "finance", "fiscal", "money", "trade", "banking", "planning", "unemployment", "poverty"]):
+        draw.line([(cx - 35, cy - 35), (cx - 35, cy + 35)], fill=border_color, width=3)
+        draw.line([(cx - 35, cy + 35), (cx + 35, cy + 35)], fill=border_color, width=3)
+        draw.line([(cx - 28, cy + 28), (cx - 12, cy + 12), (cx, cy + 20), (cx + 28, cy - 25)], fill=border_color, width=4)
+        draw.polygon([(cx + 28, cy - 25), (cx + 14, cy - 25), (cx + 28, cy - 11)], fill=border_color)
+        
+    elif any(k in title_lower for k in ["science", "physics", "chemistry", "biology", "vigyan", "measurement", "motion", "force", "energy", "body", "health", "ecology", "environment", "plant", "animal", "genetics"]):
+        draw.ellipse([(cx - 12, cy - 12), (cx + 12, cy + 12)], fill=border_color)
+        draw.ellipse([(cx - 40, cy - 16), (cx + 40, cy + 16)], outline=border_color, width=2)
+        draw.ellipse([(cx - 16, cy - 40), (cx + 16, cy + 40)], outline=border_color, width=2)
+        
+    elif any(k in title_lower for k in ["math", "mathematics", "ganit", "quantitative", "quant", "aptitude", "reasoning", "puzzle", "series", "matrix", "cube", "dice", "coding", "decoding", "relations"]):
+        draw.polygon([(cx, cy - 35), (cx - 35, cy + 28), (cx + 35, cy + 28)], outline=border_color, width=2)
+        
+    else:
+        draw.line([(cx, cy - 30), (cx, cy + 30)], fill=border_color, width=3)
+        draw.polygon([(cx, cy - 30), (cx - 35, cy - 22), (cx - 35, cy + 22), (cx, cy + 30)], outline=border_color, width=2)
+        draw.polygon([(cx, cy - 30), (cx + 35, cy - 22), (cx + 35, cy + 22), (cx, cy + 30)], outline=border_color, width=2)
+        
+    # Decorative diamond cluster
+    for dx in [-30, 0, 30]:
+        dcx = w // 2 + dx
+        dcy = h // 2 - 120
+        draw.polygon([(dcx, dcy - 7), (dcx + 7, dcy), (dcx, dcy + 7), (dcx - 7, dcy)], fill=border_color)
+    
+    # Text wrapping
+    words = title.split()
+    lines = []
+    current_line = []
+    for word in words:
+        current_line.append(word)
+        try:
+            line_str = " ".join(current_line)
+            bbox = draw.textbbox((0, 0), line_str, font=title_font)
+            line_w = bbox[2] - bbox[0]
+            if line_w > w - 300:
+                current_line.pop()
+                lines.append(" ".join(current_line))
+                current_line = [word]
+        except Exception:
+            if len(current_line) > 4:
+                current_line.pop()
+                lines.append(" ".join(current_line))
+                current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+        
+    start_y = h // 2 - 15
+    line_height = 65
+    for i, line in enumerate(lines):
+        y_pos = start_y + (i - len(lines)/2) * line_height
+        draw.text((w//2 + 3, y_pos + 3), line, fill="#040811", font=title_font, anchor="mm")
+        draw.text((w//2, y_pos), line, fill="#FFFFFF", font=title_font, anchor="mm")
+        
+    # Subtitle banner
+    draw.text((w//2, h//2 + 140), subtitle.upper(), fill=border_color, font=sub_font, anchor="mm")
+    
+    filename = f"banner_{secrets.token_hex(8)}.jpg"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "images")
+    os.makedirs(uploads_dir, exist_ok=True)
+    filepath = os.path.join(uploads_dir, filename)
+    img.save(filepath, "JPEG", quality=92)
+    
+    # Upload to R2 if configured
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"classroom/banners/{filename}"
+        r2_url = upload_to_r2(filepath, r2_key, "image/jpeg")
+        if r2_url:
+            return r2_url
+    except Exception as r2_err:
+        logger.error(f"Failed to upload premium banner to R2: {r2_err}")
+        
+    return f"/uploads/images/{filename}"
+
+
 
 def generate_premium_image_locally(title: str, subtitle: str = "Subject") -> str:
     from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -518,6 +880,17 @@ def generate_premium_image_locally(title: str, subtitle: str = "Subject") -> str
     os.makedirs(uploads_dir, exist_ok=True)
     filepath = os.path.join(uploads_dir, filename)
     img.save(filepath, "JPEG", quality=92)
+    
+    # Upload to R2 if configured
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"classroom/images/{filename}"
+        r2_url = upload_to_r2(filepath, r2_key, "image/jpeg")
+        if r2_url:
+            return r2_url
+    except Exception as r2_err:
+        logger.error(f"Failed to upload premium image to R2: {r2_err}")
+        
     return f"/uploads/images/{filename}"
 
 
@@ -535,6 +908,17 @@ def download_and_save_image(image_url: str, fallback_keyword: str = None, subtit
             if resp.status_code == 200 and len(resp.content) > 1000:  # Avoid error HTML/JSON responses
                 with open(filepath, "wb") as f:
                     f.write(resp.content)
+                
+                # Upload to R2 if configured
+                try:
+                    from app.services.r2_storage import upload_to_r2
+                    r2_key = f"classroom/images/{filename}"
+                    r2_url = upload_to_r2(filepath, r2_key, "image/jpeg")
+                    if r2_url:
+                        return r2_url
+                except Exception as r2_err:
+                    logger.error(f"Failed to upload downloaded image to R2: {r2_err}")
+                    
                 return f"/uploads/images/{filename}"
     except Exception as e:
         logger.warning(f"Error downloading image locally: {e}")
@@ -554,11 +938,14 @@ class CreateTopicReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     video_length: Optional[int] = None
     script: Optional[str] = None
+    image_url: Optional[str] = None
 
 class CreateSubtopicReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = ""
     script: Optional[str] = None
+    image_url: Optional[str] = None
+    banner_url: Optional[str] = None
 
 
 # ── Exam Endpoints ────────────────────────────────────────────────────────────
@@ -705,7 +1092,13 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
     
     image_url = req.image_url
     if not image_url:
-        image_url = generate_premium_image_locally(req.name, subtitle="Subject")
+        exam_name = ""
+        if paper.exam_id:
+            exam = db.query(Exam).filter(Exam.exam_id == paper.exam_id).first()
+            if exam:
+                exam_name = exam.name
+        context_str = f"{exam_name} {paper.name}".strip()
+        image_url = await generate_ai_image_and_upload(req.name, subtitle="Subject", context=context_str)
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
@@ -757,12 +1150,188 @@ async def delete_subject(subject_id: str, client: dict = Depends(_require_client
 async def generate_classroom_image(req: GenerateImageReq, client: dict = Depends(_require_client)):
     if req.type == "subject":
         subtitle = "Subject"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
     elif req.type == "current_affair":
         subtitle = "Current Affair"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
+    elif req.type == "topic":
+        subtitle = "Topic"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
+    elif req.type == "subtopic":
+        subtitle = "Subtopic"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
+    elif req.type == "subtopic_banner":
+        local_url = await generate_banner_image_and_upload(req.name, context=req.context)
     else:
         subtitle = "Chapter"
-    local_url = generate_premium_image_locally(req.name, subtitle=subtitle)
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
     return {"success": True, "image_url": local_url}
+
+
+@router.post("/classroom/generate-educational-prompt", tags=["Classroom"])
+async def get_classroom_educational_prompt(req: GeneratePromptReq, client: dict = Depends(_require_client)):
+    subtitle = req.type.capitalize()
+    if req.type == "subtopic_banner":
+        subtitle = "Subtopic Banner"
+    elif req.type == "topic_banner":
+        subtitle = "Topic Banner"    # treated as banner → 16:9 wide cinematic prompt
+    elif req.type == "current_affair":
+        subtitle = "Current Affair"
+        
+    prompt = await generate_educational_image_prompt(req.name, subtitle=subtitle, context=req.context)
+    return {"success": True, "prompt": prompt}
+
+
+@router.post("/classroom/regenerate-image", tags=["Classroom"])
+async def regenerate_classroom_image(req: RegenerateImageReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    entity_id = req.entity_id
+    entity_type = req.type.lower()
+    
+    if entity_type == "subject":
+        subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not subject:
+            raise HTTPException(404, "Subject not found or access denied")
+        exam_name = ""
+        if subject.exam_id:
+            exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+            if exam:
+                exam_name = exam.name
+        paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == subject.paper_id).first()
+        paper_name = paper.name if paper else ""
+        context_str = f"{exam_name} {paper_name}".strip()
+        
+        new_url = await generate_ai_image_and_upload(subject.name, subtitle="Subject", context=context_str)
+        subject.image_url = new_url
+        db.commit()
+        db.refresh(subject)
+        return {"success": True, "image_url": new_url, "entity": subject.to_dict()}
+        
+    elif entity_type == "chapter":
+        chapter = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not chapter:
+            raise HTTPException(404, "Chapter not found or access denied")
+        subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+        subject_name = subject.name if subject else ""
+        exam_name = ""
+        if subject and subject.exam_id:
+            exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+            if exam:
+                exam_name = exam.name
+        context_str = f"{exam_name} {subject_name}".strip()
+        
+        new_url = await generate_ai_image_and_upload(chapter.name, subtitle="Chapter", context=context_str)
+        chapter.image_url = new_url
+        db.commit()
+        db.refresh(chapter)
+        return {"success": True, "image_url": new_url, "entity": chapter.to_dict()}
+        
+    elif entity_type == "topic":
+        topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not topic:
+            raise HTTPException(404, "Topic not found or access denied")
+        chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+        chapter_name = chapter.name if chapter else ""
+        subject_name = ""
+        exam_name = ""
+        if chapter:
+            subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+            if subject:
+                subject_name = subject.name
+                if subject.exam_id:
+                    exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                    if exam:
+                        exam_name = exam.name
+        context_str = f"{exam_name} {subject_name} {chapter_name}".strip()
+        
+        new_url = await generate_ai_image_and_upload(topic.name, subtitle="Topic", context=context_str)
+        topic.image_url = new_url
+        db.commit()
+        db.refresh(topic)
+        return {"success": True, "image_url": new_url, "entity": topic.to_dict()}
+        
+    elif entity_type == "subtopic":
+        subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not subtopic:
+            raise HTTPException(404, "Subtopic not found or access denied")
+        topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == subtopic.topic_id).first()
+        topic_name = topic.name if topic else ""
+        chapter_name = ""
+        subject_name = ""
+        exam_name = ""
+        if topic:
+            chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+            if chapter:
+                chapter_name = chapter.name
+                subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+                if subject:
+                    subject_name = subject.name
+                    if subject.exam_id:
+                        exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                        if exam:
+                            exam_name = exam.name
+        context_str = f"{exam_name} {subject_name} {chapter_name} {topic_name}".strip()
+        
+        new_url = await generate_ai_image_and_upload(subtopic.name, subtitle="Subtopic", context=context_str)
+        subtopic.image_url = new_url
+        db.commit()
+        db.refresh(subtopic)
+        return {"success": True, "image_url": new_url, "entity": subtopic.to_dict()}
+        
+    elif entity_type == "subtopic_banner":
+        subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not subtopic:
+            raise HTTPException(404, "Subtopic not found or access denied")
+        topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == subtopic.topic_id).first()
+        topic_name = topic.name if topic else ""
+        chapter_name = ""
+        subject_name = ""
+        exam_name = ""
+        if topic:
+            chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+            if chapter:
+                chapter_name = chapter.name
+                subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+                if subject:
+                    subject_name = subject.name
+                    if subject.exam_id:
+                        exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                        if exam:
+                            exam_name = exam.name
+        context_str = f"{exam_name} {subject_name} {chapter_name} {topic_name}".strip()
+        
+        new_url = await generate_banner_image_and_upload(subtopic.name, subtitle="Subtopic Banner", context=context_str)
+        subtopic.banner_url = new_url
+        db.commit()
+        db.refresh(subtopic)
+        return {"success": True, "banner_url": new_url, "entity": subtopic.to_dict()}
+        
+    elif entity_type == "topic_banner":
+        topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not topic:
+            raise HTTPException(404, "Topic not found or access denied")
+        chapter_name = ""
+        subject_name = ""
+        exam_name = ""
+        chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+        if chapter:
+            chapter_name = chapter.name
+            subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+            if subject:
+                subject_name = subject.name
+                if subject.exam_id:
+                    exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                    if exam:
+                        exam_name = exam.name
+        context_str = f"{exam_name} {subject_name} {chapter_name}".strip()
+        
+        new_url = await generate_banner_image_and_upload(topic.name, subtitle="Topic Banner", context=context_str)
+        topic.banner_url = new_url
+        db.commit()
+        db.refresh(topic)
+        return {"success": True, "banner_url": new_url, "entity": topic.to_dict()}
+        
+    else:
+        raise HTTPException(400, "Invalid entity type for image regeneration")
 
 
 # ── Chapter Endpoints ─────────────────────────────────────────────────────────
@@ -775,7 +1344,13 @@ async def create_chapter(subject_id: str, req: CreateChapterReq, client: dict = 
         
     image_url = req.image_url
     if not image_url:
-        image_url = generate_premium_image_locally(req.name, subtitle="Chapter")
+        exam_name = ""
+        if subject.exam_id:
+            exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+            if exam:
+                exam_name = exam.name
+        context_str = f"{exam_name} {subject.name}".strip()
+        image_url = await generate_ai_image_and_upload(req.name, subtitle="Chapter", context=context_str)
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
@@ -827,6 +1402,21 @@ async def create_topic(chapter_id: str, req: CreateTopicReq, client: dict = Depe
     chapter = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == chapter_id, Exam.client_id == client["client_id"]).first()
     if not chapter:
         raise HTTPException(404, "Chapter not found or access denied")
+    
+    image_url = req.image_url
+    if not image_url:
+        subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+        subject_name = subject.name if subject else ""
+        exam_name = ""
+        if subject and subject.exam_id:
+            exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+            if exam:
+                exam_name = exam.name
+        context_str = f"{exam_name} {subject_name} {chapter.name}".strip()
+        image_url = await generate_ai_image_and_upload(req.name, subtitle="Topic", context=context_str)
+    elif image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
     topic_id = "topic-" + secrets.token_hex(8)
     topic = TopicClassroom(
         topic_id=topic_id,
@@ -834,6 +1424,7 @@ async def create_topic(chapter_id: str, req: CreateTopicReq, client: dict = Depe
         name=req.name,
         video_length=req.video_length,
         script=req.script,
+        image_url=image_url,
         created_at=datetime.utcnow()
     )
     db.add(topic)
@@ -850,6 +1441,11 @@ async def update_topic(topic_id: str, req: CreateTopicReq, client: dict = Depend
     topic.name = req.name
     topic.video_length = req.video_length
     topic.script = req.script
+    if req.image_url:
+        if req.image_url.startswith("http") and not req.image_url.startswith("/uploads"):
+            topic.image_url = download_and_save_image(req.image_url, fallback_keyword=req.name)
+        else:
+            topic.image_url = req.image_url
     db.commit()
     db.refresh(topic)
     return {"success": True, "topic": topic.to_dict()}
@@ -872,6 +1468,34 @@ async def create_subtopic(topic_id: str, req: CreateSubtopicReq, client: dict = 
     topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == topic_id, Exam.client_id == client["client_id"]).first()
     if not topic:
         raise HTTPException(404, "Topic not found or access denied")
+    
+    # Build context
+    chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+    chapter_name = chapter.name if chapter else ""
+    subject_name = ""
+    exam_name = ""
+    if chapter:
+        subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+        if subject:
+            subject_name = subject.name
+            if subject.exam_id:
+                exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                if exam:
+                    exam_name = exam.name
+    context_str = f"{exam_name} {subject_name} {chapter_name} {topic.name}".strip()
+    
+    image_url = req.image_url
+    if not image_url:
+        image_url = await generate_ai_image_and_upload(req.name, subtitle="Subtopic", context=context_str)
+    elif image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name)
+        
+    banner_url = req.banner_url
+    if not banner_url:
+        banner_url = await generate_banner_image_and_upload(req.name, context=context_str)
+    elif banner_url.startswith("http") and not banner_url.startswith("/uploads"):
+        banner_url = download_and_save_image(banner_url, fallback_keyword=req.name)
+        
     subtopic_id = "subtopic-" + secrets.token_hex(8)
     subtopic = SubtopicClassroom(
         subtopic_id=subtopic_id,
@@ -879,6 +1503,8 @@ async def create_subtopic(topic_id: str, req: CreateSubtopicReq, client: dict = 
         name=req.name,
         description=req.description,
         script=req.script,
+        image_url=image_url,
+        banner_url=banner_url,
         created_at=datetime.utcnow()
     )
     db.add(subtopic)
@@ -896,6 +1522,16 @@ async def update_subtopic(subtopic_id: str, req: CreateSubtopicReq, client: dict
     subtopic.description = req.description
     if req.script is not None:
         subtopic.script = req.script
+    if req.image_url:
+        if req.image_url.startswith("http") and not req.image_url.startswith("/uploads"):
+            subtopic.image_url = download_and_save_image(req.image_url, fallback_keyword=req.name)
+        else:
+            subtopic.image_url = req.image_url
+    if req.banner_url:
+        if req.banner_url.startswith("http") and not req.banner_url.startswith("/uploads"):
+            subtopic.banner_url = download_and_save_image(req.banner_url, fallback_keyword=req.name)
+        else:
+            subtopic.banner_url = req.banner_url
     db.commit()
     db.refresh(subtopic)
     return {"success": True, "subtopic": subtopic.to_dict()}
@@ -2073,6 +2709,38 @@ async def get_subtopic_details(subtopic_id: str, client: dict = Depends(_require
     subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == subtopic_id, Exam.client_id == client["client_id"]).first()
     if not subtopic:
         raise HTTPException(404, "Subtopic not found or access denied")
+        
+    updated = False
+    
+    # Build context
+    topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == subtopic.topic_id).first()
+    chapter_name = ""
+    subject_name = ""
+    exam_name = ""
+    topic_name = topic.name if topic else ""
+    if topic:
+        chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == topic.chapter_id).first()
+        if chapter:
+            chapter_name = chapter.name
+            subject = db.query(Subject).filter(Subject.subject_id == chapter.subject_id).first()
+            if subject:
+                subject_name = subject.name
+                if subject.exam_id:
+                    exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+                    if exam:
+                        exam_name = exam.name
+    context_str = f"{exam_name} {subject_name} {chapter_name} {topic_name}".strip()
+
+    if not subtopic.image_url:
+        subtopic.image_url = await generate_ai_image_and_upload(subtopic.name, subtitle="Subtopic", context=context_str)
+        updated = True
+    if not subtopic.banner_url:
+        subtopic.banner_url = await generate_banner_image_and_upload(subtopic.name, context=context_str)
+        updated = True
+    if updated:
+        db.commit()
+        db.refresh(subtopic)
+        
     return {"success": True, "subtopic": subtopic.to_dict()}
 
 
@@ -3329,3 +3997,670 @@ async def delete_pyq_reel(reel_id: str, client: dict = Depends(_require_client),
     db.delete(reel)
     db.commit()
     return {"success": True}
+
+
+# ── Classroom Chatbot Endpoints ───────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    question: str
+    top_k: Optional[int] = 5
+
+
+@router.post("/classroom/papers/{paper_id}/vectorize", tags=["Classroom Chatbot"])
+async def vectorize_paper(
+    paper_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    paper = db.query(PaperClassroom).join(Exam).filter(
+        PaperClassroom.paper_id == paper_id,
+        Exam.client_id == client["client_id"]
+    ).first()
+    if not paper:
+        raise HTTPException(404, "Paper not found or access denied")
+
+    text_parts = []
+    text_parts.append(f"Exam: {paper.exam.name}")
+    text_parts.append(f"Exam Paper: {paper.name}")
+
+    for subj in paper.subjects:
+        text_parts.append(f"Subject: {subj.name}")
+        for chap in subj.chapters:
+            text_parts.append(f"Chapter: {chap.name} (Subject: {subj.name})")
+            for topic in chap.topics:
+                text_parts.append(f"Topic: {topic.name} (Chapter: {chap.name}, Subject: {subj.name})")
+                if topic.description:
+                    text_parts.append(f"Topic {topic.name} Description: {topic.description}")
+                if topic.notes:
+                    text_parts.append(f"Topic {topic.name} Notes:\n{topic.notes}")
+                if topic.script:
+                    text_parts.append(f"Topic {topic.name} Script:\n{topic.script}")
+                for subtopic in topic.subtopics:
+                    text_parts.append(f"Subtopic: {subtopic.name} (Topic: {topic.name}, Chapter: {chap.name})")
+                    if subtopic.description:
+                        text_parts.append(f"Subtopic {subtopic.name} Description: {subtopic.description}")
+                    if subtopic.notes:
+                        text_parts.append(f"Subtopic {subtopic.name} Notes:\n{subtopic.notes}")
+                    if subtopic.script:
+                        text_parts.append(f"Subtopic {subtopic.name} Script:\n{subtopic.script}")
+
+    compiled_text = "\n\n".join(text_parts)
+    
+    if not compiled_text.strip():
+        raise HTTPException(400, "No syllabus content found under this paper to vectorize.")
+
+    from app.services.chunker import chunk_text
+    from app.services.embedder import embed_texts
+    from app.services.vector_store import get_vector_store
+
+    chunks = chunk_text([(1, compiled_text)], source_file=f"Paper: {paper.name}")
+    for c in chunks:
+        c.paper_id = paper_id
+
+    store = get_vector_store()
+    store.delete_by_paper(paper_id)
+    
+    texts = [c.text for c in chunks]
+    embeddings = embed_texts(texts)
+    store.add_chunks(embeddings, chunks)
+
+    return {"success": True, "total_chunks": len(chunks), "message": "Paper data successfully vectorized!"}
+
+
+@router.post("/classroom/pyq-sets/{pyq_set_id}/vectorize", tags=["Classroom Chatbot"])
+async def vectorize_pyq_set(
+    pyq_set_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    pyq_set = db.query(PYQSet).filter(
+        PYQSet.pyq_set_id == pyq_set_id,
+        PYQSet.client_id == client["client_id"]
+    ).first()
+    if not pyq_set:
+        raise HTTPException(404, "PYQ set not found")
+
+    questions = db.query(PYQQuestion).filter(
+        PYQQuestion.pyq_set_id == pyq_set_id
+    ).all()
+    if not questions:
+        raise HTTPException(400, "No questions found in this PYQ set to vectorize.")
+
+    text_parts = [f"PYQ Set Name: {pyq_set.name}"]
+    for idx, q in enumerate(questions):
+        q_text = f"Question {idx+1}: {q.question_text}"
+        if q.options:
+            opts = ", ".join(q.options)
+            q_text += f"\nOptions: {opts}"
+        if q.correct_answer:
+            q_text += f"\nCorrect Answer: {q.correct_answer}"
+        if q.explanation:
+            q_text += f"\nExplanation: {q.explanation}"
+        text_parts.append(q_text)
+
+    compiled_text = "\n\n---\n\n".join(text_parts)
+
+    from app.services.chunker import chunk_text
+    from app.services.embedder import embed_texts
+    from app.services.vector_store import get_vector_store
+
+    chunks = chunk_text([(1, compiled_text)], source_file=f"PYQ Set: {pyq_set.name}")
+    for c in chunks:
+        c.pyq_set_id = pyq_set_id
+
+    store = get_vector_store()
+    store.delete_by_pyq_set(pyq_set_id)
+    
+    texts = [c.text for c in chunks]
+    embeddings = embed_texts(texts)
+    store.add_chunks(embeddings, chunks)
+
+    return {"success": True, "total_chunks": len(chunks), "message": "PYQ set successfully vectorized!"}
+
+
+# ── Classroom Chatbot Endpoints ───────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    question: str
+    top_k: Optional[int] = 5
+
+
+# Cooldown memory for rate-limited models to prevent repeated latency on subsequent requests
+MODEL_COOLDOWNS = {}
+COOLDOWN_DURATION = 300  # 5 minutes in seconds
+
+async def _chat_llm_with_fallback(prompt: str, system_prompt: str, max_tokens: int = 1024) -> str:
+    """
+    Try primary Groq model first; auto-fallback on rate-limit / errors:
+      1. llama-3.3-70b-versatile  (primary, 100K TPD)
+      2. llama-3.1-8b-instant     (separate quota, fastest)
+      3. gemini-2.5-flash         (generous free tier)
+    Uses a cooldown dictionary to skip models that are currently rate-limited.
+    """
+    import time
+    from app.services.llm import generate_simple_response
+    from app.services.llm import set_runtime_provider, get_active_provider, get_active_model
+    from app.core.config import settings
+
+    GROQ_FALLBACK_MODELS = [
+        "llama-3.3-70b-versatile",   # primary
+        "llama-3.1-8b-instant",      # fallback 1 — separate TPD quota, very fast
+    ]
+
+    last_error = None
+    primary_provider = get_active_provider()
+    now = time.time()
+
+    # Try Groq models in order, skipping ones on active cooldown
+    for model in GROQ_FALLBACK_MODELS:
+        if model in MODEL_COOLDOWNS and MODEL_COOLDOWNS[model] > now:
+            logger.info(f"Skipping model '{model}' due to active rate-limit cooldown (expires in {int(MODEL_COOLDOWNS[model] - now)}s).")
+            continue
+
+        # If fallback model is llama-3.1-8b-instant, enforce strict token/prompt size limit
+        active_prompt = prompt
+        if model == "llama-3.1-8b-instant" and len(active_prompt) > 12000:
+            logger.info(f"Prompt length ({len(active_prompt)} chars) is large for llama-3.1-8b-instant. Truncating context...")
+            header = None
+            if "--- Mapped Exam Paper Context ---\n" in active_prompt:
+                header = "--- Mapped Exam Paper Context ---\n"
+            elif "--- Mapped PYQ Set Context ---\n" in active_prompt:
+                header = "--- Mapped PYQ Set Context ---\n"
+                
+            if header and "\n---\n\n--- Chat History ---" in active_prompt:
+                parts = active_prompt.split(header, 1)
+                subparts = parts[1].split("\n---\n\n--- Chat History ---", 1)
+                context_text = subparts[0]
+                # Truncate context to ~4500 chars (approx 1100 tokens) to be extremely safe
+                truncated_context = context_text[:4500] + "\n... (context truncated to fit model token limit)"
+                active_prompt = parts[0] + header + truncated_context + "\n---\n\n--- Chat History ---" + subparts[1]
+
+        try:
+            old_model = get_active_model()
+            set_runtime_provider("groq", settings.GROQ_API_KEY, model)
+            result = await generate_simple_response(active_prompt, system_prompt, max_tokens=max_tokens)
+            # Restore to original on success
+            set_runtime_provider(primary_provider, "", "")  # revert
+            return result
+        except Exception as e:
+            last_error = e
+            err_str = str(e).lower()
+            # If rate-limited or quota exceeded, trigger cooldown
+            if any(term in err_str for term in ["rate_limit", "429", "quota", "tokens per day", "limit reached"]):
+                logger.warning(f"Groq model '{model}' rate-limited. Setting 5-minute cooldown.")
+                MODEL_COOLDOWNS[model] = time.time() + COOLDOWN_DURATION
+            else:
+                logger.warning(f"Groq model '{model}' failed ({e}). Setting 1-minute cooldown.")
+                MODEL_COOLDOWNS[model] = time.time() + 60
+            continue
+
+    # Final fallback: Gemini Flash (generous free quota)
+    try:
+        logger.warning("All Groq models failed or on cooldown, falling back to Gemini Flash...")
+        set_runtime_provider("gemini", settings.GEMINI_API_KEY, "gemini-2.5-flash")
+        result = await generate_simple_response(prompt, system_prompt, max_tokens=max_tokens)
+        set_runtime_provider(primary_provider, "", "")  # revert
+        return result
+    except Exception as e:
+        last_error = e
+        logger.error(f"All LLM fallbacks failed. Last error: {e}")
+        set_runtime_provider(primary_provider, "", "")  # revert
+        raise RuntimeError(f"All LLM providers exhausted. Last error: {e}")
+
+
+@router.post("/classroom/papers/{paper_id}/chat", tags=["Classroom Chatbot"])
+async def chat_classroom_paper(
+    paper_id: str,
+    req: ChatRequest,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    paper = db.query(PaperClassroom).join(Exam).filter(
+        PaperClassroom.paper_id == paper_id,
+        Exam.client_id == client["client_id"]
+    ).first()
+    if not paper:
+        raise HTTPException(404, "Paper not found or access denied")
+
+    question = req.question.strip()
+    
+    # ── Instant interception: greetings ──────────────────────────────────────
+    q_clean = question.lower().strip().rstrip("?").rstrip(".").rstrip("!")
+    if q_clean in ["hi", "hii", "hello", "hey", "helo", "hllo"]:
+        answer = "hii how are you"
+        db.add(PaperChat(paper_id=paper_id, role="user", content=question, sources_json="[]"))
+        db.add(PaperChat(paper_id=paper_id, role="assistant", content=answer, sources_json="[]"))
+        db.commit()
+        return {"success": True, "answer": answer, "sources": [], "context_found": False}
+
+    # ── Instant interception: identity questions ──────────────────────────────
+    _identity_triggers = [
+        "who are you", "what is your name", "your name", "what are you",
+        "aap kaun ho", "tumhara naam kya hai", "apna naam batao", "kaun ho tum",
+        "introduce yourself", "tell me about yourself", "tum kaun ho",
+        "aapka naam", "naam kya hai", "aap kya ho",
+    ]
+    if any(t in q_clean for t in _identity_triggers):
+        exam_name = paper.exam.name if paper.exam else "Exam"
+        paper_name = paper.name
+        answer = f"I am {paper_name} of {exam_name} helper. I can answer questions related to the {paper_name} syllabus and content."
+        db.add(PaperChat(paper_id=paper_id, role="user", content=question, sources_json="[]"))
+        db.add(PaperChat(paper_id=paper_id, role="assistant", content=answer, sources_json="[]"))
+        db.commit()
+        return {"success": True, "answer": answer, "sources": [], "context_found": False}
+
+    # Fetch last 6 messages of history
+    history_msgs = db.query(PaperChat).filter(
+        PaperChat.paper_id == paper_id
+    ).order_by(PaperChat.timestamp.desc()).limit(6).all()
+    history_msgs.reverse()
+
+    history_str = ""
+    for h in history_msgs:
+        role_name = "User" if h.role == "user" else "Assistant"
+        history_str += f"{role_name}: {h.content}\n"
+
+    from app.services.embedder import embed_query
+    from app.services.vector_store import get_vector_store
+    from app.services.llm import build_context_and_sources, generate_simple_response
+    import json
+
+    search_query = question
+    if any(ord(char) > 127 for char in question):
+        try:
+            translation_prompt = f"Translate the following Hindi query into a concise English search query for information retrieval. Only return the direct English translation, nothing else.\nQuery: {question}"
+            translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+            search_query = translated.strip()
+            logger.info(f"Translated paper query: '{question}' -> '{search_query}'")
+        except Exception as e:
+            logger.error(f"Failed to translate paper query: {e}")
+
+    query_emb = embed_query(search_query)
+    store = get_vector_store()
+    results = store.search_by_paper(query_emb, paper_id, top_k=req.top_k)
+    
+    valid_results = [(chunk, score) for chunk, score in results if score >= 0.25]
+    
+    context_found = bool(valid_results)
+    prefix_msg = ""
+    
+    if not context_found:
+        prefix_msg = "ye apke data se nhi h apne traf se bata raha hu\n\n"
+        context = "No relevant context was found in the indexed documents. Please answer the user's question using your general knowledge."
+        sources_data = []
+    else:
+        context, sources_data = build_context_and_sources(valid_results)
+
+    system_prompt = (
+        f"You are a helpful educational AI assistant helper for the Exam Paper: '{paper.name}' (Exam: '{paper.exam.name}').\n"
+        f"Answer the user's question as accurately as possible based on the provided context.\n"
+        f"Answer strictly in the SAME language that the user used to ask their question.\n"
+        f"Cite sources if retrieved from context.\n"
+    )
+
+    prompt = (
+        f"--- Mapped Exam Paper Context ---\n{context}\n---\n\n"
+        f"--- Chat History ---\n{history_str}\n---\n\n"
+        f"Question: {question}"
+    )
+
+    try:
+        raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
+        answer = prefix_msg + raw_answer
+    except Exception as e:
+        logger.error(f"Paper chat LLM failed (all fallbacks): {e}")
+        raise HTTPException(502, f"LLM error: {e}")
+
+    srcs_json = json.dumps([s.model_dump() for s in sources_data], default=str)
+    db.add(PaperChat(paper_id=paper_id, role="user", content=question, sources_json="[]"))
+    db.add(PaperChat(paper_id=paper_id, role="assistant", content=answer, sources_json=srcs_json))
+    db.commit()
+
+    return {
+        "success": True,
+        "question": question,
+        "answer": answer,
+        "sources": [s.model_dump() for s in sources_data],
+        "context_found": context_found
+    }
+
+
+@router.get("/classroom/papers/{paper_id}/chat/history", tags=["Classroom Chatbot"])
+async def get_paper_chat_history(
+    paper_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    paper = db.query(PaperClassroom).join(Exam).filter(
+        PaperClassroom.paper_id == paper_id,
+        Exam.client_id == client["client_id"]
+    ).first()
+    if not paper:
+        raise HTTPException(404, "Paper not found or access denied")
+
+    msgs = db.query(PaperChat).filter(
+        PaperChat.paper_id == paper_id
+    ).order_by(PaperChat.timestamp.asc()).all()
+
+    from app.services.vector_store import get_vector_store
+    store = get_vector_store()
+    is_vectorized = any(getattr(m, "paper_id", None) == paper_id for m in store.metadata)
+
+    return {"success": True, "history": [m.to_dict() for m in msgs], "is_vectorized": is_vectorized}
+
+
+@router.delete("/classroom/papers/{paper_id}/chat/history", tags=["Classroom Chatbot"])
+async def clear_paper_chat_history(
+    paper_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    paper = db.query(PaperClassroom).join(Exam).filter(
+        PaperClassroom.paper_id == paper_id,
+        Exam.client_id == client["client_id"]
+    ).first()
+    if not paper:
+        raise HTTPException(404, "Paper not found or access denied")
+
+    db.query(PaperChat).filter(PaperChat.paper_id == paper_id).delete(synchronize_session=False)
+    db.commit()
+
+    return {"success": True, "message": "Chat history cleared!"}
+
+
+@router.post("/classroom/pyq-sets/{pyq_set_id}/chat", tags=["Classroom Chatbot"])
+async def chat_classroom_pyq_set(
+    pyq_set_id: str,
+    req: ChatRequest,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    pyq_set = db.query(PYQSet).filter(
+        PYQSet.pyq_set_id == pyq_set_id,
+        PYQSet.client_id == client["client_id"]
+    ).first()
+    if not pyq_set:
+        raise HTTPException(404, "PYQ set not found")
+
+    question = req.question.strip()
+    
+    # ── Instant interception: greetings ──────────────────────────────────────
+    q_clean = question.lower().strip().rstrip("?").rstrip(".").rstrip("!")
+    if q_clean in ["hi", "hii", "hello", "hey", "helo", "hllo"]:
+        answer = "hii how are you"
+        db.add(PYQChat(pyq_set_id=pyq_set_id, role="user", content=question, sources_json="[]"))
+        db.add(PYQChat(pyq_set_id=pyq_set_id, role="assistant", content=answer, sources_json="[]"))
+        db.commit()
+        return {"success": True, "answer": answer, "sources": [], "context_found": False}
+
+    # ── Instant interception: identity questions ──────────────────────────────
+    _identity_triggers = [
+        "who are you", "what is your name", "your name", "what are you",
+        "aap kaun ho", "tumhara naam kya hai", "apna naam batao", "kaun ho tum",
+        "introduce yourself", "tell me about yourself", "tum kaun ho",
+        "aapka naam", "naam kya hai", "aap kya ho",
+    ]
+    if any(t in q_clean for t in _identity_triggers):
+        answer = f"I am {pyq_set.name} helper. I can answer questions about the questions and solutions in this PYQ set."
+        db.add(PYQChat(pyq_set_id=pyq_set_id, role="user", content=question, sources_json="[]"))
+        db.add(PYQChat(pyq_set_id=pyq_set_id, role="assistant", content=answer, sources_json="[]"))
+        db.commit()
+        return {"success": True, "answer": answer, "sources": [], "context_found": False}
+
+    # Fetch last 6 messages of history
+    history_msgs = db.query(PYQChat).filter(
+        PYQChat.pyq_set_id == pyq_set_id
+    ).order_by(PYQChat.timestamp.desc()).limit(6).all()
+    history_msgs.reverse()
+
+    history_str = ""
+    for h in history_msgs:
+        role_name = "User" if h.role == "user" else "Assistant"
+        history_str += f"{role_name}: {h.content}\n"
+
+    from app.services.embedder import embed_query
+    from app.services.vector_store import get_vector_store
+    from app.services.llm import build_context_and_sources, generate_simple_response
+    import json
+
+    search_query = question
+    if any(ord(char) > 127 for char in question):
+        try:
+            translation_prompt = f"Translate the following Hindi query into a concise English search query for information retrieval. Only return the direct English translation, nothing else.\nQuery: {question}"
+            translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+            search_query = translated.strip()
+            logger.info(f"Translated PYQ query: '{question}' -> '{search_query}'")
+        except Exception as e:
+            logger.error(f"Failed to translate PYQ query: {e}")
+
+    query_emb = embed_query(search_query)
+    store = get_vector_store()
+    results = store.search_by_pyq_set(query_emb, pyq_set_id, top_k=req.top_k)
+    
+    valid_results = [(chunk, score) for chunk, score in results if score >= 0.25]
+    
+    context_found = bool(valid_results)
+    prefix_msg = ""
+    
+    if not context_found:
+        prefix_msg = "ye apke data se nhi h apne traf se bata raha hu\n\n"
+        context = "No relevant context was found in the indexed documents. Please answer the user's question using your general knowledge."
+        sources_data = []
+    else:
+        context, sources_data = build_context_and_sources(valid_results)
+
+    system_prompt = (
+        f"You are a helpful educational AI assistant helper for the PYQ Set: '{pyq_set.name}'.\n"
+        f"Answer the user's question as accurately as possible based on the provided context.\n"
+        f"Answer strictly in the SAME language that the user used to ask their question.\n"
+        f"Cite sources if retrieved from context.\n"
+    )
+
+    prompt = (
+        f"--- Mapped PYQ Set Context ---\n{context}\n---\n\n"
+        f"--- Chat History ---\n{history_str}\n---\n\n"
+        f"Question: {question}"
+    )
+
+    try:
+        raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
+        answer = prefix_msg + raw_answer
+    except Exception as e:
+        logger.error(f"PYQ chat LLM failed (all fallbacks): {e}")
+        raise HTTPException(502, f"LLM error: {e}")
+
+    srcs_json = json.dumps([s.model_dump() for s in sources_data], default=str)
+    db.add(PYQChat(pyq_set_id=pyq_set_id, role="user", content=question, sources_json="[]"))
+    db.add(PYQChat(pyq_set_id=pyq_set_id, role="assistant", content=answer, sources_json=srcs_json))
+    db.commit()
+
+    return {
+        "success": True,
+        "question": question,
+        "answer": answer,
+        "sources": [s.model_dump() for s in sources_data],
+        "context_found": context_found
+    }
+
+
+@router.get("/classroom/pyq-sets/{pyq_set_id}/chat/history", tags=["Classroom Chatbot"])
+async def get_pyq_chat_history(
+    pyq_set_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    pyq_set = db.query(PYQSet).filter(
+        PYQSet.pyq_set_id == pyq_set_id,
+        PYQSet.client_id == client["client_id"]
+    ).first()
+    if not pyq_set:
+        raise HTTPException(404, "PYQ Set not found")
+
+    msgs = db.query(PYQChat).filter(
+        PYQChat.pyq_set_id == pyq_set_id
+    ).order_by(PYQChat.timestamp.asc()).all()
+
+    from app.services.vector_store import get_vector_store
+    store = get_vector_store()
+    is_vectorized = any(getattr(m, "pyq_set_id", None) == pyq_set_id for m in store.metadata)
+
+    return {"success": True, "history": [m.to_dict() for m in msgs], "is_vectorized": is_vectorized}
+
+
+@router.delete("/classroom/pyq-sets/{pyq_set_id}/chat/history", tags=["Classroom Chatbot"])
+async def clear_pyq_chat_history(
+    pyq_set_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    pyq_set = db.query(PYQSet).filter(
+        PYQSet.pyq_set_id == pyq_set_id,
+        PYQSet.client_id == client["client_id"]
+    ).first()
+    if not pyq_set:
+        raise HTTPException(404, "PYQ Set not found")
+
+    db.query(PYQChat).filter(PYQChat.pyq_set_id == pyq_set_id).delete(synchronize_session=False)
+    db.commit()
+
+    return {"success": True, "message": "Chat history cleared!"}
+
+
+# ── ElevenLabs TTS Proxy ──────────────────────────────────────────────────────
+
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: Optional[str] = "ypnkIsDASPgHZuanrF0q"  # Rudra (Hindi male)
+
+
+@router.post("/classroom/tts/speak", tags=["Classroom Chatbot"])
+async def elevenlabs_tts_proxy(
+    req: TTSRequest,
+    client: dict = Depends(_require_client),
+):
+    """
+    Proxy text-to-speech via ElevenLabs Rudra voice.
+    Returns audio/mpeg binary so frontend never exposes the API key.
+    """
+    import httpx
+    from fastapi.responses import Response
+    from app.core.config import settings
+
+    api_key = settings.ELEVENLABS_API_KEY
+    if not api_key:
+        raise HTTPException(500, "ElevenLabs API key not configured on server.")
+
+    voice_id = req.voice_id or "ypnkIsDASPgHZuanrF0q"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
+    # Trim to ElevenLabs character limit (2500 chars max for safety)
+    text = req.text.strip()
+    # Trim for voice — flash model is fastest with shorter text
+    text = req.text.strip()
+    if len(text) > 250:
+        # Cut at word boundary
+        cut = text.rfind(' ', 0, 250)
+        text = text[:cut if cut > 150 else 250]
+
+    # eleven_flash_v2_5 = ElevenLabs fastest model (~0.3s latency, supports Hindi/English)
+    payload = {
+        "text": text,
+        "model_id": "eleven_flash_v2_5",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.80,
+            "style": 0.0,
+            "use_speaker_boost": True
+        }
+    }
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+    }
+
+    # Use smaller MP3 (22050Hz 32kbps) for faster download → add as query param
+    tts_url = url + "?output_format=mp3_22050_32"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as hc:
+            r = await hc.post(tts_url, json=payload, headers=headers)
+            if r.status_code == 200:
+                return Response(content=r.content, media_type="audio/mpeg")
+            else:
+                logger.error(f"ElevenLabs TTS error {r.status_code}: {r.text}")
+                raise HTTPException(502, f"ElevenLabs error: {r.status_code}")
+    except httpx.RequestError as e:
+        logger.error(f"ElevenLabs TTS request failed: {e}")
+        raise HTTPException(502, f"TTS request failed: {e}")
+
+
+# Shared HTTP client for connection pooling to ElevenLabs (skips TCP/SSL handshake latency)
+_tts_http_client = None
+
+def get_tts_http_client():
+    global _tts_http_client
+    if _tts_http_client is None:
+        import httpx
+        _tts_http_client = httpx.AsyncClient(timeout=30.0)
+    return _tts_http_client
+
+
+@router.get("/classroom/tts/speak", tags=["Classroom Chatbot"])
+async def elevenlabs_tts_proxy_get(
+    text: str,
+    voice_id: Optional[str] = "ypnkIsDASPgHZuanrF0q",
+    client: dict = Depends(_require_client),
+):
+    """
+    Stream text-to-speech via ElevenLabs voice.
+    Returns audio/mpeg binary stream for ultra-low latency playback.
+    """
+    from fastapi.responses import StreamingResponse
+    from app.core.config import settings
+
+    api_key = settings.ELEVENLABS_API_KEY
+    if not api_key:
+        raise HTTPException(500, "ElevenLabs API key not configured on server.")
+
+    # Trim to ElevenLabs character limit (250 chars max for speed)
+    text = text.strip()
+    if len(text) > 250:
+        cut = text.rfind(' ', 0, 250)
+        text = text[:cut if cut > 150 else 250]
+
+    payload = {
+        "text": text,
+        "model_id": "eleven_flash_v2_5",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.80,
+            "style": 0.0,
+            "use_speaker_boost": False
+        }
+    }
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+    }
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    # Use output_format and optimize_streaming_latency=4 for max speed
+    tts_url = url + "?output_format=mp3_22050_32&optimize_streaming_latency=4"
+
+    async def audio_generator():
+        try:
+            hc = get_tts_http_client()
+            async with hc.stream("POST", tts_url, json=payload, headers=headers) as r:
+                if r.status_code == 200:
+                    async for chunk in r.aiter_bytes(chunk_size=1024):
+                        yield chunk
+                else:
+                    err_text = await r.aread()
+                    logger.error(f"ElevenLabs TTS error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
+        except Exception as e:
+            logger.error(f"ElevenLabs streaming failed: {e}")
+
+    return StreamingResponse(audio_generator(), media_type="audio/mpeg")
+

@@ -18,6 +18,8 @@ class ChunkMetadata(BaseModel):
     memory_id: Optional[str] = None   # None = global; set = belongs to a personal Memory bot
     datastore_id: Optional[str] = None
     agent_id: Optional[str] = None
+    paper_id: Optional[str] = None
+    pyq_set_id: Optional[str] = None
 
 
 class UploadResponse(BaseModel):

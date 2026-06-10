@@ -103,22 +103,24 @@ class VectorStore:
     def delete_by_source(self, source_file: str):
         """
         Remove all chunks from a given source file.
-        Note: FAISS IndexFlatIP doesn't support deletion natively,
-        so we rebuild the index without those chunks.
         """
         keep_meta = [m for m in self.metadata if m.source_file != source_file]
         if len(keep_meta) == len(self.metadata):
             return  # Nothing to delete
 
         logger.info(f"Removing chunks for: {source_file}")
-        # Rebuild index
+        
+        keep_indices = [i for i, m in enumerate(self.metadata) if m.source_file != source_file]
+        keep_embeddings = None
+        if keep_indices:
+            keep_embeddings = np.vstack([self.index.reconstruct(i) for i in keep_indices])
+            
         self._init_index()
-        if keep_meta:
-            from app.services.embedder import embed_texts
-            texts = [m.text for m in keep_meta]
-            embeddings = embed_texts(texts)
-            self.index.add(embeddings)
+        if keep_indices and keep_embeddings is not None:
+            self.index.add(keep_embeddings)
             self.metadata = keep_meta
+        else:
+            self.metadata = []
         self.save()
 
     def search_by_memory(
@@ -170,6 +172,104 @@ class VectorStore:
             embeddings = embed_texts(texts)
             self.index.add(embeddings)
             self.metadata = keep_meta
+        self.save()
+
+    def search_by_paper(
+        self, query_embedding: np.ndarray, paper_id: str, top_k: int = 5
+    ) -> List[Tuple[ChunkMetadata, float]]:
+        """Search for top_k chunks filtered to a specific paper_id."""
+        if self.index.ntotal == 0:
+            return []
+
+        paper_chunks = [m for m in self.metadata if m.paper_id == paper_id]
+        if not paper_chunks:
+            return []
+
+        fetch_k = min(max(top_k * 4, 20), self.index.ntotal)
+        scores, indices = self.index.search(query_embedding, fetch_k)
+
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx == -1:
+                continue
+            chunk = self.metadata[idx]
+            if chunk.paper_id != paper_id:
+                continue
+            similarity = float(np.clip(score, 0, 1))
+            results.append((chunk, similarity))
+            if len(results) >= top_k:
+                break
+
+        return results
+
+    def delete_by_paper(self, paper_id: str):
+        """Remove all chunks belonging to a given paper_id."""
+        keep_meta = [m for m in self.metadata if getattr(m, "paper_id", None) != paper_id]
+        if len(keep_meta) == len(self.metadata):
+            return
+
+        logger.info(f"Removing all chunks for paper: {paper_id}")
+        
+        keep_indices = [i for i, m in enumerate(self.metadata) if getattr(m, "paper_id", None) != paper_id]
+        keep_embeddings = None
+        if keep_indices:
+            keep_embeddings = np.vstack([self.index.reconstruct(i) for i in keep_indices])
+            
+        self._init_index()
+        if keep_indices and keep_embeddings is not None:
+            self.index.add(keep_embeddings)
+            self.metadata = keep_meta
+        else:
+            self.metadata = []
+        self.save()
+
+    def search_by_pyq_set(
+        self, query_embedding: np.ndarray, pyq_set_id: str, top_k: int = 5
+    ) -> List[Tuple[ChunkMetadata, float]]:
+        """Search for top_k chunks filtered to a specific pyq_set_id."""
+        if self.index.ntotal == 0:
+            return []
+
+        pyq_chunks = [m for m in self.metadata if m.pyq_set_id == pyq_set_id]
+        if not pyq_chunks:
+            return []
+
+        fetch_k = min(max(top_k * 4, 20), self.index.ntotal)
+        scores, indices = self.index.search(query_embedding, fetch_k)
+
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx == -1:
+                continue
+            chunk = self.metadata[idx]
+            if chunk.pyq_set_id != pyq_set_id:
+                continue
+            similarity = float(np.clip(score, 0, 1))
+            results.append((chunk, similarity))
+            if len(results) >= top_k:
+                break
+
+        return results
+
+    def delete_by_pyq_set(self, pyq_set_id: str):
+        """Remove all chunks belonging to a given pyq_set_id."""
+        keep_meta = [m for m in self.metadata if getattr(m, "pyq_set_id", None) != pyq_set_id]
+        if len(keep_meta) == len(self.metadata):
+            return
+
+        logger.info(f"Removing all chunks for PYQ Set: {pyq_set_id}")
+        
+        keep_indices = [i for i, m in enumerate(self.metadata) if getattr(m, "pyq_set_id", None) != pyq_set_id]
+        keep_embeddings = None
+        if keep_indices:
+            keep_embeddings = np.vstack([self.index.reconstruct(i) for i in keep_indices])
+            
+        self._init_index()
+        if keep_indices and keep_embeddings is not None:
+            self.index.add(keep_embeddings)
+            self.metadata = keep_meta
+        else:
+            self.metadata = []
         self.save()
 
     def purge_by_source(self, datastore_id: Optional[str] = None, agent_id: Optional[str] = None, source_file: Optional[str] = None):

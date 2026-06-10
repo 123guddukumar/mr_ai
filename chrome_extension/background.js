@@ -524,6 +524,11 @@ async function startSingleAssetGeneration() {
     await sleep(4000);
   }
 
+  // Guard: state.singleAsset may have been cleared during async tab operations
+  if (!state.singleAsset) {
+    log('startSingleAssetGeneration: state.singleAsset is null after tab ops, aborting.');
+    return;
+  }
   state.singleAsset.tabId = tabId;
   await saveState();
 

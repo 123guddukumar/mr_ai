@@ -1182,6 +1182,167 @@ async def get_classroom_educational_prompt(req: GeneratePromptReq, client: dict 
     return {"success": True, "prompt": prompt}
 
 
+def _crop_image_to_banner(img_bytes: bytes, out_path: str) -> bool:
+    """Crop/resize a square (or any) image to 16:9 (1280x720) banner. Returns True on success."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        w, h = img.size
+        # Target 16:9
+        target_w, target_h = 1280, 720
+        target_ratio = target_w / target_h
+        src_ratio = w / h
+        if src_ratio > target_ratio:
+            # Image is wider — crop sides
+            new_w = int(h * target_ratio)
+            x0 = (w - new_w) // 2
+            img = img.crop((x0, 0, x0 + new_w, h))
+        else:
+            # Image is taller — crop top/bottom
+            new_h = int(w / target_ratio)
+            y0 = (h - new_h) // 2
+            img = img.crop((0, y0, w, y0 + new_h))
+        img = img.resize((target_w, target_h), Image.LANCZOS)
+        img.save(out_path, "JPEG", quality=92)
+        return True
+    except Exception as e:
+        logger.error(f"Banner crop failed: {e}")
+        return False
+
+
+async def _make_banner_from_url(image_url: str, entity_name: str, out_dir: str) -> str | None:
+    """Download image from URL (local or remote), crop to 16:9, upload to R2. Returns final URL or None."""
+    import httpx, secrets, os, shutil
+    
+    img_bytes = None
+    
+    # Try fetching image — handle both local paths and http URLs
+    if image_url.startswith("http"):
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as c:
+                r = await c.get(image_url)
+                if r.status_code == 200 and len(r.content) > 500:
+                    img_bytes = r.content
+        except Exception as e:
+            logger.warning(f"Failed to fetch image from {image_url}: {e}")
+    else:
+        # Local file path like /uploads/images/abc.jpg
+        local_path = os.path.join(os.getcwd(), image_url.lstrip("/").replace("/", os.sep))
+        if os.path.exists(local_path):
+            with open(local_path, "rb") as f:
+                img_bytes = f.read()
+    
+    if not img_bytes:
+        return None
+    
+    os.makedirs(out_dir, exist_ok=True)
+    out_filename = f"banner_{secrets.token_hex(6)}.jpg"
+    out_path = os.path.join(out_dir, out_filename)
+    
+    ok = _crop_image_to_banner(img_bytes, out_path)
+    if not ok:
+        return None
+    
+    # Upload to R2
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"classroom/banners/{out_filename}"
+        r2_url = upload_to_r2(out_path, r2_key, "image/jpeg")
+        if r2_url:
+            return r2_url
+    except Exception as e:
+        logger.warning(f"R2 upload failed for banner: {e}")
+    
+    # Fallback: local URL
+    return f"/uploads/images/{out_filename}"
+
+
+@router.post("/classroom/exams/{exam_id}/generate-banners-from-images", tags=["Classroom"])
+async def generate_banners_from_existing_images(
+    exam_id: str,
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk-generate 16:9 banners for ALL subjects, chapters, topics, and subtopics
+    under an exam that have an image_url but no banner_url.
+    Crops the existing 1:1 image to 16:9 ratio — no new AI generation needed.
+    """
+    exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
+    if not exam:
+        raise HTTPException(404, "Exam not found or access denied")
+    
+    out_dir = os.path.join(os.getcwd(), "uploads", "images")
+    
+    stats = {"subjects": 0, "chapters": 0, "topics": 0, "subtopics": 0, "skipped": 0, "failed": 0}
+    
+    papers = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.exam_id == exam_id).all()
+    
+    for paper in papers:
+        subjects = db.query(Subject).filter(Subject.paper_id == paper.paper_id).all()
+        for subject in subjects:
+            # Subject banner
+            if subject.image_url and not subject.banner_url:
+                banner_url = await _make_banner_from_url(subject.image_url, subject.name, out_dir)
+                if banner_url:
+                    subject.banner_url = banner_url
+                    stats["subjects"] += 1
+                else:
+                    stats["failed"] += 1
+            elif subject.banner_url:
+                stats["skipped"] += 1
+            
+            chapters = db.query(ChapterClassroom).filter(ChapterClassroom.subject_id == subject.subject_id).all()
+            for chapter in chapters:
+                # Chapter banner
+                if chapter.image_url and not chapter.banner_url:
+                    banner_url = await _make_banner_from_url(chapter.image_url, chapter.name, out_dir)
+                    if banner_url:
+                        chapter.banner_url = banner_url
+                        stats["chapters"] += 1
+                    else:
+                        stats["failed"] += 1
+                elif chapter.banner_url:
+                    stats["skipped"] += 1
+                
+                topics = db.query(TopicClassroom).filter(TopicClassroom.chapter_id == chapter.chapter_id).all()
+                for topic in topics:
+                    # Topic banner
+                    if topic.image_url and not topic.banner_url:
+                        banner_url = await _make_banner_from_url(topic.image_url, topic.name, out_dir)
+                        if banner_url:
+                            topic.banner_url = banner_url
+                            stats["topics"] += 1
+                        else:
+                            stats["failed"] += 1
+                    elif topic.banner_url:
+                        stats["skipped"] += 1
+                    
+                    subtopics = db.query(SubtopicClassroom).filter(SubtopicClassroom.topic_id == topic.topic_id).all()
+                    for subtopic in subtopics:
+                        # Subtopic banner
+                        if subtopic.image_url and not subtopic.banner_url:
+                            banner_url = await _make_banner_from_url(subtopic.image_url, subtopic.name, out_dir)
+                            if banner_url:
+                                subtopic.banner_url = banner_url
+                                stats["subtopics"] += 1
+                            else:
+                                stats["failed"] += 1
+                        elif subtopic.banner_url:
+                            stats["skipped"] += 1
+    
+    db.commit()
+    logger.info(f"Bulk banner generation complete for exam {exam_id}: {stats}")
+    
+    return {
+        "success": True,
+        "exam_id": exam_id,
+        "generated": stats,
+        "message": f"Banners generated: {stats['subjects']} subjects, {stats['chapters']} chapters, {stats['topics']} topics, {stats['subtopics']} subtopics. Skipped (already had banner): {stats['skipped']}. Failed: {stats['failed']}."
+    }
+
+
 @router.post("/classroom/regenerate-image", tags=["Classroom"])
 async def regenerate_classroom_image(req: RegenerateImageReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     entity_id = req.entity_id

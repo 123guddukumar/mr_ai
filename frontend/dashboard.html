@@ -2069,8 +2069,9 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <!-- Add Button and Grid -->
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px;">
                 <span id="subjects-header-title" style="font-weight:700; font-size:13px; color:var(--text3)">🧪 Subjects List</span>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                   <button class="btn btn-secondary" id="btn-gen-all-subject-images" onclick="generateAllSubjectImages()" style="padding:6px 12px; font-size:11px; height:32px;">🖼️ Generate All Images</button>
+                  <button class="btn btn-secondary" id="btn-gen-all-banners" onclick="generateAllBannersFromImages()" style="padding:6px 12px; font-size:11px; height:32px; border-color:#10b981; color:#10b981; font-weight:700;">🗂️ Generate All Banners 16:9</button>
                   <button class="btn btn-primary" id="btn-add-subject-classroom" onclick="showAddSubjectModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Subject</button>
                 </div>
               </div>
@@ -13706,6 +13707,47 @@ async function generateAllSubjectImages() {
 
 async function generateAllChapterImages() {
     await generateAllImagesForType('chapter');
+}
+
+// ── Bulk Banner Generation from Existing 1:1 Images ───────────────────────────
+async function generateAllBannersFromImages() {
+    if (!currentActiveExamId) {
+        toast('No exam selected!', 'error');
+        return;
+    }
+    
+    if (!confirm('This will generate 16:9 banners for ALL subjects, chapters, topics, and subtopics that have an image but no banner yet.\n\nExisting images will be cropped to 16:9. Continue?')) return;
+    
+    const btn = document.getElementById('btn-gen-all-banners');
+    const origText = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = '⏳ Generating...'; btn.disabled = true; }
+    
+    document.getElementById('loading-modal-title').textContent = '🗂️ Generating All Banners (16:9)...';
+    document.getElementById('loading-modal-sub').textContent = 'Cropping existing images to 16:9. This may take a minute...';
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch(`/api/classroom/exams/${currentActiveExamId}/generate-banners-from-images`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token }
+        });
+        const res = await resp.json();
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        
+        if (resp.ok && res.success) {
+            const g = res.generated;
+            toast(`✅ Banners done! Subjects: ${g.subjects}, Chapters: ${g.chapters}, Topics: ${g.topics}, Subtopics: ${g.subtopics}. Skipped (had banner): ${g.skipped}. Failed: ${g.failed}.`, 'success');
+            await refreshExamTree();
+        } else {
+            toast(res.detail || 'Banner generation failed', 'error');
+        }
+    } catch(e) {
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during banner generation', 'error');
+        console.error(e);
+    } finally {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+    }
 }
 
 async function saveSubtopicScript() {

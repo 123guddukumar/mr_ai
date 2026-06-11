@@ -2075,7 +2075,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <button class="btn btn-primary" id="btn-add-subject-classroom" onclick="showAddSubjectModal()" style="padding:6px 12px; font-size:11px; height:32px">➕ Add Subject</button>
                 </div>
               </div>
-              <div id="subjects-cards-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+              <div id="subjects-cards-grid" style="display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap:12px;">
                 <!-- Loaded dynamically as small cards -->
               </div>
             </div>
@@ -2084,11 +2084,18 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <!-- Tab 2: Chapters -->
           <div class="classroom-panel" id="panel-tab-2" style="display:none;">
             <div style="display:flex; flex-direction:column; gap:15px;">
-              <!-- Full-width border box with active Subject name -->
-              <div style="border:2px solid var(--border); border-radius:12px; padding:24px 28px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center;">
-                <div style="max-width: 75%;">
+              <!-- Full-width border box with active Subject name and aspect ratio controls -->
+              <div style="border:2px solid var(--border); border-radius:12px; padding:20px 24px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
                   <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px">Active Subject</div>
-                  <div style="font-size:20px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-subject-name">Subject Name</div>
+                  <div style="font-size:18px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-subject-name">Subject Name</div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                  <span style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase;">Image Options:</span>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subject', '1:1')" style="font-size:11px; padding:7px 14px; border-radius:8px;">1:1 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subject', '9:16')" style="font-size:11px; padding:7px 14px; border-radius:8px;">9:16 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subject', '16:9')" style="font-size:11px; padding:7px 14px; border-radius:8px;">16:9 Size</button>
+                  <button class="btn btn-secondary" onclick="triggerNewAIImageDetail('subject')" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 New Image</button>
                 </div>
               </div>
               
@@ -2112,11 +2119,18 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <!-- Tab 3: Topics -->
           <div class="classroom-panel" id="panel-tab-3" style="display:none;">
             <div style="display:flex; flex-direction:column; gap:15px;">
-              <!-- Full-width border box with active Chapter name -->
-              <div style="border:2px solid var(--border); border-radius:12px; padding:24px 28px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center;">
-                <div style="max-width: 75%;">
+              <!-- Full-width border box with active Chapter name and aspect ratio controls -->
+              <div style="border:2px solid var(--border); border-radius:12px; padding:20px 24px; background:var(--bg2); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
                   <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px">Active Chapter</div>
-                  <div style="font-size:20px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-chapter-name">Chapter Name</div>
+                  <div style="font-size:18px; font-weight:900; color:var(--text); word-break:break-word; line-height:1.3;" id="active-chapter-name">Chapter Name</div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                  <span style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase;">Image Options:</span>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('chapter', '1:1')" style="font-size:11px; padding:7px 14px; border-radius:8px;">1:1 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('chapter', '9:16')" style="font-size:11px; padding:7px 14px; border-radius:8px;">9:16 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('chapter', '16:9')" style="font-size:11px; padding:7px 14px; border-radius:8px;">16:9 Size</button>
+                  <button class="btn btn-secondary" onclick="triggerNewAIImageDetail('chapter')" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 New Image</button>
                 </div>
               </div>
               
@@ -2149,6 +2163,12 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <button class="btn btn-secondary" onclick="generateTopicQuiz()" id="btn-generate-topic-quiz" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent2); color:var(--accent2);">📝 Generate Quiz</button>
                   <button class="btn btn-secondary" onclick="toggleTopicReelsPanel()" id="btn-topic-show-reels" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#8b5cf6; color:#8b5cf6;">🎞️ Reels</button>
                   <button class="btn btn-secondary" onclick="openExtensionReelWizard('topic')" id="btn-topic-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
+                  <div style="width:100%; height:1px; background:var(--border); margin:4px 0; display:block;"></div>
+                  <span style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase;">Image Options:</span>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('topic', '1:1')" style="font-size:11px; padding:7px 14px; border-radius:8px;">1:1 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('topic', '9:16')" style="font-size:11px; padding:7px 14px; border-radius:8px;">9:16 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('topic', '16:9')" style="font-size:11px; padding:7px 14px; border-radius:8px;">16:9 Size</button>
+                  <button class="btn btn-secondary" onclick="triggerNewAIImageDetail('topic')" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 New Image</button>
                 </div>
               </div>
 
@@ -2251,8 +2271,12 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <button class="btn btn-secondary" onclick="generateQuiz()" id="btn-generate-quiz" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:var(--accent2); color:var(--accent2);">📝 Generate Quiz</button>
                   <button class="btn btn-secondary" onclick="toggleSubtopicReelsPanel()" id="btn-show-reels" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#8b5cf6; color:#8b5cf6;">🎞️ Reels</button>
                   <button class="btn btn-secondary" onclick="openExtensionReelWizard()" id="btn-ext-reel" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#f59e0b; color:#f59e0b;" title="Generate reel using Chrome Extension (Free - Google Flow + Meta AI)">🔌 Extension Reel</button>
-                  <button class="btn btn-secondary" onclick="regenerateSubtopicBannerFromDetail()" id="btn-regenerate-subtopic-banner" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#3b82f6; color:#3b82f6;">🖼️ Regenerate Banner (Flux)</button>
-                  <button class="btn btn-secondary" onclick="regenerateSubtopicBannerFromDetailMetaAI()" id="btn-regenerate-subtopic-banner-meta" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 Meta AI Banner</button>
+                  <div style="width:100%; height:1px; background:var(--border); margin:4px 0; display:block;"></div>
+                  <span style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase;">Image Options:</span>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subtopic', '1:1')" style="font-size:11px; padding:7px 14px; border-radius:8px;">1:1 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subtopic', '9:16')" style="font-size:11px; padding:7px 14px; border-radius:8px;">9:16 Size</button>
+                  <button class="btn btn-secondary" onclick="generateOrResizeActiveDetail('subtopic', '16:9')" style="font-size:11px; padding:7px 14px; border-radius:8px;">16:9 Size</button>
+                  <button class="btn btn-secondary" onclick="triggerNewAIImageDetail('subtopic')" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#a855f7; color:#a855f7;">🤖 New Image</button>
                 </div>
               </div>
 
@@ -2390,7 +2414,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
     <!-- Subject Modal -->
     <div class="modal-overlay" id="classroom-subject-modal">
-      <div class="modal" style="width: 400px;">
+      <div class="modal" style="width: 460px;">
         <div class="modal-title" id="subject-modal-title">Add Subject</div>
         <div class="modal-sub">Add a subject to your exam structure</div>
         
@@ -2410,13 +2434,43 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
 
         <div class="form-group">
-          <label class="form-label">Subject Image</label>
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-            <img id="modal-subject-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateSubjectImageAI()">✨ Auto Generate (Flux)</button>
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateSubjectImageMetaAI()">🤖 Meta AI (Extension)</button>
+          <label class="form-label">Subject Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-subject-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-subject-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubject('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-subject-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-subject-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubject('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-subject-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-subject-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubject('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px;">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewSubjectAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
           </div>
-          <input type="text" class="form-input" id="modal-subject-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalSubjectImagePreview(this.value)">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subject-image-url" placeholder="1:1 Image URL" oninput="updateSubjectModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subject-image-url-9-16" placeholder="9:16 Image URL" oninput="updateSubjectModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subject-image-url-16-9" placeholder="16:9 Image URL" oninput="updateSubjectModalPreviews()">
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -2428,7 +2482,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
     <!-- Chapter Modal -->
     <div class="modal-overlay" id="classroom-chapter-modal">
-      <div class="modal" style="width: 400px;">
+      <div class="modal" style="width: 460px;">
         <div class="modal-title" id="chapter-modal-title">Add Chapter</div>
         <div class="modal-sub">Add a chapter under this subject</div>
         
@@ -2440,17 +2494,46 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
 
         <div class="form-group">
-          <label class="form-label">Chapter Image</label>
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-            <img id="modal-chapter-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateChapterImageAI()">✨ Auto Generate (Flux)</button>
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateChapterImageMetaAI()">🤖 Meta AI (Extension)</button>
+          <label class="form-label">Chapter Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-chapter-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-chapter-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeChapter('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-chapter-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-chapter-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeChapter('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-chapter-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-chapter-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeChapter('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px;">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewChapterAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
           </div>
-          <input type="text" class="form-input" id="modal-chapter-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalChapterImagePreview(this.value)">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-chapter-image-url" placeholder="1:1 Image URL" oninput="updateChapterModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-chapter-image-url-9-16" placeholder="9:16 Image URL" oninput="updateChapterModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-chapter-image-url-16-9" placeholder="16:9 Image URL" oninput="updateChapterModalPreviews()">
+          </div>
         </div>
 
         <div class="modal-actions">
-
           <button class="modal-btn secondary" onclick="closeChapterModal()">Cancel</button>
           <button class="modal-btn primary" onclick="saveChapter()">Save Chapter</button>
         </div>
@@ -2475,7 +2558,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
     <!-- Topic Modal -->
     <div class="modal-overlay" id="classroom-topic-modal">
-      <div class="modal" style="width: 400px;">
+      <div class="modal" style="width: 460px;">
         <div class="modal-title" id="topic-modal-title">Add Topic</div>
         <div class="modal-sub">Add a topic under this chapter</div>
         
@@ -2487,13 +2570,43 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
 
         <div class="form-group">
-          <label class="form-label">Topic Image</label>
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-            <img id="modal-topic-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateTopicImageAI()">✨ Auto Generate (Flux)</button>
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateTopicImageMetaAI()">🤖 Meta AI (Extension)</button>
+          <label class="form-label">Topic Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-topic-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-topic-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeTopic('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-topic-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-topic-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeTopic('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-topic-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-topic-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeTopic('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px;">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewTopicAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
           </div>
-          <input type="text" class="form-input" id="modal-topic-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalTopicImagePreview(this.value)">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-topic-image-url" placeholder="1:1 Image URL" oninput="updateTopicModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-topic-image-url-9-16" placeholder="9:16 Image URL" oninput="updateTopicModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-topic-image-url-16-9" placeholder="16:9 Image URL" oninput="updateTopicModalPreviews()">
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -2522,18 +2635,99 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
 
         <div class="form-group">
-          <label class="form-label">Subtopic Image</label>
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-            <img id="modal-subtopic-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:none;">
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px;" onclick="generateSubtopicImageAI()">✨ Auto Generate (Flux)</button>
-            <button class="btn btn-secondary" type="button" style="padding:6px 10px; font-size:11px; background:#a855f7; color:#fff; border-color:#a855f7;" onclick="generateSubtopicImageMetaAI()">🤖 Meta AI (Extension)</button>
+          <label class="form-label">Subtopic Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-subtopic-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-subtopic-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubtopic('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-subtopic-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-subtopic-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubtopic('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-subtopic-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-subtopic-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeSubtopic('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px;">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewSubtopicAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
           </div>
-          <input type="text" class="form-input" id="modal-subtopic-image-url" placeholder="Paste image URL or click Auto Generate" oninput="updateModalSubtopicImagePreview(this.value)">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subtopic-image-url" placeholder="1:1 Image URL" oninput="updateSubtopicModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subtopic-image-url-9-16" placeholder="9:16 Image URL" oninput="updateSubtopicModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-subtopic-image-url-16-9" placeholder="16:9 Image URL" oninput="updateSubtopicModalPreviews()">
+          </div>
         </div>
 
         <div class="modal-actions">
           <button class="modal-btn secondary" onclick="closeSubtopicModal()">Cancel</button>
           <button class="modal-btn primary" onclick="saveSubtopic()">Save Subtopic</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Images View Modal -->
+    <div class="modal-overlay" id="all-images-view-modal" style="display:none; justify-content:center; align-items:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000; padding:20px; box-sizing:border-box;">
+      <div class="modal" style="width: 800px; max-width: 95%; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div class="modal-title" style="font-size: 20px; font-weight: 800; color: var(--text);" id="all-images-modal-title">🖼️ Generated Aspect Ratios</div>
+            <div class="modal-sub" style="font-size: 12px; color: var(--text3);" id="all-images-modal-subtitle">All 3 generated image aspect ratios for this item</div>
+          </div>
+          <button onclick="closeAllImagesModal()" style="background: none; border: none; font-size: 24px; color: var(--text3); cursor: pointer; transition: 0.2s; padding: 4px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 10px;">
+          <!-- 1:1 Size Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--text3); text-transform: uppercase;">1:1 Ratio (Square)</div>
+            <div style="width: 180px; height: 180px; border-radius: 8px; overflow: hidden; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative;">
+              <span id="all-img-placeholder-1-1" style="font-size: 32px; color: var(--text3);">📷</span>
+              <img id="all-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            </div>
+            <div style="width: 100%;" id="all-img-actions-1-1">
+              <button class="btn btn-secondary" style="width: 100%; font-size: 11px; padding: 6px;" id="all-btn-copy-1-1">🔗 Copy URL</button>
+            </div>
+          </div>
+
+          <!-- 9:16 Size Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--text3); text-transform: uppercase;">9:16 Ratio (Portrait)</div>
+            <div style="width: 101px; height: 180px; border-radius: 8px; overflow: hidden; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative;">
+              <span id="all-img-placeholder-9-16" style="font-size: 32px; color: var(--text3);">📷</span>
+              <img id="all-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            </div>
+            <div style="width: 100%;" id="all-img-actions-9-16">
+              <button class="btn btn-secondary" style="width: 100%; font-size: 11px; padding: 6px;" id="all-btn-copy-9-16">🔗 Copy URL</button>
+            </div>
+          </div>
+
+          <!-- 16:9 Size Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--text3); text-transform: uppercase;">16:9 Ratio (Landscape)</div>
+            <div style="width: 180px; height: 101px; border-radius: 8px; overflow: hidden; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; margin-top: 39px; margin-bottom: 40px;">
+              <span id="all-img-placeholder-16-9" style="font-size: 32px; color: var(--text3);">📷</span>
+              <img id="all-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            </div>
+            <div style="width: 100%;" id="all-img-actions-16-9">
+              <button class="btn btn-secondary" style="width: 100%; font-size: 11px; padding: 6px;" id="all-btn-copy-16-9">🔗 Copy URL</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -12841,6 +13035,20 @@ function renderSubjectsGrid() {
         const tCount = s.topic_count || 0;
         const stCount = s.subtopic_count || 0;
         const imgUrl = s.image_url || '';
+        
+        let count = 0;
+        if (s.image_url) count++;
+        if (s.image_url_9_16) count++;
+        if (s.image_url_16_9) count++;
+
+        let badgeHtml = '';
+        if (count === 3) {
+            badgeHtml = `<span style="font-size:9px; color:#10b981; font-weight:700; background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(s.name)}" data-url11="${escapeHTML(s.image_url || '')}" data-url916="${escapeHTML(s.image_url_9_16 || '')}" data-url169="${escapeHTML(s.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ 3/3</span>`;
+        } else if (count > 0) {
+            badgeHtml = `<span style="font-size:9px; color:#f59e0b; font-weight:700; background:rgba(245,158,11,0.12); padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(s.name)}" data-url11="${escapeHTML(s.image_url || '')}" data-url916="${escapeHTML(s.image_url_9_16 || '')}" data-url169="${escapeHTML(s.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ ${count}/3</span>`;
+        } else {
+            badgeHtml = `<span style="font-size:9px; color:var(--text3); font-weight:600; background:var(--border); padding:2px 6px; border-radius:4px;" title="No images generated yet">🖼️ 0/3</span>`;
+        }
         html += `
         <div class="subject-small-card" onclick="selectSubject('${s.subject_id}')" style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; cursor:pointer; display:flex; flex-direction:column; transition:0.2s; position:relative; overflow:hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
             ${imgUrl 
@@ -12852,12 +13060,18 @@ function renderSubjectsGrid() {
             }
             <div style="padding:8px 10px; background:var(--bg2); border-top:1px solid var(--border);">
                 <div style="font-weight:700; font-size:12px; color:var(--text); text-align:center; line-height:1.3; word-break:break-word; margin-bottom:6px;">${escapeHTML(s.name)}</div>
-                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin-bottom:6px;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center; margin-bottom:6px;">
                     <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(79,70,229,0.12);color:#818cf8;">${chCount} Ch</span>
                     <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(16,185,129,0.12);color:#34d399;">${tCount} Topics</span>
+                    ${badgeHtml}
+                </div>
+                <div style="display:flex; justify-content:center; gap:4px; margin-bottom:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                    <button class="btn btn-secondary" style="padding:2px 4px; font-size:9px; height:18px; line-height:1;" onclick="generateOrResizeRow('subject', '${s.subject_id}', '1:1')" title="1:1 Size">1:1</button>
+                    <button class="btn btn-secondary" style="padding:2px 4px; font-size:9px; height:18px; line-height:1;" onclick="generateOrResizeRow('subject', '${s.subject_id}', '9:16')" title="9:16 Size">9:16</button>
+                    <button class="btn btn-secondary" style="padding:2px 4px; font-size:9px; height:18px; line-height:1;" onclick="generateOrResizeRow('subject', '${s.subject_id}', '16:9')" title="16:9 Size">16:9</button>
+                    <button class="btn btn-secondary" style="padding:2px 4px; font-size:9px; height:18px; line-height:1; border-color:#a855f7; color:#a855f7;" onclick="triggerNewAIImageRow('subject', '${s.subject_id}')" title="Generate New Meta AI Cover">🤖</button>
                 </div>
                 <div style="display:flex; justify-content:center; gap:5px" onclick="event.stopPropagation()">
-                    <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${s.subject_id}', 'subject')">🔄</button>
                     <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px" onclick="showEditSubjectModal('${s.subject_id}', '${escapeHTML(s.name)}', '${escapeHTML(themeColor)}', '${escapeHTML(imgUrl)}')">Edit</button>
                     <button class="btn btn-secondary" style="padding:2px 6px; font-size:10px; height:20px; color:var(--red)" onclick="deleteSubject('${s.subject_id}')">Del</button>
                 </div>
@@ -12917,6 +13131,20 @@ function renderChaptersList() {
         console.log("Chapter rendering c:", c);
         const imgUrl = c.image_url || '';
 
+        let count = 0;
+        if (c.image_url) count++;
+        if (c.image_url_9_16) count++;
+        if (c.image_url_16_9) count++;
+
+        let badgeHtml = '';
+        if (count === 3) {
+            badgeHtml = `<span style="font-size:9px; color:#10b981; font-weight:700; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(c.name)}" data-url11="${escapeHTML(c.image_url || '')}" data-url916="${escapeHTML(c.image_url_9_16 || '')}" data-url169="${escapeHTML(c.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ 3/3 Images</span>`;
+        } else if (count > 0) {
+            badgeHtml = `<span style="font-size:9px; color:#f59e0b; font-weight:700; background:rgba(245,158,11,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(c.name)}" data-url11="${escapeHTML(c.image_url || '')}" data-url916="${escapeHTML(c.image_url_9_16 || '')}" data-url169="${escapeHTML(c.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ ${count}/3 Images</span>`;
+        } else {
+            badgeHtml = `<span style="font-size:9px; color:var(--text3); font-weight:600; background:var(--border); padding:1px 5px; border-radius:4px;" title="No images generated yet">🖼️ 0/3 Images</span>`;
+        }
+
         html += `
         <div class="classroom-item-row" onclick="selectChapter('${c.chapter_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <div style="display:flex; align-items:center; gap:12px;">
@@ -12926,15 +13154,20 @@ function renderChaptersList() {
                      </div>`
                   : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📖</div>`
                 }
-                <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
                     <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(c.name)}</span>
-                    ${imgUrl ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image ready</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        ${badgeHtml}
+                    </div>
                 </div>
             </div>
-            <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${c.chapter_id}', 'chapter')">🔄 Regenerate</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditChapterModal('${c.chapter_id}', '${escapeHTML(c.name)}', '${escapeHTML(imgUrl)}')">✏️ Edit</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteChapter('${c.chapter_id}')">🗑️ Delete</button>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('chapter', '${c.chapter_id}', '1:1')">1:1</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('chapter', '${c.chapter_id}', '9:16')">9:16</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('chapter', '${c.chapter_id}', '16:9')">16:9</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px; border-color:#a855f7; color:#a855f7;" onclick="triggerNewAIImageRow('chapter', '${c.chapter_id}')">🤖 New</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px;" onclick="showEditChapterModal('${c.chapter_id}', '${escapeHTML(c.name)}', '${escapeHTML(imgUrl)}')">✏️ Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px; color:var(--red)" onclick="deleteChapter('${c.chapter_id}')">🗑️ Del</button>
             </div>
         </div>
         `;
@@ -12993,6 +13226,21 @@ function renderTopicsList() {
     topics.forEach(t => {
         const subtopicCount = (t.subtopics || []).length;
         const hasBanner = !!(t.banner_url);
+
+        let count = 0;
+        if (t.image_url) count++;
+        if (t.image_url_9_16) count++;
+        if (t.image_url_16_9) count++;
+
+        let badgeHtml = '';
+        if (count === 3) {
+            badgeHtml = `<span style="font-size:9px; color:#10b981; font-weight:700; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(t.name)}" data-url11="${escapeHTML(t.image_url || '')}" data-url916="${escapeHTML(t.image_url_9_16 || '')}" data-url169="${escapeHTML(t.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ 3/3 Images</span>`;
+        } else if (count > 0) {
+            badgeHtml = `<span style="font-size:9px; color:#f59e0b; font-weight:700; background:rgba(245,158,11,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(t.name)}" data-url11="${escapeHTML(t.image_url || '')}" data-url916="${escapeHTML(t.image_url_9_16 || '')}" data-url169="${escapeHTML(t.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ ${count}/3 Images</span>`;
+        } else {
+            badgeHtml = `<span style="font-size:9px; color:var(--text3); font-weight:600; background:var(--border); padding:1px 5px; border-radius:4px;" title="No images generated yet">🖼️ 0/3 Images</span>`;
+        }
+
         html += `
         <div class="classroom-item-row" onclick="selectTopic('${t.topic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <div style="display:flex; align-items:center; gap:12px;">
@@ -13002,10 +13250,10 @@ function renderTopicsList() {
                      </div>`
                   : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📌</div>`
                 }
-                <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
                     <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(t.name)}</span>
                     <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-                        ${t.image_url ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                        ${badgeHtml}
                         ${subtopicCount > 0 
                           ? `<span style="font-size:9px; font-weight:700; padding:1px 5px; border-radius:99px; background:rgba(99,102,241,0.12); color:#818cf8;">${subtopicCount} subtopics</span>`
                           : `<span style="font-size:9px; font-weight:700; padding:1px 5px; border-radius:99px; background:rgba(245,158,11,0.12); color:#f59e0b;">No subtopics</span>`
@@ -13015,11 +13263,13 @@ function renderTopicsList() {
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;" onclick="event.stopPropagation()">
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${t.topic_id}', 'topic')">🔄 Image</button>
-                ${subtopicCount === 0 ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#10b981; color:#10b981; font-weight:700;" onclick="generateTopicBanner('${t.topic_id}', '${escapeHTML(t.name)}')">🖼️ Banner 16:9</button>` : ''}
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#f59e0b; color:#f59e0b;" onclick="openExtensionReelWizard('topic', '${t.topic_id}')" title="Generate reels using Chrome Extension">🎬 Reels</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditTopicModal('${t.topic_id}', '${escapeHTML(t.name)}', '${escapeHTML(t.image_url || '')}')">✏️ Edit</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteTopic('${t.topic_id}')">🗑️ Del</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('topic', '${t.topic_id}', '1:1')">1:1</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('topic', '${t.topic_id}', '9:16')">9:16</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('topic', '${t.topic_id}', '16:9')">16:9</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px; border-color:#a855f7; color:#a855f7;" onclick="triggerNewAIImageRow('topic', '${t.topic_id}')">🤖 New</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px; border-color:#f59e0b; color:#f59e0b;" onclick="openExtensionReelWizard('topic', '${t.topic_id}')" title="Generate reels using Chrome Extension">🎬 Reels</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px;" onclick="showEditTopicModal('${t.topic_id}', '${escapeHTML(t.name)}', '${escapeHTML(t.image_url || '')}')">✏️ Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px; color:var(--red)" onclick="deleteTopic('${t.topic_id}')">🗑️ Del</button>
             </div>
         </div>
         `;
@@ -13133,6 +13383,21 @@ function renderSubtopicsList() {
     let html = '';
     subtopics.forEach(sub => {
         const subStr = JSON.stringify(sub).replace(/"/g, '&quot;');
+
+        let count = 0;
+        if (sub.image_url) count++;
+        if (sub.image_url_9_16) count++;
+        if (sub.image_url_16_9) count++;
+
+        let badgeHtml = '';
+        if (count === 3) {
+            badgeHtml = `<span style="font-size:9px; color:#10b981; font-weight:700; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(sub.name)}" data-url11="${escapeHTML(sub.image_url || '')}" data-url916="${escapeHTML(sub.image_url_9_16 || '')}" data-url169="${escapeHTML(sub.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ 3/3 Images</span>`;
+        } else if (count > 0) {
+            badgeHtml = `<span style="font-size:9px; color:#f59e0b; font-weight:700; background:rgba(245,158,11,0.12); padding:1px 5px; border-radius:4px; cursor:pointer;" onclick="event.stopPropagation(); showBadgeImages(this)" data-title="${escapeHTML(sub.name)}" data-url11="${escapeHTML(sub.image_url || '')}" data-url916="${escapeHTML(sub.image_url_9_16 || '')}" data-url169="${escapeHTML(sub.image_url_16_9 || '')}" title="Click to view all aspect ratio images">🖼️ ${count}/3 Images</span>`;
+        } else {
+            badgeHtml = `<span style="font-size:9px; color:var(--text3); font-weight:600; background:var(--border); padding:1px 5px; border-radius:4px;" title="No images generated yet">🖼️ 0/3 Images</span>`;
+        }
+
         html += `
         <div class="classroom-item-row" onclick="selectSubtopic('${sub.subtopic_id}')" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); cursor:pointer; transition:0.2s; margin-bottom: 5px;">
             <div style="display:flex; align-items:center; gap:12px; flex:1">
@@ -13142,16 +13407,21 @@ function renderSubtopicsList() {
                      </div>`
                   : `<div style="width:44px; height:44px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📝</div>`
                 }
-                <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
                     <span style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(sub.name)}</span>
-                    ${sub.image_url ? `<span style="font-size:9px; color:var(--text3); font-weight:600;">✅ Image ready</span>` : `<span style="font-size:9px; color:#f59e0b; font-weight:600;">⚠️ No image</span>`}
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        ${badgeHtml}
+                    </div>
                     ${sub.description ? `<div style="font-size:11px; color:var(--text3);">${escapeHTML(sub.description)}</div>` : ''}
                 </div>
             </div>
-            <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; border-color:#3b82f6; color:#3b82f6" onclick="regenerateImage('${sub.subtopic_id}', 'subtopic')">🔄 Regenerate</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditSubtopicModal(${subStr})">✏️ Edit</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deleteSubtopic('${sub.subtopic_id}')">🗑️ Delete</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('subtopic', '${sub.subtopic_id}', '1:1')">1:1</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('subtopic', '${sub.subtopic_id}', '9:16')">9:16</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px;" onclick="generateOrResizeRow('subtopic', '${sub.subtopic_id}', '16:9')">16:9</button>
+                <button class="btn btn-secondary" style="padding:4px 6px; font-size:10px; height:24px; border-color:#a855f7; color:#a855f7;" onclick="triggerNewAIImageRow('subtopic', '${sub.subtopic_id}')">🤖 New</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px;" onclick="showEditSubtopicModal(${subStr})">✏️ Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; height:24px; color:var(--red)" onclick="deleteSubtopic('${sub.subtopic_id}')">🗑️ Delete</button>
             </div>
         </div>
         `;
@@ -13901,20 +14171,37 @@ function showAddSubjectModal() {
     document.getElementById('modal-subject-color').value = '#4f46e5';
     document.getElementById('modal-subject-color-text').value = '#4f46e5';
     document.getElementById('modal-subject-image-url').value = '';
-    updateModalSubjectImagePreview('');
+    document.getElementById('modal-subject-image-url-9-16').value = '';
+    document.getElementById('modal-subject-image-url-16-9').value = '';
+    updateSubjectModalPreviews();
     document.getElementById('subject-modal-title').textContent = 'Add Subject';
     document.getElementById('classroom-subject-modal').classList.add('open');
 }
 
 function showEditSubjectModal(subject_id, name, color, image_url) {
-    const defaultColor = color || '#4f46e5';
+    let s = null;
+    if (currentExamTreeData) {
+        for (let p of currentExamTreeData) {
+            s = p.subjects.find(sub => sub.subject_id === subject_id);
+            if (s) break;
+        }
+    }
+    const defaultColor = (s ? s.color : color) || '#4f46e5';
+    const finalName = (s ? s.name : name) || '';
+    const imgUrl = (s ? s.image_url : image_url) || '';
+    const imgUrl916 = (s ? s.image_url_9_16 : '') || '';
+    const imgUrl169 = (s ? s.image_url_16_9 : '') || '';
+
     document.getElementById('modal-subject-id').value = subject_id;
-    document.getElementById('modal-subject-name').value = name;
+    document.getElementById('modal-subject-name').value = finalName;
     document.getElementById('modal-subject-color').value = defaultColor;
     document.getElementById('modal-subject-color-text').value = defaultColor;
-    const imgUrl = image_url || '';
+    
     document.getElementById('modal-subject-image-url').value = imgUrl;
-    updateModalSubjectImagePreview(imgUrl);
+    document.getElementById('modal-subject-image-url-9-16').value = imgUrl916;
+    document.getElementById('modal-subject-image-url-16-9').value = imgUrl169;
+    
+    updateSubjectModalPreviews();
     document.getElementById('subject-modal-title').textContent = 'Edit Subject';
     document.getElementById('classroom-subject-modal').classList.add('open');
 }
@@ -13931,6 +14218,8 @@ async function saveSubject() {
     }
     const color = document.getElementById('modal-subject-color').value;
     const image_url = document.getElementById('modal-subject-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-subject-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-subject-image-url-16-9').value.trim();
     const subject_id = document.getElementById('modal-subject-id').value;
     let url = `/api/classroom/papers/${currentActivePaperId}/subjects`;
     let method = 'POST';
@@ -13945,7 +14234,7 @@ async function saveSubject() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, color, image_url })
+            body: JSON.stringify({ name, color, image_url, image_url_9_16, image_url_16_9 })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -13989,21 +14278,42 @@ function showAddChapterModal() {
     document.getElementById('modal-chapter-id').value = '';
     document.getElementById('modal-chapter-name').value = '';
     document.getElementById('modal-chapter-image-url').value = '';
-    updateModalChapterImagePreview('');
+    document.getElementById('modal-chapter-image-url-9-16').value = '';
+    document.getElementById('modal-chapter-image-url-16-9').value = '';
+    updateChapterModalPreviews();
     document.getElementById('chapter-modal-title').textContent = 'Add Chapter';
     document.getElementById('classroom-chapter-modal').classList.add('open');
 }
 
 function showEditChapterModal(chapter_id, name, image_url) {
+    let ch = null;
+    if (currentExamTreeData) {
+        for (let p of currentExamTreeData) {
+            for (let s of p.subjects) {
+                ch = s.chapters.find(c => c.chapter_id === chapter_id);
+                if (ch) break;
+            }
+            if (ch) break;
+        }
+    }
+    const finalName = (ch ? ch.name : name) || '';
+    const imgUrl = (ch ? ch.image_url : image_url) || '';
+    const imgUrl916 = (ch ? ch.image_url_9_16 : '') || '';
+    const imgUrl169 = (ch ? ch.image_url_16_9 : '') || '';
+
     document.getElementById('modal-chapter-id').value = chapter_id;
-    document.getElementById('modal-chapter-name').value = name;
-    const imgUrl = image_url || '';
+    document.getElementById('modal-chapter-name').value = finalName;
+    
     document.getElementById('modal-chapter-image-url').value = imgUrl;
-    updateModalChapterImagePreview(imgUrl);
+    document.getElementById('modal-chapter-image-url-9-16').value = imgUrl916;
+    document.getElementById('modal-chapter-image-url-16-9').value = imgUrl169;
+    
+    updateChapterModalPreviews();
     document.getElementById('chapter-modal-title').textContent = 'Edit Chapter';
     document.getElementById('classroom-chapter-modal').classList.add('open');
 }
 
+// Chapter Actions End
 function closeChapterModal() {
     document.getElementById('classroom-chapter-modal').classList.remove('open');
 }
@@ -14015,6 +14325,8 @@ async function saveChapter() {
         return;
     }
     const image_url = document.getElementById('modal-chapter-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-chapter-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-chapter-image-url-16-9').value.trim();
     const chapter_id = document.getElementById('modal-chapter-id').value;
     let url = `/api/classroom/subjects/${currentActiveSubjectId}/chapters`;
     let method = 'POST';
@@ -14029,7 +14341,7 @@ async function saveChapter() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, image_url })
+            body: JSON.stringify({ name, image_url, image_url_9_16, image_url_16_9 })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -14080,13 +14392,13 @@ async function generateSubjectImageAI() {
             img.onload = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-subject-image-url').value = res.image_url;
-                updateModalSubjectImagePreview(res.image_url);
+                updateSubjectModalPreviews();
                 toast('Image generated successfully!', 'success');
             };
             img.onerror = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-subject-image-url').value = res.image_url;
-                updateModalSubjectImagePreview(res.image_url);
+                updateSubjectModalPreviews();
                 toast('Image generated and saved.', 'success');
             };
         } else {
@@ -14101,13 +14413,8 @@ async function generateSubjectImageAI() {
 }
 
 function updateModalSubjectImagePreview(url) {
-    const img = document.getElementById('modal-subject-image-preview');
-    if (url) {
-        img.src = url;
-        img.style.display = 'block';
-    } else {
-        img.style.display = 'none';
-    }
+    document.getElementById('modal-subject-image-url').value = url || '';
+    updateSubjectModalPreviews();
 }
 
 async function generateChapterImageAI() {
@@ -14144,13 +14451,13 @@ async function generateChapterImageAI() {
             img.onload = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-chapter-image-url').value = res.image_url;
-                updateModalChapterImagePreview(res.image_url);
+                updateChapterModalPreviews();
                 toast('Image generated successfully!', 'success');
             };
             img.onerror = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-chapter-image-url').value = res.image_url;
-                updateModalChapterImagePreview(res.image_url);
+                updateChapterModalPreviews();
                 toast('Image generated and saved.', 'success');
             };
         } else {
@@ -14165,13 +14472,8 @@ async function generateChapterImageAI() {
 }
 
 function updateModalChapterImagePreview(url) {
-    const img = document.getElementById('modal-chapter-image-preview');
-    if (url) {
-        img.src = url;
-        img.style.display = 'block';
-    } else {
-        img.style.display = 'none';
-    }
+    document.getElementById('modal-chapter-image-url').value = url || '';
+    updateChapterModalPreviews();
 }
 
 // Topic & Subtopic Image Helpers
@@ -14210,13 +14512,13 @@ async function generateTopicImageAI() {
             img.onload = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-topic-image-url').value = res.image_url;
-                updateModalTopicImagePreview(res.image_url);
+                updateTopicModalPreviews();
                 toast('Image generated successfully!', 'success');
             };
             img.onerror = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-topic-image-url').value = res.image_url;
-                updateModalTopicImagePreview(res.image_url);
+                updateTopicModalPreviews();
                 toast('Image generated and saved.', 'success');
             };
         } else {
@@ -14231,13 +14533,8 @@ async function generateTopicImageAI() {
 }
 
 function updateModalTopicImagePreview(url) {
-    const img = document.getElementById('modal-topic-image-preview');
-    if (url) {
-        img.src = url;
-        img.style.display = 'block';
-    } else {
-        img.style.display = 'none';
-    }
+    document.getElementById('modal-topic-image-url').value = url || '';
+    updateTopicModalPreviews();
 }
 
 async function generateSubtopicImageAI() {
@@ -14276,13 +14573,13 @@ async function generateSubtopicImageAI() {
             img.onload = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-subtopic-image-url').value = res.image_url;
-                updateModalSubtopicImagePreview(res.image_url);
+                updateSubtopicModalPreviews();
                 toast('Image generated successfully!', 'success');
             };
             img.onerror = () => {
                 document.getElementById('classroom-loading-modal').classList.remove('open');
                 document.getElementById('modal-subtopic-image-url').value = res.image_url;
-                updateModalSubtopicImagePreview(res.image_url);
+                updateSubtopicModalPreviews();
                 toast('Image generated and saved.', 'success');
             };
         } else {
@@ -14297,13 +14594,682 @@ async function generateSubtopicImageAI() {
 }
 
 function updateModalSubtopicImagePreview(url) {
-    const img = document.getElementById('modal-subtopic-image-preview');
-    if (url) {
-        img.src = url;
-        img.style.display = 'block';
-    } else {
-        img.style.display = 'none';
+    document.getElementById('modal-subtopic-image-url').value = url || '';
+    updateSubtopicModalPreviews();
+}
+
+function updateSubjectModalPreviews() {
+    const url11 = document.getElementById('modal-subject-image-url').value.trim();
+    const url916 = document.getElementById('modal-subject-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-subject-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-subject-img-1-1');
+    const ph11 = document.getElementById('modal-subject-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-subject-img-9-16');
+    const ph916 = document.getElementById('modal-subject-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-subject-img-16-9');
+    const ph169 = document.getElementById('modal-subject-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
+function updateChapterModalPreviews() {
+    const url11 = document.getElementById('modal-chapter-image-url').value.trim();
+    const url916 = document.getElementById('modal-chapter-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-chapter-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-chapter-img-1-1');
+    const ph11 = document.getElementById('modal-chapter-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-chapter-img-9-16');
+    const ph916 = document.getElementById('modal-chapter-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-chapter-img-16-9');
+    const ph169 = document.getElementById('modal-chapter-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
+function updateTopicModalPreviews() {
+    const url11 = document.getElementById('modal-topic-image-url').value.trim();
+    const url916 = document.getElementById('modal-topic-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-topic-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-topic-img-1-1');
+    const ph11 = document.getElementById('modal-topic-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-topic-img-9-16');
+    const ph916 = document.getElementById('modal-topic-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-topic-img-16-9');
+    const ph169 = document.getElementById('modal-topic-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
+function updateSubtopicModalPreviews() {
+    const url11 = document.getElementById('modal-subtopic-image-url').value.trim();
+    const url916 = document.getElementById('modal-subtopic-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-subtopic-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-subtopic-img-1-1');
+    const ph11 = document.getElementById('modal-subtopic-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-subtopic-img-9-16');
+    const ph916 = document.getElementById('modal-subtopic-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-subtopic-img-16-9');
+    const ph169 = document.getElementById('modal-subtopic-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
+async function resizeImageBackend(entityId, entityType, ratio) {
+    if (!entityId) {
+        toast('Cannot resize image: Entity ID is not set. Please save or select the entity first.', 'warning');
+        return null;
     }
+    
+    document.getElementById('loading-modal-title').textContent = 'Resizing Image...';
+    document.getElementById('loading-modal-sub').textContent = `Please wait while we center-crop and resize the image to ${ratio}.`;
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch('/api/classroom/resize-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-App-Token': session.token
+            },
+            body: JSON.stringify({
+                entity_id: entityId,
+                entity_type: entityType,
+                target_ratio: ratio
+            })
+        });
+        const res = await resp.json();
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        if (resp.ok && res.url) {
+            toast(`Image successfully resized to ${ratio}!`, 'success');
+            return res.url;
+        } else {
+            toast(res.detail || 'Failed to resize image on backend', 'error');
+            return null;
+        }
+    } catch(err) {
+        console.error(err);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during image resizing', 'error');
+        return null;
+    }
+}
+
+async function triggerMetaAIImage(entityId, entityType, ratio) {
+    let suffix = '-1_1';
+    if (ratio === '9:16') suffix = '-9_16';
+    else if (ratio === '16:9') suffix = '-16_9';
+    
+    const metaType = `${entityType}_${ratio.replace(':', '_')}`;
+    
+    let entityName = '';
+    let contextStr = '';
+    
+    if (entityId.includes('-temp-')) {
+        entityName = document.getElementById(`modal-${entityType}-name`).value.trim();
+        if (!entityName) {
+            toast(`Please enter a ${entityType} name first`, 'warning');
+            return;
+        }
+        if (entityType === 'subject') {
+            const paperName = document.getElementById('active-paper-name')?.textContent || '';
+            contextStr = paperName && paperName !== 'Paper Name' ? paperName : '';
+        } else if (entityType === 'chapter') {
+            const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+            contextStr = subjectName && subjectName !== 'Subject Name' ? subjectName : '';
+        } else if (entityType === 'topic') {
+            const chapterName = document.getElementById('active-chapter-name')?.textContent || '';
+            const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+            contextStr = `${subjectName} ${chapterName}`.trim();
+        } else if (entityType === 'subtopic') {
+            const topicName = document.getElementById('active-topic-name')?.textContent || '';
+            const chapterName = document.getElementById('active-chapter-name')?.textContent || '';
+            const subjectName = document.getElementById('active-subject-name')?.textContent || '';
+            contextStr = `${subjectName} ${chapterName} ${topicName}`.trim();
+        }
+    } else {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                if (entityType === 'subject') {
+                    const s = p.subjects.find(sub => sub.subject_id === entityId);
+                    if (s) { entityName = s.name; contextStr = p.name || ''; break; }
+                }
+                for (let s of (p.subjects || [])) {
+                    if (entityType === 'chapter') {
+                        const c = s.chapters.find(ch => ch.chapter_id === entityId);
+                        if (c) { entityName = c.name; contextStr = s.name || ''; break; }
+                    }
+                    for (let c of (s.chapters || [])) {
+                        if (entityType === 'topic') {
+                            const t = c.topics.find(tp => tp.topic_id === entityId);
+                            if (t) { entityName = t.name; contextStr = c.name || ''; break; }
+                        }
+                        for (let sub of (c.topics || [])) {
+                            if (entityType === 'subtopic') {
+                                const st = sub.subtopics.find(sbt => sbt.subtopic_id === entityId);
+                                if (st) { entityName = st.name; contextStr = sub.name || ''; break; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!entityName) {
+            entityName = document.getElementById(`modal-${entityType}-name`).value.trim();
+        }
+    }
+    
+    const assetId = `${entityId}${suffix}`;
+    
+    document.getElementById('loading-modal-title').textContent = '🤖 Generating via Meta AI...';
+    document.getElementById('loading-modal-sub').textContent = `Opening Meta AI for: "${entityName}". Image will auto-save when done.`;
+    document.getElementById('classroom-loading-modal').classList.add('open');
+    
+    try {
+        const resp = await fetch('/api/classroom/generate-educational-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+            body: JSON.stringify({ name: entityName, type: metaType, context: contextStr })
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success && res.prompt) {
+            window.postMessage({
+                type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                assetId: assetId,
+                prompt: res.prompt,
+                mediaType: 'image',
+                token: window._currentToken || session.token || '',
+                backendUrl: window.location.origin
+            }, '*');
+            toast('🤖 Meta AI opened! Image will auto-save when ready.', 'success');
+        } else {
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            toast(res.detail || 'Failed to generate prompt', 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        document.getElementById('classroom-loading-modal').classList.remove('open');
+        toast('Network error during image generation', 'error');
+    }
+}
+
+function generateOrResizeSubject(ratio) {
+    const entityId = document.getElementById('modal-subject-id').value;
+    const url11 = document.getElementById('modal-subject-image-url').value.trim();
+    const url916 = document.getElementById('modal-subject-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-subject-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('subject-temp-')) {
+            toast('Please save this Subject first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'subject', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-subject-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-subject-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-subject-image-url-16-9').value = newUrl;
+                updateSubjectModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'subject-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'subject', ratio);
+    }
+}
+
+function generateOrResizeChapter(ratio) {
+    const entityId = document.getElementById('modal-chapter-id').value;
+    const url11 = document.getElementById('modal-chapter-image-url').value.trim();
+    const url916 = document.getElementById('modal-chapter-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-chapter-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('chapter-temp-')) {
+            toast('Please save this Chapter first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'chapter', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-chapter-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-chapter-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-chapter-image-url-16-9').value = newUrl;
+                updateChapterModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'chapter-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'chapter', ratio);
+    }
+}
+
+function generateOrResizeTopic(ratio) {
+    const entityId = document.getElementById('modal-topic-id').value;
+    const url11 = document.getElementById('modal-topic-image-url').value.trim();
+    const url916 = document.getElementById('modal-topic-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-topic-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('topic-temp-')) {
+            toast('Please save this Topic first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'topic', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-topic-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-topic-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-topic-image-url-16-9').value = newUrl;
+                updateTopicModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'topic-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'topic', ratio);
+    }
+}
+
+function generateOrResizeSubtopic(ratio) {
+    const entityId = document.getElementById('modal-subtopic-id').value;
+    const url11 = document.getElementById('modal-subtopic-image-url').value.trim();
+    const url916 = document.getElementById('modal-subtopic-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-subtopic-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('subtopic-temp-')) {
+            toast('Please save this Subtopic first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'subtopic', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-subtopic-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-subtopic-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-subtopic-image-url-16-9').value = newUrl;
+                updateSubtopicModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'subtopic-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'subtopic', ratio);
+    }
+}
+
+function triggerNewSubjectAIImage() {
+    const entityId = document.getElementById('modal-subject-id').value || 'subject-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'subject', '1:1');
+}
+
+function triggerNewChapterAIImage() {
+    const entityId = document.getElementById('modal-chapter-id').value || 'chapter-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'chapter', '1:1');
+}
+
+function triggerNewTopicAIImage() {
+    const entityId = document.getElementById('modal-topic-id').value || 'topic-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'topic', '1:1');
+}
+
+function triggerNewSubtopicAIImage() {
+    const entityId = document.getElementById('modal-subtopic-id').value || 'subtopic-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'subtopic', '1:1');
+}
+
+async function generateOrResizeActiveDetail(entityType, ratio) {
+    let entityId = null;
+    if (entityType === 'subject') entityId = currentActiveSubjectId;
+    else if (entityType === 'chapter') entityId = currentActiveChapterId;
+    else if (entityType === 'topic') entityId = currentActiveTopicId;
+    else if (entityType === 'subtopic') entityId = currentActiveSubtopicId;
+
+    if (!entityId) {
+        toast(`No active ${entityType} selected`, 'warning');
+        return;
+    }
+
+    let activeObj = null;
+    if (entityType === 'subject') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                activeObj = p.subjects.find(sub => sub.subject_id === entityId);
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'chapter') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    activeObj = s.chapters.find(ch => ch.chapter_id === entityId);
+                    if (activeObj) break;
+                }
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'topic') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        activeObj = c.topics.find(tp => tp.topic_id === entityId);
+                        if (activeObj) break;
+                    }
+                    if (activeObj) break;
+                }
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'subtopic') {
+        activeObj = currentActiveSubtopicData;
+    }
+
+    if (!activeObj) {
+        toast(`Active ${entityType} details not found`, 'warning');
+        return;
+    }
+
+    const url11 = (activeObj.image_url || '').trim();
+    const url916 = (activeObj.image_url_9_16 || '').trim();
+    const url169 = (activeObj.image_url_16_9 || '').trim();
+
+    if (url11 || url916 || url169) {
+        const newUrl = await resizeImageBackend(entityId, entityType, ratio);
+        if (newUrl) {
+            if (ratio === '1:1') activeObj.image_url = newUrl;
+            else if (ratio === '9:16') activeObj.image_url_9_16 = newUrl;
+            else if (ratio === '16:9') {
+                activeObj.image_url_16_9 = newUrl;
+                if (entityType === 'subtopic') activeObj.banner_url = newUrl;
+            }
+            
+            let putUrl = '';
+            let payload = { name: activeObj.name };
+            if (entityType === 'subject') {
+                putUrl = `/api/classroom/subjects/${entityId}`;
+                payload.color = activeObj.color || '#4f46e5';
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'chapter') {
+                putUrl = `/api/classroom/chapters/${entityId}`;
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'topic') {
+                putUrl = `/api/classroom/topics/${entityId}`;
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'subtopic') {
+                putUrl = `/api/classroom/subtopics/${entityId}`;
+                payload.description = activeObj.description || '';
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            }
+
+            try {
+                const resp = await fetch(putUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+                    body: JSON.stringify(payload)
+                });
+                if (resp.ok) {
+                    toast(`Image updated successfully for active ${entityType}!`, 'success');
+                    await refreshExamTree();
+                    if (entityType === 'subtopic') {
+                        const bannerImage = document.getElementById('subtopic-banner-image');
+                        const bannerLoader = document.getElementById('subtopic-banner-loader');
+                        if (bannerImage && bannerLoader) {
+                            bannerImage.src = newUrl;
+                            bannerImage.style.opacity = '1';
+                            bannerLoader.style.display = 'none';
+                        }
+                    }
+                } else {
+                    const errorRes = await resp.json();
+                    toast(errorRes.detail || 'Failed to save resized image', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                toast('Network error saving resized image', 'error');
+            }
+        }
+    } else {
+        triggerMetaAIImage(entityId, entityType, ratio);
+    }
+}
+
+function triggerNewAIImageDetail(entityType) {
+    let entityId = null;
+    if (entityType === 'subject') entityId = currentActiveSubjectId;
+    else if (entityType === 'chapter') entityId = currentActiveChapterId;
+    else if (entityType === 'topic') entityId = currentActiveTopicId;
+    else if (entityType === 'subtopic') entityId = currentActiveSubtopicId;
+
+    if (!entityId) {
+        toast(`No active ${entityType} selected`, 'warning');
+        return;
+    }
+    triggerMetaAIImage(entityId, entityType, '1:1');
+}
+
+async function generateOrResizeRow(entityType, entityId, ratio) {
+    if (!entityId) {
+        toast(`Entity ID is not set.`, 'warning');
+        return;
+    }
+
+    let activeObj = null;
+    if (entityType === 'subject') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                activeObj = p.subjects.find(sub => sub.subject_id === entityId);
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'chapter') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    activeObj = s.chapters.find(ch => ch.chapter_id === entityId);
+                    if (activeObj) break;
+                }
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'topic') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        activeObj = c.topics.find(tp => tp.topic_id === entityId);
+                        if (activeObj) break;
+                    }
+                    if (activeObj) break;
+                }
+                if (activeObj) break;
+            }
+        }
+    } else if (entityType === 'subtopic') {
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        for (let t of c.topics) {
+                            activeObj = t.subtopics.find(sub => sub.subtopic_id === entityId);
+                            if (activeObj) break;
+                        }
+                        if (activeObj) break;
+                    }
+                    if (activeObj) break;
+                }
+                if (activeObj) break;
+            }
+        }
+    }
+
+    if (!activeObj) {
+        toast(`Entity details not found`, 'warning');
+        return;
+    }
+
+    const url11 = (activeObj.image_url || '').trim();
+    const url916 = (activeObj.image_url_9_16 || '').trim();
+    const url169 = (activeObj.image_url_16_9 || '').trim();
+
+    if (url11 || url916 || url169) {
+        const newUrl = await resizeImageBackend(entityId, entityType, ratio);
+        if (newUrl) {
+            if (ratio === '1:1') activeObj.image_url = newUrl;
+            else if (ratio === '9:16') activeObj.image_url_9_16 = newUrl;
+            else if (ratio === '16:9') {
+                activeObj.image_url_16_9 = newUrl;
+                if (entityType === 'subtopic') activeObj.banner_url = newUrl;
+            }
+            
+            let putUrl = '';
+            let payload = { name: activeObj.name };
+            if (entityType === 'subject') {
+                putUrl = `/api/classroom/subjects/${entityId}`;
+                payload.color = activeObj.color || '#4f46e5';
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'chapter') {
+                putUrl = `/api/classroom/chapters/${entityId}`;
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'topic') {
+                putUrl = `/api/classroom/topics/${entityId}`;
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            } else if (entityType === 'subtopic') {
+                putUrl = `/api/classroom/subtopics/${entityId}`;
+                payload.description = activeObj.description || '';
+                payload.image_url = activeObj.image_url;
+                payload.image_url_9_16 = activeObj.image_url_9_16;
+                payload.image_url_16_9 = activeObj.image_url_16_9;
+            }
+
+            try {
+                const resp = await fetch(putUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
+                    body: JSON.stringify(payload)
+                });
+                if (resp.ok) {
+                    toast(`Image updated successfully for ${entityType}!`, 'success');
+                    await refreshExamTree();
+                } else {
+                    const errorRes = await resp.json();
+                    toast(errorRes.detail || 'Failed to save resized image', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                toast('Network error saving resized image', 'error');
+            }
+        }
+    } else {
+        triggerMetaAIImage(entityId, entityType, ratio);
+    }
+}
+
+function triggerNewAIImageRow(entityType, entityId) {
+    if (!entityId) {
+        toast(`Entity ID is not set.`, 'warning');
+        return;
+    }
+    triggerMetaAIImage(entityId, entityType, '1:1');
+}
+
+function openAllImagesModal(title, url11, url916, url169) {
+    document.getElementById('all-images-modal-title').textContent = `🖼️ Images: ${title}`;
+    
+    const img11 = document.getElementById('all-img-1-1');
+    const ph11 = document.getElementById('all-img-placeholder-1-1');
+    const copy11 = document.getElementById('all-btn-copy-1-1');
+    if (url11 && url11.trim()) {
+        img11.src = url11;
+        img11.style.display = 'block';
+        ph11.style.display = 'none';
+        copy11.style.display = 'inline-block';
+        copy11.onclick = () => { navigator.clipboard.writeText(url11); toast('Copied 1:1 URL!', 'success'); };
+    } else {
+        img11.style.display = 'none';
+        ph11.style.display = 'block';
+        copy11.style.display = 'none';
+    }
+
+    const img916 = document.getElementById('all-img-9-16');
+    const ph916 = document.getElementById('all-img-placeholder-9-16');
+    const copy916 = document.getElementById('all-btn-copy-9-16');
+    if (url916 && url916.trim()) {
+        img916.src = url916;
+        img916.style.display = 'block';
+        ph916.style.display = 'none';
+        copy916.style.display = 'inline-block';
+        copy916.onclick = () => { navigator.clipboard.writeText(url916); toast('Copied 9:16 URL!', 'success'); };
+    } else {
+        img916.style.display = 'none';
+        ph916.style.display = 'block';
+        copy916.style.display = 'none';
+    }
+
+    const img169 = document.getElementById('all-img-16-9');
+    const ph169 = document.getElementById('all-img-placeholder-16-9');
+    const copy169 = document.getElementById('all-btn-copy-16-9');
+    if (url169 && url169.trim()) {
+        img169.src = url169;
+        img169.style.display = 'block';
+        ph169.style.display = 'none';
+        copy169.style.display = 'inline-block';
+        copy169.onclick = () => { navigator.clipboard.writeText(url169); toast('Copied 16:9 URL!', 'success'); };
+    } else {
+        img169.style.display = 'none';
+        ph169.style.display = 'block';
+        copy169.style.display = 'none';
+    }
+
+    document.getElementById('all-images-view-modal').style.display = 'flex';
+}
+
+function closeAllImagesModal() {
+    document.getElementById('all-images-view-modal').style.display = 'none';
+}
+
+function showBadgeImages(el) {
+    const title = el.getAttribute('data-title') || '';
+    const url11 = el.getAttribute('data-url11') || '';
+    const url916 = el.getAttribute('data-url916') || '';
+    const url169 = el.getAttribute('data-url169') || '';
+    openAllImagesModal(title, url11, url916, url169);
 }
 
 async function generateAllSubjectImages() {
@@ -14455,17 +15421,39 @@ function showAddTopicModal() {
     document.getElementById('modal-topic-id').value = '';
     document.getElementById('modal-topic-name').value = '';
     document.getElementById('modal-topic-image-url').value = '';
-    updateModalTopicImagePreview('');
+    document.getElementById('modal-topic-image-url-9-16').value = '';
+    document.getElementById('modal-topic-image-url-16-9').value = '';
+    updateTopicModalPreviews();
     document.getElementById('topic-modal-title').textContent = 'Add Topic';
     document.getElementById('classroom-topic-modal').classList.add('open');
 }
 
 function showEditTopicModal(topic_id, name, image_url) {
+    let t = null;
+    if (currentExamTreeData) {
+        for (let p of currentExamTreeData) {
+            for (let s of p.subjects) {
+                for (let c of s.chapters) {
+                    t = c.topics.find(tp => tp.topic_id === topic_id);
+                    if (t) break;
+                }
+                if (t) break;
+            }
+            if (t) break;
+        }
+    }
+    const finalName = (t ? t.name : name) || '';
+    const imgUrl = (t ? t.image_url : image_url) || '';
+    const imgUrl916 = (t ? t.image_url_9_16 : '') || '';
+    const imgUrl169 = (t ? t.image_url_16_9 : '') || '';
+
     document.getElementById('modal-topic-id').value = topic_id;
-    document.getElementById('modal-topic-name').value = name;
-    const imgUrl = image_url || '';
+    document.getElementById('modal-topic-name').value = finalName;
     document.getElementById('modal-topic-image-url').value = imgUrl;
-    updateModalTopicImagePreview(imgUrl);
+    document.getElementById('modal-topic-image-url-9-16').value = imgUrl916;
+    document.getElementById('modal-topic-image-url-16-9').value = imgUrl169;
+    
+    updateTopicModalPreviews();
     document.getElementById('topic-modal-title').textContent = 'Edit Topic';
     document.getElementById('classroom-topic-modal').classList.add('open');
 }
@@ -14481,6 +15469,8 @@ async function saveTopic() {
         return;
     }
     const image_url = document.getElementById('modal-topic-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-topic-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-topic-image-url-16-9').value.trim();
     const topic_id = document.getElementById('modal-topic-id').value;
     let url = `/api/classroom/chapters/${currentActiveChapterId}/topics`;
     let method = 'POST';
@@ -14495,7 +15485,7 @@ async function saveTopic() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, image_url })
+            body: JSON.stringify({ name, image_url, image_url_9_16, image_url_16_9 })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -14540,27 +15530,56 @@ function showAddSubtopicModal() {
     document.getElementById('modal-subtopic-name').value = '';
     document.getElementById('modal-subtopic-desc').value = '';
     document.getElementById('modal-subtopic-image-url').value = '';
-    updateModalSubtopicImagePreview('');
+    document.getElementById('modal-subtopic-image-url-9-16').value = '';
+    document.getElementById('modal-subtopic-image-url-16-9').value = '';
+    updateSubtopicModalPreviews();
     document.getElementById('subtopic-modal-title').textContent = 'Add Subtopic';
     document.getElementById('classroom-subtopic-modal').classList.add('open');
 }
 
 function showEditSubtopicModal(subtopic_id, name, description, image_url) {
     let imgUrl = '';
+    let imgUrl916 = '';
+    let imgUrl169 = '';
     if (typeof subtopic_id === 'object' && subtopic_id !== null) {
         const obj = subtopic_id;
         subtopic_id = obj.subtopic_id;
         name = obj.name;
         description = obj.description;
         imgUrl = obj.image_url || '';
+        imgUrl916 = obj.image_url_9_16 || '';
+        imgUrl169 = obj.image_url_16_9 || '';
     } else {
         imgUrl = image_url || '';
+        let st = null;
+        if (currentExamTreeData) {
+            for (let p of currentExamTreeData) {
+                for (let s of p.subjects) {
+                    for (let c of s.chapters) {
+                        for (let t of c.topics) {
+                            st = t.subtopics.find(sub => sub.subtopic_id === subtopic_id);
+                            if (st) break;
+                        }
+                        if (st) break;
+                    }
+                    if (st) break;
+                }
+                if (st) break;
+            }
+        }
+        if (st) {
+            imgUrl916 = st.image_url_9_16 || '';
+            imgUrl169 = st.image_url_16_9 || '';
+        }
     }
     document.getElementById('modal-subtopic-id').value = subtopic_id;
     document.getElementById('modal-subtopic-name').value = name;
     document.getElementById('modal-subtopic-desc').value = description || '';
     document.getElementById('modal-subtopic-image-url').value = imgUrl;
-    updateModalSubtopicImagePreview(imgUrl);
+    document.getElementById('modal-subtopic-image-url-9-16').value = imgUrl916;
+    document.getElementById('modal-subtopic-image-url-16-9').value = imgUrl169;
+    
+    updateSubtopicModalPreviews();
     document.getElementById('subtopic-modal-title').textContent = 'Edit Subtopic';
     document.getElementById('classroom-subtopic-modal').classList.add('open');
 }
@@ -14577,6 +15596,8 @@ async function saveSubtopic() {
         return;
     }
     const image_url = document.getElementById('modal-subtopic-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-subtopic-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-subtopic-image-url-16-9').value.trim();
     const subtopic_id = document.getElementById('modal-subtopic-id').value;
     let url = `/api/classroom/topics/${currentActiveTopicId}/subtopics`;
     let method = 'POST';
@@ -14591,7 +15612,7 @@ async function saveSubtopic() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, description, image_url })
+            body: JSON.stringify({ name, description, image_url, image_url_9_16, image_url_16_9 })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -17565,35 +18586,66 @@ window.addEventListener("message", (event) => {
         console.log("[MR AI Page] Received single asset downloaded:", assetId, url);
         
         let handled = false;
+        let suffix = '';
+        let baseAssetId = assetId;
+        if (assetId.endsWith("-1_1")) {
+            suffix = "-1_1";
+            baseAssetId = assetId.slice(0, -4);
+        } else if (assetId.endsWith("-9_16")) {
+            suffix = "-9_16";
+            baseAssetId = assetId.slice(0, -5);
+        } else if (assetId.endsWith("-16_9")) {
+            suffix = "-16_9";
+            baseAssetId = assetId.slice(0, -5);
+        }
+        const targetUrl = url || thumb;
         
-        if (assetId.startsWith("subject-")) {
+        if (baseAssetId.startsWith("subject-")) {
             handled = true;
-            document.getElementById('modal-subject-image-url').value = url || thumb;
-            updateModalSubjectImagePreview(url || thumb);
+            if (suffix === "-9_16") {
+                document.getElementById('modal-subject-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-subject-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-subject-image-url').value = targetUrl;
+            }
+            updateSubjectModalPreviews();
             toast('✅ Subject image generated via Meta AI!', 'success');
             document.getElementById('classroom-loading-modal').classList.remove('open');
             window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
-            if (!assetId.includes("-temp-")) {
+            if (!baseAssetId.includes("-temp-")) {
                 refreshExamTree();
             }
-        } else if (assetId.startsWith("chapter-")) {
+        } else if (baseAssetId.startsWith("chapter-")) {
             handled = true;
-            document.getElementById('modal-chapter-image-url').value = url || thumb;
-            updateModalChapterImagePreview(url || thumb);
+            if (suffix === "-9_16") {
+                document.getElementById('modal-chapter-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-chapter-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-chapter-image-url').value = targetUrl;
+            }
+            updateChapterModalPreviews();
             toast('✅ Chapter image generated via Meta AI!', 'success');
             document.getElementById('classroom-loading-modal').classList.remove('open');
             window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
-            if (!assetId.includes("-temp-")) {
+            if (!baseAssetId.includes("-temp-")) {
                 refreshExamTree();
             }
-        } else if (assetId.startsWith("topic-")) {
+        } else if (baseAssetId.startsWith("topic-")) {
             handled = true;
-            document.getElementById('modal-topic-image-url').value = url || thumb;
-            updateModalTopicImagePreview(url || thumb);
+            if (suffix === "-9_16") {
+                document.getElementById('modal-topic-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-topic-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-topic-image-url').value = targetUrl;
+            }
+            updateTopicModalPreviews();
             toast('✅ Topic image generated via Meta AI!', 'success');
             document.getElementById('classroom-loading-modal').classList.remove('open');
             window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
-            if (!assetId.includes("-temp-")) {
+            if (!baseAssetId.includes("-temp-")) {
                 refreshExamTree();
             }
         } else if (assetId.startsWith("subtopic_banner-")) {
@@ -17618,14 +18670,20 @@ window.addEventListener("message", (event) => {
                     showSubtopicDetail(subtopicId);
                 }
             });
-        } else if (assetId.startsWith("subtopic-")) {
+        } else if (baseAssetId.startsWith("subtopic-")) {
             handled = true;
-            document.getElementById('modal-subtopic-image-url').value = url || thumb;
-            updateModalSubtopicImagePreview(url || thumb);
+            if (suffix === "-9_16") {
+                document.getElementById('modal-subtopic-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-subtopic-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-subtopic-image-url').value = targetUrl;
+            }
+            updateSubtopicModalPreviews();
             toast('✅ Subtopic image generated via Meta AI!', 'success');
             document.getElementById('classroom-loading-modal').classList.remove('open');
             window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
-            if (!assetId.includes("-temp-")) {
+            if (!baseAssetId.includes("-temp-")) {
                 refreshExamTree();
             }
         }

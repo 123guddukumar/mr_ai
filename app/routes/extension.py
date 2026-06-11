@@ -1597,39 +1597,69 @@ async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_req
             # If asset_id matches classroom elements, update DB directly!
             if asset_id:
                 updated_db = False
-                if asset_id.startswith("subject-"):
+                ratio = "1:1"
+                temp_id = asset_id
+                
+                # Check for format suffix
+                if temp_id.endswith("-1_1"):
+                    ratio = "1:1"
+                    temp_id = temp_id[:-4]
+                elif temp_id.endswith("-9_16"):
+                    ratio = "9:16"
+                    temp_id = temp_id[:-5]
+                elif temp_id.endswith("-16_9"):
+                    ratio = "16:9"
+                    temp_id = temp_id[:-5]
+                elif "topic_banner-" in temp_id:
+                    ratio = "16:9"
+                elif "subtopic_banner-" in temp_id:
+                    ratio = "16:9"
+                elif "banner" in req.filename.lower():
+                    ratio = "16:9"
+
+                if temp_id.startswith("subject-"):
                     from app.core.models import Subject
-                    subject = db.query(Subject).filter(Subject.subject_id == asset_id).first()
+                    subject = db.query(Subject).filter(Subject.subject_id == temp_id).first()
                     if subject:
-                        subject.image_url = url
+                        if ratio == "9:16":
+                            subject.image_url_9_16 = url
+                        elif ratio == "16:9":
+                            subject.image_url_16_9 = url
+                        else:
+                            subject.image_url = url
                         updated_db = True
-                elif asset_id.startswith("chapter-"):
+                elif temp_id.startswith("chapter-"):
                     from app.core.models import ChapterClassroom
-                    chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == asset_id).first()
+                    chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == temp_id).first()
                     if chapter:
-                        chapter.image_url = url
+                        if ratio == "9:16":
+                            chapter.image_url_9_16 = url
+                        elif ratio == "16:9":
+                            chapter.image_url_16_9 = url
+                        else:
+                            chapter.image_url = url
                         updated_db = True
-                elif asset_id.startswith("topic_banner-"):
-                    # Topic banner (16:9) — save to banner_url
-                    clean_id = asset_id.replace("topic_banner-", "")
+                elif temp_id.startswith("topic_banner-") or temp_id.startswith("topic-"):
+                    clean_id = temp_id.replace("topic_banner-", "")
                     from app.core.models import TopicClassroom
                     topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == clean_id).first()
                     if topic:
-                        topic.banner_url = url
+                        if ratio == "9:16":
+                            topic.image_url_9_16 = url
+                        elif ratio == "16:9":
+                            topic.image_url_16_9 = url
+                        else:
+                            topic.image_url = url
                         updated_db = True
-                        logger.info(f"Updated topic banner_url: {clean_id} → {url}")
-                elif asset_id.startswith("topic-"):
-                    from app.core.models import TopicClassroom
-                    topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == asset_id).first()
-                    if topic:
-                        topic.image_url = url
-                        updated_db = True
-                elif "subtopic" in asset_id:
-                    clean_id = asset_id.replace("subtopic_banner-", "")
+                elif "subtopic" in temp_id:
+                    clean_id = temp_id.replace("subtopic_banner-", "")
                     from app.core.models import SubtopicClassroom
                     subtopic = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == clean_id).first()
                     if subtopic:
-                        if "banner" in asset_id or "banner" in req.filename.lower():
+                        if ratio == "9:16":
+                            subtopic.image_url_9_16 = url
+                        elif ratio == "16:9":
+                            subtopic.image_url_16_9 = url
                             subtopic.banner_url = url
                         else:
                             subtopic.image_url = url

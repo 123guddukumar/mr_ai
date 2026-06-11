@@ -630,6 +630,8 @@ class Subject(Base):
     name = Column(String(200), nullable=False)
     color = Column(String(50), nullable=True, default="#4f46e5")
     image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     exam = relationship("Exam", back_populates="subjects", foreign_keys=[exam_id])
@@ -647,6 +649,8 @@ class Subject(Base):
             "name": self.name,
             "color": self.color or "#4f46e5",
             "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "chapter_count": chapter_count,
             "topic_count": topic_count,
             "subtopic_count": subtopic_count,
@@ -660,6 +664,8 @@ class ChapterClassroom(Base):
     subject_id = Column(String(64), ForeignKey("subjects.subject_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     subject = relationship("Subject", back_populates="chapters")
@@ -671,6 +677,8 @@ class ChapterClassroom(Base):
             "subject_id": self.subject_id,
             "name": self.name,
             "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -686,6 +694,8 @@ class TopicClassroom(Base):
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     chapter = relationship("ChapterClassroom", back_populates="topics")
@@ -701,6 +711,8 @@ class TopicClassroom(Base):
             "description": self.description or "",
             "notes": self.notes or "",
             "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 
@@ -714,6 +726,8 @@ class SubtopicClassroom(Base):
     notes = Column(Text, nullable=True)
     script = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     banner_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -728,6 +742,8 @@ class SubtopicClassroom(Base):
             "notes": self.notes or "",
             "script": self.script or "",
             "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "banner_url": self.banner_url or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }

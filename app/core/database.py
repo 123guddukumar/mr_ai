@@ -106,7 +106,15 @@ def init_db():
         "ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)",
         "ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)",
         "ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS banner_url VARCHAR(500)",
-        "ALTER TABLE ca_topics ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)"
+        "ALTER TABLE ca_topics ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)",
+        "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS image_url_9_16 VARCHAR(500)",
+        "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS image_url_16_9 VARCHAR(500)",
+        "ALTER TABLE classroom_chapters ADD COLUMN IF NOT EXISTS image_url_9_16 VARCHAR(500)",
+        "ALTER TABLE classroom_chapters ADD COLUMN IF NOT EXISTS image_url_16_9 VARCHAR(500)",
+        "ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS image_url_9_16 VARCHAR(500)",
+        "ALTER TABLE classroom_topics ADD COLUMN IF NOT EXISTS image_url_16_9 VARCHAR(500)",
+        "ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS image_url_9_16 VARCHAR(500)",
+        "ALTER TABLE classroom_subtopics ADD COLUMN IF NOT EXISTS image_url_16_9 VARCHAR(500)"
     ]
     
     try:

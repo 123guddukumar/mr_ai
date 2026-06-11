@@ -311,10 +311,14 @@ class CreateSubjectReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     color: Optional[str] = "#4f46e5"
     image_url: Optional[str] = ""
+    image_url_9_16: Optional[str] = ""
+    image_url_16_9: Optional[str] = ""
 
 class CreateChapterReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     image_url: Optional[str] = ""
+    image_url_9_16: Optional[str] = ""
+    image_url_16_9: Optional[str] = ""
 
 class GenerateImageReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=500)
@@ -939,6 +943,8 @@ class CreateTopicReq(BaseModel):
     video_length: Optional[int] = None
     script: Optional[str] = None
     image_url: Optional[str] = None
+    image_url_9_16: Optional[str] = None
+    image_url_16_9: Optional[str] = None
 
 class CreateSubtopicReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -946,6 +952,8 @@ class CreateSubtopicReq(BaseModel):
     script: Optional[str] = None
     image_url: Optional[str] = None
     banner_url: Optional[str] = None
+    image_url_9_16: Optional[str] = None
+    image_url_16_9: Optional[str] = None
 
 
 # ── Exam Endpoints ────────────────────────────────────────────────────────────
@@ -1102,6 +1110,14 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Subject")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Subject Banner")
+        
     subject_id = "subject-" + secrets.token_hex(8)
     subject = Subject(
         subject_id=subject_id,
@@ -1110,6 +1126,8 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
         name=req.name,
         color=req.color,
         image_url=image_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
         created_at=datetime.utcnow()
     )
     db.add(subject)
@@ -1128,9 +1146,19 @@ async def update_subject(subject_id: str, req: CreateSubjectReq, client: dict = 
     if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Subject")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Subject Banner")
+        
     subject.name = req.name
     subject.color = req.color
     subject.image_url = image_url
+    subject.image_url_9_16 = image_url_9_16
+    subject.image_url_16_9 = image_url_16_9
     db.commit()
     db.refresh(subject)
     return {"success": True, "subject": subject.to_dict()}
@@ -1171,28 +1199,52 @@ async def generate_classroom_image(req: GenerateImageReq, client: dict = Depends
 @router.post("/classroom/generate-educational-prompt", tags=["Classroom"])
 async def get_classroom_educational_prompt(req: GeneratePromptReq, client: dict = Depends(_require_client)):
     subtitle = req.type.capitalize()
-    if req.type == "subtopic_banner":
+    if "banner" in req.type:
+        subtitle = "Banner"
+    elif "9_16" in req.type:
+        subtitle = "Portrait"
+    elif "16_9" in req.type:
+        subtitle = "Banner"
+    elif req.type == "subtopic_banner":
         subtitle = "Subtopic Banner"
     elif req.type == "topic_banner":
-        subtitle = "Topic Banner"    # treated as banner → 16:9 wide cinematic prompt
+        subtitle = "Topic Banner"
     elif req.type == "current_affair":
         subtitle = "Current Affair"
         
     prompt = await generate_educational_image_prompt(req.name, subtitle=subtitle, context=req.context)
+    
+    # Append aspect ratio formatting suffix
+    if "9_16" in req.type:
+        prompt = f"{prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text, photorealistic."
+    elif "16_9" in req.type or "banner" in req.type:
+        prompt = f"{prompt}. Horizontal landscape 16:9 banner format, cinematic lighting, 4K quality, no text, photorealistic."
+    else:
+        prompt = f"{prompt}. Centered square 1:1 format, cinematic lighting, 4K quality, no text, photorealistic."
+        
     return {"success": True, "prompt": prompt}
 
 
-def _crop_image_to_banner(img_bytes: bytes, out_path: str) -> bool:
-    """Crop/resize a square (or any) image to 16:9 (1280x720) banner. Returns True on success."""
+def _resize_image_to_ratio(img_bytes: bytes, ratio: str, out_path: str) -> bool:
+    """Crop/resize an image to a target ratio (1:1, 9:16, 16:9). Returns True on success."""
     try:
         from PIL import Image
         import io
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         w, h = img.size
-        # Target 16:9
-        target_w, target_h = 1280, 720
+        
+        if ratio == "1:1":
+            target_w, target_h = 1024, 1024
+        elif ratio == "9:16":
+            target_w, target_h = 720, 1280
+        elif ratio == "16:9":
+            target_w, target_h = 1280, 720
+        else:
+            return False
+            
         target_ratio = target_w / target_h
         src_ratio = w / h
+        
         if src_ratio > target_ratio:
             # Image is wider — crop sides
             new_w = int(h * target_ratio)
@@ -1203,21 +1255,20 @@ def _crop_image_to_banner(img_bytes: bytes, out_path: str) -> bool:
             new_h = int(w / target_ratio)
             y0 = (h - new_h) // 2
             img = img.crop((0, y0, w, y0 + new_h))
+            
         img = img.resize((target_w, target_h), Image.LANCZOS)
         img.save(out_path, "JPEG", quality=92)
         return True
     except Exception as e:
-        logger.error(f"Banner crop failed: {e}")
+        logger.error(f"Image resize to {ratio} failed: {e}")
         return False
 
 
-async def _make_banner_from_url(image_url: str, entity_name: str, out_dir: str) -> str | None:
-    """Download image from URL (local or remote), crop to 16:9, upload to R2. Returns final URL or None."""
-    import httpx, secrets, os, shutil
+async def _make_image_of_ratio_from_url(image_url: str, ratio: str, out_dir: str) -> str | None:
+    """Download image from URL (local or remote), crop/resize to ratio, upload to R2. Returns final URL or None."""
+    import httpx, secrets, os
     
     img_bytes = None
-    
-    # Try fetching image — handle both local paths and http URLs
     if image_url.startswith("http"):
         try:
             async with httpx.AsyncClient(timeout=20.0) as c:
@@ -1232,30 +1283,103 @@ async def _make_banner_from_url(image_url: str, entity_name: str, out_dir: str) 
         if os.path.exists(local_path):
             with open(local_path, "rb") as f:
                 img_bytes = f.read()
-    
+                
     if not img_bytes:
         return None
-    
+        
     os.makedirs(out_dir, exist_ok=True)
-    out_filename = f"banner_{secrets.token_hex(6)}.jpg"
+    ratio_slug = ratio.replace(":", "_")
+    out_filename = f"classroom_{ratio_slug}_{secrets.token_hex(6)}.jpg"
     out_path = os.path.join(out_dir, out_filename)
     
-    ok = _crop_image_to_banner(img_bytes, out_path)
+    ok = _resize_image_to_ratio(img_bytes, ratio, out_path)
     if not ok:
         return None
-    
+        
     # Upload to R2
     try:
         from app.services.r2_storage import upload_to_r2
-        r2_key = f"classroom/banners/{out_filename}"
+        r2_key = f"classroom/images/{out_filename}"
         r2_url = upload_to_r2(out_path, r2_key, "image/jpeg")
         if r2_url:
             return r2_url
     except Exception as e:
-        logger.warning(f"R2 upload failed for banner: {e}")
-    
+        logger.warning(f"R2 upload failed: {e}")
+        
     # Fallback: local URL
     return f"/uploads/images/{out_filename}"
+
+
+def _crop_image_to_banner(img_bytes: bytes, out_path: str) -> bool:
+    """Crop/resize a square (or any) image to 16:9 (1280x720) banner. Returns True on success."""
+    return _resize_image_to_ratio(img_bytes, "16:9", out_path)
+
+
+async def _make_banner_from_url(image_url: str, entity_name: str, out_dir: str) -> str | None:
+    """Download image from URL (local or remote), crop to 16:9, upload to R2. Returns final URL or None."""
+    return await _make_image_of_ratio_from_url(image_url, "16:9", out_dir)
+
+
+class ResizeImageReq(BaseModel):
+    entity_id: str
+    entity_type: str  # "subject" | "chapter" | "topic" | "subtopic"
+    target_ratio: str  # "1:1" | "9:16" | "16:9"
+
+
+@router.post("/classroom/resize-image", tags=["Classroom"])
+async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    entity_id = req.entity_id
+    entity_type = req.entity_type.lower()
+    target_ratio = req.target_ratio
+    
+    # 1. Fetch entity
+    entity = None
+    if entity_type == "subject":
+        entity = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == entity_id, Exam.client_id == client["client_id"]).first()
+    elif entity_type == "chapter":
+        entity = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == entity_id, Exam.client_id == client["client_id"]).first()
+    elif entity_type == "topic":
+        entity = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == entity_id, Exam.client_id == client["client_id"]).first()
+    elif entity_type == "subtopic":
+        entity = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        
+    if not entity:
+        raise HTTPException(404, f"{entity_type.capitalize()} not found or access denied")
+        
+    # 2. Find any existing source image URL
+    source_url = None
+    if getattr(entity, "image_url", None):
+        source_url = entity.image_url
+    elif getattr(entity, "image_url_16_9", None):
+        source_url = entity.image_url_16_9
+    elif getattr(entity, "banner_url", None):
+        source_url = entity.banner_url
+    elif getattr(entity, "image_url_9_16", None):
+        source_url = entity.image_url_9_16
+        
+    if not source_url:
+        raise HTTPException(400, "No existing image found to resize. Please generate an image first.")
+        
+    # 3. Perform resize/crop
+    out_dir = os.path.join(os.getcwd(), "uploads", "images")
+    new_url = await _make_image_of_ratio_from_url(source_url, target_ratio, out_dir)
+    if not new_url:
+        raise HTTPException(500, "Failed to resize image.")
+        
+    # 4. Save to DB
+    if target_ratio == "1:1":
+        entity.image_url = new_url
+    elif target_ratio == "9:16":
+        entity.image_url_9_16 = new_url
+    elif target_ratio == "16:9":
+        entity.image_url_16_9 = new_url
+        if hasattr(entity, "banner_url"):
+            entity.banner_url = new_url
+            
+    db.commit()
+    db.refresh(entity)
+    
+    return {"success": True, "url": new_url, "entity": entity.to_dict()}
 
 
 @router.post("/classroom/exams/{exam_id}/generate-banners-from-images", tags=["Classroom"])
@@ -1515,12 +1639,22 @@ async def create_chapter(subject_id: str, req: CreateChapterReq, client: dict = 
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Chapter")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Chapter Banner")
+        
     chapter_id = "chapter-" + secrets.token_hex(8)
     chapter = ChapterClassroom(
         chapter_id=chapter_id,
         subject_id=subject_id,
         name=req.name,
         image_url=image_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
         created_at=datetime.utcnow()
     )
     db.add(chapter)
@@ -1539,8 +1673,18 @@ async def update_chapter(chapter_id: str, req: CreateChapterReq, client: dict = 
     if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Chapter")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Chapter Banner")
+        
     chapter.name = req.name
     chapter.image_url = image_url
+    chapter.image_url_9_16 = image_url_9_16
+    chapter.image_url_16_9 = image_url_16_9
     db.commit()
     db.refresh(chapter)
     return {"success": True, "chapter": chapter.to_dict()}
@@ -1578,6 +1722,14 @@ async def create_topic(chapter_id: str, req: CreateTopicReq, client: dict = Depe
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Topic")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Topic Banner")
+        
     topic_id = "topic-" + secrets.token_hex(8)
     topic = TopicClassroom(
         topic_id=topic_id,
@@ -1586,6 +1738,8 @@ async def create_topic(chapter_id: str, req: CreateTopicReq, client: dict = Depe
         video_length=req.video_length,
         script=req.script,
         image_url=image_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
         created_at=datetime.utcnow()
     )
     db.add(topic)
@@ -1602,11 +1756,25 @@ async def update_topic(topic_id: str, req: CreateTopicReq, client: dict = Depend
     topic.name = req.name
     topic.video_length = req.video_length
     topic.script = req.script
+    
     if req.image_url:
         if req.image_url.startswith("http") and not req.image_url.startswith("/uploads"):
             topic.image_url = download_and_save_image(req.image_url, fallback_keyword=req.name)
         else:
             topic.image_url = req.image_url
+            
+    if req.image_url_9_16:
+        if req.image_url_9_16.startswith("http") and not req.image_url_9_16.startswith("/uploads"):
+            topic.image_url_9_16 = download_and_save_image(req.image_url_9_16, fallback_keyword=req.name, subtitle="Topic")
+        else:
+            topic.image_url_9_16 = req.image_url_9_16
+            
+    if req.image_url_16_9:
+        if req.image_url_16_9.startswith("http") and not req.image_url_16_9.startswith("/uploads"):
+            topic.image_url_16_9 = download_and_save_image(req.image_url_16_9, fallback_keyword=req.name, subtitle="Topic Banner")
+        else:
+            topic.image_url_16_9 = req.image_url_16_9
+            
     db.commit()
     db.refresh(topic)
     return {"success": True, "topic": topic.to_dict()}
@@ -1651,11 +1819,16 @@ async def create_subtopic(topic_id: str, req: CreateSubtopicReq, client: dict = 
     elif image_url.startswith("http") and not image_url.startswith("/uploads"):
         image_url = download_and_save_image(image_url, fallback_keyword=req.name)
         
-    banner_url = req.banner_url
-    if not banner_url:
-        banner_url = await generate_banner_image_and_upload(req.name, context=context_str)
-    elif banner_url.startswith("http") and not banner_url.startswith("/uploads"):
-        banner_url = download_and_save_image(banner_url, fallback_keyword=req.name)
+    # Keep banner_url and image_url_16_9 in sync
+    image_url_16_9 = req.image_url_16_9 or req.banner_url
+    if not image_url_16_9:
+        image_url_16_9 = await generate_banner_image_and_upload(req.name, context=context_str)
+    elif image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name)
+        
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Subtopic")
         
     subtopic_id = "subtopic-" + secrets.token_hex(8)
     subtopic = SubtopicClassroom(
@@ -1665,7 +1838,9 @@ async def create_subtopic(topic_id: str, req: CreateSubtopicReq, client: dict = 
         description=req.description,
         script=req.script,
         image_url=image_url,
-        banner_url=banner_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
+        banner_url=image_url_16_9,
         created_at=datetime.utcnow()
     )
     db.add(subtopic)
@@ -1683,16 +1858,29 @@ async def update_subtopic(subtopic_id: str, req: CreateSubtopicReq, client: dict
     subtopic.description = req.description
     if req.script is not None:
         subtopic.script = req.script
+        
     if req.image_url:
         if req.image_url.startswith("http") and not req.image_url.startswith("/uploads"):
             subtopic.image_url = download_and_save_image(req.image_url, fallback_keyword=req.name)
         else:
             subtopic.image_url = req.image_url
-    if req.banner_url:
-        if req.banner_url.startswith("http") and not req.banner_url.startswith("/uploads"):
-            subtopic.banner_url = download_and_save_image(req.banner_url, fallback_keyword=req.name)
+            
+    if req.image_url_9_16:
+        if req.image_url_9_16.startswith("http") and not req.image_url_9_16.startswith("/uploads"):
+            subtopic.image_url_9_16 = download_and_save_image(req.image_url_9_16, fallback_keyword=req.name, subtitle="Subtopic")
         else:
-            subtopic.banner_url = req.banner_url
+            subtopic.image_url_9_16 = req.image_url_9_16
+            
+    # Keep banner_url and image_url_16_9 in sync
+    image_url_16_9 = req.image_url_16_9 or req.banner_url
+    if image_url_16_9:
+        if image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+            final_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Subtopic Banner")
+        else:
+            final_16_9 = image_url_16_9
+        subtopic.image_url_16_9 = final_16_9
+        subtopic.banner_url = final_16_9
+        
     db.commit()
     db.refresh(subtopic)
     return {"success": True, "subtopic": subtopic.to_dict()}

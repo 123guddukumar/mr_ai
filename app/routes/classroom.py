@@ -1136,7 +1136,7 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
     return {"success": True, "subject": subject.to_dict()}
 
 
-@router.put("/classroom/subjects/{subject_id}", tags=["Classroom"])
+@router.api_route("/classroom/subjects/{subject_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_subject(subject_id: str, req: CreateSubjectReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
     if not subject:
@@ -1663,7 +1663,7 @@ async def create_chapter(subject_id: str, req: CreateChapterReq, client: dict = 
     return {"success": True, "chapter": chapter.to_dict()}
 
 
-@router.put("/classroom/chapters/{chapter_id}", tags=["Classroom"])
+@router.api_route("/classroom/chapters/{chapter_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_chapter(chapter_id: str, req: CreateChapterReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     chapter = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == chapter_id, Exam.client_id == client["client_id"]).first()
     if not chapter:
@@ -1748,7 +1748,7 @@ async def create_topic(chapter_id: str, req: CreateTopicReq, client: dict = Depe
     return {"success": True, "topic": topic.to_dict()}
 
 
-@router.put("/classroom/topics/{topic_id}", tags=["Classroom"])
+@router.api_route("/classroom/topics/{topic_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_topic(topic_id: str, req: CreateTopicReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == topic_id, Exam.client_id == client["client_id"]).first()
     if not topic:
@@ -1849,7 +1849,7 @@ async def create_subtopic(topic_id: str, req: CreateSubtopicReq, client: dict = 
     return {"success": True, "subtopic": subtopic.to_dict()}
 
 
-@router.put("/classroom/subtopics/{subtopic_id}", tags=["Classroom"])
+@router.api_route("/classroom/subtopics/{subtopic_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_subtopic(subtopic_id: str, req: CreateSubtopicReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
     subtopic = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == subtopic_id, Exam.client_id == client["client_id"]).first()
     if not subtopic:

@@ -14225,7 +14225,7 @@ async function saveSubject() {
     let method = 'POST';
     if (subject_id) {
         url = `/api/classroom/subjects/${subject_id}`;
-        method = 'PUT';
+        method = 'POST';
     }
     try {
         const resp = await fetch(url, {
@@ -14332,7 +14332,7 @@ async function saveChapter() {
     let method = 'POST';
     if (chapter_id) {
         url = `/api/classroom/chapters/${chapter_id}`;
-        method = 'PUT';
+        method = 'POST';
     }
     try {
         const resp = await fetch(url, {
@@ -15180,7 +15180,7 @@ async function generateOrResizeRow(entityType, entityId, ratio) {
 
             try {
                 const resp = await fetch(putUrl, {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-App-Token': session.token },
                     body: JSON.stringify(payload)
                 });
@@ -15476,7 +15476,7 @@ async function saveTopic() {
     let method = 'POST';
     if (topic_id) {
         url = `/api/classroom/topics/${topic_id}`;
-        method = 'PUT';
+        method = 'POST';
     }
     try {
         const resp = await fetch(url, {
@@ -15603,7 +15603,7 @@ async function saveSubtopic() {
     let method = 'POST';
     if (subtopic_id) {
         url = `/api/classroom/subtopics/${subtopic_id}`;
-        method = 'PUT';
+        method = 'POST';
     }
     try {
         const resp = await fetch(url, {

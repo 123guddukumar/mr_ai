@@ -19447,7 +19447,7 @@ async function vectorizePaper(paperId, silent = false) {
     let toastId = null;
     if (!silent) toastId = toast('🧠 Extracting paper content & building vector store...', 'info');
     try {
-        const resp = await fetch(`/api/classroom/papers/${paperId}/vectorize`, {
+        const resp = await fetch(`/api/classroom/papers/${paperId}/vectorize?token=${session.token}`, {
             method: 'POST',
             headers: { 'X-App-Token': session.token }
         });
@@ -19471,7 +19471,7 @@ async function vectorizePYQSet(pyqSetId, silent = false) {
     let toastId = null;
     if (!silent) toastId = toast('🧠 Indexing questions & solutions in vector database...', 'info');
     try {
-        const resp = await fetch(`/api/classroom/pyq-sets/${pyqSetId}/vectorize`, {
+        const resp = await fetch(`/api/classroom/pyq-sets/${pyqSetId}/vectorize?token=${session.token}`, {
             method: 'POST',
             headers: { 'X-App-Token': session.token }
         });
@@ -19499,7 +19499,7 @@ async function openPaperChat(paperId, paperName) {
     activeExamName = examEl ? examEl.textContent.trim() : 'Exam';
     
     // Check vector status and vectorize if needed
-    const endpoint = `/api/classroom/papers/${paperId}/chat/history`;
+    const endpoint = `/api/classroom/papers/${paperId}/chat/history?token=${session.token}`;
     try {
         showVectorizingOverlay('Checking vector store status...');
         const resp = await fetch(endpoint, {
@@ -19542,7 +19542,7 @@ async function openPaperChat(paperId, paperName) {
     } catch(err) {
         console.error("Open paper chat error:", err);
         hideVectorizingOverlay();
-        toast('🌐 Network error checking status.', 'error');
+        toast('🌐 Network error checking status: ' + err.message, 'error');
     }
 }
 
@@ -19554,7 +19554,7 @@ async function openPYQChat(pyqSetId, pyqSetName) {
     activeExamName = ''; 
     
     // Check vector status and vectorize if needed
-    const endpoint = `/api/classroom/pyq-sets/${pyqSetId}/chat/history`;
+    const endpoint = `/api/classroom/pyq-sets/${pyqSetId}/chat/history?token=${session.token}`;
     try {
         showVectorizingOverlay('Checking vector store status...');
         const resp = await fetch(endpoint, {
@@ -19597,7 +19597,7 @@ async function openPYQChat(pyqSetId, pyqSetName) {
     } catch(err) {
         console.error("Open PYQ chat error:", err);
         hideVectorizingOverlay();
-        toast('🌐 Network error checking status.', 'error');
+        toast('🌐 Network error checking status: ' + err.message, 'error');
     }
 }
 
@@ -19615,8 +19615,8 @@ async function loadClassroomChatHistory() {
     if (!activeChatType || !activeChatTargetId) return;
     const container = document.getElementById('classroom-chat-messages');
     const endpoint = activeChatType === 'paper' 
-        ? `/api/classroom/papers/${activeChatTargetId}/chat/history`
-        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history`;
+        ? `/api/classroom/papers/${activeChatTargetId}/chat/history?token=${session.token}`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history?token=${session.token}`;
         
     try {
         const resp = await fetch(endpoint, {
@@ -19639,7 +19639,7 @@ async function loadClassroomChatHistory() {
         }
     } catch(err) {
         console.error("Load history error:", err);
-        container.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;">Network error loading history.</div>`;
+        container.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;">Network error loading history: ${err.message}</div>`;
     }
 }
 
@@ -19717,8 +19717,8 @@ async function sendClassroomChatMessage() {
     scrollToChatBottom();
     
     const endpoint = activeChatType === 'paper'
-        ? `/api/classroom/papers/${activeChatTargetId}/chat`
-        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat`;
+        ? `/api/classroom/papers/${activeChatTargetId}/chat?token=${session.token}`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat?token=${session.token}`;
         
     try {
         const resp = await fetch(endpoint, {
@@ -19744,7 +19744,7 @@ async function sendClassroomChatMessage() {
         console.error("Send message error:", err);
         const typingEl = document.getElementById('classroom-chat-typing');
         if (typingEl) typingEl.remove();
-        appendChatMessageToUI('assistant', '🌐 Network error. Please check your connection.');
+        appendChatMessageToUI('assistant', '🌐 Network error: ' + err.message);
     }
 }
 
@@ -19754,8 +19754,8 @@ async function clearClassroomChatHistory() {
     if (!confirm('Are you sure you want to clear your chat history for this set/paper?')) return;
     
     const endpoint = activeChatType === 'paper'
-        ? `/api/classroom/papers/${activeChatTargetId}/chat/history`
-        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history`;
+        ? `/api/classroom/papers/${activeChatTargetId}/chat/history?token=${session.token}`
+        : `/api/classroom/pyq-sets/${activeChatTargetId}/chat/history?token=${session.token}`;
         
     try {
         const resp = await fetch(endpoint, {
@@ -19771,7 +19771,7 @@ async function clearClassroomChatHistory() {
         }
     } catch(err) {
         console.error("Clear history error:", err);
-        toast('🌐 Network error clearing history', 'error');
+        toast('🌐 Network error clearing history: ' + err.message, 'error');
     }
 }
 

@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, List
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -777,16 +777,20 @@ async def image_done(job_id: str, req: ImageDoneReq, client: dict = Depends(_req
     os.makedirs(work_dir, exist_ok=True)
     
     copied = False
-    found_file = resilient_find_file(req.filename, scene_idx + 1, job_id, is_video=False)
-    if found_file:
-        dest_img_path = os.path.join(work_dir, f"scene_{scene_idx}_orig_img.jpg")
-        try:
-            shutil.copy2(found_file, dest_img_path)
-            remove_watermark_ffmpeg(dest_img_path, is_video=False)
-            logger.info(f"Proactively copied image {found_file} to {dest_img_path}")
-            copied = True
-        except Exception as e:
-            logger.warning(f"Error copying proactive image: {e}")
+    dest_img_path = os.path.join(work_dir, f"scene_{scene_idx}_orig_img.jpg")
+    
+    if os.path.exists(dest_img_path) and os.path.getsize(dest_img_path) > 121:
+        copied = True
+    else:
+        found_file = resilient_find_file(req.filename, scene_idx + 1, job_id, is_video=False)
+        if found_file:
+            try:
+                shutil.copy2(found_file, dest_img_path)
+                remove_watermark_ffmpeg(dest_img_path, is_video=False)
+                logger.info(f"Proactively copied image {found_file} to {dest_img_path}")
+                copied = True
+            except Exception as e:
+                logger.warning(f"Error copying proactive image: {e}")
             
     logger.info(f"Job {job_id}: image {len(job['images_received'])}/{len(job['scenes'])} done: {req.filename}")
     _save_jobs(_jobs)
@@ -828,20 +832,74 @@ async def video_done(job_id: str, req: VideoDoneReq, client: dict = Depends(_req
     os.makedirs(work_dir, exist_ok=True)
     
     copied = False
-    found_file = resilient_find_file(req.filename, scene_idx + 1, job_id, is_video=True)
-    if found_file:
-        dest_vid_path = os.path.join(work_dir, f"scene_{scene_idx}_orig_vid.mp4")
-        try:
-            shutil.copy2(found_file, dest_vid_path)
-            remove_watermark_ffmpeg(dest_vid_path, is_video=True)
-            logger.info(f"Proactively copied video {found_file} to {dest_vid_path}")
-            copied = True
-        except Exception as e:
-            logger.warning(f"Error copying proactive video: {e}")
+    dest_vid_path = os.path.join(work_dir, f"scene_{scene_idx}_orig_vid.mp4")
+    
+    if os.path.exists(dest_vid_path) and os.path.getsize(dest_vid_path) > 50000:
+        copied = True
+    else:
+        found_file = resilient_find_file(req.filename, scene_idx + 1, job_id, is_video=True)
+        if found_file:
+            try:
+                shutil.copy2(found_file, dest_vid_path)
+                remove_watermark_ffmpeg(dest_vid_path, is_video=True)
+                logger.info(f"Proactively copied video {found_file} to {dest_vid_path}")
+                copied = True
+            except Exception as e:
+                logger.warning(f"Error copying proactive video: {e}")
             
     logger.info(f"Job {job_id}: video {len(job['videos_received'])}/{len(job['scenes'])} done: {req.filename}")
     _save_jobs(_jobs)
     return {"success": True, "videos_done": len(job["videos_received"]), "copied": copied}
+
+
+# ── Upload File (called by extension to upload generated image/video directly)
+@router.post("/extension/job/{job_id}/upload-file", tags=["Extension"])
+async def upload_file(
+    job_id: str,
+    file: UploadFile = File(...),
+    index: int = Form(...),
+    media_type: str = Form(...),  # "image" or "video"
+    filename: str = Form(...),
+    client: dict = Depends(_require_client)
+):
+    global _jobs
+    _jobs = _load_jobs()
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    is_video = (media_type == "video")
+    ext = "mp4" if is_video else "jpg"
+
+    base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+    work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    dest_path = os.path.join(work_dir, f"scene_{index}_orig_{'vid' if is_video else 'img'}.{ext}")
+
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+
+    # Crop the watermark
+    try:
+        remove_watermark_ffmpeg(dest_path, is_video=is_video)
+    except Exception as e:
+        logger.warning(f"Watermark removal failed for uploaded {media_type}: {e}")
+
+    # Update job state in memory
+    if is_video:
+        if filename not in job["videos_received"]:
+            job["videos_received"].append(filename)
+    else:
+        if filename not in job["images_received"]:
+            job["images_received"].append(filename)
+
+    # Save job state
+    _save_jobs(_jobs)
+    logger.info(f"Successfully uploaded {media_type} for job {job_id} scene {index}: {filename}")
+    return {"success": True, "copied": True}
+
 
 
 # ── Update Scene (called by dashboard to update prompts of a single scene) ──
@@ -1535,22 +1593,22 @@ async def job_status(job_id: str, client: dict = Depends(_require_client), db: S
 
 
 @router.post("/extension/single-asset-done", tags=["Extension"])
-async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+async def single_asset_done(
+    file: UploadFile = File(...),
+    filename: str = Form(...),
+    asset_id: str = Form(...),
+    media_type: str = Form(...),
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
     import re
     import shutil
     from pathlib import Path
     
-    asset_id = req.asset_id
-    if not asset_id:
-        # We can parse the index/id from the filename e.g. single-gen-{asset_id}-{timestamp}.jpg
-        match = re.search(r'single-gen-([a-zA-Z0-9_\-]+)\.', req.filename)
-        if match:
-            asset_id = match.group(1)
-            
     base_uploads = os.path.join(os.getcwd(), "uploads", "social")
     os.makedirs(base_uploads, exist_ok=True)
     
-    is_video = (req.asset_type == 'video') or (req.media_type == 'video')
+    is_video = (media_type == 'video')
     ext = 'mp4' if is_video else 'jpg'
     
     if asset_id and "banner" in asset_id.lower():
@@ -1559,122 +1617,105 @@ async def single_asset_done(req: SingleAssetDoneReq, client: dict = Depends(_req
         dest_filename = f"single_gen_{secrets.token_hex(4)}.{ext}"
     dest_path = os.path.join(base_uploads, dest_filename)
     
-    # Discovery of the downloaded file locally
-    found_file = resilient_find_file(req.filename, scene_num=1, job_id="", is_video=is_video, strict=False)
-    
-    if not found_file:
-        downloads_dirs = [
-            os.path.join(Path.home(), "Downloads"),
-            os.path.join(os.environ.get("USERPROFILE", ""), "Downloads")
-        ]
-        for d in downloads_dirs:
-            if d and os.path.exists(d):
-                p = os.path.join(d, req.filename)
-                if os.path.exists(p) and os.path.getsize(p) > 0:
-                    found_file = p
-                    break
-                    
-    if found_file:
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+        
+    try:
+        # Crop the watermark using FFmpeg in-place!
+        remove_watermark_ffmpeg(dest_path, is_video=is_video)
+        
+        url = f"/uploads/social/{dest_filename}"
+        
+        # Upload to Cloudflare R2 if configured
         try:
-            shutil.copy2(found_file, dest_path)
-            logger.info(f"Copied single asset from {found_file} to {dest_path}")
+            from app.services.r2_storage import upload_to_r2
+            r2_key = f"classroom/images/{dest_filename}"
+            r2_url = upload_to_r2(dest_path, r2_key, "image/jpeg" if not is_video else "video/mp4")
+            if r2_url:
+                url = r2_url
+        except Exception as r2_err:
+            logger.error(f"R2 upload failed for single asset: {r2_err}")
             
-            # Crop the watermark using FFmpeg in-place!
-            remove_watermark_ffmpeg(dest_path, is_video=is_video)
+        # If asset_id matches classroom elements, update DB directly!
+        if asset_id:
+            updated_db = False
+            ratio = "1:1"
+            temp_id = asset_id
             
-            url = f"/uploads/social/{dest_filename}"
-            
-            # Upload to Cloudflare R2 if configured
-            try:
-                from app.services.r2_storage import upload_to_r2
-                r2_key = f"classroom/images/{dest_filename}"
-                r2_url = upload_to_r2(dest_path, r2_key, "image/jpeg" if not is_video else "video/mp4")
-                if r2_url:
-                    url = r2_url
-            except Exception as r2_err:
-                logger.error(f"R2 upload failed for single asset: {r2_err}")
-                
-            # If asset_id matches classroom elements, update DB directly!
-            if asset_id:
-                updated_db = False
+            # Check for format suffix
+            if temp_id.endswith("-1_1"):
                 ratio = "1:1"
-                temp_id = asset_id
-                
-                # Check for format suffix
-                if temp_id.endswith("-1_1"):
-                    ratio = "1:1"
-                    temp_id = temp_id[:-4]
-                elif temp_id.endswith("-9_16"):
-                    ratio = "9:16"
-                    temp_id = temp_id[:-5]
-                elif temp_id.endswith("-16_9"):
-                    ratio = "16:9"
-                    temp_id = temp_id[:-5]
-                elif "topic_banner-" in temp_id:
-                    ratio = "16:9"
-                elif "subtopic_banner-" in temp_id:
-                    ratio = "16:9"
-                elif "banner" in req.filename.lower():
-                    ratio = "16:9"
+                temp_id = temp_id[:-4]
+            elif temp_id.endswith("-9_16"):
+                ratio = "9:16"
+                temp_id = temp_id[:-5]
+            elif temp_id.endswith("-16_9"):
+                ratio = "16:9"
+                temp_id = temp_id[:-5]
+            elif "topic_banner-" in temp_id:
+                ratio = "16:9"
+            elif "subtopic_banner-" in temp_id:
+                ratio = "16:9"
+            elif "banner" in filename.lower():
+                ratio = "16:9"
 
-                if temp_id.startswith("subject-"):
-                    from app.core.models import Subject
-                    subject = db.query(Subject).filter(Subject.subject_id == temp_id).first()
-                    if subject:
-                        if ratio == "9:16":
-                            subject.image_url_9_16 = url
-                        elif ratio == "16:9":
-                            subject.image_url_16_9 = url
-                        else:
-                            subject.image_url = url
-                        updated_db = True
-                elif temp_id.startswith("chapter-"):
-                    from app.core.models import ChapterClassroom
-                    chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == temp_id).first()
-                    if chapter:
-                        if ratio == "9:16":
-                            chapter.image_url_9_16 = url
-                        elif ratio == "16:9":
-                            chapter.image_url_16_9 = url
-                        else:
-                            chapter.image_url = url
-                        updated_db = True
-                elif temp_id.startswith("topic_banner-") or temp_id.startswith("topic-"):
-                    clean_id = temp_id.replace("topic_banner-", "")
-                    from app.core.models import TopicClassroom
-                    topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == clean_id).first()
-                    if topic:
-                        if ratio == "9:16":
-                            topic.image_url_9_16 = url
-                        elif ratio == "16:9":
-                            topic.image_url_16_9 = url
-                        else:
-                            topic.image_url = url
-                        updated_db = True
-                elif "subtopic" in temp_id:
-                    clean_id = temp_id.replace("subtopic_banner-", "")
-                    from app.core.models import SubtopicClassroom
-                    subtopic = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == clean_id).first()
-                    if subtopic:
-                        if ratio == "9:16":
-                            subtopic.image_url_9_16 = url
-                        elif ratio == "16:9":
-                            subtopic.image_url_16_9 = url
-                            subtopic.banner_url = url
-                        else:
-                            subtopic.image_url = url
-                        updated_db = True
-                
-                if updated_db:
-                    db.commit()
-                    logger.info(f"Auto-updated classroom DB: {asset_id} to {url}")
+            if temp_id.startswith("subject-"):
+                from app.core.models import Subject
+                subject = db.query(Subject).filter(Subject.subject_id == temp_id).first()
+                if subject:
+                    if ratio == "9:16":
+                        subject.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        subject.image_url_16_9 = url
+                    else:
+                        subject.image_url = url
+                    updated_db = True
+            elif temp_id.startswith("chapter-"):
+                from app.core.models import ChapterClassroom
+                chapter = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == temp_id).first()
+                if chapter:
+                    if ratio == "9:16":
+                        chapter.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        chapter.image_url_16_9 = url
+                    else:
+                        chapter.image_url = url
+                    updated_db = True
+            elif temp_id.startswith("topic_banner-") or temp_id.startswith("topic-"):
+                clean_id = temp_id.replace("topic_banner-", "")
+                from app.core.models import TopicClassroom
+                topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == clean_id).first()
+                if topic:
+                    if ratio == "9:16":
+                        topic.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        topic.image_url_16_9 = url
+                    else:
+                        topic.image_url = url
+                    updated_db = True
+            elif "subtopic" in temp_id:
+                clean_id = temp_id.replace("subtopic_banner-", "")
+                from app.core.models import SubtopicClassroom
+                subtopic = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == clean_id).first()
+                if subtopic:
+                    if ratio == "9:16":
+                        subtopic.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        subtopic.image_url_16_9 = url
+                        subtopic.banner_url = url
+                    else:
+                        subtopic.image_url = url
+                    updated_db = True
             
-            return {"success": True, "url": url}
-        except Exception as e:
-            logger.error(f"Failed to copy single asset: {e}")
-            raise HTTPException(500, f"Sync failed: {str(e)}")
-            
-    raise HTTPException(404, "Generated asset file not found in Downloads directory")
+            if updated_db:
+                db.commit()
+                logger.info(f"Auto-updated classroom DB: {asset_id} to {url}")
+        
+        return {"success": True, "url": url}
+    except Exception as e:
+        logger.error(f"Failed to copy single asset: {e}")
+        raise HTTPException(500, f"Sync failed: {str(e)}")
 
 
 def create_scene_subtitles(scenes: List[dict], scene_durations: List[float], work_dir: str) -> str:
@@ -2093,17 +2134,41 @@ async def assemble_from_videos(
         end_time = accumulated_time + scene_dur
         accumulated_time += scene_dur
         
+        # Local paths
+        local_img = os.path.join(work_dir, f"scene_{i}_orig_img.jpg")
+        local_vid = os.path.join(work_dir, f"scene_{i}_proc.mp4")
+        local_aud = os.path.join(work_dir, f"scene_{i}_voice.mp3")
+        
+        r2_img_url = None
+        r2_vid_url = None
+        r2_aud_url = None
+        
+        # Upload individual assets to R2 if configured
+        try:
+            from app.services.r2_storage import upload_to_r2
+            if os.path.exists(local_img):
+                r2_key_img = f"reels/work_{job_id[:8]}/scene_{i}_img.jpg"
+                r2_img_url = await asyncio.to_thread(upload_to_r2, local_img, r2_key_img, "image/jpeg")
+            if os.path.exists(local_vid):
+                r2_key_vid = f"reels/work_{job_id[:8]}/scene_{i}_vid.mp4"
+                r2_vid_url = await asyncio.to_thread(upload_to_r2, local_vid, r2_key_vid, "video/mp4")
+            if os.path.exists(local_aud):
+                r2_key_aud = f"reels/work_{job_id[:8]}/scene_{i}_aud.mp3"
+                r2_aud_url = await asyncio.to_thread(upload_to_r2, local_aud, r2_key_aud, "audio/mpeg")
+        except Exception as r2_err:
+            logger.error(f"Failed to upload scene {i} assets to R2: {r2_err}")
+            
         enriched_scenes.append({
             "id": 1000 + i,
             "scene_id": 1000 + i,
             "start": round(start_time, 2),
             "end": round(end_time, 2),
             "duration": round(scene_dur, 2),
-            "video": f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_proc.mp4",
-            "videoThumb": f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_proc.mp4",
-            "audio": f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_voice.mp3",
-            "thumb": f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_orig_img.jpg",
-            "image": f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_orig_img.jpg",
+            "video": r2_vid_url or f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_proc.mp4",
+            "videoThumb": r2_vid_url or f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_proc.mp4",
+            "audio": r2_aud_url or f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_voice.mp3",
+            "thumb": r2_img_url or f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_orig_img.jpg",
+            "image": r2_img_url or f"/uploads/social/ext_work_{job_id[:8]}/scene_{i}_orig_img.jpg",
             "script": s.get("dialogue", ""),
             "transition": trans_effect,
             "motion": effect,

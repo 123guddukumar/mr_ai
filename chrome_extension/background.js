@@ -276,6 +276,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+  if (msg.type === "SINGLE_ASSET_UPLOAD_COMPLETE") {
+    log(`Single asset upload complete message received: ${msg.filename}`);
+    if (state.singleAsset) {
+      const dashTabId = state.singleAsset.dashboardTabId;
+      if (dashTabId) {
+        chrome.tabs.sendMessage(dashTabId, {
+          type: "MR_AI_SINGLE_ASSET_DOWNLOADED",
+          assetId: state.singleAsset.assetId,
+          mediaType: state.singleAsset.mediaType,
+          url: msg.url,
+          thumb: msg.thumb || msg.url
+        }).catch((err) => {
+          log(`Failed to send MR_AI_SINGLE_ASSET_DOWNLOADED to dashboard tab: ${err.message}`);
+        });
+      }
+      if (state.singleAsset.tabId) {
+        chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
+      }
+      state.singleAsset = null;
+      saveState();
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
   return true;
 });
 

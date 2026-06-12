@@ -149,6 +149,10 @@ async function generateImage() {
     }
   }
   const filename = `meta-img-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.jpg`;
+  
+  // Direct upload to backend
+  await uploadAssetToBackend(imgSrc, filename, metaSceneIdx, 'image');
+
   await downloadFile(imgSrc, filename);
   await sleep(1000);
   return filename;
@@ -170,25 +174,7 @@ async function generateVideo() {
 
   // Wait for new video to appear
   const vidSrc = await waitForNewVideo(120);
-  if (!vidSrc) {
-    // Fallback: try download button
-    const dlBtn = findDownloadButton();
-    if (dlBtn) {
-      let subtopicFirstWord = 'reel';
-      if (metaSubtopicName) {
-        const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
-        const parts = cleanSubtopic.split(/\s+/);
-        if (parts.length > 0 && parts[0]) {
-          subtopicFirstWord = parts[0];
-        }
-      }
-      const filename = `meta-vid-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.mp4`;
-      await downloadFileViaClick(dlBtn, filename);
-      return filename;
-    }
-    throw new Error('Video generation timeout');
-  }
-
+  
   let subtopicFirstWord = 'reel';
   if (metaSubtopicName) {
     const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
@@ -198,6 +184,24 @@ async function generateVideo() {
     }
   }
   const filename = `meta-vid-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.mp4`;
+
+  if (!vidSrc) {
+    // Fallback: try download button
+    const dlBtn = findDownloadButton();
+    if (dlBtn) {
+      const href = dlBtn.getAttribute('href') || dlBtn.href;
+      if (href && (href.startsWith('http') || href.startsWith('blob'))) {
+        await uploadAssetToBackend(href, filename, metaSceneIdx, 'video');
+      }
+      await downloadFileViaClick(dlBtn, filename);
+      return filename;
+    }
+    throw new Error('Video generation timeout');
+  }
+
+  // Direct upload to backend
+  await uploadAssetToBackend(vidSrc, filename, metaSceneIdx, 'video');
+
   await downloadFile(vidSrc, filename);
   await sleep(1000);
   return filename;
@@ -1037,6 +1041,8 @@ async function generateSingleAsset(prompt, mediaType, filename) {
   // Close any open preview modal first
   await closeMetaAIPreviewModal();
 
+  const assetId = filename.replace('single-gen-', '').split('.')[0];
+
   if (mediaType === 'image') {
     const initialCardsCount = getAssistantMessageCards().length;
     log(`Initial assistant message cards count before single image generation: ${initialCardsCount}`);
@@ -1049,6 +1055,10 @@ async function generateSingleAsset(prompt, mediaType, filename) {
     await clickSend();
     const imgSrc = await waitForNewImage(90, initialCardsCount);
     if (!imgSrc) throw new Error('Single image generation timeout');
+
+    // Upload single asset
+    await uploadSingleAssetToBackend(imgSrc, filename, assetId, 'image');
+
     await downloadFile(imgSrc, filename);
     await sleep(1000);
   } else {
@@ -1061,12 +1071,120 @@ async function generateSingleAsset(prompt, mediaType, filename) {
     if (!vidSrc) {
       const dlBtn = findDownloadButton();
       if (dlBtn) {
+        const href = dlBtn.getAttribute('href') || dlBtn.href;
+        if (href && (href.startsWith('http') || href.startsWith('blob'))) {
+          await uploadSingleAssetToBackend(href, filename, assetId, 'video');
+        }
         await downloadFileViaClick(dlBtn, filename);
         return;
       }
       throw new Error('Single video generation timeout');
     }
+
+    // Upload single asset
+    await uploadSingleAssetToBackend(vidSrc, filename, assetId, 'video');
+
     await downloadFile(vidSrc, filename);
     await sleep(1000);
   }
 }
+
+// ── Upload Asset Helpers ──────────────────────────────────────────────────────
+async function uploadAssetToBackend(src, filename, index, mediaType) {
+  try {
+    log(`Uploading ${mediaType} to backend: ${filename}...`);
+    const response = await fetch(src);
+    const blob = await response.blob();
+    
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+    formData.append("index", index.toString());
+    formData.append("media_type", mediaType);
+    formData.append("filename", filename);
+    
+    const cfg = await chrome.storage.local.get(["token", "backendUrl"]);
+    const backendUrl = cfg.backendUrl || "https://test.3rdai.co";
+    const token = cfg.token;
+    
+    if (!token) {
+      log("Error: Token not found in storage for upload");
+      return false;
+    }
+    
+    const uploadUrl = `${backendUrl}/api/extension/job/${metaJobId}/upload-file`;
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "X-App-Token": token
+      },
+      body: formData
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        log(`Successfully uploaded ${mediaType} to backend: ${filename}`);
+        return true;
+      }
+    } else {
+      const errText = await res.text();
+      log(`Upload failed for ${filename}: ${res.status} - ${errText}`);
+    }
+  } catch (e) {
+    log(`Error uploading ${mediaType}: ${e.message}`);
+  }
+  return false;
+}
+
+async function uploadSingleAssetToBackend(src, filename, assetId, mediaType) {
+  try {
+    log(`Uploading single asset (${mediaType}) to backend: ${filename}...`);
+    const response = await fetch(src);
+    const blob = await response.blob();
+    
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+    formData.append("filename", filename);
+    formData.append("asset_id", assetId);
+    formData.append("media_type", mediaType);
+    
+    const cfg = await chrome.storage.local.get(["token", "backendUrl"]);
+    const backendUrl = cfg.backendUrl || "https://test.3rdai.co";
+    const token = cfg.token;
+    
+    if (!token) {
+      log("Error: Token not found in storage for upload");
+      return false;
+    }
+    
+    const uploadUrl = `${backendUrl}/api/extension/single-asset-done`;
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "X-App-Token": token
+      },
+      body: formData
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      log(`Successfully uploaded single asset to backend: ${filename}`);
+      
+      // Notify background that upload is complete to relay to dashboard and clear state
+      chrome.runtime.sendMessage({
+        type: "SINGLE_ASSET_UPLOAD_COMPLETE",
+        filename: filename,
+        url: data.url || "",
+        thumb: data.thumb || data.url || ""
+      });
+      return true;
+    } else {
+      const errText = await res.text();
+      log(`Single asset upload failed for ${filename}: ${res.status} - ${errText}`);
+    }
+  } catch (e) {
+    log(`Error uploading single asset: ${e.message}`);
+  }
+  return false;
+}
+

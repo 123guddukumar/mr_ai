@@ -218,6 +218,10 @@ async function typeInChat(text) {
   const selectors = [
     'div[contenteditable="true"][data-lexical-editor]',
     'div[contenteditable="true"][role="textbox"]',
+    '[aria-label*="Meta AI" i]',
+    '[aria-label*="Message" i]',
+    '[placeholder*="Meta AI" i]',
+    '[placeholder*="Message" i]',
     'div[contenteditable="true"]',
     'textarea[placeholder]',
     'div[role="textbox"]'
@@ -231,6 +235,10 @@ async function typeInChat(text) {
   if (!input) throw new Error('Chat input not found');
 
   input.focus();
+  // Dispatch click and mousedown events to place cursor and activate Lexical selection listener
+  input.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  input.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+  input.click();
   await sleep(300);
 
   // Clear existing
@@ -245,29 +253,77 @@ async function typeInChat(text) {
     if (setter) setter.set.call(input, text);
     input.dispatchEvent(new Event('input', { bubbles: true }));
   } else {
+    // For Lexical/React contenteditable, dispatch beforeinput and input events to reconcile state
     document.execCommand('insertText', false, text);
-    if (!input.textContent.trim()) {
+    input.dispatchEvent(new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    }));
+    
+    // Ensure content matches
+    if (!input.textContent.trim() || input.textContent !== text) {
       input.textContent = text;
-      input.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
     }
+    
+    input.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    }));
   }
 
-  await sleep(400);
+  await sleep(600); // Wait for editor state sync
   log(`Typed: ${text.substring(0, 60)}...`);
 }
 
 // ── Click send button ─────────────────────────────────────────────────────────
 async function clickSend() {
+  // Try locating it within the parent form/container of the chat input first
+  const chatInput = document.querySelector('div[contenteditable="true"], textarea');
+  if (chatInput) {
+    const parentContainer = chatInput.closest('form') || chatInput.parentElement?.parentElement || chatInput.parentElement;
+    if (parentContainer) {
+      const btn = parentContainer.querySelector('button');
+      if (btn) {
+        if (btn.disabled) {
+          log('Send button found but disabled, waiting 500ms for state to sync...');
+          await sleep(500);
+        }
+        btn.click();
+        log('Clicked send button inside input container');
+        return;
+      }
+    }
+  }
+
   // Try specific aria-label selectors first (Meta AI current UI)
   const specificSelectors = [
     'button[aria-label*="Send" i]',
     'button[aria-label*="send" i]',
+    'button[aria-label*="Ask" i]',
     'button[data-testid*="send" i]',
     'button[type="submit"]',
+    '[role="button"][aria-label*="send" i]',
+    '[role="button"][aria-label*="Send" i]',
+    'div[aria-label*="send" i]',
+    'button[class*="send" i]',
+    '[class*="send" i] button',
+    '[class*="Send" i] button'
   ];
   for (const sel of specificSelectors) {
     const btn = document.querySelector(sel);
-    if (btn && !btn.disabled) { btn.click(); log(`Clicked send via: ${sel}`); return; }
+    if (btn) {
+      if (btn.disabled) {
+        log(`Button ${sel} is disabled, waiting 500ms...`);
+        await sleep(500);
+      }
+      btn.click(); 
+      log(`Clicked send via: ${sel}`); 
+      return; 
+    }
   }
 
   // Generic search
@@ -275,8 +331,14 @@ async function clickSend() {
   for (const btn of btns) {
     const label = (btn.getAttribute('aria-label') || btn.getAttribute('title') || '').toLowerCase();
     const txt = (btn.textContent || '').toLowerCase().trim();
-    if ((label.includes('send') || label.includes('submit') || txt === 'send' || txt === 'generate') && !btn.disabled) {
-      btn.click(); log('Clicked send (generic)'); return;
+    if ((label.includes('send') || label.includes('submit') || txt === 'send' || txt === 'generate')) {
+      if (btn.disabled) {
+        log('Button is disabled, waiting 500ms...');
+        await sleep(500);
+      }
+      btn.click(); 
+      log('Clicked send (generic)'); 
+      return;
     }
   }
 
@@ -651,6 +713,15 @@ async function waitForNewImage(maxSec, initialCardsCount = 0) {
           log(`Found direct image download URL in new download button href at ${i}s`);
           return href;
         }
+      }
+    }
+
+    // Fallback: Search all img tags in the entire document for a new valid generated image
+    const imgs = document.querySelectorAll('img');
+    for (const img of imgs) {
+      if (img.src && isValidGeneratedImageUrl(img.src) && !window._lastImgSrcs.has(img.src)) {
+        log(`Found new image src globally in DOM at ${i}s: ${img.src.substring(0, 60)}`);
+        return img.src;
       }
     }
 

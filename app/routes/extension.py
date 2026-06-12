@@ -981,7 +981,7 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
         image_files = []
 
         # Helper to update milestones in a synchronized manner
-        def update_job_milestone(pct: float, msg: str, status: Optional[str] = None, video_url: Optional[str] = None, scenes_list: Optional[List[dict]] = None, error_msg: Optional[str] = None):
+        def update_job_milestone(pct: float, msg: str, status: Optional[str] = None, video_url: Optional[str] = None, scenes_list: Optional[List[dict]] = None):
             try:
                 c_jobs = _load_jobs()
                 if job_id in c_jobs:
@@ -993,8 +993,6 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
                         c_jobs[job_id]["video_url"] = video_url
                     if scenes_list:
                         c_jobs[job_id]["scenes"] = scenes_list
-                    if error_msg:
-                        c_jobs[job_id]["error"] = error_msg
                     _save_jobs(c_jobs)
             except Exception as pe:
                 logger.warning(f"Could not update milestone in background: {pe}")
@@ -1393,8 +1391,7 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
             update_job_milestone(
                 pct=0.0,
                 msg=f"Assembly failed: {str(e)}",
-                status="error",
-                error_msg=f"Assembly failed: {str(e)}"
+                status="error"
             )
         except: pass
     finally:

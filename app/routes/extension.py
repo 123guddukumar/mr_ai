@@ -989,6 +989,8 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
                     c_jobs[job_id]["progress_msg"] = msg
                     if status:
                         c_jobs[job_id]["status"] = status
+                        if status == "error":
+                            c_jobs[job_id]["error"] = msg
                     if video_url:
                         c_jobs[job_id]["video_url"] = video_url
                     if scenes_list:

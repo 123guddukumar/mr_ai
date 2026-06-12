@@ -56,6 +56,8 @@ async function processScene() {
   metaIsProcessing = true;
   try {
     await sleep(1500);
+    // Handle onboarding splash screens or popups first
+    await handleIntroModals();
     // Auto-close any pre-existing preview modal before starting
     await closeMetaAIPreviewModal();
 
@@ -105,17 +107,9 @@ async function processScene() {
 
   } catch (e) {
     log(`Scene ${metaSceneIdx + 1} ERROR: ${e.message}`);
-    // Still notify so pipeline doesn't hang
-    let subtopicFirstWord = 'reel';
-    if (metaSubtopicName) {
-      const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
-      const parts = cleanSubtopic.split(/\s+/);
-      if (parts.length > 0 && parts[0]) {
-        subtopicFirstWord = parts[0];
-      }
-    }
-    safeSendMessage({ type: 'IMAGE_DOWNLOADED', filename: `meta-img-${metaSceneIdx + 1}-${subtopicFirstWord}-error.jpg` });
-    safeSendMessage({ type: 'VIDEO_DOWNLOADED', filename: `meta-vid-${metaSceneIdx + 1}-${subtopicFirstWord}-error.mp4` });
+    metaIsProcessing = false;
+    safeSendMessage({ type: 'JOB_ERROR', error: `Scene ${metaSceneIdx + 1} failed: ${e.message}` });
+    return;
   }
   metaIsProcessing = false;
   log(`Scene ${metaSceneIdx + 1} complete. Notifying background script.`);
@@ -213,6 +207,8 @@ async function generateVideo() {
 
 // ── Type in Meta AI chat input ────────────────────────────────────────────────
 async function typeInChat(text) {
+  // Handle onboarding splash screens/popups first
+  await handleIntroModals();
   // Ensure preview is closed so chat input is visible and editable
   await closeMetaAIPreviewModal();
   const selectors = [
@@ -244,12 +240,35 @@ async function typeInChat(text) {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
     if (setter) setter.set.call(input, text);
     input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   } else {
+    // Modern Lexical/React-safe input simulation
+    input.focus();
+    
+    // 1. Dispatch beforeinput event
+    input.dispatchEvent(new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    }));
+
+    // 2. Use document.execCommand
     document.execCommand('insertText', false, text);
-    if (!input.textContent.trim()) {
+
+    // 3. Fallback: set textContent directly if execCommand failed
+    if (input.textContent.trim() !== text) {
       input.textContent = text;
-      input.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
     }
+
+    // 4. Dispatch standard events to notify React/Lexical of changes
+    input.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text
+    }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   await sleep(400);
@@ -991,6 +1010,34 @@ async function closeMetaAIPreviewModal() {
   document.body.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
   await sleep(500);
   return false;
+}
+
+async function handleIntroModals() {
+  const introTexts = [
+    "continue", "accept", "agree", "dismiss", "next", "get started", 
+    "ok", "got it", "allow", "yes", "i agree", "close", "skip"
+  ];
+  
+  // 1. Check for standard buttons with text matching onboarding steps
+  try {
+    const buttons = document.querySelectorAll('button, [role="button"], a');
+    for (const btn of buttons) {
+      const text = (btn.textContent || '').toLowerCase().trim();
+      if (text && introTexts.some(t => text === t || text.includes(t)) && btn.offsetWidth > 0 && btn.offsetHeight > 0) {
+        log(`Auto-clicking onboarding/intro modal button: "${btn.textContent.trim()}"`);
+        btn.click();
+        await sleep(1000);
+      }
+    }
+  } catch (err) {
+    log(`Error in handleIntroModals: ${err.message}`);
+  }
+
+  // 2. Escape key fallback for overlays
+  try {
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+    await sleep(100);
+  } catch (err) {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

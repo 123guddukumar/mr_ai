@@ -428,6 +428,7 @@ async def assemble_pro_reel(
         num_succeeded = len(succeeded_indices)
         trans_dur = 0.5 if num_succeeded > 1 else 0.0
         final_segment_dur = (total_duration + (num_succeeded - 1) * trans_dur) / num_succeeded
+        trans_effect = "fade"
         
         # Render the final clips to the exact duration sequentially to ensure perfect timing
         video_paths_ordered = [None] * target_scenes
@@ -645,6 +646,8 @@ async def assemble_advanced_reel(
     num_scenes = len(scenes)
     trans_dur = 0.5 if num_scenes > 1 else 0.0
     scene_dur = (total_audio_dur + (num_scenes - 1) * trans_dur) / num_scenes
+    trans_effect = "fade"
+    effect = "zoom_in"
     logger.info(f"Total audio: {total_audio_dur:.2f}s | {num_scenes} scenes | adjusted scene duration: {scene_dur:.2f}s each")
 
     # ── 3. Generate images in parallel ──────────────────────────────────────

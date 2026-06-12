@@ -300,6 +300,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+  if (msg.type === "JOB_ERROR") {
+    log(`Job error received: ${msg.error}`);
+    state.phase = "idle";
+    saveState().then(() => {
+      notifyPopup(`❌ Error: ${msg.error}`, "error");
+      reportError(msg.error);
+    });
+    sendResponse({ ok: true });
+    return true;
+  }
   return true;
 });
 

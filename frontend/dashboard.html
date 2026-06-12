@@ -17606,9 +17606,10 @@ async function pollExtensionJob(jobId) {
                 progressBar.style.backgroundImage = '';
                 progressBar.style.animation = '';
                 progressBar.style.width = '0%';
-                progressStatus.textContent = 'Error occurred during generation.';
-                setTimeout(() => { popup.style.display = 'none'; }, 2000);
-                toast('Generation Error: ' + (data.error || 'Unknown error'), 'error');
+                const errMsg = data.error || 'Unknown error occurred during generation.';
+                progressStatus.textContent = `❌ Error: ${errMsg}`;
+                toast(`❌ Generation failed: ${errMsg}`, 'error');
+                setTimeout(() => { popup.style.display = 'none'; }, 5000);
                 return;
             }
 

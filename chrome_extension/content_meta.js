@@ -15,6 +15,10 @@ window._lastVideoSrcs = new Set();
 
 // ── Message listener ──────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'PING') {
+    sendResponse({ ok: true });
+    return false; // Handled synchronously
+  }
   if (msg.type === 'GENERATE_VIDEO') {
     if (metaIsProcessing) { sendResponse({ ok: false, reason: 'busy' }); return true; }
     metaSceneIdx = msg.sceneIdx;

@@ -439,6 +439,7 @@ async function sendNextScene(tabId) {
 
   for (let attempt = 0; attempt < 8; attempt++) {
     try {
+      await ensureContentScriptInjected(tabId, "content_meta.js");
       const resp = await chrome.tabs.sendMessage(tabId, msg);
       if (resp && resp.ok) {
         log(`Scene ${state.currentSceneIdx + 1} sent OK`);
@@ -575,6 +576,7 @@ async function startSingleAssetGeneration() {
 
   for (let attempt = 0; attempt < 8; attempt++) {
     try {
+      await ensureContentScriptInjected(tabId, "content_meta.js");
       const resp = await chrome.tabs.sendMessage(tabId, {
         type: "GENERATE_SINGLE_ASSET",
         prompt: sa.prompt,
@@ -739,6 +741,7 @@ async function openEpidemicSound() {
 
     for (let attempt = 0; attempt < 8; attempt++) {
       try {
+        await ensureContentScriptInjected(tab.id, "content_epidemic.js");
         const resp = await chrome.tabs.sendMessage(tab.id, msg);
         if (resp && resp.ok) {
           log("BGM generation instruction sent successfully to Epidemic Sound");
@@ -759,6 +762,32 @@ async function openEpidemicSound() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+async function ensureContentScriptInjected(tabId, scriptName) {
+  try {
+    const resp = await chrome.tabs.sendMessage(tabId, { type: "PING" });
+    if (resp && resp.ok) {
+      log(`Content script ${scriptName} is already responsive on tab ${tabId}`);
+      return true;
+    }
+  } catch (e) {
+    log(`Content script ${scriptName} not responding on tab ${tabId}: ${e.message}`);
+  }
+
+  log(`Attempting to dynamically inject ${scriptName} into tab ${tabId}...`);
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: [scriptName]
+    });
+    log(`Successfully injected ${scriptName} dynamically into tab ${tabId}`);
+    await sleep(1000); // Wait 1 second for initialization
+    return true;
+  } catch (err) {
+    log(`Failed to inject content script ${scriptName} dynamically: ${err.message}`);
+    return false;
+  }
+}
+
 async function resetState() {
   state = {
     jobId: null, scenes: [], imagesDone: [], videosDone: [],

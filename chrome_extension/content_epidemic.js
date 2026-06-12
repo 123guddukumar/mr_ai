@@ -150,6 +150,10 @@ window.addEventListener('message', async (event) => {
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'PING') {
+    sendResponse({ ok: true });
+    return false; // Handled synchronously
+  }
   if (msg.type === "GENERATE_BGM") {
     if (epidemicIsProcessing) {
       sendResponse({ ok: false, reason: "busy" });

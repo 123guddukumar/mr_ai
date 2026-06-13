@@ -71,7 +71,22 @@ window.addEventListener("message", (event) => {
 });
 
 // ── Relay background → page messages ─────────────────────────────────────────
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "FETCH_LOCAL_BLOB") {
+    fetch(msg.url)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          sendResponse({ ok: true, base64: reader.result });
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: err.message });
+      });
+    return true; // Keep channel open for async response
+  }
   if (msg.type === "MR_AI_SINGLE_ASSET_DOWNLOADED") {
     // Forward to the page's window so the dashboard JS can pick it up
     window.postMessage(msg, "*");

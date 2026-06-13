@@ -19,6 +19,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return false; // Handled synchronously
   }
+  if (msg.type === 'FETCH_LOCAL_BLOB') {
+    fetch(msg.url)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          sendResponse({ ok: true, base64: reader.result });
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        sendResponse({ ok: false, error: err.message });
+      });
+    return true; // Keep channel open for async response
+  }
   if (msg.type === 'GENERATE_VIDEO') {
     if (metaIsProcessing) { sendResponse({ ok: false, reason: 'busy' }); return true; }
     metaSceneIdx = msg.sceneIdx;
@@ -63,13 +78,15 @@ async function processScene() {
 
     // Step 1: Generate IMAGE from Meta AI
     log(`Scene ${metaSceneIdx + 1}: generating image...`);
-    const imgFile = await generateImage();
+    const imgData = await generateImage();
+    const imgFile = imgData.filename;
+    const imgSrc = imgData.src;
     log(`Scene ${metaSceneIdx + 1}: image done → ${imgFile}`);
 
     // Notify background: image downloaded and wait for sync verification response
     log("Waiting for dashboard to sync the image...");
     const imgSyncResp = await new Promise((resolve) => {
-      safeSendMessage({ type: 'IMAGE_DOWNLOADED', filename: imgFile }, (resp) => {
+      safeSendMessage({ type: 'IMAGE_DOWNLOADED', filename: imgFile, src: imgSrc, index: metaSceneIdx }, (resp) => {
         resolve(resp);
       });
     });
@@ -85,13 +102,15 @@ async function processScene() {
 
     // Step 2: Generate VIDEO from Meta AI
     log(`Scene ${metaSceneIdx + 1}: generating video...`);
-    const vidFile = await generateVideo();
+    const vidData = await generateVideo();
+    const vidFile = vidData.filename;
+    const vidSrc = vidData.src;
     log(`Scene ${metaSceneIdx + 1}: video done → ${vidFile}`);
 
     // Notify background: video downloaded and wait for sync verification response
     log("Waiting for dashboard to sync the video...");
     const vidSyncResp = await new Promise((resolve) => {
-      safeSendMessage({ type: 'VIDEO_DOWNLOADED', filename: vidFile }, (resp) => {
+      safeSendMessage({ type: 'VIDEO_DOWNLOADED', filename: vidFile, src: vidSrc, index: metaSceneIdx }, (resp) => {
         resolve(resp);
       });
     });
@@ -147,13 +166,10 @@ async function generateImage() {
     }
   }
   const filename = `meta-img-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.jpg`;
-  
-  // Direct upload to backend
-  await uploadAssetToBackend(imgSrc, filename, metaSceneIdx, 'image');
 
   await downloadFile(imgSrc, filename);
   await sleep(1000);
-  return filename;
+  return { filename, src: imgSrc };
 }
 
 // ── Generate Video ────────────────────────────────────────────────────────────
@@ -188,21 +204,15 @@ async function generateVideo() {
     const dlBtn = findDownloadButton();
     if (dlBtn) {
       const href = dlBtn.getAttribute('href') || dlBtn.href;
-      if (href && (href.startsWith('http') || href.startsWith('blob'))) {
-        await uploadAssetToBackend(href, filename, metaSceneIdx, 'video');
-      }
       await downloadFileViaClick(dlBtn, filename);
-      return filename;
+      return { filename, src: href };
     }
     throw new Error('Video generation timeout');
   }
 
-  // Direct upload to backend
-  await uploadAssetToBackend(vidSrc, filename, metaSceneIdx, 'video');
-
   await downloadFile(vidSrc, filename);
   await sleep(1000);
-  return filename;
+  return { filename, src: vidSrc };
 }
 
 // ── Type in Meta AI chat input ────────────────────────────────────────────────
@@ -1107,8 +1117,16 @@ async function generateSingleAsset(prompt, mediaType, filename) {
     const imgSrc = await waitForNewImage(90, initialCardsCount);
     if (!imgSrc) throw new Error('Single image generation timeout');
 
-    // Upload single asset
-    await uploadSingleAssetToBackend(imgSrc, filename, assetId, 'image');
+    // Upload single asset via background script to bypass CORS
+    await new Promise((resolve) => {
+      safeSendMessage({
+        type: 'UPLOAD_SINGLE_ASSET',
+        src: imgSrc,
+        filename: filename,
+        assetId: assetId,
+        mediaType: 'image'
+      }, () => resolve());
+    });
 
     await downloadFile(imgSrc, filename);
     await sleep(1000);
@@ -1124,7 +1142,15 @@ async function generateSingleAsset(prompt, mediaType, filename) {
       if (dlBtn) {
         const href = dlBtn.getAttribute('href') || dlBtn.href;
         if (href && (href.startsWith('http') || href.startsWith('blob'))) {
-          await uploadSingleAssetToBackend(href, filename, assetId, 'video');
+          await new Promise((resolve) => {
+            safeSendMessage({
+              type: 'UPLOAD_SINGLE_ASSET',
+              src: href,
+              filename: filename,
+              assetId: assetId,
+              mediaType: 'video'
+            }, () => resolve());
+          });
         }
         await downloadFileViaClick(dlBtn, filename);
         return;
@@ -1132,110 +1158,19 @@ async function generateSingleAsset(prompt, mediaType, filename) {
       throw new Error('Single video generation timeout');
     }
 
-    // Upload single asset
-    await uploadSingleAssetToBackend(vidSrc, filename, assetId, 'video');
+    // Upload single asset via background script to bypass CORS
+    await new Promise((resolve) => {
+      safeSendMessage({
+        type: 'UPLOAD_SINGLE_ASSET',
+        src: vidSrc,
+        filename: filename,
+        assetId: assetId,
+        mediaType: 'video'
+      }, () => resolve());
+    });
 
     await downloadFile(vidSrc, filename);
     await sleep(1000);
   }
-}
-
-// ── Upload Asset Helpers ──────────────────────────────────────────────────────
-async function uploadAssetToBackend(src, filename, index, mediaType) {
-  try {
-    log(`Uploading ${mediaType} to backend: ${filename}...`);
-    const response = await fetch(src);
-    const blob = await response.blob();
-    
-    const formData = new FormData();
-    formData.append("file", blob, filename);
-    formData.append("index", index.toString());
-    formData.append("media_type", mediaType);
-    formData.append("filename", filename);
-    
-    const cfg = await chrome.storage.local.get(["token", "backendUrl"]);
-    const backendUrl = cfg.backendUrl || "https://test.3rdai.co";
-    const token = cfg.token;
-    
-    if (!token) {
-      log("Error: Token not found in storage for upload");
-      return false;
-    }
-    
-    const uploadUrl = `${backendUrl}/api/extension/job/${metaJobId}/upload-file`;
-    const res = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        "X-App-Token": token
-      },
-      body: formData
-    });
-    
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        log(`Successfully uploaded ${mediaType} to backend: ${filename}`);
-        return true;
-      }
-    } else {
-      const errText = await res.text();
-      log(`Upload failed for ${filename}: ${res.status} - ${errText}`);
-    }
-  } catch (e) {
-    log(`Error uploading ${mediaType}: ${e.message}`);
-  }
-  return false;
-}
-
-async function uploadSingleAssetToBackend(src, filename, assetId, mediaType) {
-  try {
-    log(`Uploading single asset (${mediaType}) to backend: ${filename}...`);
-    const response = await fetch(src);
-    const blob = await response.blob();
-    
-    const formData = new FormData();
-    formData.append("file", blob, filename);
-    formData.append("filename", filename);
-    formData.append("asset_id", assetId);
-    formData.append("media_type", mediaType);
-    
-    const cfg = await chrome.storage.local.get(["token", "backendUrl"]);
-    const backendUrl = cfg.backendUrl || "https://test.3rdai.co";
-    const token = cfg.token;
-    
-    if (!token) {
-      log("Error: Token not found in storage for upload");
-      return false;
-    }
-    
-    const uploadUrl = `${backendUrl}/api/extension/single-asset-done`;
-    const res = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        "X-App-Token": token
-      },
-      body: formData
-    });
-    
-    if (res.ok) {
-      const data = await res.json();
-      log(`Successfully uploaded single asset to backend: ${filename}`);
-      
-      // Notify background that upload is complete to relay to dashboard and clear state
-      chrome.runtime.sendMessage({
-        type: "SINGLE_ASSET_UPLOAD_COMPLETE",
-        filename: filename,
-        url: data.url || "",
-        thumb: data.thumb || data.url || ""
-      });
-      return true;
-    } else {
-      const errText = await res.text();
-      log(`Single asset upload failed for ${filename}: ${res.status} - ${errText}`);
-    }
-  } catch (e) {
-    log(`Error uploading single asset: ${e.message}`);
-  }
-  return false;
 }
 

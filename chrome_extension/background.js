@@ -208,17 +208,67 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === "GET_STATE") {
     sendResponse({ state });
+    return true;
   }
   if (msg.type === "IMAGE_DOWNLOADED") {
-    handleImageDownloaded(msg.filename).then((ok) => {
-      sendResponse({ ok });
-    });
+    log(`Received IMAGE_DOWNLOADED: ${msg.filename}, src=${msg.src}`);
+    const tabId = sender.tab ? sender.tab.id : null;
+    uploadFileToBackend(msg.src, msg.filename, msg.index, "image", false, tabId)
+      .then(() => {
+        log(`Successfully uploaded image. Verifying receipt on backend...`);
+        return handleImageDownloaded(msg.filename);
+      })
+      .then((ok) => {
+        sendResponse({ ok });
+      })
+      .catch((err) => {
+        log(`Failed to upload/verify image: ${err.message}. Trying backup handleImageDownloaded...`);
+        handleImageDownloaded(msg.filename).then((ok) => {
+          sendResponse({ ok });
+        });
+      });
     return true; // Keep message channel open for async response
   }
   if (msg.type === "VIDEO_DOWNLOADED") {
-    handleVideoDownloaded(msg.filename).then((ok) => {
-      sendResponse({ ok });
-    });
+    log(`Received VIDEO_DOWNLOADED: ${msg.filename}, src=${msg.src}`);
+    const tabId = sender.tab ? sender.tab.id : null;
+    uploadFileToBackend(msg.src, msg.filename, msg.index, "video", false, tabId)
+      .then(() => {
+        log(`Successfully uploaded video. Verifying receipt on backend...`);
+        return handleVideoDownloaded(msg.filename);
+      })
+      .then((ok) => {
+        sendResponse({ ok });
+      })
+      .catch((err) => {
+        log(`Failed to upload/verify video: ${err.message}. Trying backup handleVideoDownloaded...`);
+        handleVideoDownloaded(msg.filename).then((ok) => {
+          sendResponse({ ok });
+        });
+      });
+    return true; // Keep message channel open for async response
+  }
+  if (msg.type === "UPLOAD_SINGLE_ASSET") {
+    log(`Received UPLOAD_SINGLE_ASSET: filename=${msg.filename}, src=${msg.src}`);
+    const tabId = sender.tab ? sender.tab.id : null;
+    uploadFileToBackend(msg.src, msg.filename, msg.assetId, msg.mediaType, true, tabId)
+      .then((data) => {
+        log(`UPLOAD_SINGLE_ASSET completed successfully for ${msg.filename}`);
+        if (state.singleAsset) {
+          state.singleAsset.uploaded = true;
+          state.singleAsset.uploadedUrl = data.url || "";
+          state.singleAsset.uploadedThumb = data.thumb || data.url || "";
+          saveState().then(() => {
+            sendResponse({ ok: true, data });
+          });
+        } else {
+          sendResponse({ ok: true, data });
+        }
+      })
+      .catch((err) => {
+        log(`UPLOAD_SINGLE_ASSET failed for ${msg.filename}: ${err.message}`);
+        sendResponse({ ok: false, error: err.message });
+      });
     return true; // Keep message channel open for async response
   }
   if (msg.type === "SCENE_COMPLETED") {
@@ -230,7 +280,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "RESET") {
     resetState();
     sendResponse({ ok: true });
+    return true;
   }
+
   // ── Single Library Asset Generation ─────────────────────────────────────────
   if (msg.type === "GENERATE_SINGLE_ASSET") {
     log(`Single asset request: type=${msg.mediaType}, assetId=${msg.assetId}`);
@@ -614,6 +666,30 @@ async function finishSingleAsset(filename) {
   const sa = state.singleAsset;
   if (!sa) return;
 
+  if (sa.uploaded) {
+    log(`Single asset already uploaded via UPLOAD_SINGLE_ASSET. Skipping API sync in finishSingleAsset.`);
+    const dashTabId = sa.dashboardTabId;
+    if (dashTabId && sa.uploadedUrl) {
+      chrome.tabs.sendMessage(dashTabId, {
+        type: "MR_AI_SINGLE_ASSET_DOWNLOADED",
+        assetId: sa.assetId,
+        mediaType: sa.mediaType,
+        url: sa.uploadedUrl,
+        thumb: sa.uploadedThumb || sa.uploadedUrl
+      }).catch((err) => {
+        log(`Failed to send MR_AI_SINGLE_ASSET_DOWNLOADED to dashboard tab: ${err.message}`);
+      });
+    }
+    
+    // Close tab if applicable
+    if (sa.tabId) {
+      chrome.tabs.remove(sa.tabId).catch(() => {});
+    }
+    state.singleAsset = null;
+    await saveState();
+    return;
+  }
+
   notifyPopup(`✅ Single asset downloaded: ${filename}. Syncing to backend...`);
 
   // Post to backend to register the single asset and replace in library
@@ -829,6 +905,80 @@ function notifyPopup(message, type = "info") {
     }
   } catch (e) {
     // Ignore SW context errors during startup/invalidation
+  }
+}
+
+async function getBlobFromUrl(src, senderTabId) {
+  if (src.startsWith("blob:") || src.startsWith("data:")) {
+    const tabId = senderTabId || state.metaTabId || (state.singleAsset ? state.singleAsset.tabId : null);
+    if (!tabId) {
+      throw new Error("No active tab to fetch local blob/data URL");
+    }
+    log(`Requesting tab ${tabId} to fetch local URL: ${src.substring(0, 80)}`);
+    const res = await chrome.tabs.sendMessage(tabId, { type: "FETCH_LOCAL_BLOB", url: src });
+    if (!res || !res.ok) {
+      throw new Error(`Content script failed to fetch blob: ${res ? res.error : "no response"}`);
+    }
+    // Convert base64 data URL back to a Blob
+    const dataUrl = res.base64;
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } else {
+    const fetchRes = await fetch(src);
+    if (!fetchRes.ok) {
+      throw new Error(`Failed to fetch media from CDN: status ${fetchRes.status}`);
+    }
+    return await fetchRes.blob();
+  }
+}
+
+async function uploadFileToBackend(src, filename, indexOrAssetId, mediaType, isSingleAsset = false, senderTabId = null) {
+  try {
+    log(`uploadFileToBackend started: filename=${filename}, indexOrAssetId=${indexOrAssetId}, mediaType=${mediaType}, isSingleAsset=${isSingleAsset}`);
+    const blob = await getBlobFromUrl(src, senderTabId);
+    log(`Successfully retrieved blob: ${blob.size} bytes, mime=${blob.type}`);
+
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+    formData.append("filename", filename);
+    formData.append("media_type", mediaType);
+
+    let uploadUrl = "";
+    if (isSingleAsset) {
+      formData.append("asset_id", indexOrAssetId);
+      uploadUrl = `${state.backendUrl}/api/extension/single-asset-done`;
+    } else {
+      formData.append("index", indexOrAssetId.toString());
+      uploadUrl = `${state.backendUrl}/api/extension/job/${state.jobId}/upload-file`;
+    }
+
+    log(`Posting form data to: ${uploadUrl}`);
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "X-App-Token": state.token
+      },
+      body: formData
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(`Upload failed with status ${uploadRes.status}: ${errText}`);
+    }
+
+    const data = await uploadRes.json();
+    log(`Successfully uploaded file to backend: ${JSON.stringify(data)}`);
+    return data;
+  } catch (e) {
+    log(`uploadFileToBackend error: ${e.message}`);
+    throw e;
   }
 }
 

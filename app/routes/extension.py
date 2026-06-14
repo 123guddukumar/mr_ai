@@ -184,21 +184,32 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
             temp_path
         ]
         
-    res = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL)
-    if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 100:
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            os.rename(temp_path, file_path)
-            logger.info(f"Successfully removed watermark from {file_path}")
-        except Exception as e:
-            logger.error(f"Failed to overwrite file with cropped temp file: {e}")
+    try:
+        res = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL)
+        if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 100:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                os.rename(temp_path, file_path)
+                logger.info(f"Successfully removed watermark from {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to overwrite file with cropped temp file: {e}")
+                if os.path.exists(temp_path):
+                    try: os.remove(temp_path)
+                    except: pass
+        else:
+            err_msg = res.stderr.decode('utf-8', errors='replace') if res.stderr else ""
+            logger.error(f"FFmpeg crop failed for {file_path}: {err_msg}")
             if os.path.exists(temp_path):
                 try: os.remove(temp_path)
                 except: pass
-    else:
-        err_msg = res.stderr.decode('utf-8', errors='replace') if res.stderr else ""
-        logger.error(f"FFmpeg crop failed for {file_path}: {err_msg}")
+    except FileNotFoundError:
+        logger.warning(f"FFmpeg is not installed on this system. Watermark removal crop skipped.")
+        if os.path.exists(temp_path):
+            try: os.remove(temp_path)
+            except: pass
+    except Exception as e:
+        logger.warning(f"Error during FFmpeg crop: {e}")
         if os.path.exists(temp_path):
             try: os.remove(temp_path)
             except: pass

@@ -184,7 +184,7 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
             temp_path
         ]
         
-    res = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    res = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL)
     if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 100:
         try:
             if os.path.exists(file_path):
@@ -197,7 +197,8 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
                 try: os.remove(temp_path)
                 except: pass
     else:
-        logger.error(f"FFmpeg crop failed for {file_path}: {res.stderr}")
+        err_msg = res.stderr.decode('utf-8', errors='replace') if res.stderr else ""
+        logger.error(f"FFmpeg crop failed for {file_path}: {err_msg}")
         if os.path.exists(temp_path):
             try: os.remove(temp_path)
             except: pass

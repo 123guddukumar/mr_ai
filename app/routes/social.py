@@ -240,7 +240,8 @@ async def re_assemble_social_content(req: ReAssembleRequest, x_app_token: Option
             voice_id=req.metadata.get("voice", "adam"),
             bgm_style=req.metadata.get("bgm_style", "cinematic"),
             audio_tracks=req.metadata.get("audio_tracks", []),
-            watermark_path=watermark_path
+            watermark_path=watermark_path,
+            language=req.metadata.get("language", "English")
         )
         
         video_url = res_pro.get("video_url")
@@ -300,19 +301,11 @@ async def generate_voice_file(
         final_audio_path = os.path.join(work_dir, f"voice_{file_id}.mp3")
         
         # Call generate_elevenlabs_voiceover helper
-        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id)
+        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id, language=req.language)
         if audio_path and os.path.exists(audio_path):
             if os.path.exists(temp_audio_path): os.remove(temp_audio_path)
             os.rename(audio_path, temp_audio_path)
         else:
-            # Fallback to gTTS
-            lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
-            gtts_lang = lang_map.get(req.language, "en")
-            logger.info(f"ElevenLabs custom voice synthesis failed, falling back to gTTS (lang={gtts_lang})")
-            tts = gTTS(text=req.text, lang=gtts_lang)
-            tts.save(temp_audio_path)
-            
-        if not os.path.exists(temp_audio_path) or os.path.getsize(temp_audio_path) < 100:
             raise HTTPException(500, "Voice synthesis failed")
             
         # Run FFmpeg trim and broadcaster sound processing filters
@@ -540,24 +533,19 @@ async def upgrade_scene_audio(
         work_dir = os.path.join(base_uploads, f"edit_work_{req.reel_id}")
         os.makedirs(work_dir, exist_ok=True)
         
+        # Query the database item to fix missing variable NameError
+        db_item = db.query(SocialContent).filter(SocialContent.content_id == req.reel_id).first()
+
         # 1. Synthesize TTS voiceover
         voice_path = os.path.join(work_dir, f"voice_{req.scene_idx}.mp3")
         temp_audio_path = os.path.join(work_dir, f"temp_voice_{req.scene_idx}_{secrets.token_hex(4)}.mp3")
         
         # Call generate_elevenlabs_voiceover helper
-        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id)
+        audio_path = await generate_elevenlabs_voiceover(req.text, work_dir, voice_id=req.voice_id, language=req.language)
         if audio_path and os.path.exists(audio_path):
             if os.path.exists(temp_audio_path): os.remove(temp_audio_path)
             os.rename(audio_path, temp_audio_path)
         else:
-            # Fallback to gTTS
-            lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
-            gtts_lang = lang_map.get(req.language, "en")
-            logger.info(f"ElevenLabs upgrade failed, falling back to gTTS (lang={gtts_lang})")
-            tts = gTTS(text=req.text, lang=gtts_lang)
-            tts.save(temp_audio_path)
-            
-        if not os.path.exists(temp_audio_path) or os.path.getsize(temp_audio_path) < 100:
             raise HTTPException(500, "Voice synthesis failed")
             
         # 2. Run FFmpeg trim and broadcaster sound processing filters
@@ -604,13 +592,11 @@ async def upgrade_scene_audio(
                     raw_video = scene.get('raw_video')
             except: pass
             
-        trans_filter = ""
-        enhancement = ""
+        filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
         
         if raw_video and os.path.exists(raw_video):
             cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", raw_video, "-i", voice_path]
-            filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
-            cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+            cmd.extend(["-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
         else:
             if not os.path.exists(img_path) and db_item:
                 logger.info(f"Image not found at {img_path}. Creating fallback from database thumb.")
@@ -628,11 +614,10 @@ async def upgrade_scene_audio(
                 
             if not os.path.exists(img_path) or os.path.getsize(img_path) < 100:
                 cmd = ["ffmpeg", "-y", "-f", "lavfi", "-i", f"color=c=black:s=1080x1920:d={duration}", "-i", voice_path]
-                cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+                cmd.extend(["-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
                 cmd = ["ffmpeg", "-y", "-loop", "1", "-i", img_path, "-i", voice_path]
-                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
-                cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+                cmd.extend(["-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
                 
         subprocess.run(cmd, capture_output=True)
         logger.info(f"Recompiled scene_{req.scene_idx}_final.mp4 successfully.")
@@ -919,7 +904,8 @@ async def generate_social_content(req: SocialGenerateReq, x_app_token: Optional[
                 res_pro = await assemble_edited_reel(
                     scenes=scenes,
                     voice_id=req.voice_id,
-                    bgm_style=reel_data.get('bgm_style', 'ai')
+                    bgm_style=reel_data.get('bgm_style', 'ai'),
+                    language=req.language or "English"
                 )
                 video_url = res_pro.get("video_url")
                 scenes_data = res_pro.get("scenes", [])

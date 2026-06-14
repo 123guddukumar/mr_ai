@@ -184,7 +184,8 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
             temp_path
         ]
         
-    res = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    res = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL)
+    stderr_text = res.stderr.decode('utf-8', errors='ignore') if res.stderr else ""
     if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 100:
         try:
             if os.path.exists(file_path):
@@ -197,7 +198,7 @@ def remove_watermark_ffmpeg(file_path: str, is_video: bool = False):
                 try: os.remove(temp_path)
                 except: pass
     else:
-        logger.error(f"FFmpeg crop failed for {file_path}: {res.stderr}")
+        logger.error(f"FFmpeg crop failed for {file_path}: {stderr_text}")
         if os.path.exists(temp_path):
             try: os.remove(temp_path)
             except: pass
@@ -1777,7 +1778,7 @@ async def assemble_from_videos(
     bgm_url: Optional[str] = None,
     video_length: Optional[int] = 50
 ) -> dict:
-    from app.services.video_engine import generate_elevenlabs_voiceover, validate_video_asset, validate_audio_asset
+    from app.services.video_engine import generate_elevenlabs_voiceover, validate_video_asset, validate_audio_asset, generate_silent_audio
     from gtts import gTTS
     import shutil
 
@@ -1812,23 +1813,19 @@ async def assemble_from_videos(
         calc_pct = 75.0 + (i / len(scenes)) * 10.0
         update_progress(f"Generating premium AI narration voiceover for Scene {i + 1} of {len(scenes)}...", calc_pct)
         if dialogue:
-            voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id)
+            voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language)
             if voice_result and os.path.exists(voice_result):
                 if os.path.exists(scene_voice_path):
                     os.remove(scene_voice_path)
                 os.rename(voice_result, scene_voice_path)
             else:
-                gTTS(text=dialogue, lang=tts_lang).save(scene_voice_path)
+                generate_silent_audio(3.0, work_dir, f"scene_{i}_voice.mp3")
                 
             # PRO-LEVEL AUDIO ENHANCEMENT: Trim silences and apply studio voice compressor & EQ
             trimmed_path = os.path.join(work_dir, f"scene_{i}_voice_trimmed.mp3")
-            
-            # Combine highpass (cut rumble), EQ (warm bass + clarity boost), and dynamic range compression (preserving natural pauses)
             voice_filter = (
                 "highpass=f=80,"
-                "equalizer=f=120:width_type=h:width=50:g=3,"
-                "equalizer=f=3500:width_type=h:width=1000:g=2.5,"
-                "compand=attacks=0:decays=0:points=-30/-20|-20/-15|-10/-10|0/-3"
+                "volume=0.95"
             )
             trim_cmd = [
                 "ffmpeg", "-y", "-nostdin",
@@ -2085,7 +2082,7 @@ async def assemble_from_videos(
             f"[0:v]ass='{safe_sub}'[v];"
             f"[1:a]volume=1.0[av];"
             f"[2:a]volume=0.05,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
-            f"[av][abg]amix=inputs=2:duration=first[a]"
+            f"[av][abg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
     else:

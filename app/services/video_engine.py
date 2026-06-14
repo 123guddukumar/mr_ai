@@ -68,55 +68,93 @@ PEXELS_SEARCH_URL = "https://api.pexels.com/videos/search"
 ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 DEFAULT_BGM_URL = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" # More stable public MP3 URL
 
-async def generate_elevenlabs_voiceover(text: str, work_dir: str, voice_id: Optional[str] = None) -> Optional[str]:
-    """Generates high-quality voiceover using ElevenLabs."""
-    api_key = settings.ELEVENLABS_API_KEY
-    if not api_key:
-        logger.warning("ElevenLabs API Key missing.")
-        return None
+def generate_silent_audio(duration: float, work_dir: str, filename: str = "silence.mp3") -> str:
+    """Generates a silent audio segment of specified duration using FFmpeg."""
+    silent_path = os.path.join(work_dir, filename)
+    cmd = [
+        "ffmpeg", "-y", "-nostdin",
+        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+        "-t", str(duration),
+        "-c:a", "libmp3lame",
+        silent_path
+    ]
+    res = subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL)
+    if res.returncode == 0 and os.path.exists(silent_path):
+        return silent_path
+    # Fallback to creating a tiny empty file if FFmpeg fails
+    with open(silent_path, "wb") as f:
+        f.write(b"")
+    return silent_path
+
+async def generate_elevenlabs_voiceover(
+    text: str, 
+    work_dir: str, 
+    voice_id: Optional[str] = None, 
+    language: Optional[str] = None
+) -> Optional[str]:
+    """Generates high-quality voiceover using ElevenLabs with automatic gTTS fallback and silence generation."""
     
-    # Strip bracketed tags (e.g. [thoughtful], [excited]) so ElevenLabs does not speak them!
+    # 1. Clean bracketed pacing/directing tags
     cleaned_text = re.sub(r'\[[^\]]*\]', '', text)
-    # Replace multiple dots (...) and dashes with a simple comma to prevent ElevenLabs from taking halting/awkward pauses
     cleaned_text = re.sub(r'\.\.\.+', ', ', cleaned_text)
     cleaned_text = cleaned_text.replace('—', ', ').replace('–', ', ')
     cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-    if not cleaned_text:
-        cleaned_text = "Hello! This is your narration audio."
     
-    vid = voice_id or "pNInz6obpgDQGcFmaJgB" # Adam voice (default pro)
-    url = f"{ELEVENLABS_TTS_URL}/{vid}"
+    # 2. Check if there are any actual spoken words
+    only_words = re.sub(r'[\s.,\/#!$%\^&\*;:{}=\-_`~()।|?]+', '', cleaned_text)
+    if not only_words.strip():
+        logger.info("Dialogue has no spoken words (only pacing/silence tags). Generating silent track.")
+        # Generate a silent 2.0-second track
+        return generate_silent_audio(2.0, work_dir, f"silence_{secrets.token_hex(4)}.mp3")
+
+    # Determine language mapping for gTTS
+    lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
+    gtts_lang = lang_map.get(language, "en") if language else "en"
     
-    headers = {
-        "xi-api-key": api_key,
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "text": cleaned_text,
-        "model_id": "eleven_turbo_v2_5", # Premium multilingual model with fast, natural pacing
-        "voice_settings": {
-            "stability": 0.45,       # Low stability for highly expressive, human-like voice inflections
-            "similarity_boost": 0.85, 
-            "style": 0.15,            # Slight style boost for premium emotional expression
-            "use_speaker_boost": True
+    # 3. Try ElevenLabs
+    api_key = settings.ELEVENLABS_API_KEY
+    if api_key:
+        vid = voice_id or "pNInz6obpgDQGcFmaJgB" # Adam voice (default pro)
+        url = f"{ELEVENLABS_TTS_URL}/{vid}"
+        headers = {
+            "xi-api-key": api_key,
+            "Content-Type": "application/json"
         }
-    }
-    
+        data = {
+            "text": cleaned_text,
+            "model_id": "eleven_turbo_v2_5", 
+            "voice_settings": {
+                "stability": 0.75,       # Increased stability (0.75) for smooth, clear, professional voiceover
+                "similarity_boost": 0.85, 
+                "style": 0.15,            # Slight style boost for premium emotional expression
+                "use_speaker_boost": True
+            }
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(url, json=data, headers=headers, timeout=60.0)
+                if res.status_code == 200:
+                    audio_path = os.path.join(work_dir, f"voice_{secrets.token_hex(4)}.mp3")
+                    with open(audio_path, "wb") as f:
+                        f.write(res.content)
+                    return audio_path
+                else:
+                    logger.error(f"ElevenLabs Error: {res.status_code} - {res.text}. Falling back to gTTS.")
+        except Exception as e:
+            logger.error(f"ElevenLabs Request Failed: {e}. Falling back to gTTS.")
+            
+    # 4. Fallback to gTTS if ElevenLabs is not configured or failed
+    logger.info(f"Using basic gTTS fallback (lang={gtts_lang}) for text: {cleaned_text[:50]}...")
     try:
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, json=data, headers=headers, timeout=60.0)
-            if res.status_code == 200:
-                audio_path = os.path.join(work_dir, "voice.mp3")
-                with open(audio_path, "wb") as f:
-                    f.write(res.content)
-                return audio_path
-            else:
-                logger.error(f"ElevenLabs Error: {res.status_code} - {res.text}")
-                return None
-    except Exception as e:
-        logger.error(f"ElevenLabs Request Failed: {e}")
+        from gtts import gTTS
+        tts = gTTS(text=cleaned_text, lang=gtts_lang)
+        audio_path = os.path.join(work_dir, f"voice_{secrets.token_hex(4)}.mp3")
+        tts.save(audio_path)
+        return audio_path
+    except Exception as ge:
+        logger.error(f"gTTS generation failed: {ge}")
         return None
+
 
 async def search_pexels_videos(query: str, count: int = 1) -> List[str]:
     """Search for vertical stock videos on Pexels."""
@@ -310,18 +348,10 @@ async def assemble_pro_reel(
     try:
         # 1. Voiceover (ElevenLabs)
         logger.info(f"Step 1: Generating Pro Voiceover (Voice: {voice_id}, Lang: {language})...")
-        audio_path = await generate_elevenlabs_voiceover(script_text, work_dir, voice_id=voice_id)
+        audio_path = await generate_elevenlabs_voiceover(script_text, work_dir, voice_id=voice_id, language=language)
         if not audio_path:
-            logger.warning(f"ElevenLabs failed, using basic gTTS fallback...")
-            from gtts import gTTS
-            # Strip bracketed tags so gTTS does not speak them!
-            cleaned_fallback = re.sub(r'\[[^\]]*\]', '', script_text)
-            cleaned_fallback = re.sub(r'\s+', ' ', cleaned_fallback).strip()
-            if not cleaned_fallback:
-                cleaned_fallback = "Hello!"
-            tts = gTTS(text=cleaned_fallback, lang=tts_lang)
-            audio_path = os.path.join(work_dir, "voice.mp3")
-            tts.save(audio_path)
+            logger.warning(f"Voiceover generation failed completely, generating silence fallback...")
+            audio_path = generate_silent_audio(10.0, work_dir, "voice.mp3")
             
         # 2. Get Audio Duration
         probe_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_path]
@@ -532,16 +562,14 @@ async def assemble_pro_reel(
         filter_parts.append(f"{final_v_label}ass='{safe_sub_path}'[v_sub];")
         
         voice_idx = len(video_paths)
-        # Apply premium studio EQ and compression to the voiceover
-        filter_parts.append(f"[{voice_idx}:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[a_pro];")
+        filter_parts.append(f"[{voice_idx}:a]highpass=f=60,volume=0.95[a_pro];")
         
         audio_inputs = ["-i", audio_path]
         if bgm_path:
             audio_inputs.extend(["-i", bgm_path])
-            filter_parts.append(f"[a_pro]volume=1.0[a1]; [{voice_idx+1}:a]volume=0.05[a2]; [a1][a2]amix=inputs=2:duration=first[a];")
+            filter_parts.append(f"[a_pro]volume=1.0[a1]; [{voice_idx+1}:a]volume=0.05[a2]; [a1][a2]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a];")
         else:
             filter_parts.append(f"[a_pro]volume=1.0[a];")
-
         filter_parts.append(f"[v_sub]copy[v]")
 
         cmd = ["ffmpeg", "-y"]
@@ -624,17 +652,14 @@ async def assemble_advanced_reel(
     lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
     tts_lang = lang_map.get(language, "en")
 
-    voice_result = await generate_elevenlabs_voiceover(full_dialogue, work_dir, voice_id=voice_id)
+    voice_result = await generate_elevenlabs_voiceover(full_dialogue, work_dir, voice_id=voice_id, language=language)
     if voice_result and os.path.exists(voice_result):
+        if os.path.exists(full_voice_path):
+            os.remove(full_voice_path)
         os.rename(voice_result, full_voice_path)
     else:
-        from gtts import gTTS
-        # Strip bracketed tags so gTTS does not speak them!
-        cleaned_fallback = re.sub(r'\[[^\]]*\]', '', full_dialogue)
-        cleaned_fallback = re.sub(r'\s+', ' ', cleaned_fallback).strip()
-        if not cleaned_fallback:
-            cleaned_fallback = "Hello!"
-        gTTS(text=cleaned_fallback, lang=tts_lang).save(full_voice_path)
+        logger.warning("Voiceover generation failed completely, generating silence fallback...")
+        generate_silent_audio(15.0, work_dir, "full_voice.mp3")
 
     # Probe total audio duration
     probe = subprocess.run(
@@ -813,15 +838,15 @@ async def assemble_advanced_reel(
         inputs += ["-i", bgm_path]
         fc = (
             f"[0:v]ass='{safe_sub}'[v];"
-            f"[1:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[av];"
+            f"[1:a]highpass=f=60,volume=0.95[av];"
             f"[2:a]volume=0.05,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
-            f"[av][abg]amix=inputs=2:duration=first[a]"
+            f"[av][abg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
     else:
         fc = (
             f"[0:v]ass='{safe_sub}'[v];"
-            f"[1:a]highpass=f=60,equalizer=f=120:width_type=o:width=2:g=2,equalizer=f=3000:width_type=o:width=2:g=1.5,acompressor=threshold=-15dB:ratio=3:makeup=4[a]"
+            f"[1:a]highpass=f=60,volume=0.95[a]"
         )
         maps = ["-map", "[v]", "-map", "[a]"]
 
@@ -864,7 +889,8 @@ async def assemble_edited_reel(
     voice_id: Optional[str] = None,
     bgm_style: str = "cinematic",
     audio_tracks: Optional[List[Dict]] = None,
-    watermark_path: Optional[str] = None
+    watermark_path: Optional[str] = None,
+    language: Optional[str] = "English"
 ) -> Dict:
     """
     Production-grade Editing Assembly: Compiles the edited/reordered scenes 
@@ -988,19 +1014,15 @@ async def assemble_edited_reel(
         
         # 2. Generate Scene-Specific Voiceover
         voice_path = os.path.join(work_dir, f"voice_{i}.mp3")
-        audio_path = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id)
-        if not audio_path:
-            # Basic fallback
-            from gtts import gTTS
-            tts = gTTS(text=dialogue or f"Scene {i+1}", lang="en")
-            audio_path = os.path.join(work_dir, f"temp_voice_{i}.mp3")
-            tts.save(audio_path)
-            
+        audio_path = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language)
         if audio_path and os.path.exists(audio_path):
             if os.path.exists(voice_path): os.remove(voice_path)
             os.rename(audio_path, voice_path)
+        else:
+            # Secure silence fallback
+            generate_silent_audio(3.0, work_dir, f"voice_{i}.mp3")
             
-            # Trim leading         # 3. Probe Exact Duration based on narration audio
+        # 3. Probe Exact Duration based on narration audio
         is_image_scene = not ("raw_video" in s and os.path.exists(s["raw_video"]))
         duration = 5.0
         if os.path.exists(voice_path):
@@ -1018,30 +1040,28 @@ async def assemble_edited_reel(
         trans_filter = ""
         enhancement = ""
         
+        filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
+        
         if "raw_video" in s and os.path.exists(s["raw_video"]):
             cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", s["raw_video"]]
             if os.path.exists(voice_path):
                 cmd.extend(["-i", voice_path])
-                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
-                cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+                cmd.extend(["-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
-                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend([
                     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-                    "-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
+                    "-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
                     "-c:a", "aac", "-shortest", v_path
                 ])
         else:
             cmd = ["ffmpeg", "-y", "-loop", "1", "-i", img_path]
             if os.path.exists(voice_path):
                 cmd.extend(["-i", voice_path])
-                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
-                cmd.extend(["-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
+                cmd.extend(["-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-shortest", v_path])
             else:
-                filter_v = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
                 cmd.extend([
                     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-                    "-vf", filter_v, "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
+                    "-vf", filter_v, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-t", str(duration), "-pix_fmt", "yuv420p", "-r", "30",
                     "-c:a", "aac", "-shortest", v_path
                 ])
             
@@ -1191,10 +1211,9 @@ async def assemble_edited_reel(
         t_start_ms = int(max(0, t_start) * 1000)
         filters.append(f"[{t_idx}:a]volume={t_vol},adelay={t_start_ms}|{t_start_ms}[a_track_{idx}]")
         audio_mix_inputs.append(f"[a_track_{idx}]")
-        
     if len(audio_mix_inputs) > 1:
         mix_inputs_str = "".join(audio_mix_inputs)
-        filters.append(f"{mix_inputs_str}amix=inputs={len(audio_mix_inputs)}:duration=first:dropout_transition=0[a_fin]")
+        filters.append(f"{mix_inputs_str}amix=inputs={len(audio_mix_inputs)}:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a_fin]")
         current_a = "[a_fin]"
     else:
         current_a = "[a_v]"

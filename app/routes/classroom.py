@@ -5013,3 +5013,70 @@ async def elevenlabs_tts_proxy_get(
 
     return StreamingResponse(audio_generator(), media_type="audio/mpeg")
 
+
+@router.post("/classroom/reels/upload-local", tags=["Classroom"])
+async def upload_local_reel(
+    file: UploadFile = File(...),
+    topic_id: Optional[str] = Form(None),
+    subtopic_id: Optional[str] = Form(None),
+    client: dict = Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import json
+    import secrets
+    from app.core.models import SocialContent
+    
+    # Ensure folder exists
+    base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+    os.makedirs(base_uploads, exist_ok=True)
+    
+    # Generate unique ID and save file
+    reel_uid = secrets.token_hex(8)
+    file_ext = file.filename.split(".")[-1] if "." in file.filename else "mp4"
+    if file_ext.lower() not in ["mp4", "mov", "avi", "mkv", "webm"]:
+        file_ext = "mp4"
+    filename = f"local_reel_{reel_uid}.{file_ext}"
+    local_path = os.path.join(base_uploads, filename)
+    
+    content = await file.read()
+    with open(local_path, "wb") as f:
+        f.write(content)
+        
+    url = f"/uploads/social/{filename}"
+    
+    # Upload to Cloudflare R2
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"classroom/reels/{filename}"
+        r2_url = upload_to_r2(local_path, r2_key, "video/mp4")
+        if r2_url:
+            url = r2_url
+    except Exception as r2_err:
+        logger.error(f"R2 upload failed for local reel: {r2_err}")
+        
+    # Prepare metadata
+    meta = {
+        "is_uploaded": True
+    }
+    if topic_id:
+        meta["topic_id"] = topic_id
+    if subtopic_id:
+        meta["subtopic_id"] = subtopic_id
+        
+    new_reel = SocialContent(
+        content_id="social-" + secrets.token_hex(8),
+        client_id=client["client_id"],
+        content_type="reel",
+        title=file.filename or "Uploaded Reel",
+        body="Locally uploaded video",
+        media_url=url,
+        scenes_json="[]",
+        metadata_json=json.dumps(meta),
+        created_at=datetime.utcnow()
+    )
+    db.add(new_reel)
+    db.commit()
+    db.refresh(new_reel)
+    
+    return {"success": True, "reel": new_reel.to_dict()}
+

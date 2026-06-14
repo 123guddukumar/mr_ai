@@ -35,7 +35,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   if (msg.type === 'GENERATE_VIDEO') {
-    if (metaIsProcessing) { sendResponse({ ok: false, reason: 'busy' }); return true; }
+    if (metaIsProcessing) {
+      sendResponse({
+        ok: false,
+        reason: 'busy',
+        currentSceneIdx: metaSceneIdx,
+        jobId: metaJobId
+      });
+      return false; // Handled synchronously
+    }
     metaSceneIdx = msg.sceneIdx;
     metaJobId = msg.jobId;
     metaSubtopicName = msg.subtopicName || '';
@@ -47,10 +55,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     log(`Scene ${metaSceneIdx + 1}: starting`);
     processScene();
     sendResponse({ ok: true });
+    return false; // Handled synchronously
   }
   // ── Single Library Asset Generation ────────────────────────────────────────
   if (msg.type === 'GENERATE_SINGLE_ASSET') {
-    if (metaIsProcessing) { sendResponse({ ok: false, reason: 'busy' }); return true; }
+    if (metaIsProcessing) { sendResponse({ ok: false, reason: 'busy' }); return false; }
     metaIsProcessing = true;
     log(`Single asset: type=${msg.mediaType}, prompt=${msg.prompt?.slice(0, 60)}`);
     generateSingleAsset(msg.prompt, msg.mediaType, msg.filename).then(() => {
@@ -63,7 +72,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true; // keep channel open for async response
   }
-  return true;
+  return false;
 });
 
 // ── Main scene processor ──────────────────────────────────────────────────────
@@ -137,82 +146,127 @@ async function processScene() {
 
 // ── Generate Image ────────────────────────────────────────────────────────────
 async function generateImage() {
-  const initialCardsCount = getAssistantMessageCards().length;
-  log(`Initial assistant message cards count before image generation: ${initialCardsCount}`);
+  let attempt = 0;
+  const maxAttempts = 5;
 
-  // Snapshot current images before generating
-  snapshotCurrentImages();
-  snapshotCurrentDownloadButtons();
-  snapshotLastAssistantMessage();
+  while (attempt < maxAttempts) {
+    attempt++;
+    log(`generateImage: Attempt ${attempt}/${maxAttempts}`);
 
-  const prompt = metaScene.image_prompt || metaScene.animation_prompt;
-  const fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
+    const initialCardsCount = getAssistantMessageCards().length;
 
-  await typeInChat(fullPrompt);
-  await sleep(500);
-  await clickSend();
+    // Snapshot current images before generating
+    snapshotCurrentImages();
+    snapshotCurrentDownloadButtons();
+    snapshotLastAssistantMessage();
 
-  // Wait for new image to appear
-  const imgSrc = await waitForNewImage(90, initialCardsCount);
-  if (!imgSrc) throw new Error('Image generation timeout');
-
-  // Download it
-  let subtopicFirstWord = 'reel';
-  if (metaSubtopicName) {
-    const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
-    const parts = cleanSubtopic.split(/\s+/);
-    if (parts.length > 0 && parts[0]) {
-      subtopicFirstWord = parts[0];
+    const prompt = metaScene.image_prompt || metaScene.animation_prompt;
+    let fullPrompt;
+    if (attempt === 1) {
+      fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
+    } else {
+      const modified = getModifiedPrompt(prompt, attempt);
+      fullPrompt = `${modified}`;
     }
-  }
-  const filename = `meta-img-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.jpg`;
 
-  await downloadFile(imgSrc, filename);
-  await sleep(1000);
-  return { filename, src: imgSrc };
+    try {
+      await typeInChat(fullPrompt);
+      await sleep(500);
+      await clickSend();
+
+      // Wait for new image to appear
+      const imgSrc = await waitForNewImage(90, initialCardsCount);
+      if (imgSrc) {
+        let subtopicFirstWord = 'reel';
+        if (metaSubtopicName) {
+          const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
+          const parts = cleanSubtopic.split(/\s+/);
+          if (parts.length > 0 && parts[0]) {
+            subtopicFirstWord = parts[0];
+          }
+        }
+        const filename = `meta-img-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.jpg`;
+
+        await downloadFile(imgSrc, filename);
+        await sleep(1000);
+        return { filename, src: imgSrc };
+      }
+      log(`Attempt ${attempt} returned no image (timeout)`);
+    } catch (e) {
+      log(`Attempt ${attempt} failed with error: ${e.message}`);
+    }
+
+    log(`Waiting 5 seconds before retrying image generation...`);
+    await sleep(5000);
+  }
+
+  throw new Error('Image generation timeout after multiple attempts');
 }
 
 // ── Generate Video ────────────────────────────────────────────────────────────
 async function generateVideo() {
-  // Snapshot current videos
-  snapshotCurrentVideos();
-  snapshotCurrentDownloadButtons();
-  snapshotLastAssistantMessage();
+  let attempt = 0;
+  const maxAttempts = 5;
 
-  const prompt = metaScene.animation_prompt || metaScene.image_prompt;
-  const fullPrompt = `Animate the previously generated image. Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+  while (attempt < maxAttempts) {
+    attempt++;
+    log(`generateVideo: Attempt ${attempt}/${maxAttempts}`);
 
-  await typeInChat(fullPrompt);
-  await sleep(500);
-  await clickSend();
+    // Snapshot current videos
+    snapshotCurrentVideos();
+    snapshotCurrentDownloadButtons();
+    snapshotLastAssistantMessage();
 
-  // Wait for new video to appear
-  const vidSrc = await waitForNewVideo(120);
-  
-  let subtopicFirstWord = 'reel';
-  if (metaSubtopicName) {
-    const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
-    const parts = cleanSubtopic.split(/\s+/);
-    if (parts.length > 0 && parts[0]) {
-      subtopicFirstWord = parts[0];
+    const prompt = metaScene.animation_prompt || metaScene.image_prompt;
+    let fullPrompt;
+    if (attempt === 1) {
+      fullPrompt = `Animate the previously generated image. Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+    } else {
+      const modified = getModifiedVideoPrompt(prompt, attempt);
+      fullPrompt = `${modified}`;
     }
-  }
-  const filename = `meta-vid-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.mp4`;
 
-  if (!vidSrc) {
-    // Fallback: try download button
-    const dlBtn = findDownloadButton();
-    if (dlBtn) {
-      const href = dlBtn.getAttribute('href') || dlBtn.href;
-      await downloadFileViaClick(dlBtn, filename);
-      return { filename, src: href };
+    try {
+      await typeInChat(fullPrompt);
+      await sleep(500);
+      await clickSend();
+
+      // Wait for new video to appear
+      const vidSrc = await waitForNewVideo(120);
+
+      let subtopicFirstWord = 'reel';
+      if (metaSubtopicName) {
+        const cleanSubtopic = metaSubtopicName.trim().replace(/[^a-zA-Z0-9\s-_]/g, '');
+        const parts = cleanSubtopic.split(/\s+/);
+        if (parts.length > 0 && parts[0]) {
+          subtopicFirstWord = parts[0];
+        }
+      }
+      const filename = `meta-vid-${metaSceneIdx + 1}-${metaJobId || 'nojob'}-${subtopicFirstWord}.mp4`;
+
+      if (vidSrc) {
+        await downloadFile(vidSrc, filename);
+        await sleep(1000);
+        return { filename, src: vidSrc };
+      } else {
+        // Fallback: try download button
+        const dlBtn = findDownloadButton();
+        if (dlBtn) {
+          const href = dlBtn.getAttribute('href') || dlBtn.href;
+          await downloadFileViaClick(dlBtn, filename);
+          return { filename, src: href };
+        }
+        log(`Attempt ${attempt} returned no video (timeout)`);
+      }
+    } catch (e) {
+      log(`Attempt ${attempt} failed with error: ${e.message}`);
     }
-    throw new Error('Video generation timeout');
+
+    log(`Waiting 5 seconds before retrying video generation...`);
+    await sleep(5000);
   }
 
-  await downloadFile(vidSrc, filename);
-  await sleep(1000);
-  return { filename, src: vidSrc };
+  throw new Error('Video generation timeout after multiple attempts');
 }
 
 // ── Type in Meta AI chat input ────────────────────────────────────────────────

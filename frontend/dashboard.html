@@ -2176,7 +2176,11 @@ body{display:flex;min-height:100vh;overflow:hidden;
               <div id="topic-reels-section" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                   <div style="font-size:14px; font-weight:800; color:#8b5cf6;">🎞️ Reels for this Topic</div>
-                  <button onclick="document.getElementById('topic-reels-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('upload-topic-reel-input').click()" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#34d399; color:#34d399; background:transparent;">📤 Upload Video</button>
+                    <input type="file" id="upload-topic-reel-input" accept="video/*" style="display:none" onchange="uploadLocalReel(this, 'topic')">
+                    <button onclick="document.getElementById('topic-reels-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
+                  </div>
                 </div>
                 <div id="topic-reels-list" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px;"></div>
                 <div id="topic-reels-empty" style="display:none; text-align:center; padding:30px; color:var(--text3); font-size:13px;">No reels generated for this topic yet.</div>
@@ -2297,6 +2301,8 @@ body{display:flex;min-height:100vh;overflow:hidden;
                   <div style="font-size:14px; font-weight:800; color:#8b5cf6;">🎞️ Reels for this Subtopic</div>
                   <div style="display:flex; gap:8px; align-items:center;">
                     <button class="btn btn-primary" onclick="openReelGeneratorSettingsModal()" style="font-size:11px; padding:7px 14px; border-radius:8px;">+ Generate Reel</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('upload-subtopic-reel-input').click()" style="font-size:11px; padding:7px 14px; border-radius:8px; border-color:#34d399; color:#34d399; background:transparent;">📤 Upload Video</button>
+                    <input type="file" id="upload-subtopic-reel-input" accept="video/*" style="display:none" onchange="uploadLocalReel(this, 'subtopic')">
                     <button onclick="document.getElementById('subtopic-reels-section').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;">✕</button>
                   </div>
                 </div>
@@ -17934,6 +17940,66 @@ async function deleteClassroomReel(id, type) {
     } catch(err) {
         console.error(err);
         toast('Network error deleting reel', 'error');
+    }
+}
+
+async function uploadLocalReel(input, type) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    
+    let topicId = null;
+    let subtopicId = null;
+    if (type === 'topic') {
+        if (typeof currentActiveTopicId === 'undefined' || !currentActiveTopicId) {
+            toast('Please select a topic first.', 'error');
+            input.value = '';
+            return;
+        }
+        topicId = currentActiveTopicId;
+    } else if (type === 'subtopic') {
+        if (typeof currentActiveSubtopicId === 'undefined' || !currentActiveSubtopicId) {
+            toast('Please select a subtopic first.', 'error');
+            input.value = '';
+            return;
+        }
+        subtopicId = currentActiveSubtopicId;
+    } else {
+        toast('Invalid upload type.', 'error');
+        input.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (topicId) formData.append('topic_id', topicId);
+    if (subtopicId) formData.append('subtopic_id', subtopicId);
+
+    toast('Uploading video, please wait...', 'info');
+    
+    try {
+        const response = await fetch('/api/classroom/reels/upload-local', {
+            method: 'POST',
+            headers: {
+                'X-App-Token': session.token
+            },
+            body: formData
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to upload video');
+        }
+        toast('Video uploaded successfully!', 'success');
+        
+        if (type === 'topic') {
+            showTopicReels();
+        } else {
+            showSubtopicReels();
+        }
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Error uploading video', 'error');
+    } finally {
+        input.value = '';
     }
 }
 

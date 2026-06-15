@@ -367,6 +367,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // ── Start Job ─────────────────────────────────────────────────────────────────
 async function startJob(jobId) {
+  if (state.jobId === jobId && state.phase !== "idle" && state.phase !== "error") {
+    log(`startJob: Job ${jobId} is already running in phase ${state.phase}. Ignoring duplicate start call.`);
+    return;
+  }
   state.jobId = jobId;
   state.phase = "fetching";
   state.imagesDone = [];

@@ -367,10 +367,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // ── Start Job ─────────────────────────────────────────────────────────────────
 async function startJob(jobId) {
-  if (state.jobId === jobId && state.phase !== "idle" && state.phase !== "error") {
-    log(`startJob: Job ${jobId} is already running in phase ${state.phase}. Ignoring duplicate start call.`);
-    return;
-  }
   state.jobId = jobId;
   state.phase = "fetching";
   state.imagesDone = [];
@@ -503,6 +499,10 @@ async function sendNextScene(tabId) {
   };
 
   for (let attempt = 0; attempt < 12; attempt++) {
+    if (msg.jobId !== state.jobId) {
+      log(`Stale loop detected. Aborting sendNextScene for job ${msg.jobId}`);
+      return;
+    }
     try {
       await ensureContentScriptInjected(tabId, "content_meta.js");
       const resp = await chrome.tabs.sendMessage(tabId, msg);
@@ -522,6 +522,12 @@ async function sendNextScene(tabId) {
     } catch (e) { /* content script not ready yet */ }
     notifyPopup(`⏳ Waiting for Meta AI... (${attempt + 1}/12)`);
     await sleep(3000);
+  }
+
+  // If the job ID has changed since this loop started, ignore the failure!
+  if (msg.jobId !== state.jobId) {
+    log(`sendNextScene: Job ID changed from ${msg.jobId} to ${state.jobId}. Ignoring stale loop timeout.`);
+    return;
   }
 
   notifyPopup(`❌ Could not reach Meta AI tab`, "error");

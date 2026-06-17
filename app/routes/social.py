@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.clients import validate_client_token
-from app.services.llm import generate_answer, get_active_provider
+from app.services.llm import generate_answer, get_active_provider, generate_simple_response
 from app.services.vector_store import get_vector_store
 from app.services.embedder import embed_texts
 from app.core.config import settings
@@ -332,11 +332,311 @@ async def generate_voice_file(
             duration = float(probe.stdout.strip())
             
         audio_url = f"/uploads/social/custom_voice_work/voice_{file_id}.mp3"
+        try:
+            from app.services.r2_storage import upload_to_r2
+            r2_key = f"reels/custom_audio/voice_{file_id}.mp3"
+            r2_url = upload_to_r2(final_audio_path, r2_key, "audio/mpeg")
+            if r2_url:
+                audio_url = r2_url
+                logger.info(f"Uploaded custom voice to R2: {audio_url}")
+        except Exception as r2_err:
+            logger.error(f"Failed to upload custom voice to R2: {r2_err}")
+            
         return {"success": True, "audio_url": audio_url, "duration": round(duration, 2)}
         
     except Exception as e:
         logger.error(f"Generate voice file failed: {str(e)}")
         raise HTTPException(500, f"Generate voice file failed: {str(e)}")
+
+def parse_custom_timeline_script(script_text: str) -> list:
+    import re
+    script_text = script_text.replace('\r\n', '\n').replace('\r', '\n')
+    
+    parts = re.split(r'---', script_text)
+    scenes = []
+    scene_num = 1
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if "Visual" not in part and "VO" not in part and "BGM" not in part:
+            continue
+        
+        time_match = re.search(r'\[([^\]]+)\]', part)
+        time_range = time_match.group(1) if time_match else f"{(scene_num-1)*5}-{scene_num*5} sec"
+        
+        lines = part.split('\n')
+        current_section = None # 'visual', 'vo', 'bgm'
+        visual_lines = []
+        vo_lines = []
+        bgm_lines = []
+        
+        for line in lines:
+            line_strip = line.strip()
+            if not line_strip:
+                continue
+                
+            # Check for section markers
+            if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
+                current_section = 'visual'
+                content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    visual_lines.append(content)
+            elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
+                current_section = 'vo'
+                content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    vo_lines.append(content)
+            elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
+                current_section = 'bgm'
+                content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    bgm_lines.append(content)
+            elif re.match(r'^\[[^\]]+\]', line_strip):
+                continue
+            else:
+                # Content line
+                if current_section == 'visual':
+                    visual_lines.append(line_strip)
+                elif current_section == 'vo':
+                    vo_lines.append(line_strip)
+                elif current_section == 'bgm':
+                    bgm_lines.append(line_strip)
+                    
+        visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
+        vo_text = " ".join(vo_lines).strip() if vo_lines else ""
+        bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
+        
+        # Clean quotes
+        vo_text = vo_text.strip('"').strip("'")
+        
+        scenes.append({
+            "scene_num": scene_num,
+            "time_range": time_range,
+            "image_prompt": visual_desc,
+            "animation_prompt": f"Animate: {visual_desc}",
+            "dialogue": vo_text,
+            "dialogue_english": vo_text,
+            "bgm_prompt": bgm_desc
+        })
+        scene_num += 1
+        
+    if not scenes:
+        matches = list(re.finditer(r'\[(\d+-\d+\s*sec)\]', script_text, re.IGNORECASE))
+        for i, m in enumerate(matches):
+            start = m.start()
+            end = matches[i+1].start() if i + 1 < len(matches) else len(script_text)
+            block_text = script_text[start:end]
+            
+            lines = block_text.split('\n')
+            current_section = None
+            visual_lines = []
+            vo_lines = []
+            bgm_lines = []
+            
+            for line in lines:
+                line_strip = line.strip()
+                if not line_strip:
+                    continue
+                if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'visual'
+                    content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        visual_lines.append(content)
+                elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'vo'
+                    content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        vo_lines.append(content)
+                elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'bgm'
+                    content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        bgm_lines.append(content)
+                elif re.match(r'^\[[^\]]+\]', line_strip):
+                    continue
+                else:
+                    if current_section == 'visual':
+                        visual_lines.append(line_strip)
+                    elif current_section == 'vo':
+                        vo_lines.append(line_strip)
+                    elif current_section == 'bgm':
+                        bgm_lines.append(line_strip)
+                        
+            visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
+            vo_text = " ".join(vo_lines).strip() if vo_lines else ""
+            bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
+            
+            vo_text = vo_text.strip('"').strip("'")
+            
+            scenes.append({
+                "scene_num": scene_num,
+                "time_range": m.group(1),
+                "image_prompt": visual_desc,
+                "animation_prompt": f"Animate: {visual_desc}",
+                "dialogue": vo_text,
+                "dialogue_english": vo_text,
+                "bgm_prompt": bgm_desc
+            })
+            scene_num += 1
+            
+    return scenes
+
+class ParseScriptReq(BaseModel):
+    script: str
+
+@router.post("/social/parse-custom-script", tags=["Social"])
+async def parse_custom_script_endpoint(req: ParseScriptReq):
+    try:
+        scenes = parse_custom_timeline_script(req.script)
+        return {"success": True, "scenes": scenes}
+    except Exception as e:
+        raise HTTPException(500, f"Parsing failed: {str(e)}")
+
+class ResolveBgmReq(BaseModel):
+    bgm_prompt: str
+
+@router.post("/social/resolve-bgm", tags=["Social"])
+async def resolve_bgm_endpoint(req: ResolveBgmReq):
+    try:
+        import httpx
+        import os
+        import secrets
+        
+        bgm_url = None
+        bgm_style = req.bgm_prompt.lower().strip()
+        
+        if bgm_style.startswith("http"):
+            from app.routes.extension import extract_epidemic_lqmp3
+            bgm_url = extract_epidemic_lqmp3(req.bgm_prompt)
+            if not bgm_url:
+                bgm_url = req.bgm_prompt
+        else:
+            bgm_map = {
+                "cinematic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+                "energetic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+                "corporate": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+                "dramatic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+                "piano": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+            }
+            bgm_url = bgm_map.get("cinematic")
+            for k, v in bgm_map.items():
+                if k in bgm_style:
+                    bgm_url = v
+                    break
+                    
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, "custom_bgm_work")
+        os.makedirs(work_dir, exist_ok=True)
+        
+        bgm_file_id = secrets.token_hex(6)
+        local_bgm_path = os.path.join(work_dir, f"bgm_{bgm_file_id}.mp3")
+        
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            bgm_res = await client.get(bgm_url, timeout=30.0)
+            if bgm_res.status_code == 200:
+                with open(local_bgm_path, "wb") as f:
+                    f.write(bgm_res.content)
+            else:
+                raise HTTPException(400, f"Failed to download BGM from {bgm_url} (status: {bgm_res.status_code})")
+                
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"reels/custom_bgm/bgm_{bgm_file_id}.mp3"
+        r2_url = upload_to_r2(local_bgm_path, r2_key, "audio/mpeg")
+        
+        if r2_url:
+            return {"success": True, "bgm_url": r2_url}
+        else:
+            local_url = f"/uploads/social/custom_bgm_work/bgm_{bgm_file_id}.mp3"
+            return {"success": True, "bgm_url": local_url}
+            
+    except Exception as e:
+        raise HTTPException(500, f"Failed to resolve BGM: {str(e)}")
+
+class DownloadEpidemicBgmReq(BaseModel):
+    track_url: str
+    scene_num: int = 0
+
+@router.post("/social/download-epidemic-bgm", tags=["Social"])
+async def download_epidemic_bgm(req: DownloadEpidemicBgmReq):
+    """
+    Takes an EpidemicSound track share URL, extracts the lqmp3 direct link,
+    downloads the mp3, and returns a local served URL plus the lqmp3 URL.
+    Used by the Wizard Step 4B BGM flow.
+    """
+    try:
+        import httpx
+        import os
+        import secrets
+
+        track_url = req.track_url.strip()
+        if not track_url.startswith("http"):
+            raise HTTPException(400, "Invalid URL — must start with http")
+
+        # Step 1: Extract lqmp3 direct link from EpidemicSound page source
+        lqmp3_url = None
+        if "epidemicsound.com" in track_url:
+            from app.routes.extension import extract_epidemic_lqmp3
+            lqmp3_url = extract_epidemic_lqmp3(track_url)
+
+        if not lqmp3_url:
+            # If not epidemic or extraction failed, try using the URL directly
+            lqmp3_url = track_url
+            logger.warning(f"Could not extract lqmp3 from {track_url}, trying direct download.")
+
+        # Step 2: Download the mp3
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "audio/mpeg, audio/*;q=0.9, */*;q=0.8",
+            "Referer": "https://www.epidemicsound.com/",
+        }
+
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, "bgm_downloads")
+        os.makedirs(work_dir, exist_ok=True)
+
+        bgm_file_id = secrets.token_hex(6)
+        scene_tag = f"scene_{req.scene_num}" if req.scene_num else "scene_0"
+        local_bgm_filename = f"bgm_{scene_tag}_{bgm_file_id}.mp3"
+        local_bgm_path = os.path.join(work_dir, local_bgm_filename)
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=45.0) as client:
+            bgm_res = await client.get(lqmp3_url, headers=headers)
+            if bgm_res.status_code == 200:
+                content_type = bgm_res.headers.get("content-type", "")
+                if "audio" not in content_type and "octet-stream" not in content_type and "mpeg" not in content_type:
+                    logger.warning(f"Unexpected content-type '{content_type}' from {lqmp3_url}. Saving anyway.")
+                with open(local_bgm_path, "wb") as f:
+                    f.write(bgm_res.content)
+                logger.info(f"Downloaded BGM for scene {req.scene_num}: {local_bgm_path} ({len(bgm_res.content)} bytes)")
+            else:
+                raise HTTPException(400, f"Failed to download BGM audio (HTTP {bgm_res.status_code}). URL: {lqmp3_url}")
+
+        # Step 3: Try upload to R2 for CDN-served URL
+        local_serve_url = f"/uploads/social/bgm_downloads/{local_bgm_filename}"
+        try:
+            from app.services.r2_storage import upload_to_r2
+            r2_key = f"reels/bgm_downloads/{local_bgm_filename}"
+            r2_url = upload_to_r2(local_bgm_path, r2_key, "audio/mpeg")
+            if r2_url:
+                local_serve_url = r2_url
+                logger.info(f"Uploaded BGM to R2: {r2_url}")
+        except Exception as r2_err:
+            logger.warning(f"R2 upload failed for BGM: {r2_err}. Using local URL.")
+
+        return {
+            "success": True,
+            "bgm_url": local_serve_url,
+            "lqmp3_url": lqmp3_url,
+            "scene_num": req.scene_num,
+            "filename": local_bgm_filename
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"download-epidemic-bgm failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to download BGM: {str(e)}")
 
 def _get_client(x_app_token: Optional[str], db: Session) -> dict:
     if not x_app_token:
@@ -350,7 +650,7 @@ def _get_client(x_app_token: Optional[str], db: Session) -> dict:
 # ── Models ────────────────────────────────────────────────────────────────────
 
 class SocialGenerateReq(BaseModel):
-    datastore_id: str
+    datastore_id: Optional[str] = None
     topic: str
     type: str # "post" | "reel"
     language: Optional[str] = "English"
@@ -412,7 +712,7 @@ async def suggest_social_topics(datastore_id: str, language: Optional[str] = "En
     
     Format: ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]"""
     
-    resp = await generate_answer(prompt, provider=get_active_provider())
+    resp = await generate_simple_response(prompt)
     import re
     match = re.search(r"(\[.*\])", resp, re.DOTALL)
     if match:
@@ -434,10 +734,19 @@ async def voice_preview(voice_id: str, text: Optional[str] = None, language: Opt
     # Strip bracketed emotional/pacing tags so it does not speak them!
     import re
     preview_text = text or "Hello! This is a voice preview sample for your reel narration."
+    
+    # Extract only the spoken voiceover/dialogue text from structured script
+    preview_text = extract_clean_script(preview_text)
+    
     preview_text = re.sub(r'\[[^\]]*\]', '', preview_text)
     preview_text = re.sub(r'\s+', ' ', preview_text).strip()
     if not preview_text:
         preview_text = "Hello! This is a voice preview sample."
+        
+    # Apply Hindi normalization if language is Hindi
+    if language and language.lower() == "hindi":
+        from app.services.video_engine import clean_and_normalize_hindi_text
+        preview_text = clean_and_normalize_hindi_text(preview_text)
     
     if api_key:
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
@@ -446,11 +755,12 @@ async def voice_preview(voice_id: str, text: Optional[str] = None, language: Opt
             "Content-Type": "application/json",
             "accept": "audio/mpeg"
         }
+        model_id = "eleven_flash_v2_5"
         data = {
-            "text": preview_text[:300],
-            "model_id": "eleven_turbo_v2_5",
+            "text": preview_text[:500],
+            "model_id": model_id,
             "voice_settings": {
-                "stability": 0.45,
+                "stability": 0.75,
                 "similarity_boost": 0.85,
                 "style": 0.15,
                 "use_speaker_boost": True
@@ -495,28 +805,115 @@ class UpgradeAudioReq(BaseModel):
 def extract_clean_script(structured_text: str) -> str:
     if not structured_text:
         return ""
-    clean_lines = []
-    for line in structured_text.splitlines():
-        line_strip = line.strip()
-        if "🎙️ Dialogue:" in line_strip:
-            part = line_strip.split("🎙️ Dialogue:")[-1].strip()
-            clean_lines.append(part)
-        elif "Dialogue:" in line_strip:
-            part = line_strip.split("Dialogue:")[-1].strip()
-            clean_lines.append(part)
-    if clean_lines:
-        return " ".join(clean_lines)
+        
+    import re
+    spoken_patterns = [
+        r'^[^\w\s]*\s*(?:Dialogue|Voiceover|VO|Narration|Spoken|Audio)\s*(?:\([^)]+\))?\s*:',
+    ]
+    skip_patterns = [
+        r'^[^\w\s]*\s*(?:Visual|Visuals|Footage|BGM|Music|Background|Sound Effect|SFX|Text Overlay|Overlay|Subtitles|Screen|Graphic|Animation|Editing Notes)\s*:',
+        r'^[^\w\s]*\s*Scene\s*\d+',
+        r'^[^\w\s]*\s*\[[^\]]+\]',
+        r'^---+$',
+        r'^(?:On Screen|Screen Text|Text on Screen)\s*:',
+        r'^\s*📋\s*VIDEO EDITOR GUIDELINES',
+        r'^\s*Color Grading',
+        r'^\s*Transitions',
+        r'^\s*Sound Design',
+        r'^\s*Style Reference',
+        r'^\s*Look\s*:'
+    ]
     
-    # Fallback: strip other markers
+    lines = structured_text.splitlines()
     clean_lines = []
-    for line in structured_text.splitlines():
+    is_speaking = False
+    
+    for line in lines:
         line_strip = line.strip()
         if not line_strip:
             continue
-        if any(marker in line_strip for marker in ["🎬", "Scene", "📸", "Visuals", "Footage", "🎥", "Editing Notes"]):
+            
+        starts_speaking = False
+        for pattern in spoken_patterns:
+            if re.match(pattern, line_strip, re.IGNORECASE):
+                starts_speaking = True
+                is_speaking = True
+                content = re.sub(pattern, "", line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    clean_lines.append(content)
+                break
+                
+        if starts_speaking:
             continue
-        clean_lines.append(line_strip)
-    return " ".join(clean_lines) if clean_lines else structured_text
+            
+        starts_skipping = False
+        for pattern in skip_patterns:
+            if re.search(pattern, line_strip, re.IGNORECASE):
+                starts_skipping = True
+                is_speaking = False
+                break
+                
+        if starts_skipping:
+            continue
+            
+        if is_speaking:
+            if line_strip.startswith('•') or line_strip.startswith('*'):
+                continue
+            clean_lines.append(line_strip)
+            
+    if not clean_lines:
+        skip_markers = [
+            "🎬", "Scene", "🎥", "Visuals", "Footage", "BGM", "Music", "Background",
+            "📸", "Video", "Image", "Prompt", "Sound Effect", "SFX", "Text Overlay",
+            "Overlay", "Subtitles", "Screen", "Graphic", "Animation", "Editing Notes"
+        ]
+        for line in lines:
+            line_strip = line.strip()
+            if not line_strip:
+                continue
+            if any(marker.lower() in line_strip.lower() for marker in skip_markers):
+                continue
+            if re.match(r'^[^\w\s]*\s*\[[^\]]+\]', line_strip):
+                continue
+            clean_lines.append(line_strip)
+            
+    result = " ".join(clean_lines)
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
+        
+class TranslateScriptReq(BaseModel):
+    text: str
+    language: str
+
+@router.post("/social/translate-script", tags=["Social Hub"])
+async def translate_script_route(req: TranslateScriptReq):
+    if not req.text.strip():
+        return {"translated_text": ""}
+        
+    prompt = f"""You are an expert script translation agent.
+Your task is to take a structured video script and translate ONLY the spoken dialogue/voiceover parts to {req.language}.
+All other lines—such as scene indicators (e.g. "Scene 1", "🎬 Scene 1"), visuals descriptions (e.g. "Visuals:", "🎥 Visuals:"), background music (e.g. "Background Music:", "BGM:"), overlay text directions, and editing instructions—MUST be kept exactly as they are in their original language (usually English).
+
+For example, if the script is:
+🎬 Scene 1: Introduction
+Visuals: A man standing in front of a laptop.
+🎙️ Dialogue: Hello friends! Welcome to our AI channel.
+Background Music: Uplifting piano.
+
+And the target language is Hindi, your output should be:
+🎬 Scene 1: Introduction
+Visuals: A man standing in front of a laptop.
+🎙️ Dialogue: नमस्ते दोस्तों! हमारे एआई चैनल में आपका स्वागत है।
+Background Music: Uplifting piano.
+
+Only translate the spoken sentences following prefixes like "Dialogue:", "🎙️ Dialogue:", "Voiceover:", "🎙️ Voiceover:", "VO:", "🎙️ VO:", "Narration:", "🎙️ Narration:", etc. Keep all other lines exactly unchanged.
+
+SCRIPT TO TRANSLATE:
+{req.text}"""
+
+    resp = await generate_simple_response(prompt)
+    return {"translated_text": resp.strip()}
+
 
 @router.post("/social/upgrade-audio", tags=["Social Hub"])
 async def upgrade_scene_audio(

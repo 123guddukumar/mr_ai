@@ -86,6 +86,170 @@ def generate_silent_audio(duration: float, work_dir: str, filename: str = "silen
         f.write(b"")
     return silent_path
 
+
+def clean_and_normalize_hindi_text(text: str) -> str:
+    if not text:
+        return ""
+        
+    def num_to_hindi_words(num: int) -> str:
+        hindi_0_to_100 = [
+            "शून्य", "एक", "दो", "तीन", "चार", "पांच", "छह", "सात", "आठ", "नौ", "दस",
+            "ग्यारह", "बारह", "तेरह", "चौदह", "पंद्रह", "सोलह", "सत्रह", "अठारह", "उन्नीस", "बीस",
+            "इक्कीस", "बाईस", "तेईस", "चौबीस", "पच्चीस", "छब्बीस", "सत्ताईस", "अठ्ठाईस", "उनतीस", "तीस",
+            "इकतीस", "बत्तीस", "तेतीस", "चौंतीस", "पैंतीस", "छत्तीस", "सैंतीस", "अड़तीस", "उनतालीस", "चालीस",
+            "इकतालीस", "बयालीस", "तियालीस", "चियालीस", "पैंतालीस", "छियालीस", "सैंतालीस", "अड़तालीस", "उनचास", "पचास",
+            "इक्यावन", "बावन", "तिरेपन", "चौवन", "पचपन", "छप्पन", "सत्तावन", "अठावन", "उनसठ", "साठ",
+            "इकसठ", "बासठ", "तिरसठ", "चौंसठ", "पैंसठ", "छियासठ", "सरसठ", "अड़सठ", "उनहत्तर", "सत्तर",
+            "इकहत्तर", "बहत्तर", "तिहत्तर", "चौहत्तर", "पचहत्तर", "छिहत्तर", "सतहत्तर", "अठहत्तर", "उन्यासी", "अस्सी",
+            "इक्यासी", "बयासी", "तिरासी", "चौरासी", "पचासी", "छियासी", "सत्तासी", "अठासी", "नवासी", "नब्बे",
+            "इक्यान्वे", "बयान्वे", "तिरान्वे", "चौरान्वे", "पच्चान्वे", "छियान्वे", "सत्तान्वे", "अठान्वे", "निन्यानवे", "सौ"
+        ]
+        
+        if num < 0:
+            return "ऋण " + num_to_hindi_words(abs(num))
+        if num <= 100:
+            return hindi_0_to_100[num]
+            
+        parts = []
+        
+        # Crores (1,00,00,000)
+        if num >= 10000000:
+            crore_val = num // 10000000
+            num %= 10000000
+            parts.append(f"{num_to_hindi_words(crore_val)} करोड़")
+            
+        # Lakhs (1,00,000)
+        if num >= 100000:
+            lakh_val = num // 100000
+            num %= 100000
+            parts.append(f"{num_to_hindi_words(lakh_val)} लाख")
+            
+        # Thousands (1,000)
+        if num >= 1000:
+            thousand_val = num // 1000
+            num %= 1000
+            parts.append(f"{num_to_hindi_words(thousand_val)} हजार")
+            
+        # Hundreds (100)
+        if num >= 100:
+            hundred_val = num // 100
+            num %= 100
+            if hundred_val == 1:
+                parts.append("सौ")
+            else:
+                parts.append(f"{hindi_0_to_100[hundred_val]} सौ")
+                
+        if num > 0:
+            parts.append(hindi_0_to_100[num])
+            
+        return " ".join(parts)
+
+    # Convert decimals first, e.g., "12.5" -> "बारह दशमलव पांच"
+    def replace_decimal(match):
+        integer_part = int(match.group(1))
+        decimal_digits = match.group(2)
+        
+        int_words = num_to_hindi_words(integer_part)
+        dec_words = " ".join([num_to_hindi_words(int(d)) for d in decimal_digits])
+        return f"{int_words} दशमलव {dec_words}"
+        
+    text = re.sub(r'(\d+)\.(\d+)', replace_decimal, text)
+    
+    # Convert integers
+    def replace_integer(match):
+        val = int(match.group(0))
+        return num_to_hindi_words(val)
+        
+    text = re.sub(r'\b\d+\b', replace_integer, text)
+
+    # Symbol replacements
+    symbol_map = {
+        "%": " प्रतिशत",
+        "+": " प्लस",
+        "=": " बराबर",
+        "&": " और",
+        " km": " किलोमीटर",
+        "km": " किलोमीटर",
+        " kg": " किलोग्राम",
+        "kg": " किलोग्राम",
+        " m": " मीटर",
+        " cm": " सेंटीमीटर",
+        " mm": " मिलीमीटर",
+    }
+    for sym, word in symbol_map.items():
+        text = text.replace(sym, word)
+
+    # English acronyms/terms to spoken Hindi words
+    english_to_hindi_phonetic = {
+        "AI": "एआई",
+        "RAG": "रैग",
+        "API": "एपीआई",
+        "PDF": "पीडीएफ",
+        "LLM": "एलएलएम",
+        "YT": "वाईटी",
+        "URL": "यूआरएल",
+        "BPSC": "बीपीएससी",
+        "UPSC": "यूपीएससी",
+        "MCQ": "एमसीक्यू",
+        "MCQS": "एमसीक्यू",
+        "GK": "जीके",
+        "GS": "जीएस",
+        "IT": "आईटी",
+        "IP": "आईपी",
+        "PC": "पीसी",
+        "TV": "टीवी",
+        "SMS": "एसएमएस",
+        "OTP": "ओटीपी",
+        "GB": "जीबी",
+        "MB": "एमबी",
+        "KB": "केबी",
+        "SQL": "एसक्यूएल",
+        "UI": "यूआई",
+        "UX": "यूएक्स",
+        "CSS": "सीएसएस",
+        "HTML": "एचटीएमएल",
+        "JS": "जेएस",
+        "VS": "वर्सेस",
+        "GST": "जीएसटी",
+        "AI REELS": "एआई रील्स",
+        "REEL": "रील",
+        "REELS": "रील्स",
+        "VIDEO": "वीडियो",
+        "VIDEOS": "वीडियो",
+        "AUDIO": "ऑडियो",
+        "IMAGE": "इमेज",
+        "IMAGES": "इमेज",
+        "GENERATE": "जेनरेट",
+        "GENERATOR": "जेनरेटर",
+        "PROMPT": "प्रॉम्प्ट",
+        "PROMPTS": "प्रॉम्प्ट्स",
+        "STUDIO": "स्टूडियो",
+        "DASHBOARD": "डैशबोर्ड",
+        "SYSTEM": "सिस्टम",
+        "DATA": "डेटा",
+        "DATABASE": "डेटाबेस",
+        "SCIENCE": "साइंस",
+        "MATH": "मैथ",
+        "MATHS": "मैथ्स",
+        "WEBSITE": "वेबसाइट",
+        "INTERNET": "इंटरनेट",
+        "MOBILE": "मोबाइल",
+        "APP": "ऐप",
+        "APPS": "ऐप्स",
+        "GOOGLE": "गूगल",
+        "FACEBOOK": "फेसबुक",
+        "YOUTUBE": "यूट्यूब",
+        "INSTAGRAM": "इंस्टाग्राम",
+        "WHATSAPP": "व्हाट्सएप",
+    }
+    
+    for eng, hin in english_to_hindi_phonetic.items():
+        pattern = re.compile(r'\b' + re.escape(eng) + r'\b', re.IGNORECASE)
+        text = pattern.sub(hin, text)
+        
+    return text
+
+
 async def generate_elevenlabs_voiceover(
     text: str, 
     work_dir: str, 
@@ -99,6 +263,10 @@ async def generate_elevenlabs_voiceover(
     cleaned_text = re.sub(r'\.\.\.+', ', ', cleaned_text)
     cleaned_text = cleaned_text.replace('—', ', ').replace('–', ', ')
     cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    
+    # Apply Hindi normalization if language is Hindi
+    if language and language.lower() == "hindi":
+        cleaned_text = clean_and_normalize_hindi_text(cleaned_text)
     
     # 2. Check if there are any actual spoken words
     only_words = re.sub(r'[\s.,\/#!$%\^&\*;:{}=\-_`~()।|?]+', '', cleaned_text)
@@ -120,9 +288,10 @@ async def generate_elevenlabs_voiceover(
             "xi-api-key": api_key,
             "Content-Type": "application/json"
         }
+        model_id = "eleven_flash_v2_5"
         data = {
             "text": cleaned_text,
-            "model_id": "eleven_turbo_v2_5", 
+            "model_id": model_id, 
             "voice_settings": {
                 "stability": 0.75,       # Increased stability (0.75) for smooth, clear, professional voiceover
                 "similarity_boost": 0.85, 
@@ -587,14 +756,54 @@ async def assemble_pro_reel(
         with open(assembly_log_path, "w", encoding="utf-8") as log_file:
             final_res = subprocess.run(cmd, cwd=work_dir, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
         if final_res.returncode != 0:
-            err_msg = "Unknown error"
-            if os.path.exists(assembly_log_path):
-                try:
-                    with open(assembly_log_path, "r", encoding="utf-8", errors="ignore") as f:
-                        err_msg = f.read()[-500:]
-                except: pass
-            logger.error(f"FFmpeg Final Assembly Failed: {err_msg}")
-            return None
+            logger.warning("Cinematic Reel assembly failed (likely xfade filter complex crash). Retrying with safe standard concat + mix fallback...")
+            list_path = os.path.join(work_dir, "concat_list.txt")
+            with open(list_path, "w", encoding="utf-8") as f:
+                for v_p in video_paths:
+                    v_fixed = v_p.replace('\\', '/')
+                    f.write(f"file '{v_fixed}'\n")
+                    
+            temp_video = os.path.join(work_dir, "temp_video.mp4")
+            concat_cmd = [
+                "ffmpeg", "-y", "-nostdin",
+                "-f", "concat", "-safe", "0", "-i", list_path,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-an",
+                temp_video
+            ]
+            concat_res = subprocess.run(concat_cmd, capture_output=True, stdin=subprocess.DEVNULL)
+            if concat_res.returncode != 0:
+                logger.error("Safe concat fallback failed during video concatenation.")
+                return None
+                
+            inputs = ["-i", temp_video, "-i", audio_path]
+            if bgm_path:
+                inputs.extend(["-i", bgm_path])
+                fc = (
+                    f"[0:v]ass='{safe_sub_path}'[v];"
+                    f"[1:a]highpass=f=60,volume=0.95[a_voice];"
+                    f"[2:a]volume=0.05[a_bgm];"
+                    f"[a_voice][a_bgm]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]"
+                )
+            else:
+                fc = (
+                    f"[0:v]ass='{safe_sub_path}'[v];"
+                    f"[1:a]highpass=f=60,volume=0.95[a]"
+                )
+            
+            fallback_assembly_cmd = (
+                ["ffmpeg", "-y", "-nostdin"]
+                + inputs
+                + ["-filter_complex", fc, "-map", "[v]", "-map", "[a]"]
+                + ["-c:v", "libx264", "-preset", "fast", "-crf", "20",
+                   "-c:a", "aac", "-b:a", "192k",
+                   "-pix_fmt", "yuv420p", "-r", "30",
+                   "-t", str(total_duration),
+                   output_path]
+            )
+            fallback_res = subprocess.run(fallback_assembly_cmd, capture_output=True, stdin=subprocess.DEVNULL)
+            if fallback_res.returncode != 0:
+                logger.error("Safe concat fallback failed during final mixing and assembly.")
+                return None
             
         if os.path.exists(output_path):
             logger.info(f"Reel Generated Successfully: {output_filename}")
@@ -804,7 +1013,28 @@ async def assemble_advanced_reel(
     ]
     concat_log_path = os.path.join(work_dir, "ffmpeg_concat.log")
     with open(concat_log_path, "w", encoding="utf-8") as log_file:
-        subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+        res_concat = subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+        
+    if res_concat.returncode != 0:
+        logger.warning(f"Advanced Reel complex xfade video concatenation failed (exit {res_concat.returncode}). Retrying with safe standard concat fallback...")
+        list_path = os.path.join(work_dir, "concat_list.txt")
+        with open(list_path, "w", encoding="utf-8") as f:
+            for v in scene_videos:
+                v_fixed = v.replace('\\', '/')
+                f.write(f"file '{v_fixed}'\n")
+                
+        fallback_cmd = [
+            "ffmpeg", "-y", "-nostdin",
+            "-f", "concat", "-safe", "0", "-i", list_path,
+            "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-an",
+            temp_video
+        ]
+        fallback_log_path = os.path.join(work_dir, "ffmpeg_concat_fallback.log")
+        with open(fallback_log_path, "w", encoding="utf-8") as log_file:
+            res_fallback = subprocess.run(fallback_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+        if res_fallback.returncode != 0:
+            logger.error("Advanced Reel safe concat fallback failed on both xfade and fallback.")
+            return None
 
     # ── 6. BGM ───────────────────────────────────────────────────────────────
     bgm_map = {

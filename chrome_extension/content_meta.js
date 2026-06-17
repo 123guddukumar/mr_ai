@@ -163,7 +163,11 @@ async function generateImage() {
     const prompt = metaScene.image_prompt || metaScene.animation_prompt;
     let fullPrompt;
     if (attempt === 1) {
-      fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
+      if (prompt.startsWith("Generate a high quality")) {
+        fullPrompt = prompt;
+      } else {
+        fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
+      }
     } else {
       const modified = getModifiedPrompt(prompt, attempt);
       fullPrompt = `${modified}`;
@@ -220,7 +224,11 @@ async function generateVideo() {
     const prompt = metaScene.animation_prompt || metaScene.image_prompt;
     let fullPrompt;
     if (attempt === 1) {
-      fullPrompt = `Animate the previously generated image. Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+      if (prompt.includes("Animate the previously") || prompt.includes("cinematic video animation")) {
+        fullPrompt = prompt;
+      } else {
+        fullPrompt = `Animate the previously generated image. Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+      }
     } else {
       const modified = getModifiedVideoPrompt(prompt, attempt);
       fullPrompt = `${modified}`;
@@ -1184,9 +1192,13 @@ async function generateSingleAsset(prompt, mediaType, filename) {
 
     await downloadFile(imgSrc, filename);
     await sleep(1000);
-  } else {
     // video
-    const fullPrompt = `Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+    let fullPrompt;
+    if (prompt.startsWith("Animate the previously") || prompt.startsWith("Create a smooth 5-second")) {
+      fullPrompt = prompt;
+    } else {
+      fullPrompt = `Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+    }
     await typeInChat(fullPrompt);
     await sleep(500);
     await clickSend();

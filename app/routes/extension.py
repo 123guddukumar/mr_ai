@@ -147,6 +147,8 @@ class UpdateSceneReq(BaseModel):
     image_prompt: Optional[str] = None
     animation_prompt: Optional[str] = None
     dialogue: Optional[str] = None
+    audio_url: Optional[str] = None
+    bgm_url: Optional[str] = None
 
 class SingleAssetDoneReq(BaseModel):
     filename: str
@@ -508,6 +510,141 @@ def robust_json_loads(s: str):
     raise ValueError(f"Failed to parse LLM response as JSON. Response starts with: {s[:100]}")
 
 
+def parse_custom_timeline_script(script_text: str) -> list:
+    import re
+    script_text = script_text.replace('\r\n', '\n').replace('\r', '\n')
+    
+    parts = re.split(r'---', script_text)
+    scenes = []
+    scene_num = 1
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if "Visual" not in part and "VO" not in part and "BGM" not in part:
+            continue
+        
+        time_match = re.search(r'\[([^\]]+)\]', part)
+        time_range = time_match.group(1) if time_match else f"{(scene_num-1)*5}-{scene_num*5} sec"
+        
+        lines = part.split('\n')
+        current_section = None # 'visual', 'vo', 'bgm'
+        visual_lines = []
+        vo_lines = []
+        bgm_lines = []
+        
+        for line in lines:
+            line_strip = line.strip()
+            if not line_strip:
+                continue
+                
+            # Check for section markers
+            if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
+                current_section = 'visual'
+                content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    visual_lines.append(content)
+            elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
+                current_section = 'vo'
+                content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    vo_lines.append(content)
+            elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
+                current_section = 'bgm'
+                content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                if content:
+                    bgm_lines.append(content)
+            elif re.match(r'^\[[^\]]+\]', line_strip):
+                continue
+            else:
+                # Content line
+                if current_section == 'visual':
+                    visual_lines.append(line_strip)
+                elif current_section == 'vo':
+                    vo_lines.append(line_strip)
+                elif current_section == 'bgm':
+                    bgm_lines.append(line_strip)
+                    
+        visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
+        vo_text = " ".join(vo_lines).strip() if vo_lines else ""
+        bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
+        
+        # Clean quotes
+        vo_text = vo_text.strip('"').strip("'")
+        
+        scenes.append({
+            "scene_num": scene_num,
+            "time_range": time_range,
+            "image_prompt": visual_desc,
+            "animation_prompt": f"Animate: {visual_desc}",
+            "dialogue": vo_text,
+            "dialogue_english": vo_text,
+            "bgm_prompt": bgm_desc
+        })
+        scene_num += 1
+        
+    if not scenes:
+        matches = list(re.finditer(r'\[(\d+-\d+\s*sec)\]', script_text, re.IGNORECASE))
+        for i, m in enumerate(matches):
+            start = m.start()
+            end = matches[i+1].start() if i + 1 < len(matches) else len(script_text)
+            block_text = script_text[start:end]
+            
+            lines = block_text.split('\n')
+            current_section = None
+            visual_lines = []
+            vo_lines = []
+            bgm_lines = []
+            
+            for line in lines:
+                line_strip = line.strip()
+                if not line_strip:
+                    continue
+                if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'visual'
+                    content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        visual_lines.append(content)
+                elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'vo'
+                    content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        vo_lines.append(content)
+                elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
+                    current_section = 'bgm'
+                    content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
+                    if content:
+                        bgm_lines.append(content)
+                elif re.match(r'^\[[^\]]+\]', line_strip):
+                    continue
+                else:
+                    if current_section == 'visual':
+                        visual_lines.append(line_strip)
+                    elif current_section == 'vo':
+                        vo_lines.append(line_strip)
+                    elif current_section == 'bgm':
+                        bgm_lines.append(line_strip)
+                        
+            visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
+            vo_text = " ".join(vo_lines).strip() if vo_lines else ""
+            bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
+            
+            vo_text = vo_text.strip('"').strip("'")
+            
+            scenes.append({
+                "scene_num": scene_num,
+                "time_range": m.group(1),
+                "image_prompt": visual_desc,
+                "animation_prompt": f"Animate: {visual_desc}",
+                "dialogue": vo_text,
+                "dialogue_english": vo_text,
+                "bgm_prompt": bgm_desc
+            })
+            scene_num += 1
+            
+    return scenes
+
+
 # ── Create Job (called from dashboard) ───────────────────────────────────────
 @router.post("/extension/create-job", tags=["Extension"])
 async def create_extension_job(
@@ -570,8 +707,10 @@ async def create_extension_job(
         if not ca_topic:
             raise HTTPException(404, "Current Affairs topic not found")
         video_length = 60  # 60 seconds default for CA reels
+    elif req.transcript and req.transcript.strip():
+        pass
     else:
-        raise HTTPException(400, "Either subtopic_id, topic_id, pyq_set_id, or ca_topic_id must be provided")
+        raise HTTPException(400, "Either subtopic_id, topic_id, pyq_set_id, ca_topic_id, or transcript must be provided")
 
     lang = req.language or "English"
 
@@ -689,24 +828,41 @@ Rules:
 - Make scenes flow as continuous educational explanation
 Return ONLY the JSON object, no markdown."""
 
+    is_timeline_format = is_custom and ("Visual:" in study_material or "VO:" in study_material or "Visual" in study_material)
+
     try:
-        raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON object.")
-        res_data = robust_json_loads(raw)
-        
-        bgm_prompt = None
-        if isinstance(res_data, dict):
-            scenes = res_data.get("scenes", [])
-            bgm_prompt = res_data.get("bgm_prompt", None)
-        elif isinstance(res_data, list):
-            scenes = res_data
+        if is_timeline_format:
+            scenes = parse_custom_timeline_script(study_material)
+            bgm_prompt = scenes[0].get("bgm_prompt") if scenes else "Soft ambient background music"
         else:
-            raise ValueError("Invalid response format from LLM")
+            raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON object.")
+            res_data = robust_json_loads(raw)
             
-        if not isinstance(scenes, list):
-            raise ValueError("Not a list of scenes")
+            bgm_prompt = None
+            if isinstance(res_data, dict):
+                scenes = res_data.get("scenes", [])
+                bgm_prompt = res_data.get("bgm_prompt", None)
+            elif isinstance(res_data, list):
+                scenes = res_data
+            else:
+                raise ValueError("Invalid response format from LLM")
+                
+            if not isinstance(scenes, list):
+                raise ValueError("Not a list of scenes")
+                
+            # Ensure exactly 12
+            scenes = scenes[:12]
             
-        # Ensure exactly 12
-        scenes = scenes[:12]
+        # Format image and animation prompts to contain the full prompt formats used by generators
+        for s in scenes:
+            if "image_prompt" in s and s["image_prompt"]:
+                prompt_val = s["image_prompt"].strip()
+                if not prompt_val.startswith("Generate a high quality"):
+                    s["image_prompt"] = f"Generate a high quality photorealistic image: {prompt_val}. Vertical 9:16 portrait format, cinematic lighting, 8k, photorealistic, masterpiece, no text."
+            if "animation_prompt" in s and s["animation_prompt"]:
+                anim_val = s["animation_prompt"].strip()
+                if not anim_val.startswith("Animate the previously"):
+                    s["animation_prompt"] = f"Animate the previously generated image. Create a smooth 5-second cinematic video animation: {anim_val}. Vertical 9:16 portrait format."
     except Exception as e:
         logger.error(f"Scene generation failed: {e}")
         raise HTTPException(500, f"Failed to generate scenes: {str(e)}")
@@ -801,6 +957,18 @@ async def image_done(job_id: str, req: ImageDoneReq, client: dict = Depends(_req
                 remove_watermark_ffmpeg(dest_img_path, is_video=False)
                 logger.info(f"Proactively copied image {found_file} to {dest_img_path}")
                 copied = True
+                
+                try:
+                    from app.services.r2_storage import upload_to_r2
+                    r2_key = f"reels/jobs/{job_id}/scene_{scene_idx}_image.jpg"
+                    r2_url = upload_to_r2(dest_img_path, r2_key, "image/jpeg")
+                    if r2_url:
+                        if 0 <= scene_idx < len(job["scenes"]):
+                            job["scenes"][scene_idx]["image_url"] = r2_url
+                            job["scenes"][scene_idx]["thumb"] = r2_url
+                            logger.info(f"Sync image done to R2: {r2_url}")
+                except Exception as r2_err:
+                    logger.error(f"Failed to upload image_done to R2: {r2_err}")
             except Exception as e:
                 logger.warning(f"Error copying proactive image: {e}")
             
@@ -856,12 +1024,53 @@ async def video_done(job_id: str, req: VideoDoneReq, client: dict = Depends(_req
                 remove_watermark_ffmpeg(dest_vid_path, is_video=True)
                 logger.info(f"Proactively copied video {found_file} to {dest_vid_path}")
                 copied = True
+                
+                try:
+                    from app.services.r2_storage import upload_to_r2
+                    r2_key = f"reels/jobs/{job_id}/scene_{scene_idx}_video.mp4"
+                    r2_url = upload_to_r2(dest_vid_path, r2_key, "video/mp4")
+                    if r2_url:
+                        if 0 <= scene_idx < len(job["scenes"]):
+                            job["scenes"][scene_idx]["video_url"] = r2_url
+                            logger.info(f"Sync video done to R2: {r2_url}")
+                except Exception as r2_err:
+                    logger.error(f"Failed to upload video_done to R2: {r2_err}")
             except Exception as e:
                 logger.warning(f"Error copying proactive video: {e}")
             
     logger.info(f"Job {job_id}: video {len(job['videos_received'])}/{len(job['scenes'])} done: {req.filename}")
     _save_jobs(_jobs)
     return {"success": True, "videos_done": len(job["videos_received"]), "copied": copied}
+
+
+class HarvestDoneReq(BaseModel):
+    bgm_url: Optional[str] = None
+    videos: Optional[List[str]] = []
+    images: Optional[List[str]] = []
+
+@router.post("/extension/job/{job_id}/harvest-done", tags=["Extension"])
+async def job_harvest_done(
+    job_id: str,
+    req: HarvestDoneReq,
+    client: dict = Depends(_require_client)
+):
+    global _jobs
+    _jobs = _load_jobs()
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    job["status"] = "ready_to_assemble"
+    if req.bgm_url is not None:
+        job["bgm_url"] = req.bgm_url
+    if req.videos:
+        job["videos_received"] = list(set(job.get("videos_received", []) + req.videos))
+    if req.images:
+        job["images_received"] = list(set(job.get("images_received", []) + req.images))
+
+    _save_jobs(_jobs)
+    logger.info(f"Job {job_id} harvest complete. Status set to ready_to_assemble.")
+    return {"success": True}
 
 
 # ── Upload File (called by extension to upload generated image/video directly)
@@ -899,6 +1108,22 @@ async def upload_file(
     except Exception as e:
         logger.warning(f"Watermark removal failed for uploaded {media_type}: {e}")
 
+    # Upload to Cloudflare R2
+    try:
+        from app.services.r2_storage import upload_to_r2
+        r2_key = f"reels/jobs/{job_id}/scene_{index}_{media_type}.{ext}"
+        r2_url = upload_to_r2(dest_path, r2_key, "video/mp4" if is_video else "image/jpeg")
+        if r2_url:
+            if 0 <= index < len(job["scenes"]):
+                if is_video:
+                    job["scenes"][index]["video_url"] = r2_url
+                else:
+                    job["scenes"][index]["image_url"] = r2_url
+                    job["scenes"][index]["thumb"] = r2_url
+                logger.info(f"Uploaded uploaded file to R2: {r2_url}")
+    except Exception as r2_err:
+        logger.error(f"Failed to upload uploaded file to R2: {r2_err}")
+
     # Update job state in memory
     if is_video:
         if filename not in job["videos_received"]:
@@ -935,9 +1160,37 @@ async def update_scene(job_id: str, req: UpdateSceneReq, client: dict = Depends(
     if req.dialogue is not None:
         scene["dialogue"] = req.dialogue
         
-    # Remove files for this scene so they will be generated again
     base_uploads = os.path.join(os.getcwd(), "uploads", "social")
     work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+
+    if req.audio_url is not None:
+        scene["audio_url"] = req.audio_url
+        import shutil
+        import httpx
+        os.makedirs(work_dir, exist_ok=True)
+        dest_voice = os.path.join(work_dir, f"scene_{scene_idx}_voice.mp3")
+        if req.audio_url.startswith("/uploads/"):
+            local_rel = req.audio_url.lstrip("/")
+            local_path = os.path.join(os.getcwd(), local_rel)
+            if os.path.exists(local_path):
+                try:
+                    shutil.copy2(local_path, dest_voice)
+                    logger.info(f"Copied local audio to {dest_voice}")
+                except Exception as ce:
+                    logger.warning(f"Failed to copy local audio file: {ce}")
+        elif req.audio_url.startswith("http"):
+            try:
+                async with httpx.AsyncClient(follow_redirects=True) as http_client:
+                    audio_res = await http_client.get(req.audio_url, timeout=30.0)
+                    if audio_res.status_code == 200:
+                        with open(dest_voice, "wb") as f:
+                            f.write(audio_res.content)
+                        logger.info(f"Downloaded audio to {dest_voice}")
+            except Exception as de:
+                logger.warning(f"Failed to download audio URL: {de}")
+
+    if req.bgm_url is not None:
+        scene["bgm_url"] = req.bgm_url
     
     # Remove downloaded files for this scene from lists
     images_to_remove = [f for f in job["images_received"] if f"-{req.scene_num}-" in f or f"-{req.scene_num}." in f or f"image-{req.scene_num}-" in f or f"image-{req.scene_num}." in f]
@@ -1024,7 +1277,8 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
                 img_copied = True
                 continue
                 
-            filename = req.images[i] if (req.images and i < len(req.images)) else None
+            images_list = req.images if req.images else job.get("images_received", [])
+            filename = images_list[i] if (images_list and i < len(images_list)) else None
             found_file = resilient_find_file(filename, scene_num, job_id, is_video=False, strict=False)
             
             if found_file:
@@ -1083,7 +1337,8 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
                 vid_copied = True
                 continue
                 
-            filename = req.videos[i] if (req.videos and i < len(req.videos)) else None
+            videos_list = req.videos if req.videos else job.get("videos_received", [])
+            filename = videos_list[i] if (videos_list and i < len(videos_list)) else None
             found_file = resilient_find_file(filename, scene_num, job_id, is_video=True, strict=False)
             
             if found_file:
@@ -1167,7 +1422,7 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
             language=job["language"],
             voice_id=job["voice_id"],
             job_id=job_id,
-            bgm_url=req.bgm_url,
+            bgm_url=req.bgm_url if req.bgm_url else job.get("bgm_url"),
             video_length=job.get("video_length")
         )
         video_url = res_data["video_url"]
@@ -1514,6 +1769,9 @@ async def job_status(job_id: str, client: dict = Depends(_require_client), db: S
             scenes_list = db_item.scenes
             metadata_info = db_item.metadata_info
 
+    if not scenes_list:
+        scenes_list = job.get("scenes", [])
+
     # ── Proactive Real-Time Grid Sync and Discover Loop ──
     import shutil, re as _re
     base_uploads = os.path.join(os.getcwd(), "uploads", "social")
@@ -1625,7 +1883,25 @@ async def single_asset_done(
     is_video = (media_type == 'video')
     ext = 'mp4' if is_video else 'jpg'
     
-    if asset_id and "banner" in asset_id.lower():
+    is_job_scene = False
+    job_id = None
+    scene_num = None
+    
+    if asset_id and asset_id.startswith("jobscene-"):
+        is_job_scene = True
+        rest = asset_id[len("jobscene-"):]
+        parts = rest.rsplit("-", 2)
+        if len(parts) == 3:
+            job_id, scene_str, media_type_from_asset = parts
+            try:
+                scene_num = int(scene_str)
+            except ValueError:
+                pass
+                
+    if is_job_scene and job_id and scene_num is not None:
+        scene_idx = scene_num - 1
+        dest_filename = f"jobscene_{job_id}_{scene_idx}_{media_type}.{ext}"
+    elif asset_id and "banner" in asset_id.lower():
         dest_filename = f"single_gen_banner_{secrets.token_hex(4)}.{ext}"
     else:
         dest_filename = f"single_gen_{secrets.token_hex(4)}.{ext}"
@@ -1644,15 +1920,56 @@ async def single_asset_done(
         # Upload to Cloudflare R2 if configured
         try:
             from app.services.r2_storage import upload_to_r2
-            r2_key = f"classroom/images/{dest_filename}"
+            if is_job_scene and job_id and scene_num is not None:
+                scene_idx = scene_num - 1
+                r2_key = f"reels/jobs/{job_id}/scene_{scene_idx}_{media_type}.{ext}"
+            else:
+                r2_key = f"classroom/images/{dest_filename}"
             r2_url = upload_to_r2(dest_path, r2_key, "image/jpeg" if not is_video else "video/mp4")
             if r2_url:
                 url = r2_url
         except Exception as r2_err:
             logger.error(f"R2 upload failed for single asset: {r2_err}")
             
+        # If it is a job scene, update job in memory and on disk
+        if is_job_scene and job_id and scene_num is not None:
+            global _jobs
+            _jobs = _load_jobs()
+            job = _jobs.get(job_id)
+            if job:
+                scene_idx = scene_num - 1
+                if 0 <= scene_idx < len(job["scenes"]):
+                    if is_video:
+                        job["scenes"][scene_idx]["video_url"] = url
+                    else:
+                        job["scenes"][scene_idx]["image_url"] = url
+                        job["scenes"][scene_idx]["thumb"] = url
+                    
+                    # Also write it to the local workspace work_dir so compilation is smooth
+                    work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+                    os.makedirs(work_dir, exist_ok=True)
+                    if is_video:
+                        orig_vid = os.path.join(work_dir, f"scene_{scene_idx}_orig_vid.mp4")
+                        proc_vid = os.path.join(work_dir, f"scene_{scene_idx}_proc.mp4")
+                        if os.path.exists(orig_vid):
+                            try: os.remove(orig_vid)
+                            except: pass
+                        if os.path.exists(proc_vid):
+                            try: os.remove(proc_vid)
+                            except: pass
+                        shutil.copy2(dest_path, orig_vid)
+                    else:
+                        orig_img = os.path.join(work_dir, f"scene_{scene_idx}_orig_img.jpg")
+                        if os.path.exists(orig_img):
+                            try: os.remove(orig_img)
+                            except: pass
+                        shutil.copy2(dest_path, orig_img)
+                    
+                    _save_jobs(_jobs)
+                    logger.info(f"Updated job {job_id} scene {scene_num} to R2 URL {url}")
+
         # If asset_id matches classroom elements, update DB directly!
-        if asset_id:
+        if asset_id and not is_job_scene:
             updated_db = False
             ratio = "1:1"
             temp_id = asset_id
@@ -1823,43 +2140,49 @@ async def assemble_from_videos(
         
         calc_pct = 75.0 + (i / len(scenes)) * 10.0
         update_progress(f"Generating premium AI narration voiceover for Scene {i + 1} of {len(scenes)}...", calc_pct)
-        if dialogue:
-            voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language)
-            if voice_result and os.path.exists(voice_result):
-                if os.path.exists(scene_voice_path):
-                    os.remove(scene_voice_path)
-                os.rename(voice_result, scene_voice_path)
-            else:
-                generate_silent_audio(3.0, work_dir, f"scene_{i}_voice.mp3")
-                
-            # PRO-LEVEL AUDIO ENHANCEMENT: Trim silences and apply studio voice compressor & EQ
-            trimmed_path = os.path.join(work_dir, f"scene_{i}_voice_trimmed.mp3")
-            voice_filter = (
-                "highpass=f=80,"
-                "volume=0.95"
-            )
-            trim_cmd = [
-                "ffmpeg", "-y", "-nostdin",
-                "-i", scene_voice_path,
-                "-af", voice_filter,
-                trimmed_path
-            ]
-            trim_res = await asyncio.to_thread(subprocess.run, trim_cmd, capture_output=True, stdin=subprocess.DEVNULL)
-            if trim_res.returncode == 0 and os.path.exists(trimmed_path) and os.path.getsize(trimmed_path) > 0:
-                os.remove(scene_voice_path)
-                os.rename(trimmed_path, scene_voice_path)
-        else:
-            # Create a 3-second silent audio segment if dialogue is empty
-            await asyncio.to_thread(
-                subprocess.run,
-                [
+        voice_exists = False
+        if os.path.exists(scene_voice_path) and os.path.getsize(scene_voice_path) > 1000:
+            logger.info(f"Scene {i} voice already exists. Skipping ElevenLabs generation.")
+            voice_exists = True
+
+        if not voice_exists:
+            if dialogue:
+                voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language)
+                if voice_result and os.path.exists(voice_result):
+                    if os.path.exists(scene_voice_path):
+                        os.remove(scene_voice_path)
+                    os.rename(voice_result, scene_voice_path)
+                else:
+                    generate_silent_audio(3.0, work_dir, f"scene_{i}_voice.mp3")
+                    
+                # PRO-LEVEL AUDIO ENHANCEMENT: Trim silences and apply studio voice compressor & EQ
+                trimmed_path = os.path.join(work_dir, f"scene_{i}_voice_trimmed.mp3")
+                voice_filter = (
+                    "highpass=f=80,"
+                    "volume=0.95"
+                )
+                trim_cmd = [
                     "ffmpeg", "-y", "-nostdin",
-                    "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
-                    "-t", "3", "-c:a", "libmp3lame", scene_voice_path
-                ],
-                capture_output=True,
-                stdin=subprocess.DEVNULL
-            )
+                    "-i", scene_voice_path,
+                    "-af", voice_filter,
+                    trimmed_path
+                ]
+                trim_res = await asyncio.to_thread(subprocess.run, trim_cmd, capture_output=True, stdin=subprocess.DEVNULL)
+                if trim_res.returncode == 0 and os.path.exists(trimmed_path) and os.path.getsize(trimmed_path) > 0:
+                    os.remove(scene_voice_path)
+                    os.rename(trimmed_path, scene_voice_path)
+            else:
+                # Create a 3-second silent audio segment if dialogue is empty
+                await asyncio.to_thread(
+                    subprocess.run,
+                    [
+                        "ffmpeg", "-y", "-nostdin",
+                        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                        "-t", "3", "-c:a", "libmp3lame", scene_voice_path
+                    ],
+                    capture_output=True,
+                    stdin=subprocess.DEVNULL
+                )
             
         # Probe scene audio duration
         probe = await asyncio.to_thread(
@@ -1984,14 +2307,33 @@ async def assemble_from_videos(
             return subprocess.run(concat_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
     res_concat = await asyncio.to_thread(run_concat)
     if res_concat.returncode != 0:
-        err_msg = "Unknown error"
-        if os.path.exists(concat_log_path):
-            try:
-                with open(concat_log_path, "r", encoding="utf-8", errors="ignore") as f:
-                    err_msg = "".join(f.readlines()[-20:])
-            except:
-                pass
-        raise Exception(f"FFmpeg video concatenation failed (exit {res_concat.returncode}): {err_msg}")
+        logger.warning(f"Complex xfade transition video concatenation failed (exit {res_concat.returncode}). Retrying with safe standard concat fallback...")
+        list_path = os.path.join(work_dir, "concat_list.txt")
+        with open(list_path, "w", encoding="utf-8") as f:
+            for v in processed_videos:
+                v_fixed = v.replace('\\', '/')
+                f.write(f"file '{v_fixed}'\n")
+                
+        fallback_cmd = [
+            "ffmpeg", "-y", "-nostdin",
+            "-f", "concat", "-safe", "0", "-i", list_path,
+            "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-an",
+            temp_video
+        ]
+        fallback_log_path = os.path.join(work_dir, "ffmpeg_concat_fallback.log")
+        def run_fallback():
+            with open(fallback_log_path, "w", encoding="utf-8") as log_file:
+                return subprocess.run(fallback_cmd, stdout=log_file, stderr=log_file, stdin=subprocess.DEVNULL)
+        res_fallback = await asyncio.to_thread(run_fallback)
+        if res_fallback.returncode != 0:
+            err_msg = "Unknown error"
+            if os.path.exists(fallback_log_path):
+                try:
+                    with open(fallback_log_path, "r", encoding="utf-8", errors="ignore") as f:
+                        err_msg = "".join(f.readlines()[-20:])
+                except:
+                    pass
+            raise Exception(f"FFmpeg video concatenation failed on both xfade and fallback (exit {res_fallback.returncode}): {err_msg}")
 
     # 4. Concatenate all scene voiceovers together
     update_progress("Merging narration segment audio tracks...", 95.0)

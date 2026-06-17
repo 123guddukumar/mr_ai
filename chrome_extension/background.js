@@ -188,6 +188,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === "START_JOB_FROM_DASHBOARD") {
     log(`Job triggered from dashboard: ${msg.jobId}`);
+    if (state.jobId === msg.jobId && state.phase !== "idle") {
+      log(`Job ${msg.jobId} is already running in phase ${state.phase}. Ignoring duplicate dashboard trigger.`);
+      sendResponse({ ok: true });
+      return true;
+    }
     if (msg.token) {
       state.token = msg.token;
       chrome.storage.local.set({ token: msg.token });
@@ -367,6 +372,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // ── Start Job ─────────────────────────────────────────────────────────────────
 async function startJob(jobId) {
+  if (state.jobId === jobId && state.phase !== "idle") {
+    log(`startJob: Job ${jobId} is already running in phase ${state.phase}. Ignoring duplicate startJob call.`);
+    return;
+  }
   state.jobId = jobId;
   state.phase = "fetching";
   state.imagesDone = [];
@@ -503,6 +512,10 @@ async function sendNextScene(tabId) {
       log(`Stale loop detected. Aborting sendNextScene for job ${msg.jobId}`);
       return;
     }
+    if (tabId !== state.metaTabId) {
+      log(`Stale loop detected. tabId ${tabId} does not match current state.metaTabId ${state.metaTabId}. Aborting sendNextScene.`);
+      return;
+    }
     try {
       await ensureContentScriptInjected(tabId, "content_meta.js");
       const resp = await chrome.tabs.sendMessage(tabId, msg);
@@ -527,6 +540,10 @@ async function sendNextScene(tabId) {
   // If the job ID has changed since this loop started, ignore the failure!
   if (msg.jobId !== state.jobId) {
     log(`sendNextScene: Job ID changed from ${msg.jobId} to ${state.jobId}. Ignoring stale loop timeout.`);
+    return;
+  }
+  if (tabId !== state.metaTabId) {
+    log(`sendNextScene: tabId ${tabId} changed to ${state.metaTabId}. Ignoring stale loop timeout.`);
     return;
   }
 
@@ -793,7 +810,7 @@ async function allDone() {
   }
 
   try {
-    const res = await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/assemble`, {
+    const res = await fetch(`${state.backendUrl}/api/extension/job/${state.jobId}/harvest-done`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-App-Token": state.token },
       body: JSON.stringify({
@@ -806,18 +823,19 @@ async function allDone() {
     if (data.success) {
       state.phase = "done";
       await saveState();
-      notifyPopup(`🎉 Reel ready! ${data.video_url}`, "success");
+      notifyPopup("🎉 Meta AI assets harvest completed successfully! Ready for assembly on the dashboard.", "success");
       chrome.notifications.create({
-        type: "basic", iconUrl: "icon48.png",
-        title: "MR AI Reel Ready! 🎬",
-        message: "Your educational reel has been generated!"
+        type: "basic",
+        iconUrl: "icon48.png",
+        title: "Harvest Complete! 🎬",
+        message: "Meta AI assets are ready. Please click Assemble on your dashboard."
       });
       setTimeout(resetState, 5000);
     } else {
-      throw new Error(data.detail || "Assembly failed");
+      throw new Error(data.detail || "Harvest notify failed");
     }
   } catch (e) {
-    notifyPopup(`❌ Assembly error: ${e.message}`, "error");
+    notifyPopup(`❌ Harvest done notification error: ${e.message}`, "error");
     state.phase = "idle";
     await saveState();
     await reportError(e.message);

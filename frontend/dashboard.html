@@ -1740,26 +1740,22 @@ body{display:flex;min-height:100vh;overflow:hidden;
           <div id="soc-gen-voice-row" style="display:none">
                 <label class="form-label" style="font-size:11px">Narration Voice</label>
                 <div style="display:flex; gap:5px">
-                    <select id="soc-gen-voice" class="form-input" style="flex:1">
-                        <optgroup label="Premium Female">
-                            <option value="ttpam6l3Fgkia7uX33b6">Female 1 (ttpam...)</option>
-                            <option value="0UZ29F1kNDvmelKG8QCM">Female 2 (0UZ29...)</option>
-                            <option value="SGbOfpm28edC83pZ9iGb">Female 3 (SGbOf...)</option>
-                            <option value="C2S5J6WvmHnrQWjUu6Rg">Female 4 (C2S5J...)</option>
-                            <option value="oHNJagRZ2LQEfZb2CEkb">Female 5 (oHNJ...)</option>
-                            <option value="1zUSi8LeHs9M2mV8X6YS">Female 6 (1zUS...)</option>
-                            <option value="FDQcYNtvPtQjNlTyU3du">Female 7 (FDQc...)</option>
-                            <option value="k2intd1ORm0YUH8etnXg">Female 8 (k2in...)</option>
-                        </optgroup>
-                        <optgroup label="Premium Male">
-                            <option value="6MoEUz34rbRrmmyxgRm4">Male 1 (6MoEU...)</option>
-                            <option value="qMWiKJnYIpKnTfN3rWDk">Male 2 (qMWiK...)</option>
-                            <option value="Fek0GKvfHLTkZKlMwqbx">Male 3 (Fek0G...)</option>
-                            <option value="6UsBj9bB0I91MGolFP7S">Male 4 (6UsBj...)</option>
-                            <option value="xgMizvNgD8oiHDunYRdU">Male 5 (xgMi...)</option>
-                            <option value="OP4mb6t8IIaNi5Fu5FuJ">Male 6 (OP4mb...)</option>
-                            <option value="xXwuGLJu4s1tzhKJjHrm">Male 7 (xXwuG...)</option>
-                        </optgroup>
+                    <select id="soc-gen-voice" class="form-input" style="flex:1" onchange="previewVoice()">
+                        <option value="WeK8ylKjTV2trMlayizC">Shrikant (Male - Indian Warm)</option>
+                        <option value="1zUSi8LeHs9M2mV8X6YS" selected>Priyanka (Female - Indian Hindi)</option>
+                        <option value="bpkHhw4QrZFYIfahwsHh">Amit (Male - Indian Clear)</option>
+                        <option value="QCwUVw5fOJzf8t55fhmR">Irfan (Male - Indian Bold)</option>
+                        <option value="p9aflnsbBe1o0aDeQa97">Kanika (Female - Indian Dynamic)</option>
+                        <option value="ibbx9zDYGvLgtYzRbqqG">Bunty (Male - Indian Kid)</option>
+                        <option value="pNInz6obpgDQGcFmaJgB">Adam (Male - US Deep)</option>
+                        <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Female - US Pleasant)</option>
+                        <option value="EitqXD7jgIy0K5Z1zGGp">Rudra - Deep (Male - Deep & Trustworthy)</option>
+                        <option value="0mDYz2rpzUksQMbNcdCc">Rudra - Upbeat (Male - Expressive & Upbeat)</option>
+                        <option value="tTZ0TVc9Q1bbWngiduLK">Rudra - Intense (Male - Intense & Romantic)</option>
+                        <option value="xLm17wfwFDI3GeAaAOZA">Rudra - Rapid (Male - Energetic & Rapid)</option>
+                        <option value="N9rZ3GaL6nwOrNUEMppm">Rudra - Luxury (Male - Cinematic Luxury)</option>
+                        <option value="gO8Kb3hHPEPElVxVHDwT">Krishna - Calm (Male - Calm Assistant)</option>
+                        <option value="AA997oQKgoifSmUaeVCr">Krishna - E-Com (Male - Friendly E-Com)</option>
                     </select>
                     <button class="btn btn-secondary" style="padding:0 8px" onclick="previewVoice()" title="Test Voice">▶️</button>
                 </div>
@@ -1769,7 +1765,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px">
             <div>
                 <label class="form-label" style="font-size:11px">Target Language</label>
-                <select id="soc-gen-lang" class="form-input">
+                <select id="soc-gen-lang" class="form-input" onchange="handleSocialLanguageChange(this.value)">
                     <option value="English" selected>English</option>
                     <option value="Hindi">Hindi (हिन्दी)</option>
                     <option value="Spanish">Spanish</option>
@@ -5259,13 +5255,23 @@ async function previewVoice() {
     const voiceId = document.getElementById('soc-gen-voice').value;
     if(!voiceId) return;
     
-    const btn = event.currentTarget;
-    const oldIcon = btn.textContent;
-    btn.textContent = '⏳';
-    btn.disabled = true;
+    const btn = (typeof event !== 'undefined' && event && event.currentTarget && event.currentTarget.tagName === 'BUTTON') ? event.currentTarget : null;
+    let oldIcon = '▶️';
+    if (btn) {
+        oldIcon = btn.textContent;
+        btn.textContent = '⏳';
+        btn.disabled = true;
+    }
     
+    const scriptEl = document.getElementById('soc-custom-script');
+    const langSelect = document.getElementById('soc-gen-lang');
+    const selectedLang = langSelect ? langSelect.value : 'English';
+    const previewText = scriptEl && scriptEl.value.trim()
+        ? scriptEl.value.trim().substring(0, 500)
+        : getDefaultPreviewText(selectedLang);
+        
     try {
-        const res = await fetch(`/api/social/voice-preview/${voiceId}`, {
+        const res = await fetch(`/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(previewText)}&language=${encodeURIComponent(selectedLang)}`, {
             headers: hdrs()
         });
         
@@ -5275,11 +5281,85 @@ async function previewVoice() {
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audio.play();
+        toast('Playing narration voice preview...', 'info');
     } catch(e) {
         toast('Preview Error: ' + e.message, 'error');
     } finally {
-        btn.textContent = oldIcon;
-        btn.disabled = false;
+        if (btn) {
+            btn.textContent = oldIcon;
+            btn.disabled = false;
+        }
+    }
+}
+
+function showVoiceOverUpgradePopup() {
+    let overlay = document.getElementById('voiceover-upgrade-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'voiceover-upgrade-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 10, 12, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: #fff;
+            font-family: inherit;
+        `;
+        overlay.innerHTML = `
+            <div style="width: 50px; height: 50px; border: 4px solid rgba(168,85,247,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div style="font-size: 16px; font-weight: 800; letter-spacing: 0.5px;">Voice Over Upgrading...</div>
+            <div style="font-size: 12px; color: var(--text3);">Please wait while we synthesize your custom voice narration.</div>
+            <style>
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
+        `;
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideVoiceOverUpgradePopup() {
+    const overlay = document.getElementById('voiceover-upgrade-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+async function handleSocialLanguageChange(newLang) {
+    const scriptEl = document.getElementById('soc-custom-script');
+    if (!scriptEl) return;
+    
+    const originalText = scriptEl.value.trim();
+    if (!originalText) return;
+    
+    showVoiceOverUpgradePopup();
+    
+    try {
+        const res = await fetch('/api/social/translate-script', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ text: originalText, language: newLang })
+        });
+        if (!res.ok) throw new Error('Translation failed');
+        const data = await res.json();
+        if (data.translated_text) {
+            scriptEl.value = data.translated_text;
+            toast(`Script converted to ${newLang}!`, 'success');
+            
+            // Auto trigger preview Voice test
+            const voiceId = document.getElementById('soc-gen-voice').value;
+            if (voiceId) {
+                await previewVoice();
+            }
+        }
+    } catch(e) {
+        toast('Failed to translate script: ' + e.message, 'error');
+    } finally {
+        hideVoiceOverUpgradePopup();
     }
 }
 
@@ -8187,6 +8267,12 @@ async function generateSocialContent() {
   if(!dsId || !topic) return toast('Select DataStore and enter a topic.', 'warning');
   if(dsId === 'custom' && !customScript) return toast('Please enter your custom script.', 'warning');
   
+  const isTimelineFormat = dsId === 'custom' && (customScript.includes('Visual:') || customScript.includes('VO:') || customScript.includes('Visual'));
+  if (type === 'reel' && isTimelineFormat) {
+      generateCustomTimelineReel(customScript, topic, lang, voiceId);
+      return;
+  }
+  
   const overlay = document.getElementById('soc-gen-overlay');
   const bar = document.getElementById('soc-load-bar');
   const status = document.getElementById('soc-load-status');
@@ -8260,6 +8346,606 @@ async function generateSocialContent() {
   }
 }
 
+let _customTimelineScenes = [];
+let _customTimelineJobId = null;
+let _customTimelineVoiceId = null;
+let _customTimelineLang = null;
+let _customTimelinePollingInterval = null;
+
+async function generateCustomTimelineReel(customScript, topic, lang, voiceId) {
+    if (_customTimelinePollingInterval) clearInterval(_customTimelinePollingInterval);
+    _customTimelinePollingInterval = null;
+    
+    const overlay = document.getElementById('soc-gen-overlay');
+    const bar = document.getElementById('soc-load-bar');
+    const status = document.getElementById('soc-load-status');
+    
+    overlay.style.display = 'flex';
+    bar.style.width = '10%';
+    status.textContent = 'Parsing script timeline...';
+    
+    _customTimelineVoiceId = voiceId;
+    _customTimelineLang = lang;
+    
+    try {
+        const parseRes = await fetch('/api/social/parse-custom-script', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ script: customScript })
+        });
+        const parseData = await parseRes.json();
+        if (!parseRes.ok || !parseData.success) {
+            throw new Error(parseData.detail || 'Script parsing failed');
+        }
+        
+        const scenes = parseData.scenes;
+        if (!scenes || scenes.length === 0) {
+            throw new Error('No scenes parsed. Please verify the timeline script format.');
+        }
+        
+        bar.style.width = '30%';
+        status.textContent = 'Initializing extension job...';
+        
+        const createRes = await fetch('/api/extension/create-job', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                topic_id: '',
+                subtopic_id: '',
+                pyq_set_id: '',
+                ca_topic_id: '',
+                language: lang,
+                voice_id: voiceId,
+                transcript: customScript
+            })
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok || !createData.success) {
+            throw new Error(createData.detail || 'Failed to create extension job');
+        }
+        
+        const jobId = createData.job_id;
+        _customTimelineJobId = jobId;
+        _customTimelineScenes = createData.scenes || scenes;
+        
+        _customTimelineScenes.forEach(scene => {
+            scene.audio_loading = true;
+            scene.bgm_loading = true;
+        });
+        
+        renderCustomTimelineUI();
+        
+        bar.style.width = '60%';
+        status.textContent = 'Launching voiceovers & BGM processes...';
+        
+        _customTimelineScenes.forEach((scene, idx) => {
+            generateVoiceForScene(jobId, idx);
+            resolveBgmForScene(jobId, idx);
+        });
+        
+        window.postMessage({
+            type: "MR_AI_START_JOB",
+            jobId: jobId,
+            token: session.token,
+            backendUrl: window.location.origin
+        }, "*");
+        
+        bar.style.width = '100%';
+        status.textContent = 'Loaded!';
+        
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            startCustomTimelinePolling(jobId);
+        }, 500);
+        
+    } catch(e) {
+        overlay.style.display = 'none';
+        toast(e.message, 'error');
+    }
+}
+
+async function generateVoiceForScene(jobId, idx) {
+    const scene = _customTimelineScenes[idx];
+    scene.audio_loading = true;
+    renderCustomTimelineUI();
+    try {
+        const res = await fetch('/api/social/generate-voice-file', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                text: scene.dialogue,
+                voice_id: _customTimelineVoiceId,
+                language: _customTimelineLang
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            scene.audio_url = data.audio_url;
+            scene.audio_duration = data.duration;
+            
+            await fetch(`/api/extension/job/${jobId}/update-scene`, {
+                method: 'POST',
+                headers: hdrs(),
+                body: JSON.stringify({
+                    scene_num: idx + 1,
+                    audio_url: data.audio_url
+                })
+            });
+            toast(`🎙️ Voiceover generated for Scene ${idx + 1}!`, 'success');
+        } else {
+            toast(`❌ Failed to generate voiceover for Scene ${idx + 1}: ${data.detail || 'Error'}`, 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        toast(`❌ Failed to generate voiceover for Scene ${idx + 1}`, 'error');
+    } finally {
+        scene.audio_loading = false;
+        renderCustomTimelineUI();
+    }
+}
+
+async function resolveBgmForScene(jobId, idx) {
+    const scene = _customTimelineScenes[idx];
+    scene.bgm_loading = true;
+    renderCustomTimelineUI();
+    try {
+        const res = await fetch('/api/social/resolve-bgm', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                bgm_prompt: scene.bgm_prompt
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            scene.bgm_url = data.bgm_url;
+            
+            await fetch(`/api/extension/job/${jobId}/update-scene`, {
+                method: 'POST',
+                headers: hdrs(),
+                body: JSON.stringify({
+                    scene_num: idx + 1,
+                    bgm_url: data.bgm_url
+                })
+            });
+            toast(`🎵 BGM resolved for Scene ${idx + 1}!`, 'success');
+        } else {
+            toast(`❌ Failed to resolve BGM for Scene ${idx + 1}: ${data.detail || 'Error'}`, 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        toast(`❌ Failed to resolve BGM for Scene ${idx + 1}`, 'error');
+    } finally {
+        scene.bgm_loading = false;
+        renderCustomTimelineUI();
+    }
+}
+
+function startCustomTimelinePolling(jobId) {
+    if (_customTimelinePollingInterval) clearInterval(_customTimelinePollingInterval);
+    
+    const poll = async () => {
+        try {
+            const res = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
+            const data = await res.json();
+            if (!res.ok) return;
+            
+            const total = _customTimelineScenes.length;
+            const imagesDone = data.images_done || 0;
+            const videosDone = data.videos_done || 0;
+            const statusMsg = document.getElementById('ctl-status-msg');
+            const pBar = document.getElementById('ctl-progress-bar');
+            const pImages = document.getElementById('ctl-images-count');
+            const pVideos = document.getElementById('ctl-videos-count');
+            const assembleBtn = document.getElementById('ctl-assemble-btn');
+            
+            if (pImages) pImages.textContent = `Images: ${imagesDone}/${total} done`;
+            if (pVideos) pVideos.textContent = `Videos: ${videosDone}/${total} done`;
+            
+            let progressPct = 0;
+            if (data.status === 'assembling') {
+                progressPct = data.progress_pct || 75;
+            } else if (data.status === 'done') {
+                progressPct = 100;
+            } else {
+                progressPct = Math.floor((imagesDone / total) * 40) + Math.floor((videosDone / total) * 40);
+            }
+            if (pBar) pBar.style.width = progressPct + '%';
+            
+            if (statusMsg) {
+                if (data.status === 'waiting_extension') {
+                    statusMsg.textContent = 'Waiting for Chrome Extension connection... (Ensure the extension is active)';
+                } else if (data.status === 'extension_running' || data.status === 'generating_images') {
+                    statusMsg.textContent = `Extension status: Harvesting Scene Images (${imagesDone}/${total} done)...`;
+                } else if (data.status === 'generating_videos') {
+                    statusMsg.textContent = `Extension status: Harvesting Scene Videos (${videosDone}/${total} done)...`;
+                } else if (data.status === 'assembling') {
+                    statusMsg.textContent = `Assembling Final Video: ${data.progress_msg || 'Processing FFMPEG layers...'}`;
+                } else if (data.status === 'done') {
+                    statusMsg.textContent = 'Reel compilation successfully completed!';
+                } else if (data.status === 'error') {
+                    statusMsg.textContent = `❌ Extension error: ${data.error || 'Assembly error'}`;
+                }
+            }
+            
+            let updatedAny = false;
+            if (data.scenes && data.scenes.length > 0) {
+                data.scenes.forEach((s, i) => {
+                    if (i < _customTimelineScenes.length) {
+                        const scene = _customTimelineScenes[i];
+                        if (s.image_url && s.image_url !== scene.image_url) {
+                            scene.image_url = s.image_url;
+                            scene.thumb = s.image_url;
+                            updatedAny = true;
+                        }
+                        if (s.video_url && s.video_url !== scene.video_url) {
+                            scene.video_url = s.video_url;
+                            updatedAny = true;
+                        }
+                    }
+                });
+                if (updatedAny) {
+                    renderCustomTimelineUI();
+                }
+            }
+            
+            if (imagesDone >= total && videosDone >= total && data.status !== 'assembling' && data.status !== 'done') {
+                if (assembleBtn) assembleBtn.disabled = false;
+            } else {
+                if (assembleBtn) assembleBtn.disabled = true;
+            }
+            
+            if (data.status === 'done' && data.video_url) {
+                clearInterval(_customTimelinePollingInterval);
+                _customTimelinePollingInterval = null;
+                
+                _socialItems = [{
+                    id: jobId,
+                    title: document.getElementById('soc-gen-topic').value || 'My AI Custom Reel',
+                    script: _customTimelineScenes.map(s => `[${s.time_range}] VO: ${s.dialogue}`).join('\n\n'),
+                    video_url: data.video_url,
+                    visual_description: 'Custom chronologically segment-assembled reel',
+                    veo_prompt: _customTimelineScenes[0].image_prompt
+                }];
+                renderSocialResults('reel');
+                toast('🎉 Reel Assembled Successfully!', 'success');
+            }
+            
+        } catch(e) {
+            console.error("Error polling custom timeline job status:", e);
+        }
+    };
+    
+    _customTimelinePollingInterval = setInterval(poll, 3000);
+    poll();
+}
+
+function openMediaPreviewPopup(src, isVideo) {
+    let modal = document.getElementById('ctl-preview-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'ctl-preview-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+        modal.style.zIndex = '99999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.backdropFilter = 'blur(10px)';
+        modal.style.opacity = '0';
+        modal.style.transition = 'opacity 0.25s ease';
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = `
+        <div style="position:relative; max-width:90%; max-height:90%; display:flex; align-items:center; justify-content:center; box-shadow:0 20px 50px rgba(0,0,0,0.5); border-radius:15px; overflow:hidden; border:1px solid rgba(255,255,255,0.1)">
+            <button onclick="closeMediaPreviewPopup()" style="position:absolute; top:15px; right:15px; width:40px; height:40px; border-radius:50%; background:rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.2); color:#fff; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; z-index:100000" onmouseover="this.style.background='var(--red)'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(0,0,0,0.7)'; this.style.transform='scale(1)'">
+                &times;
+            </button>
+            ${isVideo 
+                ? `<video src="${src}" controls autoplay loop style="max-width:100%; max-height:85vh; outline:none; display:block"></video>`
+                : `<img src="${src}" style="max-width:100%; max-height:85vh; object-fit:contain; display:block">`
+            }
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.style.opacity = '1';
+    }, 10);
+}
+
+function closeMediaPreviewPopup() {
+    const modal = document.getElementById('ctl-preview-modal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 250);
+    }
+}
+
+function renderCustomTimelineUI() {
+    const section = document.getElementById('soc-results-section');
+    const list = document.getElementById('soc-results-list');
+    const title = document.getElementById('soc-results-title');
+    
+    section.style.display = 'block';
+    list.style.display = 'block'; // Force display block to stack Row 1 and Row 2 vertically
+    list.style.width = '100%';
+    list.className = ''; // Clear layout grid classes to stack Row 1 and Row 2 vertically
+    title.textContent = '📱 Scene-by-Scene Reel Builder';
+    
+    let statusHtml = `
+        <div class="card" style="padding: 25px; background: var(--bg2); border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 12px; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 800; color: var(--accent); letter-spacing: 0.5px;">Reel Job Details</h3>
+            
+            <div style="font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 5px; word-break: break-all;">
+                ID: <span style="font-family: monospace; color: var(--text2); font-weight: normal;">${_customTimelineJobId}</span>
+            </div>
+            
+            <div id="ctl-status-msg" style="font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; min-height: 36px;">
+                Waiting for Chrome Extension... Please ensure the Meta AI extension is running.
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; color: var(--text3); font-weight: 600">
+                    <span id="ctl-images-count">Images: 0/${_customTimelineScenes.length} done</span>
+                    <span id="ctl-videos-count">Videos: 0/${_customTimelineScenes.length} done</span>
+                </div>
+                <div style="background: var(--bg3); border-radius: 10px; height: 8px; overflow: hidden; position: relative;">
+                    <div id="ctl-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ffd600, var(--accent)); transition: width 0.4s ease;"></div>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="window.postMessage({type:'MR_AI_START_JOB', jobId:'${_customTimelineJobId}', token:session.token, backendUrl:window.location.origin}, '*'); toast('Sent start command to extension', 'success')" style="font-size: 12px; padding: 10px 15px; display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1;">
+                        🔌 Connect Extension
+                    </button>
+                    <button class="btn btn-primary" id="ctl-assemble-btn" onclick="assembleCustomTimelineReel()" style="font-size: 12px; padding: 12px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; font-weight: bold;" disabled>
+                        🎬 Assemble Final Reel
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    let rightColumnHtml = _customTimelineScenes.map((scene, idx) => {
+        const imageSrc = scene.image_url || '';
+        const videoSrc = scene.video_url || '';
+        const audioSrc = scene.audio_url || '';
+        const bgmSrc = scene.bgm_url || '';
+        
+        return `
+            <div class="card" style="padding: 20px; border: 1px solid var(--border); background: var(--bg); transition: all 0.2s; border-radius: 12px;" onmouseover="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 800; color: var(--accent);">🎬 Scene ${scene.scene_num} <span style="color: var(--text3); font-size: 11px; font-weight: 400; margin-left: 5px;">[${scene.time_range}]</span></span>
+                    <button class="btn btn-secondary" onclick="openSceneRegenerateDialog(${idx})" style="font-size: 10px; padding: 4px 8px;">
+                        🔄 Regenerate
+                    </button>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label class="form-label" style="font-size: 9px; text-transform: uppercase; color: var(--text3); margin-bottom: 3px;">🖼️ Image Prompt</label>
+                            <textarea id="ctl-prompt-img-${idx}" class="form-input" style="height: 50px; font-size: 10px; resize: none; line-height: 1.3; padding: 6px; margin: 0;" onblur="updateScenePrompt(${idx}, 'image_prompt', this.value)">${escHtml(scene.image_prompt || '')}</textarea>
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 9px; text-transform: uppercase; color: var(--text3); margin-bottom: 3px;">🎥 Video / Motion</label>
+                            <textarea id="ctl-prompt-vid-${idx}" class="form-input" style="height: 50px; font-size: 10px; resize: none; line-height: 1.3; padding: 6px; margin: 0;" onblur="updateScenePrompt(${idx}, 'animation_prompt', this.value)">${escHtml(scene.animation_prompt || '')}</textarea>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label class="form-label" style="font-size: 9px; text-transform: uppercase; color: var(--text3); margin-bottom: 3px;">🎙️ Voiceover</label>
+                            <textarea id="ctl-prompt-vo-${idx}" class="form-input" style="height: 50px; font-size: 10px; resize: none; line-height: 1.3; padding: 6px; margin: 0;" onblur="updateScenePrompt(${idx}, 'dialogue', this.value)">${escHtml(scene.dialogue || '')}</textarea>
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 9px; text-transform: uppercase; color: var(--text3); margin-bottom: 3px;">🎵 BGM Prompt</label>
+                            <textarea id="ctl-prompt-bgm-${idx}" class="form-input" style="height: 50px; font-size: 10px; resize: none; line-height: 1.3; padding: 6px; margin: 0;" onblur="updateSceneBgm(${idx}, this.value)">${escHtml(scene.bgm_prompt || '')}</textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg2); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden; position: relative; text-align: center; cursor: pointer;" 
+                             onclick="${imageSrc ? `openMediaPreviewPopup('${imageSrc}', false)` : ''}">
+                            ${imageSrc 
+                                ? `<img src="${imageSrc}" style="width: 100%; height: 100%; object-fit: cover; display: block;" title="Click to zoom Image">
+                                   <div style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: #fff; font-size: 8px; padding: 2px 5px; border-radius: 4px;">🔍 Zoom</div>`
+                                : `<div style="color: var(--text3); font-size: 8px; padding: 5px;">
+                                     <div style="font-size: 14px; margin-bottom: 3px;">⌛</div>
+                                     Waiting Image...
+                                   </div>`
+                            }
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 9/16; background: #000; border-radius: 8px; overflow: hidden; position: relative; text-align: center; cursor: pointer;"
+                             onclick="${videoSrc ? `openMediaPreviewPopup('${videoSrc}', true)` : ''}">
+                            ${videoSrc 
+                                ? `<video src="${videoSrc}" style="width: 100%; height: 100%; object-fit: cover; display: block;" muted loop autoplay></video>
+                                   <div style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.6); color: #fff; font-size: 8px; padding: 2px 5px; border-radius: 4px;">🔍 Preview</div>`
+                                : `<div style="color: var(--text3); font-size: 8px; padding: 5px;">
+                                     <div style="font-size: 14px; margin-bottom: 3px;">⌛</div>
+                                     Waiting Video...
+                                   </div>`
+                            }
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg3); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+                            <span style="font-size: 9px; font-weight: 700; color: var(--text3);">🎙️ VO</span>
+                            ${scene.audio_loading 
+                                ? `<span style="font-size: 8px; color: var(--accent);">⏳ Generating...</span>`
+                                : audioSrc
+                                    ? `<audio src="${audioSrc}" controls style="width: 130px; height: 20px; outline: none;"></audio>`
+                                    : `<span style="color: var(--text3); font-size: 8px;">None</span>`
+                            }
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg3); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+                            <span style="font-size: 9px; font-weight: 700; color: var(--text3);">🎵 BGM</span>
+                            ${scene.bgm_loading 
+                                ? `<span style="font-size: 8px; color: var(--accent);">⏳ Resolving...</span>`
+                                : bgmSrc
+                                    ? `<audio src="${bgmSrc}" controls style="width: 130px; height: 20px; outline: none;"></audio>`
+                                    : `<span style="color: var(--text3); font-size: 8px;">None</span>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    list.innerHTML = `
+        <!-- Row 1: Reel Job Details Status Card (Full Width) -->
+        <div style="margin-bottom: 20px;">
+            ${statusHtml}
+        </div>
+        
+        <!-- Row 2: Scenes Grid (2 Columns, 2 Scenes per row) -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            ${rightColumnHtml}
+        </div>
+    `;
+}
+
+async function updateScenePrompt(idx, field, value) {
+    const scene = _customTimelineScenes[idx];
+    scene[field] = value;
+    
+    try {
+        const body = { scene_num: idx + 1 };
+        body[field] = value;
+        await fetch(`/api/extension/job/${_customTimelineJobId}/update-scene`, {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify(body)
+        });
+    } catch(e) {
+        console.error("Failed to sync prompt update to backend:", e);
+    }
+}
+
+async function updateSceneBgm(idx, value) {
+    const scene = _customTimelineScenes[idx];
+    if (scene.bgm_prompt === value) return;
+    scene.bgm_prompt = value;
+    resolveBgmForScene(_customTimelineJobId, idx);
+}
+
+async function openSceneRegenerateDialog(idx) {
+    const scene = _customTimelineScenes[idx];
+    const choice = prompt("What would you like to regenerate for Scene " + scene.scene_num + "?\n\nEnter:\n1 - Image (Meta AI)\n2 - Video (Meta AI Animation)\n3 - Audio Voiceover (ElevenLabs)\n4 - BGM (Background Music)");
+    if (!choice) return;
+    
+    const cleanChoice = choice.trim().toLowerCase();
+    
+    if (cleanChoice === '1' || cleanChoice === 'image') {
+        const newPrompt = prompt("Enter prompt to regenerate Image:", scene.image_prompt);
+        if (newPrompt === null) return;
+        scene.image_prompt = newPrompt.trim();
+        renderCustomTimelineUI();
+        
+        await updateScenePrompt(idx, 'image_prompt', scene.image_prompt);
+        
+        window.postMessage({
+            type: 'MR_AI_GENERATE_SINGLE_ASSET',
+            assetId: `jobscene-${_customTimelineJobId}-${scene.scene_num}-image`,
+            prompt: scene.image_prompt,
+            mediaType: 'image',
+            token: window._currentToken || session.token || '',
+            backendUrl: window.location.origin
+        }, '*');
+        
+        toast('🤖 Image regeneration triggered via Meta AI! Previews will refresh.', 'success');
+    }
+    else if (cleanChoice === '2' || cleanChoice === 'video') {
+        const newPrompt = prompt("Enter prompt to animate Video:", scene.animation_prompt);
+        if (newPrompt === null) return;
+        scene.animation_prompt = newPrompt.trim();
+        renderCustomTimelineUI();
+        
+        await updateScenePrompt(idx, 'animation_prompt', scene.animation_prompt);
+        
+        window.postMessage({
+            type: 'MR_AI_GENERATE_SINGLE_ASSET',
+            assetId: `jobscene-${_customTimelineJobId}-${scene.scene_num}-video`,
+            prompt: scene.animation_prompt,
+            mediaType: 'video',
+            token: window._currentToken || session.token || '',
+            backendUrl: window.location.origin
+        }, '*');
+        
+        toast('🤖 Video animation triggered via Meta AI! Previews will refresh.', 'success');
+    }
+    else if (cleanChoice === '3' || cleanChoice === 'audio' || cleanChoice === 'voiceover') {
+        const newPrompt = prompt("Enter narration text for Voiceover:", scene.dialogue);
+        if (newPrompt === null) return;
+        scene.dialogue = newPrompt.trim();
+        renderCustomTimelineUI();
+        
+        await updateScenePrompt(idx, 'dialogue', scene.dialogue);
+        generateVoiceForScene(_customTimelineJobId, idx);
+    }
+    else if (cleanChoice === '4' || cleanChoice === 'bgm') {
+        const newPrompt = prompt("Enter description or Epidemic link for BGM:", scene.bgm_prompt);
+        if (newPrompt === null) return;
+        scene.bgm_prompt = newPrompt.trim();
+        renderCustomTimelineUI();
+        
+        resolveBgmForScene(_customTimelineJobId, idx);
+    }
+    else {
+        toast('Invalid choice. Please try again.', 'error');
+    }
+}
+
+async function assembleCustomTimelineReel() {
+    if (!_customTimelineJobId) return;
+    
+    const assembleBtn = document.getElementById('ctl-assemble-btn');
+    if (assembleBtn) assembleBtn.disabled = true;
+    
+    toast('🎬 Requesting final video assembly... (Applying broadcaster filters, Ken Burns pans & CapCut subtitles)', 'info');
+    
+    try {
+        const total = _customTimelineScenes.length;
+        const imagesList = Array.from({length: total}, (_, i) => `scene_${i}_orig_img.jpg`);
+        const videosList = Array.from({length: total}, (_, i) => `scene_${i}_orig_vid.mp4`);
+        const firstBgm = _customTimelineScenes[0].bgm_url || '';
+        
+        const res = await fetch(`/api/extension/job/${_customTimelineJobId}/assemble`, {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({
+                images: imagesList,
+                videos: videosList,
+                bgm_url: firstBgm
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            toast('🎬 Reel assembly started in the background. Please wait...', 'success');
+        } else {
+            toast(`❌ Failed to start assembly: ${data.detail || 'Error'}`, 'error');
+            if (assembleBtn) assembleBtn.disabled = false;
+        }
+    } catch(e) {
+        console.error(e);
+        toast('❌ Error starting video assembly', 'error');
+        if (assembleBtn) assembleBtn.disabled = false;
+    }
+}
+
 async function suggestSocialTopics() {
   const dsId = document.getElementById('soc-gen-ds').value;
   const lang = document.getElementById('soc-gen-lang').value;
@@ -8302,6 +8988,10 @@ function renderSocialResults(type) {
   
   section.style.display = 'block';
   title.textContent = type === 'post' ? '📝 Generated Posts' : '📱 Generated Reel';
+  
+  // Reset inline display styles overridden by Custom Timeline UI
+  list.style.display = '';
+  list.style.width = '';
   
   if(type === 'post') {
     list.className = 'grid-3';
@@ -15797,6 +16487,18 @@ let wizardRegeneratingScenes = [];
 let wizardContextType = 'subtopic'; // 'subtopic' or 'topic'
 let wizardContextId = null;
 
+// ── Auto-retry state for failed scene image/video generation ──────────────────
+let wizardAutoRetryCount = {}; // { sceneIdx: retryCount }
+const WIZARD_MAX_AUTO_RETRIES = 3;
+
+// ── BGM state for scene-by-scene EpidemicSound generation ────────────────────
+let wizardBgmState = {
+    sceneBgms: {},           // { sceneIdx: { url, lqmp3Url, status: 'pending'|'loading'|'done'|'error' } }
+    currentEpidemicSceneIdx: -1, // Which scene is currently open in EpidemicSound overlay
+    totalScenes: 12,
+    allDone: false
+};
+
 // Restore wizardJobId from localStorage if available
 try {
     const savedJobId = localStorage.getItem('wizardJobId');
@@ -15833,6 +16535,13 @@ function openExtensionReelWizard(contextType = 'subtopic', contextId = null) {
     try { localStorage.removeItem('wizardJobId'); } catch(e) {}
     wizardScenes = [];
     wizardRegeneratingScenes = [];
+    wizardAutoRetryCount = {};
+    wizardBgmState = {
+        sceneBgms: {},
+        currentEpidemicSceneIdx: -1,
+        totalScenes: 12,
+        allDone: false
+    };
     
     if (wizardPollingInterval) {
         clearInterval(wizardPollingInterval);
@@ -15905,6 +16614,7 @@ async function generateWizardFullVoice(btn) {
     const oldText = btn.textContent;
     btn.textContent = '⏳ Generating Full Voice...';
     btn.disabled = true;
+    showVoiceOverUpgradePopup();
     
     try {
         const langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
@@ -15929,6 +16639,7 @@ async function generateWizardFullVoice(btn) {
     } finally {
         btn.textContent = oldText;
         btn.disabled = false;
+        hideVoiceOverUpgradePopup();
     }
 }
 
@@ -16106,25 +16817,131 @@ async function checkRegenStatus(idx, type) {
 
 function handleHarvestImgError(img, idx) {
     const card = img.closest('.wizard-grid-card-inner');
-    if (card) {
-        card.innerHTML = `
-            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; color:var(--text3); background:var(--bg3); border-radius:8px; border:1.5px dashed var(--border);">
-                <span class="loader-spin" style="width:14px; height:14px; border-top-color:var(--accent)"></span>
-                <span>Scene ${idx + 1}</span>
-            </div>
-        `;
+
+    // ── Auto-retry with modified prompt ──────────────────────────────────────
+    if (!wizardAutoRetryCount[idx]) wizardAutoRetryCount[idx] = 0;
+
+    if (wizardAutoRetryCount[idx] < WIZARD_MAX_AUTO_RETRIES && wizardScenes[idx]) {
+        wizardAutoRetryCount[idx]++;
+        const retryNum = wizardAutoRetryCount[idx];
+
+        // Modify prompt: add quality boosters to help bypass content filtering
+        const qualityBoosters = [
+            ", cinematic, ultra realistic, no text, no logos, vertical 9:16",
+            ", professional photography, bokeh, no text, dramatic lighting",
+            ", hyperrealistic, 8K, stock photo style, no watermarks"
+        ];
+        const booster = qualityBoosters[Math.min(retryNum - 1, qualityBoosters.length - 1)];
+        const basePrompt = (wizardScenes[idx].image_prompt || '').replace(/, cinematic.*$/, '').replace(/, professional photography.*$/, '').replace(/, hyperrealistic.*$/, '');
+        const newPrompt = basePrompt + booster;
+
+        wizardScenes[idx].image_prompt = newPrompt;
+
+        if (card) {
+            card.innerHTML = `
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:10px; font-weight:700; color:var(--accent); background:rgba(168,85,247,0.06); border-radius:8px; border:1.5px dashed var(--accent);">
+                    <span class="loader-spin" style="width:14px; height:14px; border-top-color:var(--accent)"></span>
+                    <span>Retry ${retryNum}/${WIZARD_MAX_AUTO_RETRIES}</span>
+                    <span style="font-size:9px; opacity:0.7;">Scene ${idx + 1}</span>
+                </div>
+            `;
+        }
+
+        // Re-update prompt on backend and re-trigger via extension
+        setTimeout(async () => {
+            try {
+                await fetch(`/api/extension/job/${wizardJobId}/update-scene`, {
+                    method: 'POST', headers: hdrs(),
+                    body: JSON.stringify({ scene_num: idx + 1, image_prompt: newPrompt })
+                });
+                window.postMessage({
+                    type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                    assetId: `jobscene-${wizardJobId}-${idx + 1}-image`,
+                    prompt: newPrompt,
+                    mediaType: 'image',
+                    token: session.token || '',
+                    backendUrl: window.location.origin
+                }, '*');
+                if (!wizardRegeneratingScenes.includes(idx)) wizardRegeneratingScenes.push(idx);
+                toast(`🔄 Scene ${idx + 1}: Auto-retrying image (attempt ${retryNum})...`, 'info');
+            } catch(e) {
+                console.error('Auto-retry failed for scene', idx, e);
+            }
+        }, 1000 + retryNum * 500); // Stagger retries to avoid hammering
+    } else {
+        // Max retries exceeded — show error state
+        if (card) {
+            card.innerHTML = `
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:10px; font-weight:700; color:var(--red); background:rgba(248,113,113,0.06); border-radius:8px; border:1.5px dashed var(--red); cursor:pointer;" onclick="openWizardEditOverlay(${idx}, 'image')" title="Click to manually edit prompt">
+                    <span style="font-size:16px;">⚠️</span>
+                    <span>Scene ${idx + 1}</span>
+                    <span style="font-size:9px; opacity:0.8;">Click to edit</span>
+                </div>
+            `;
+        }
+        toast(`⚠️ Scene ${idx + 1} image failed after ${WIZARD_MAX_AUTO_RETRIES} retries. Click ✏️ Edit to fix.`, 'error');
     }
 }
 
 function handleHarvestVidError(vid, idx) {
     const card = vid.closest('.wizard-grid-card-inner');
-    if (card) {
-        card.innerHTML = `
-            <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:700; color:var(--text3); background:var(--bg3); border-radius:8px; border:1.5px dashed var(--border);">
-                <span style="font-size:14px;">⏳</span>
-                <span>Scene ${idx + 1}</span>
-            </div>
-        `;
+
+    // ── Auto-retry video generation with modified animation prompt ────────────
+    if (!wizardAutoRetryCount[`vid_${idx}`]) wizardAutoRetryCount[`vid_${idx}`] = 0;
+
+    if (wizardAutoRetryCount[`vid_${idx}`] < WIZARD_MAX_AUTO_RETRIES && wizardScenes[idx]) {
+        wizardAutoRetryCount[`vid_${idx}`]++;
+        const retryNum = wizardAutoRetryCount[`vid_${idx}`];
+
+        const animBoosters = [
+            " Smooth cinematic camera movement, vertical 9:16 portrait format.",
+            " Slow zoom in, high quality, vertical portrait format.",
+            " Ken Burns pan effect, professional video quality."
+        ];
+        const baseAnim = (wizardScenes[idx].animation_prompt || 'Animate the scene').split('.')[0];
+        const newAnim = baseAnim + animBoosters[Math.min(retryNum - 1, animBoosters.length - 1)];
+        wizardScenes[idx].animation_prompt = newAnim;
+
+        if (card) {
+            card.innerHTML = `
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:10px; font-weight:700; color:#10b981; background:rgba(16,185,129,0.06); border-radius:8px; border:1.5px dashed #10b981;">
+                    <span class="loader-spin" style="width:14px; height:14px; border-top-color:#10b981"></span>
+                    <span>Vid Retry ${retryNum}/${WIZARD_MAX_AUTO_RETRIES}</span>
+                    <span style="font-size:9px; opacity:0.7;">Scene ${idx + 1}</span>
+                </div>
+            `;
+        }
+
+        setTimeout(async () => {
+            try {
+                await fetch(`/api/extension/job/${wizardJobId}/update-scene`, {
+                    method: 'POST', headers: hdrs(),
+                    body: JSON.stringify({ scene_num: idx + 1, animation_prompt: newAnim })
+                });
+                window.postMessage({
+                    type: 'MR_AI_GENERATE_SINGLE_ASSET',
+                    assetId: `jobscene-${wizardJobId}-${idx + 1}-video`,
+                    prompt: newAnim,
+                    mediaType: 'video',
+                    token: session.token || '',
+                    backendUrl: window.location.origin
+                }, '*');
+                if (!wizardRegeneratingScenes.includes(idx)) wizardRegeneratingScenes.push(idx);
+                toast(`🔄 Scene ${idx + 1}: Auto-retrying video (attempt ${retryNum})...`, 'info');
+            } catch(e) {
+                console.error('Auto-retry video failed for scene', idx, e);
+            }
+        }, 1000 + retryNum * 500);
+    } else {
+        if (card) {
+            card.innerHTML = `
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:10px; font-weight:700; color:var(--red); background:rgba(248,113,113,0.06); border-radius:8px; border:1.5px dashed var(--red); cursor:pointer;" onclick="openWizardEditOverlay(${idx}, 'video')" title="Click to manually edit prompt">
+                    <span style="font-size:16px;">⚠️</span>
+                    <span>Scene ${idx + 1}</span>
+                    <span style="font-size:9px; opacity:0.8;">Click to edit</span>
+                </div>
+            `;
+        }
     }
 }
 
@@ -16469,12 +17286,40 @@ function goToWizardStep(stepNum) {
 
     
     else if (stepNum === 5) {
+        // Build BGM summary HTML for display in Step 5
+        const bgmSummaryItems = wizardBgmState.totalScenes > 0
+            ? Array.from({length: wizardBgmState.totalScenes}, (_, i) => {
+                const bgm = wizardBgmState.sceneBgms[i] || { status: 'pending' };
+                const bgmDot = bgm.status === 'done' ? '🟢' : bgm.status === 'skipped' ? '⚪' : bgm.status === 'error' ? '🔴' : '🟡';
+                const playerOrStatus = bgm.status === 'done' && bgm.url
+                    ? `<audio src="${bgm.url}" controls style="width:100%; height:20px;"></audio>`
+                    : `<span style="font-size:9px; color:var(--text3);">${bgm.status || 'none'}</span>`;
+                return `<div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:4px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--text2);">${bgmDot} Scene ${i+1}</div>
+                    ${playerOrStatus}
+                </div>`;
+              }).join('')
+            : '<div style="color:var(--text3); font-size:12px;">No BGM state found.</div>';
+
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:20px; flex:1; align-items:center; text-align:center;">
               <div style="font-size:18px; font-weight:800; color:var(--text); width:100%; text-align:left;">🎬 Step 5: Assemble, Mix and Preview AI Reel</div>
               <p style="font-size:13px; color:var(--text2); line-height:1.6; width:100%; text-align:left;">Assemble the final reel by overlaying your high-definition scene video clips, custom voiceover narration, and cinematic background music.</p>
               
-              <div id="wizard-assembly-trigger-section" style="margin:40px 0; display:flex; flex-direction:column; align-items:center; gap:20px; width:100%; max-width:400px;">
+              <!-- BGM Review Summary -->
+              ${wizardBgmState.totalScenes > 0 ? `
+              <div style="width:100%; background:linear-gradient(135deg, rgba(124,58,237,0.06), rgba(168,85,247,0.03)); border:1.5px solid rgba(168,85,247,0.2); border-radius:14px; padding:18px 20px; text-align:left;">
+                  <div style="font-size:13px; font-weight:900; color:var(--accent); margin-bottom:12px;">🎵 BGM Review — ${Object.values(wizardBgmState.sceneBgms).filter(b=>b&&b.status==='done').length} of ${wizardBgmState.totalScenes} scenes have music</div>
+                  <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:12px;">
+                      ${bgmSummaryItems}
+                  </div>
+                  <div style="display:flex; justify-content:flex-end;">
+                      <button onclick="goToWizardStep(4); showWizardBgmPhase();" style="font-size:11px; font-weight:700; padding:6px 14px; background:transparent; border:1px solid var(--accent); color:var(--accent); border-radius:8px; cursor:pointer; font-family:inherit;">← Back to Edit BGMs</button>
+                  </div>
+              </div>
+              ` : ''}
+              
+              <div id="wizard-assembly-trigger-section" style="margin:20px 0; display:flex; flex-direction:column; align-items:center; gap:20px; width:100%; max-width:400px;">
                 <button onclick="startWizardAssembly()" id="btn-wizard-assemble" style="width:100%; padding:18px; font-size:16px; font-weight:900; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 30px rgba(168,85,247,0.3); transition:0.3s; font-family:inherit;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">🚀 Assemble Final Reel</button>
               </div>
 
@@ -16751,17 +17596,46 @@ window.addEventListener('click', function(e) {
     }
 });
 
+function getDefaultPreviewText(lang) {
+    if (lang === 'Hindi') {
+        return "नमस्ते! यह मेरी आवाज़ का एक उच्च गुणवत्ता वाला पूर्वावलोकन है।";
+    } else if (lang === 'Spanish') {
+        return "¡Hola! Esta es una vista previa de alta calidad de mi voz de narración.";
+    } else if (lang === 'Bengali') {
+        return "নমস্কার! এটি আমার বর্ণনার ভয়েসের একটি উচ্চ মানের পূর্বরূপ।";
+    } else if (lang === 'Marathi') {
+        return "नमस्कार! हे माझ्या आवाजाचे उच्च दर्जाचे पूर्वावलोकन आहे.";
+    } else {
+        return "Hello! This is a high-quality preview of my narration voice.";
+    }
+}
+
 async function previewWizardVoiceById(voiceId, btn) {
     const old = btn.textContent;
     btn.textContent = '⏳'; btn.disabled = true;
 
-    const transcriptEl = document.getElementById('wizard-reel-transcript') || document.getElementById('wizard-upgrade-script-input');
-    const previewText = transcriptEl && transcriptEl.value.trim()
-        ? transcriptEl.value.trim().substring(0, 150)
-        : "Hello! This is a high-quality preview of my narration voice.";
-
-    const langSelect = document.getElementById('wizard-reel-language-step1') || document.getElementById('wizard-reel-language');
+    let transcriptEl = null;
+    let langSelect = null;
+    if (typeof wizardActiveStep !== 'undefined') {
+        if (wizardActiveStep === 2) {
+            transcriptEl = document.getElementById('wizard-upgrade-script-input');
+            langSelect = document.getElementById('wizard-reel-language');
+        } else if (wizardActiveStep === 1) {
+            transcriptEl = document.getElementById('wizard-reel-transcript');
+            langSelect = document.getElementById('wizard-reel-language-step1');
+        }
+    }
+    if (!transcriptEl) {
+        transcriptEl = document.getElementById('wizard-upgrade-script-input') || document.getElementById('wizard-reel-transcript');
+    }
+    if (!langSelect) {
+        langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
+    }
     const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+
+    const previewText = transcriptEl && transcriptEl.value.trim()
+        ? transcriptEl.value.trim().substring(0, 500)
+        : getDefaultPreviewText(selectedLang);
 
     try {
         const res = await fetch(`/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(previewText)}&language=${encodeURIComponent(selectedLang)}`, { headers: hdrs() });
@@ -16822,14 +17696,30 @@ async function previewWizardVoice(btn) {
     if (!voiceId) return;
     const old = btn.textContent;
     btn.textContent = '...'; btn.disabled = true;
-    const transcriptEl = document.getElementById('wizard-reel-transcript');
-    const previewText = transcriptEl && transcriptEl.value.trim()
-        ? transcriptEl.value.trim().substring(0, 200)
-        : (currentActiveSubtopicData ? currentActiveSubtopicData.name : 'Hello, this is a voice preview.');
-        
-    const langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
-    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
     
+    let transcriptEl = null;
+    let langSelect = null;
+    if (typeof wizardActiveStep !== 'undefined') {
+        if (wizardActiveStep === 2) {
+            transcriptEl = document.getElementById('wizard-upgrade-script-input');
+            langSelect = document.getElementById('wizard-reel-language');
+        } else if (wizardActiveStep === 1) {
+            transcriptEl = document.getElementById('wizard-reel-transcript');
+            langSelect = document.getElementById('wizard-reel-language-step1');
+        }
+    }
+    if (!transcriptEl) {
+        transcriptEl = document.getElementById('wizard-upgrade-script-input') || document.getElementById('wizard-reel-transcript');
+    }
+    if (!langSelect) {
+        langSelect = document.getElementById('wizard-reel-language') || document.getElementById('wizard-reel-language-step1');
+    }
+    const selectedLang = langSelect ? langSelect.value : wizardLanguage;
+
+    const previewText = transcriptEl && transcriptEl.value.trim()
+        ? transcriptEl.value.trim().substring(0, 500)
+        : getDefaultPreviewText(selectedLang);
+        
     fetch(`/api/social/voice-preview/${voiceId}?text=${encodeURIComponent(previewText)}&language=${encodeURIComponent(selectedLang)}`, { headers: hdrs() })
         .then(res => { if (!res.ok) throw new Error('Preview failed: ' + res.status); return res.blob(); })
         .then(blob => { new Audio(URL.createObjectURL(blob)).play(); toast('Playing voice preview', 'info'); btn.textContent = old; btn.disabled = false; })
@@ -16845,8 +17735,8 @@ async function handleWizardLangChangeStep1(newLang) {
 async function handleWizardLangChangeStep2(newLang) {
     wizardLanguage = newLang;
     toast(`Language upgraded to ${newLang}. Re-generating voiceover script...`, 'info');
+    showVoiceOverUpgradePopup();
     
-    if (!currentActiveSubtopicData) return;
     const upgradeScriptInput = document.getElementById('wizard-upgrade-script-input');
     const genBtn = document.querySelector('button[onclick="generateWizardFullVoice(this)"]');
     if (genBtn) {
@@ -16855,11 +17745,31 @@ async function handleWizardLangChangeStep2(newLang) {
     }
     
     try {
-        const res = await fetch('/api/classroom/subtopics/' + currentActiveSubtopicId + '/generate-transcript', {
+        let url = '';
+        const activeId = typeof wizardContextId !== 'undefined' && wizardContextId ? wizardContextId : (typeof currentActiveSubtopicId !== 'undefined' ? currentActiveSubtopicId : null);
+        
+        if (!activeId) {
+            throw new Error('No active topic or subtopic context found');
+        }
+        
+        if (typeof wizardContextType !== 'undefined' && wizardContextType === 'subtopic') {
+            url = '/api/classroom/subtopics/' + activeId + '/generate-transcript';
+        } else if (typeof wizardContextType !== 'undefined' && wizardContextType === 'topic') {
+            url = '/api/classroom/topics/' + activeId + '/generate-transcript';
+        } else if (typeof wizardContextType !== 'undefined' && wizardContextType === 'pyq') {
+            url = '/api/classroom/pyqs/' + activeId + '/generate-transcript';
+        } else if (typeof wizardContextType !== 'undefined' && wizardContextType === 'current_affairs') {
+            url = '/api/classroom/current-affairs/' + activeId + '/generate-transcript';
+        } else {
+            url = '/api/classroom/subtopics/' + activeId + '/generate-transcript';
+        }
+        
+        const res = await fetch(url, {
             method: 'POST',
             headers: hdrs(),
             body: JSON.stringify({ language: newLang })
         });
+        if (!res.ok) throw new Error('Script regeneration API failed: ' + res.status);
         const data = await res.json();
         if (data.transcript) {
             wizardTranscript = data.transcript;
@@ -16868,7 +17778,14 @@ async function handleWizardLangChangeStep2(newLang) {
             // Also update any inline previews
             const previewDiv = document.querySelector('[style*="Narration Script Preview"] ~ div');
             if (previewDiv) previewDiv.textContent = data.transcript;
+            
+            // Auto trigger narration voiceover generation
+            if (genBtn) {
+                await generateWizardFullVoice(genBtn);
+            }
             toast(`Script successfully updated in ${newLang}!`, 'success');
+        } else {
+            throw new Error('No transcript returned from server');
         }
     } catch(e) {
         toast('Failed to regenerate script: ' + e.message, 'error');
@@ -16877,6 +17794,7 @@ async function handleWizardLangChangeStep2(newLang) {
             genBtn.disabled = false;
             genBtn.textContent = '🔊 Generate Narration Voice';
         }
+        hideVoiceOverUpgradePopup();
     }
 }
 
@@ -16954,6 +17872,392 @@ function startExtensionWizardHandshake() {
     pollWizardJob(wizardJobId);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BGM PHASE — EpidemicSound Scene-by-Scene Music Generation (Step 4B)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showWizardBgmPhase() {
+    const total = wizardBgmState.totalScenes || wizardScenes.length || 12;
+    wizardBgmState.totalScenes = total;
+
+    // Initialize all scenes as pending if not already set
+    for (let i = 0; i < total; i++) {
+        if (!wizardBgmState.sceneBgms[i]) {
+            wizardBgmState.sceneBgms[i] = { status: 'pending', url: null, lqmp3Url: null };
+        }
+    }
+
+    // Insert BGM phase section after the wizard grids (inside Step 4 container)
+    const container = document.getElementById('wizard-step-content-container');
+    if (!container) return;
+
+    // Append BGM section at the end of the existing Step 4 content
+    let bgmSection = document.getElementById('wizard-bgm-phase-section');
+    if (!bgmSection) {
+        bgmSection = document.createElement('div');
+        bgmSection.id = 'wizard-bgm-phase-section';
+        bgmSection.style.cssText = 'margin-top: 24px; animation: fadeInUp 0.4s ease;';
+        container.appendChild(bgmSection);
+    }
+
+    renderWizardBgmCards();
+    
+    toast('🎵 All scenes ready! Now generate BGM track for each scene.', 'success');
+}
+
+function renderWizardBgmCards() {
+    const section = document.getElementById('wizard-bgm-phase-section');
+    if (!section) return;
+    
+    const total = wizardBgmState.totalScenes;
+    const doneCount = Object.values(wizardBgmState.sceneBgms).filter(b => b && b.status === 'done').length;
+    const allDone = doneCount >= total;
+
+    let cardsHtml = '';
+    for (let i = 0; i < total; i++) {
+        const bgm = wizardBgmState.sceneBgms[i] || { status: 'pending' };
+        const scene = wizardScenes[i] || {};
+        const bgmPrompt = scene.bgm_prompt || 'Cinematic background music';
+        
+        let statusBadge = '';
+        let actionBtn = '';
+        let playerHtml = '';
+        
+        if (bgm.status === 'done' && bgm.url) {
+            statusBadge = `<span style="background:rgba(52,211,153,0.15); color:#34d399; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:800;">✅ DONE</span>`;
+            playerHtml = `<audio src="${bgm.url}" controls style="width:100%; height:22px; margin-top:6px;"></audio>`;
+            actionBtn = `<button onclick="regenSceneBgm(${i})" style="font-size:9px; padding:3px 8px; background:rgba(168,85,247,0.1); border:1px solid var(--accent); color:var(--accent); border-radius:6px; cursor:pointer; font-family:inherit;">🔄 Regen</button>`;
+        } else if (bgm.status === 'loading') {
+            statusBadge = `<span style="background:rgba(251,191,36,0.15); color:#fbbf24; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:800;">⏳ LOADING</span>`;
+            playerHtml = `<div style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:10px; color:var(--accent);"><span class="loader-spin" style="width:12px; height:12px; border-top-color:var(--accent);"></span> Downloading...</div>`;
+            actionBtn = '';
+        } else if (bgm.status === 'error') {
+            statusBadge = `<span style="background:rgba(248,113,113,0.15); color:#f87171; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:800;">❌ ERROR</span>`;
+            playerHtml = `<div style="font-size:9px; color:var(--red); margin-top:4px;">Failed. Try again.</div>`;
+            actionBtn = `<button onclick="openEpidemicForScene(${i})" style="font-size:9px; padding:3px 8px; background:rgba(248,113,113,0.1); border:1px solid var(--red); color:var(--red); border-radius:6px; cursor:pointer; font-family:inherit;">↩ Retry</button>`;
+        } else if (bgm.status === 'skipped') {
+            statusBadge = `<span style="background:rgba(107,114,128,0.15); color:#9ca3af; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:800;">⏭ SKIPPED</span>`;
+            actionBtn = `<button onclick="openEpidemicForScene(${i})" style="font-size:9px; padding:3px 8px; background:rgba(168,85,247,0.1); border:1px solid var(--accent); color:var(--accent); border-radius:6px; cursor:pointer; font-family:inherit;">+ Add BGM</button>`;
+        } else {
+            statusBadge = `<span style="background:rgba(107,114,128,0.1); color:#6b7280; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:800;">⏳ PENDING</span>`;
+            actionBtn = `<button onclick="openEpidemicForScene(${i})" style="font-size:9px; padding:4px 10px; background:linear-gradient(135deg, #7c3aed, #a855f7); border:none; color:#fff; border-radius:6px; cursor:pointer; font-family:inherit; font-weight:700;">🎵 Generate</button>`;
+        }
+        
+        cardsHtml += `
+            <div style="background:var(--bg2); border:1.5px solid ${bgm.status === 'done' ? 'rgba(52,211,153,0.3)' : bgm.status === 'loading' ? 'rgba(251,191,36,0.3)' : 'var(--border)'}; border-radius:10px; padding:12px; transition:all 0.3s;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:11px; font-weight:800; color:var(--accent);">Scene ${i + 1}</span>
+                    ${statusBadge}
+                </div>
+                <div style="font-size:9px; color:var(--text3); line-height:1.4; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${bgmPrompt}</div>
+                ${playerHtml}
+                <div style="display:flex; justify-content:flex-end; margin-top:8px; gap:6px;">
+                    ${bgm.status !== 'loading' ? `<button onclick="skipEpidemicScene(${i})" style="font-size:9px; padding:3px 8px; background:transparent; border:1px solid var(--border); color:var(--text3); border-radius:6px; cursor:pointer; font-family:inherit;">Skip</button>` : ''}
+                    ${actionBtn}
+                </div>
+            </div>
+        `;
+    }
+
+    section.innerHTML = `
+        <style>
+            @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+            #wizard-bgm-phase-section { animation: fadeInUp 0.4s ease; }
+        </style>
+        <div style="background:linear-gradient(135deg, rgba(124,58,237,0.08), rgba(168,85,247,0.04)); border:1.5px solid rgba(168,85,247,0.25); border-radius:14px; padding:20px 24px; margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="font-size:15px; font-weight:900; color:var(--accent);">🎵 Step 4B: Scene BGM Generation</div>
+                <div style="font-size:11px; font-weight:700; color:var(--text3);">${doneCount}/${total} done</div>
+            </div>
+            <p style="font-size:12px; color:var(--text2); margin:0 0 16px 0; line-height:1.6;">Generate background music for each scene via EpidemicSound. Click <b>🎵 Generate</b> to open EpidemicSound, find a track, copy its link, and paste it below the iframe. Or skip scenes you don't need BGM for.</p>
+            
+            <!-- Progress bar -->
+            <div style="background:var(--bg3); border-radius:10px; height:6px; overflow:hidden; margin-bottom:16px;">
+                <div style="width:${Math.floor((doneCount / total) * 100)}%; height:100%; background:linear-gradient(90deg, #7c3aed, #a855f7, #ec4899); transition:width 0.5s ease;"></div>
+            </div>
+            
+            <!-- Scene BGM cards grid -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:16px;" id="wizard-bgm-cards-grid">
+                ${cardsHtml}
+            </div>
+            
+            <!-- Footer controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:16px; flex-wrap:wrap; gap:10px;">
+                <div style="font-size:12px; color:var(--text3);">
+                    ${allDone ? '🎉 All BGMs ready! You can now assemble the final reel.' : `${total - doneCount} scene(s) remaining.`}
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="skipAllRemainingBgms()" style="padding:10px 18px; font-size:12px; font-weight:700; background:transparent; border:1px solid var(--border); color:var(--text3); border-radius:8px; cursor:pointer; font-family:inherit;">⏭ Skip Remaining</button>
+                    <button id="wizard-btn-proceed-assemble" onclick="wizardBgmAllDoneAndProceed()" style="padding:10px 22px; font-size:13px; font-weight:800; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; border-radius:10px; cursor:pointer; font-family:inherit; box-shadow:0 6px 20px rgba(168,85,247,0.25); ${allDone ? '' : 'opacity:0.5; cursor:not-allowed;'}" ${allDone ? '' : 'disabled'}>🚀 Proceed to Assemble →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EpidemicSound Overlay (hidden by default) -->
+        <div id="epidemic-bgm-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:200000; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+            <div style="width:min(95vw, 1100px); height:min(90vh, 800px); background:var(--bg); border:1.5px solid var(--border); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 30px 80px rgba(0,0,0,0.8);">
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:linear-gradient(135deg, rgba(124,58,237,0.15), rgba(168,85,247,0.08)); border-bottom:1px solid var(--border); flex-shrink:0;">
+                    <div>
+                        <div style="font-size:14px; font-weight:900; color:var(--accent); display:flex; align-items:center; gap:8px;">🎵 EpidemicSound BGM Generator <span id="epidemic-scene-label" style="font-size:11px; font-weight:600; color:var(--text3); background:var(--bg3); padding:2px 10px; border-radius:20px; margin-left:4px;"></span></div>
+                        <div id="epidemic-scene-prompt-hint" style="font-size:11px; color:var(--text2); margin-top:3px;"></div>
+                    </div>
+                    <button onclick="closeEpidemicOverlay()" style="width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid var(--border); color:var(--text2); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;" onmouseover="this.style.background='var(--red)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.08)'; this.style.color='var(--text2)';">✕</button>
+                </div>
+
+                <!-- EpidemicSound iframe -->
+                <iframe id="epidemic-iframe" src="about:blank" style="flex:1; border:none; background:#000;" allow="autoplay; clipboard-read; clipboard-write" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"></iframe>
+                
+                <!-- URL paste section -->
+                <div style="padding:14px 20px; background:var(--bg2); border-top:1px solid var(--border); flex-shrink:0;">
+                    <div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:8px;">📋 After finding a track, copy its share link and paste it here:</div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input id="epidemic-track-url-input" type="url" placeholder="Paste EpidemicSound track URL here (e.g. https://www.epidemicsound.com/track/...)" style="flex:1; min-width:300px; padding:10px 14px; font-size:12px; border-radius:8px; background:var(--bg3); border:1px solid var(--border); color:#fff; font-family:inherit; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter') submitEpidemicBgmUrl()">
+                        <button onclick="submitEpidemicBgmUrl()" id="btn-use-epidemic-bgm" style="padding:10px 20px; font-size:12px; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:inherit; white-space:nowrap; box-shadow:0 4px 12px rgba(16,185,129,0.25);">⬇️ Download & Use</button>
+                        <button onclick="skipCurrentEpidemicScene()" style="padding:10px 18px; font-size:12px; font-weight:700; background:transparent; border:1px solid var(--border); color:var(--text3); border-radius:8px; cursor:pointer; font-family:inherit;">⏭ Skip Scene</button>
+                    </div>
+                    <div id="epidemic-download-status" style="margin-top:8px; font-size:11px; color:var(--text3); min-height:16px;"></div>
+                </div>
+
+                <!-- Scene navigation -->
+                <div style="padding:10px 20px; background:var(--bg3); border-top:1px solid var(--border); display:flex; gap:8px; overflow-x:auto; flex-shrink:0;" id="epidemic-scene-nav">
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Update nav dots in overlay if open
+    _renderEpidemicSceneNav();
+
+    // Enable/disable the proceed button
+    const proceedBtn = document.getElementById('wizard-btn-proceed-assemble');
+    if (proceedBtn) proceedBtn.disabled = !allDone;
+}
+
+function _renderEpidemicSceneNav() {
+    const nav = document.getElementById('epidemic-scene-nav');
+    if (!nav) return;
+    const total = wizardBgmState.totalScenes;
+    nav.innerHTML = Array.from({length: total}, (_, i) => {
+        const bgm = wizardBgmState.sceneBgms[i] || {};
+        const isCurrent = i === wizardBgmState.currentEpidemicSceneIdx;
+        const statusColor = bgm.status === 'done' ? '#34d399' : bgm.status === 'error' ? '#f87171' : bgm.status === 'loading' ? '#fbbf24' : bgm.status === 'skipped' ? '#6b7280' : 'var(--border)';
+        return `<button onclick="openEpidemicForScene(${i})" title="Scene ${i+1}: ${bgm.status || 'pending'}" style="flex-shrink:0; width:28px; height:28px; border-radius:50%; border:2px solid ${isCurrent ? 'var(--accent)' : statusColor}; background:${isCurrent ? 'var(--accent)' : bgm.status === 'done' ? 'rgba(52,211,153,0.15)' : 'var(--bg)'}; color:${isCurrent ? '#fff' : statusColor}; font-size:10px; font-weight:800; cursor:pointer; transition:0.2s;">${i + 1}</button>`;
+    }).join('');
+}
+
+function openEpidemicForScene(sceneIdx) {
+    const scene = wizardScenes[sceneIdx] || {};
+    const bgmPrompt = scene.bgm_prompt || 'cinematic background music';
+    
+    wizardBgmState.currentEpidemicSceneIdx = sceneIdx;
+
+    const overlay = document.getElementById('epidemic-bgm-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+
+    // Update header labels
+    const label = document.getElementById('epidemic-scene-label');
+    if (label) label.textContent = `Scene ${sceneIdx + 1} / ${wizardBgmState.totalScenes}`;
+    const hint = document.getElementById('epidemic-scene-prompt-hint');
+    if (hint) hint.textContent = `🎵 Searching for: "${bgmPrompt}"`;
+
+    // Load EpidemicSound assistant with search query pre-filled
+    const iframe = document.getElementById('epidemic-iframe');
+    const searchQuery = encodeURIComponent(bgmPrompt);
+    const epidemicUrl = `https://www.epidemicsound.com/music/search/?term=${searchQuery}`;
+    if (iframe) iframe.src = epidemicUrl;
+
+    // Clear previous input
+    const input = document.getElementById('epidemic-track-url-input');
+    if (input) input.value = '';
+    const statusEl = document.getElementById('epidemic-download-status');
+    if (statusEl) statusEl.textContent = '';
+
+    // Render nav dots
+    _renderEpidemicSceneNav();
+
+    // Mark as loading in progress
+    if (wizardBgmState.sceneBgms[sceneIdx] && wizardBgmState.sceneBgms[sceneIdx].status === 'pending') {
+        // Keep as pending until user submits
+    }
+}
+
+function closeEpidemicOverlay() {
+    const overlay = document.getElementById('epidemic-bgm-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    // Reset iframe to avoid keeping resource connections
+    const iframe = document.getElementById('epidemic-iframe');
+    if (iframe) iframe.src = 'about:blank';
+    
+    wizardBgmState.currentEpidemicSceneIdx = -1;
+    
+    // Re-render cards to show updated state
+    renderWizardBgmCards();
+}
+
+async function submitEpidemicBgmUrl() {
+    const sceneIdx = wizardBgmState.currentEpidemicSceneIdx;
+    if (sceneIdx < 0) {
+        toast('No scene selected', 'error');
+        return;
+    }
+
+    const input = document.getElementById('epidemic-track-url-input');
+    const trackUrl = (input ? input.value.trim() : '');
+    
+    if (!trackUrl || !trackUrl.startsWith('http')) {
+        toast('Please paste a valid EpidemicSound track URL', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btn-use-epidemic-bgm');
+    const statusEl = document.getElementById('epidemic-download-status');
+    
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Downloading...'; }
+    if (statusEl) statusEl.textContent = '⏳ Extracting lqmp3 link and downloading BGM...';
+
+    // Update state to loading
+    wizardBgmState.sceneBgms[sceneIdx] = { status: 'loading', url: null, lqmp3Url: null };
+    _renderEpidemicSceneNav();
+
+    try {
+        const res = await fetch('/api/social/download-epidemic-bgm', {
+            method: 'POST',
+            headers: hdrs(),
+            body: JSON.stringify({ track_url: trackUrl, scene_num: sceneIdx })
+        });
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+            wizardBgmState.sceneBgms[sceneIdx] = { 
+                status: 'done', 
+                url: data.bgm_url, 
+                lqmp3Url: data.lqmp3_url 
+            };
+            
+            if (statusEl) statusEl.textContent = `✅ Downloaded! Scene ${sceneIdx + 1} BGM ready.`;
+            toast(`✅ BGM for Scene ${sceneIdx + 1} downloaded!`, 'success');
+            
+            // Auto-advance to next pending scene
+            const nextPending = _findNextPendingScene(sceneIdx);
+            if (nextPending >= 0) {
+                setTimeout(() => openEpidemicForScene(nextPending), 800);
+            } else {
+                // All scenes done!
+                wizardBgmState.allDone = true;
+                setTimeout(() => {
+                    closeEpidemicOverlay();
+                    toast('🎉 All scene BGMs generated! Click Proceed to Assemble.', 'success');
+                    renderWizardBgmCards();
+                    // Enable step 5 button
+                    const step5Btn = document.getElementById('wizard-btn-to-step-5');
+                    if (step5Btn) step5Btn.disabled = false;
+                }, 600);
+            }
+        } else {
+            const errMsg = data.detail || 'Download failed';
+            wizardBgmState.sceneBgms[sceneIdx] = { status: 'error', url: null, lqmp3Url: null };
+            if (statusEl) statusEl.textContent = `❌ ${errMsg}`;
+            toast(`❌ BGM download failed: ${errMsg}`, 'error');
+        }
+    } catch(e) {
+        wizardBgmState.sceneBgms[sceneIdx] = { status: 'error', url: null, lqmp3Url: null };
+        if (statusEl) statusEl.textContent = `❌ Network error: ${e.message}`;
+        toast(`❌ BGM download error: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download & Use'; }
+        _renderEpidemicSceneNav();
+        renderWizardBgmCards();
+    }
+}
+
+function _findNextPendingScene(fromIdx) {
+    const total = wizardBgmState.totalScenes;
+    // Search forward first
+    for (let i = fromIdx + 1; i < total; i++) {
+        const s = wizardBgmState.sceneBgms[i];
+        if (!s || s.status === 'pending' || s.status === 'error') return i;
+    }
+    // Then wrap around from start
+    for (let i = 0; i < fromIdx; i++) {
+        const s = wizardBgmState.sceneBgms[i];
+        if (!s || s.status === 'pending' || s.status === 'error') return i;
+    }
+    return -1; // All done
+}
+
+function skipCurrentEpidemicScene() {
+    const sceneIdx = wizardBgmState.currentEpidemicSceneIdx;
+    if (sceneIdx < 0) return;
+    skipEpidemicScene(sceneIdx);
+    const nextPending = _findNextPendingScene(sceneIdx);
+    if (nextPending >= 0) {
+        setTimeout(() => openEpidemicForScene(nextPending), 300);
+    } else {
+        closeEpidemicOverlay();
+        _checkAllBgmsDone();
+    }
+}
+
+function skipEpidemicScene(sceneIdx) {
+    wizardBgmState.sceneBgms[sceneIdx] = { status: 'skipped', url: null, lqmp3Url: null };
+    renderWizardBgmCards();
+    _renderEpidemicSceneNav();
+    _checkAllBgmsDone();
+}
+
+function skipAllRemainingBgms() {
+    const total = wizardBgmState.totalScenes;
+    for (let i = 0; i < total; i++) {
+        const s = wizardBgmState.sceneBgms[i];
+        if (!s || s.status === 'pending') {
+            wizardBgmState.sceneBgms[i] = { status: 'skipped', url: null, lqmp3Url: null };
+        }
+    }
+    wizardBgmState.allDone = true;
+    renderWizardBgmCards();
+    _checkAllBgmsDone();
+    toast('⏭ Remaining scenes skipped. Proceeding without BGM for those scenes.', 'info');
+}
+
+function regenSceneBgm(sceneIdx) {
+    wizardBgmState.sceneBgms[sceneIdx] = { status: 'pending', url: null, lqmp3Url: null };
+    wizardBgmState.allDone = false;
+    renderWizardBgmCards();
+    openEpidemicForScene(sceneIdx);
+    
+    // Re-show overlay
+    const overlay = document.getElementById('epidemic-bgm-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function _checkAllBgmsDone() {
+    const total = wizardBgmState.totalScenes;
+    const nonPending = Object.values(wizardBgmState.sceneBgms).filter(b => b && (b.status === 'done' || b.status === 'skipped' || b.status === 'error')).length;
+    const allSettled = nonPending >= total;
+    
+    if (allSettled) {
+        wizardBgmState.allDone = true;
+        const proceedBtn = document.getElementById('wizard-btn-proceed-assemble');
+        if (proceedBtn) { proceedBtn.disabled = false; proceedBtn.style.opacity = '1'; proceedBtn.style.cursor = 'pointer'; }
+        const step5Btn = document.getElementById('wizard-btn-to-step-5');
+        if (step5Btn) step5Btn.disabled = false;
+    }
+}
+
+function wizardBgmAllDoneAndProceed() {
+    wizardBgmState.allDone = true;
+    const step5Btn = document.getElementById('wizard-btn-to-step-5');
+    if (step5Btn) step5Btn.disabled = false;
+    goToWizardStep(5);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// END BGM PHASE
+// ═══════════════════════════════════════════════════════════════════════════
+
 function pollWizardJob(jobId) {
     if (wizardPollingInterval) clearInterval(wizardPollingInterval);
     
@@ -17011,31 +18315,50 @@ function pollWizardJob(jobId) {
                 
                 renderWizardHarvestGrids(total, data.images_indices || [], data.videos_indices || [], data.status);
                 
-                // If all videos are complete, enable step 5 transition button
+                // If all videos are complete, trigger BGM phase (don't enable step 5 yet)
                 if (done >= total) {
-                    const btn = document.getElementById('wizard-btn-to-step-5');
-                    if (btn) btn.disabled = false;
                     if (pBar) pBar.style.width = '98%';
                     if (pPct) pPct.textContent = '98%';
-                    if (pStatus) pStatus.textContent = 'Meta AI Video harvesting successfully complete!';
+                    if (pStatus) pStatus.textContent = '✅ All assets ready! Now generating scene BGMs...';
+                    clearInterval(wizardPollingInterval);
+                    wizardPollingInterval = null;
+                    // Initialize BGM state for all scenes
+                    wizardBgmState.totalScenes = total;
+                    wizardBgmState.sceneBgms = {};
+                    wizardBgmState.allDone = false;
+                    showWizardBgmPhase();
                 }
             }
             
+            else if (data.status === 'ready_to_assemble') {
+                if (pBar) pBar.style.width = '98%';
+                if (pPct) pPct.textContent = '98%';
+                if (pStatus) pStatus.textContent = '✅ All assets ready! Preparing BGM generation phase...';
+                const allIdx = Array.from({length: total}, (_, i) => i);
+                renderWizardHarvestGrids(total, data.images_indices || allIdx, data.videos_indices || allIdx, data.status);
+                clearInterval(wizardPollingInterval);
+                wizardPollingInterval = null;
+                wizardBgmState.totalScenes = total;
+                wizardBgmState.sceneBgms = {};
+                wizardBgmState.allDone = false;
+                showWizardBgmPhase();
+            }
+            
             else if (data.status === 'assembling' || data.status === 'done') {
-                // Extension finished harvesting! Transition can occur directly
-                const btn = document.getElementById('wizard-btn-to-step-5');
-                if (btn) btn.disabled = false;
+                // Extension finished harvesting! Trigger BGM phase
                 if (pBar) pBar.style.width = '100%';
                 if (pPct) pPct.textContent = '100%';
-                if (pStatus) pStatus.textContent = 'Meta AI assets harvest complete! Ready to assemble final video.';
+                if (pStatus) pStatus.textContent = '✅ Meta AI assets harvest complete! Preparing BGM phase...';
                 
                 const allIdx = Array.from({length: total}, (_, i) => i);
                 renderWizardHarvestGrids(total, data.images_indices || allIdx, data.videos_indices || allIdx, data.status);
                 
-                if (data.status === 'done') {
-                    // Auto go to step 5 if already assembled in backend
-                    clearInterval(wizardPollingInterval);
-                    wizardPollingInterval = null;
+                clearInterval(wizardPollingInterval);
+                wizardPollingInterval = null;
+                if (!wizardBgmState.allDone) {
+                    wizardBgmState.totalScenes = total;
+                    wizardBgmState.sceneBgms = {};
+                    showWizardBgmPhase();
                 }
             }
             
@@ -17191,12 +18514,29 @@ async function startWizardAssembly() {
     document.getElementById('wizard-assembly-trigger-section').style.display = 'none';
     document.getElementById('wizard-assembly-progress').style.display = 'block';
     
+    // Collect BGM urls from wizardBgmState (indexed by scene)
+    const bgmUrls = {};
+    const bgmUrlsList = [];
+    Object.entries(wizardBgmState.sceneBgms).forEach(([idx, bgmInfo]) => {
+        if (bgmInfo && bgmInfo.url && bgmInfo.status === 'done') {
+            bgmUrls[parseInt(idx)] = bgmInfo.url;
+            bgmUrlsList.push(bgmInfo.url);
+        }
+    });
+    const primaryBgmUrl = bgmUrlsList[0] || '';
+    
     // Trigger assembly endpoint
     try {
         fetch(`/api/extension/job/${wizardJobId}/assemble`, {
             method: 'POST',
             headers: hdrs(),
-            body: JSON.stringify({ videos: [], images: [] })
+            body: JSON.stringify({ 
+                videos: [], 
+                images: [],
+                bgm_url: primaryBgmUrl,
+                bgm_urls: bgmUrls,     // Per-scene BGM map
+                bgm_urls_list: bgmUrlsList
+            })
         }).catch(err => console.error("Assemble triggered: ", err));
         
         // Start polling assembly progress

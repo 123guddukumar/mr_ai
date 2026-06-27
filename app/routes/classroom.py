@@ -905,6 +905,27 @@ def generate_premium_image_locally(title: str, subtitle: str = "Subject") -> str
 
 
 def download_and_save_image(image_url: str, fallback_keyword: str = None, subtitle: str = "Subject") -> str:
+    if not image_url:
+        return image_url
+        
+    # Check if the URL is already locally or cloud hosted (e.g. R2, Supabase, or local /uploads)
+    from app.core.config import settings
+    url_lower = image_url.lower()
+    is_already_hosted = (
+        "/uploads/" in url_lower or
+        url_lower.startswith("/") or
+        "r2.dev" in url_lower or
+        "r2.cloudflarestorage.com" in url_lower or
+        "supabase.co" in url_lower or
+        "supabase.in" in url_lower
+    )
+    if settings.R2_PUBLIC_URL and image_url.startswith(settings.R2_PUBLIC_URL):
+        is_already_hosted = True
+        
+    if is_already_hosted:
+        logger.info(f"download_and_save_image: URL is already hosted/local, returning as-is: {image_url}")
+        return image_url
+
     import httpx
     try:
         filename = f"classroom_{secrets.token_hex(8)}.jpg"
@@ -1341,21 +1362,44 @@ async def _make_image_of_ratio_from_url(image_url: str, ratio: str, out_dir: str
     import httpx, secrets, os
     
     img_bytes = None
-    if image_url.startswith("http"):
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as c:
-                r = await c.get(image_url)
-                if r.status_code == 200 and len(r.content) > 500:
-                    img_bytes = r.content
-        except Exception as e:
-            logger.warning(f"Failed to fetch image from {image_url}: {e}")
-    else:
-        # Local file path like /uploads/images/abc.jpg
-        local_path = os.path.join(os.getcwd(), image_url.lstrip("/").replace("/", os.sep))
-        if os.path.exists(local_path):
-            with open(local_path, "rb") as f:
-                img_bytes = f.read()
+    local_file_found = False
+    
+    # If the URL points to our local uploads directory, load from local disk directly to avoid loopback network issues on AWS!
+    if "/uploads/" in image_url:
+        parts = image_url.split("/uploads/", 1)
+        # Reconstruct path relative to base directory (one level up from app/)
+        local_rel_path = os.path.join("uploads", parts[1].replace("/", os.sep))
+        local_abs_path = os.path.join(os.getcwd(), local_rel_path)
+        if os.path.exists(local_abs_path):
+            try:
+                with open(local_abs_path, "rb") as f:
+                    img_bytes = f.read()
+                    local_file_found = True
+                    logger.info(f"Loaded image bytes directly from local file: {local_abs_path}")
+            except Exception as read_err:
+                logger.warning(f"Failed to read local file {local_abs_path}: {read_err}")
                 
+    if not local_file_found:
+        if image_url.startswith("http"):
+            try:
+                async with httpx.AsyncClient(timeout=20.0) as c:
+                    r = await c.get(image_url)
+                    if r.status_code == 200 and len(r.content) > 500:
+                        img_bytes = r.content
+            except Exception as e:
+                logger.warning(f"Failed to fetch image from {image_url}: {e}")
+        else:
+            # Local file path like /uploads/images/abc.jpg or uploads/images/abc.jpg
+            path_part = image_url.lstrip("/")
+            if path_part.startswith("uploads" + os.sep) or path_part.startswith("uploads/"):
+                local_path = os.path.join(os.getcwd(), path_part.replace("/", os.sep))
+            else:
+                local_path = os.path.join(os.getcwd(), "uploads", path_part.replace("/", os.sep))
+                
+            if os.path.exists(local_path):
+                with open(local_path, "rb") as f:
+                    img_bytes = f.read()
+                    
     if not img_bytes:
         return None
         

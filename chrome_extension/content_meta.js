@@ -3,11 +3,18 @@
 // Flow per scene: type image prompt → generate → download image → 4s wait →
 //                 type video prompt → generate → download video → 4s wait → next scene
 
-let metaSceneIdx = 0;
-let metaJobId = null;
-let metaSubtopicName = "";
-let metaScene = null;   // { image_prompt, animation_prompt, dialogue }
-let metaIsProcessing = false;
+// ── Re-injection guard ──────────────────────────────────────────────────────
+// background.js may inject this file multiple times. We guard against
+// re-registration of globals and listeners using a window flag.
+// The ENTIRE script body below is skipped on re-injection.
+if (!window.__mrAiMetaContentLoaded) {
+window.__mrAiMetaContentLoaded = true;
+
+var metaSceneIdx = 0;
+var metaJobId = null;
+var metaSubtopicName = "";
+var metaScene = null;   // { image_prompt, animation_prompt, dialogue }
+var metaIsProcessing = false;
 
 // Track last seen generated content to detect new ones
 window._lastImgSrcs = new Set();
@@ -161,7 +168,7 @@ async function generateImage() {
     snapshotLastAssistantMessage();
 
     const prompt = metaScene.image_prompt || metaScene.animation_prompt;
-    let fullPrompt;
+    var fullPrompt;
     if (attempt === 1) {
       if (prompt.startsWith("Generate a high quality")) {
         fullPrompt = prompt;
@@ -222,9 +229,9 @@ async function generateVideo() {
     snapshotLastAssistantMessage();
 
     const prompt = metaScene.animation_prompt || metaScene.image_prompt;
-    let fullPrompt;
+    var fullPrompt;
     if (attempt === 1) {
-      if (prompt.includes("Animate the previously") || prompt.includes("cinematic video animation")) {
+      if (prompt.startsWith("Animate the previously")) {
         fullPrompt = prompt;
       } else {
         fullPrompt = `Animate the previously generated image. Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
@@ -663,7 +670,13 @@ async function waitForNewImage(maxSec, initialCardsCount = 0) {
           txt.includes("standards") ||
           txt.includes("community") ||
           txt.includes("error") ||
-          txt.includes("issue")
+          txt.includes("issue") ||
+          txt.includes("nahi") ||
+          txt.includes("dubara") ||
+          txt.includes("try karu") ||
+          txt.includes("cannot generate") ||
+          txt.includes("not generate") ||
+          txt.includes("different take")
         )) {
           log(`⚠️ Meta AI safety block or content filter error detected (Attempt ${metaRetries + 1}/15)!`);
 
@@ -810,7 +823,14 @@ async function waitForNewVideo(maxSec) {
           txt.includes("standards") ||
           txt.includes("community") ||
           txt.includes("error") ||
-          txt.includes("issue")
+          txt.includes("issue") ||
+          txt.includes("nahi") ||
+          txt.includes("dubara") ||
+          txt.includes("try karu") ||
+          txt.includes("cannot animate") ||
+          txt.includes("not animate") ||
+          txt.includes("cannot generate") ||
+          txt.includes("not generate")
         )) {
           log(`⚠️ Meta AI safety block or content filter error detected (Attempt ${metaRetries + 1}/15)!`);
 
@@ -1193,13 +1213,13 @@ async function generateSingleAsset(prompt, mediaType, filename) {
     await downloadFile(imgSrc, filename);
     await sleep(1000);
     // video
-    let fullPrompt;
+    var videoPrompt;
     if (prompt.startsWith("Animate the previously") || prompt.startsWith("Create a smooth 5-second")) {
-      fullPrompt = prompt;
+      videoPrompt = prompt;
     } else {
-      fullPrompt = `Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
+      videoPrompt = `Create a smooth 5-second cinematic video animation: ${prompt}. Vertical 9:16 format, smooth camera movement, high quality.`;
     }
-    await typeInChat(fullPrompt);
+    await typeInChat(videoPrompt);
     await sleep(500);
     await clickSend();
     const vidSrc = await waitForNewVideo(120);
@@ -1240,3 +1260,4 @@ async function generateSingleAsset(prompt, mediaType, filename) {
   }
 }
 
+} // end re-injection guard: if (!window.__mrAiMetaContentLoaded)

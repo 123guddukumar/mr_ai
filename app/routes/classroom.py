@@ -301,11 +301,16 @@ def _require_client(
 class CreateExamReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     image_url: Optional[str] = ""
+    image_url_9_16: Optional[str] = ""
+    image_url_16_9: Optional[str] = ""
     description: Optional[str] = ""
     category: Optional[str] = ""
 
 class CreatePaperReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    image_url: Optional[str] = ""
+    image_url_9_16: Optional[str] = ""
+    image_url_16_9: Optional[str] = ""
 
 class CreateSubjectReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -966,13 +971,27 @@ async def list_exams(client: dict = Depends(_require_client), db: Session = Depe
 
 @router.post("/classroom/exams", tags=["Classroom"])
 async def create_exam(req: CreateExamReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name, subtitle="Exam")
+        
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Exam")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Exam Banner")
+        
     exam_id = "exam-" + secrets.token_hex(8)
     exam = Exam(
         exam_id=exam_id,
         client_id=client["client_id"],
         name=req.name,
         category=req.category,
-        image_url=req.image_url,
+        image_url=image_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
         description=req.description,
         created_at=datetime.utcnow()
     )
@@ -987,9 +1006,24 @@ async def update_exam(exam_id: str, req: CreateExamReq, client: dict = Depends(_
     exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
     if not exam:
         raise HTTPException(404, "Exam not found")
+        
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name, subtitle="Exam")
+        
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Exam")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Exam Banner")
+        
     exam.name = req.name
     exam.category = req.category
-    exam.image_url = req.image_url
+    exam.image_url = image_url
+    exam.image_url_9_16 = image_url_9_16
+    exam.image_url_16_9 = image_url_16_9
     exam.description = req.description
     db.commit()
     db.refresh(exam)
@@ -1056,11 +1090,27 @@ async def create_paper(exam_id: str, req: CreatePaperReq, client: dict = Depends
     exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
     if not exam:
         raise HTTPException(404, "Exam not found")
+        
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name, subtitle="Paper")
+        
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Paper")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Paper Banner")
+        
     paper_id = "paper-" + secrets.token_hex(8)
     paper = PaperClassroom(
         paper_id=paper_id,
         exam_id=exam_id,
         name=req.name,
+        image_url=image_url,
+        image_url_9_16=image_url_9_16,
+        image_url_16_9=image_url_16_9,
         created_at=datetime.utcnow()
     )
     db.add(paper)
@@ -1074,7 +1124,23 @@ async def update_paper(paper_id: str, req: CreatePaperReq, client: dict = Depend
     paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
     if not paper:
         raise HTTPException(404, "Paper not found or access denied")
+        
+    image_url = req.image_url
+    if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
+        image_url = download_and_save_image(image_url, fallback_keyword=req.name, subtitle="Paper")
+        
+    image_url_9_16 = req.image_url_9_16
+    if image_url_9_16 and image_url_9_16.startswith("http") and not image_url_9_16.startswith("/uploads"):
+        image_url_9_16 = download_and_save_image(image_url_9_16, fallback_keyword=req.name, subtitle="Paper")
+        
+    image_url_16_9 = req.image_url_16_9
+    if image_url_16_9 and image_url_16_9.startswith("http") and not image_url_16_9.startswith("/uploads"):
+        image_url_16_9 = download_and_save_image(image_url_16_9, fallback_keyword=req.name, subtitle="Paper Banner")
+        
     paper.name = req.name
+    paper.image_url = image_url
+    paper.image_url_9_16 = image_url_9_16
+    paper.image_url_16_9 = image_url_16_9
     db.commit()
     db.refresh(paper)
     return {"success": True, "paper": paper.to_dict()}
@@ -1190,6 +1256,12 @@ async def generate_classroom_image(req: GenerateImageReq, client: dict = Depends
         local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
     elif req.type == "subtopic_banner":
         local_url = await generate_banner_image_and_upload(req.name, context=req.context)
+    elif req.type == "exam":
+        subtitle = "Exam"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
+    elif req.type == "paper":
+        subtitle = "Paper"
+        local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
     else:
         subtitle = "Chapter"
         local_url = await generate_ai_image_and_upload(req.name, subtitle=subtitle, context=req.context)
@@ -1322,7 +1394,7 @@ async def _make_banner_from_url(image_url: str, entity_name: str, out_dir: str) 
 
 class ResizeImageReq(BaseModel):
     entity_id: str
-    entity_type: str  # "subject" | "chapter" | "topic" | "subtopic"
+    entity_type: str  # "subject" | "chapter" | "topic" | "subtopic" | "exam" | "paper"
     target_ratio: str  # "1:1" | "9:16" | "16:9"
 
 
@@ -1334,7 +1406,11 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
     
     # 1. Fetch entity
     entity = None
-    if entity_type == "subject":
+    if entity_type == "exam":
+        entity = db.query(Exam).filter(Exam.exam_id == entity_id, Exam.client_id == client["client_id"]).first()
+    elif entity_type == "paper":
+        entity = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == entity_id, Exam.client_id == client["client_id"]).first()
+    elif entity_type == "subject":
         entity = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == entity_id, Exam.client_id == client["client_id"]).first()
     elif entity_type == "chapter":
         entity = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == entity_id, Exam.client_id == client["client_id"]).first()
@@ -1472,7 +1548,28 @@ async def regenerate_classroom_image(req: RegenerateImageReq, client: dict = Dep
     entity_id = req.entity_id
     entity_type = req.type.lower()
     
-    if entity_type == "subject":
+    if entity_type == "exam":
+        exam = db.query(Exam).filter(Exam.exam_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not exam:
+            raise HTTPException(404, "Exam not found or access denied")
+        new_url = await generate_ai_image_and_upload(exam.name, subtitle="Exam", context=exam.category or "")
+        exam.image_url = new_url
+        db.commit()
+        db.refresh(exam)
+        return {"success": True, "image_url": new_url, "entity": exam.to_dict()}
+        
+    elif entity_type == "paper":
+        paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == entity_id, Exam.client_id == client["client_id"]).first()
+        if not paper:
+            raise HTTPException(404, "Paper not found or access denied")
+        exam_name = paper.exam.name if paper.exam else ""
+        new_url = await generate_ai_image_and_upload(paper.name, subtitle="Paper", context=exam_name)
+        paper.image_url = new_url
+        db.commit()
+        db.refresh(paper)
+        return {"success": True, "image_url": new_url, "entity": paper.to_dict()}
+        
+    elif entity_type == "subject":
         subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == entity_id, Exam.client_id == client["client_id"]).first()
         if not subject:
             raise HTTPException(404, "Subject not found or access denied")
@@ -2240,6 +2337,52 @@ async def get_topic_reels(topic_id: str, client: dict = Depends(_require_client)
             logger.warning(f"Error parsing metadata for social content {r.content_id}: {e}")
             
     return {"success": True, "reels": topic_reels}
+
+
+@router.get("/classroom/topics/{topic_id}/reel-url", tags=["Classroom"])
+async def get_topic_reel_url(topic_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
+    topic = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(
+        TopicClassroom.topic_id == topic_id,
+        Exam.client_id == client["client_id"]
+    ).first()
+    if not topic:
+        raise HTTPException(404, "Topic not found")
+        
+    subtopic_ids = [st.subtopic_id for st in topic.subtopics]
+    
+    from app.core.models import SocialContent
+    reels = db.query(SocialContent).filter(
+        SocialContent.client_id == client["client_id"],
+        SocialContent.content_type == "reel"
+    ).order_by(SocialContent.created_at.desc()).all()
+    
+    matched_reel = None
+    for r in reels:
+        try:
+            meta = r.metadata_info
+            if meta:
+                r_subtopic_id = meta.get("subtopic_id")
+                r_topic_id = meta.get("topic_id")
+                if r_topic_id == topic_id or (r_subtopic_id and r_subtopic_id in subtopic_ids):
+                    if r.media_url:
+                        matched_reel = r
+                        break
+        except Exception as e:
+            logger.warning(f"Error parsing metadata for social content {r.content_id}: {e}")
+            
+    if not matched_reel:
+        raise HTTPException(404, "No reel found for this topic")
+        
+    return {
+        "success": True,
+        "topic_id": topic_id,
+        "content_id": matched_reel.content_id,
+        "content_type": matched_reel.content_type,
+        "title": matched_reel.title or "",
+        "body": matched_reel.body or "",
+        "media_url": matched_reel.media_url,
+        "created_at": matched_reel.created_at.isoformat() if matched_reel.created_at else ""
+    }
 
 
 # ── Public Subtopic Reels Endpoint (No Auth Needed for other projects) ──

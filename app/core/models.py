@@ -584,6 +584,8 @@ class Exam(Base):
     client_id = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     description = Column(Text, nullable=True)
     category = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -597,6 +599,8 @@ class Exam(Base):
             "name": self.name,
             "category": self.category or "",
             "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "description": self.description or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
@@ -607,6 +611,9 @@ class PaperClassroom(Base):
     paper_id = Column(String(64), unique=True, index=True, nullable=False)
     exam_id = Column(String(64), ForeignKey("exams.exam_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
+    image_url = Column(String(500), nullable=True)
+    image_url_9_16 = Column(String(500), nullable=True)
+    image_url_16_9 = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     exam = relationship("Exam", back_populates="papers")
@@ -618,6 +625,9 @@ class PaperClassroom(Base):
             "paper_id": self.paper_id,
             "exam_id": self.exam_id,
             "name": self.name,
+            "image_url": self.image_url or "",
+            "image_url_9_16": self.image_url_9_16 or "",
+            "image_url_16_9": self.image_url_16_9 or "",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
 

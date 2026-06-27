@@ -511,137 +511,128 @@ def robust_json_loads(s: str):
 
 
 def parse_custom_timeline_script(script_text: str) -> list:
+    """
+    Parses a custom scene-by-scene reel script.
+    Supports multiple formats:
+    1. 🎥 Scene X (time range) blocks with Video:/Voice Over:/BGM: labels
+    2. Sections separated by --- with [time] markers, Visual:/VO:/BGM: labels
+    3. [0-5 sec] inline time blocks
+    """
     import re
     script_text = script_text.replace('\r\n', '\n').replace('\r', '\n')
-    
-    parts = re.split(r'---', script_text)
     scenes = []
     scene_num = 1
+
+    def extract_section_content(lines, visual_pat, vo_pat, bgm_pat):
+        current_section = None
+        visual_lines, vo_lines, bgm_lines = [], [], []
+        for line in lines:
+            ls = line.strip()
+            if not ls:
+                continue
+            if re.match(visual_pat, ls, re.IGNORECASE):
+                current_section = 'visual'
+                content = re.sub(visual_pat + r'\s*', '', ls, flags=re.IGNORECASE).strip()
+                if content:
+                    visual_lines.append(content)
+            elif re.match(vo_pat, ls, re.IGNORECASE):
+                current_section = 'vo'
+                content = re.sub(vo_pat + r'\s*', '', ls, flags=re.IGNORECASE).strip()
+                if content:
+                    vo_lines.append(content)
+            elif re.match(bgm_pat, ls, re.IGNORECASE):
+                current_section = 'bgm'
+                content = re.sub(bgm_pat + r'\s*', '', ls, flags=re.IGNORECASE).strip()
+                if content:
+                    bgm_lines.append(content)
+            elif re.match(r'^\[[^\]]+\]', ls) or re.match(r'^\U0001f3a5\s*Scene\s*\d+', ls, re.IGNORECASE):
+                continue
+            else:
+                if current_section == 'visual':
+                    visual_lines.append(ls)
+                elif current_section == 'vo':
+                    vo_lines.append(ls)
+                elif current_section == 'bgm':
+                    bgm_lines.append(ls)
+        visual_desc = ' '.join(visual_lines).strip() or 'Cinematic visual'
+        vo_text = ' '.join(vo_lines).strip().strip('"').strip("'")
+        bgm_desc = ' '.join(bgm_lines).strip() or 'Soft ambient background music'
+        return visual_desc, vo_text, bgm_desc
+
+    VISUAL_PAT = r'^(?:\U0001f3a5|\U0001f3ac|\U0001f4f8)?\s*(?:Video|Visual|Visuals|Footage|Animate)\s*:'
+    VO_PAT     = r'^(?:\U0001f399\ufe0f|\U0001f399)?\s*(?:Voice\s*Over|VO|Dialogue|Script)\s*(?:\([^)]+\))?\s*:'
+    BGM_PAT    = r'^(?:\U0001f3b5)?\s*BGM\s*:'
+
+    # ── Strategy 1: 🎥 Scene X (...) blocks ──────────────────────────────────
+    scene_header_re = re.compile(r'\U0001f3a5\s*Scene\s*(\d+)\s*\(([^)]+)\)', re.IGNORECASE)
+    scene_headers = list(scene_header_re.finditer(script_text))
+    if scene_headers:
+        for i, header in enumerate(scene_headers):
+            start = header.start()
+            end = scene_headers[i + 1].start() if i + 1 < len(scene_headers) else len(script_text)
+            block_text = script_text[start:end]
+            time_range = header.group(2).strip()
+            lines = block_text.split('\n')
+            visual_desc, vo_text, bgm_desc = extract_section_content(lines, VISUAL_PAT, VO_PAT, BGM_PAT)
+            scenes.append({
+                'scene_num': scene_num,
+                'time_range': time_range,
+                'image_prompt': visual_desc,
+                'animation_prompt': f'Animate: {visual_desc}',
+                'dialogue': vo_text,
+                'dialogue_english': vo_text,
+                'bgm_prompt': bgm_desc
+            })
+            scene_num += 1
+        return scenes
+
+    # ── Strategy 2: --- separated blocks ─────────────────────────────────────
+    parts = re.split(r'---', script_text)
     for part in parts:
         part = part.strip()
         if not part:
             continue
-        if "Visual" not in part and "VO" not in part and "BGM" not in part:
+        part_lower = part.lower()
+        has_content = any(kw in part_lower for kw in ['visual', 'video', 'vo', 'voice over', 'bgm', 'animate', 'dialogue', 'script'])
+        if not has_content:
             continue
-        
         time_match = re.search(r'\[([^\]]+)\]', part)
-        time_range = time_match.group(1) if time_match else f"{(scene_num-1)*5}-{scene_num*5} sec"
-        
+        time_range = time_match.group(1) if time_match else f'{(scene_num-1)*5}-{scene_num*5} sec'
         lines = part.split('\n')
-        current_section = None # 'visual', 'vo', 'bgm'
-        visual_lines = []
-        vo_lines = []
-        bgm_lines = []
-        
-        for line in lines:
-            line_strip = line.strip()
-            if not line_strip:
-                continue
-                
-            # Check for section markers
-            if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
-                current_section = 'visual'
-                content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                if content:
-                    visual_lines.append(content)
-            elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
-                current_section = 'vo'
-                content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                if content:
-                    vo_lines.append(content)
-            elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
-                current_section = 'bgm'
-                content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                if content:
-                    bgm_lines.append(content)
-            elif re.match(r'^\[[^\]]+\]', line_strip):
-                continue
-            else:
-                # Content line
-                if current_section == 'visual':
-                    visual_lines.append(line_strip)
-                elif current_section == 'vo':
-                    vo_lines.append(line_strip)
-                elif current_section == 'bgm':
-                    bgm_lines.append(line_strip)
-                    
-        visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
-        vo_text = " ".join(vo_lines).strip() if vo_lines else ""
-        bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
-        
-        # Clean quotes
-        vo_text = vo_text.strip('"').strip("'")
-        
+        visual_desc, vo_text, bgm_desc = extract_section_content(lines, VISUAL_PAT, VO_PAT, BGM_PAT)
         scenes.append({
-            "scene_num": scene_num,
-            "time_range": time_range,
-            "image_prompt": visual_desc,
-            "animation_prompt": f"Animate: {visual_desc}",
-            "dialogue": vo_text,
-            "dialogue_english": vo_text,
-            "bgm_prompt": bgm_desc
+            'scene_num': scene_num,
+            'time_range': time_range,
+            'image_prompt': visual_desc,
+            'animation_prompt': f'Animate: {visual_desc}',
+            'dialogue': vo_text,
+            'dialogue_english': vo_text,
+            'bgm_prompt': bgm_desc
         })
         scene_num += 1
-        
-    if not scenes:
-        matches = list(re.finditer(r'\[(\d+-\d+\s*sec)\]', script_text, re.IGNORECASE))
-        for i, m in enumerate(matches):
-            start = m.start()
-            end = matches[i+1].start() if i + 1 < len(matches) else len(script_text)
-            block_text = script_text[start:end]
-            
-            lines = block_text.split('\n')
-            current_section = None
-            visual_lines = []
-            vo_lines = []
-            bgm_lines = []
-            
-            for line in lines:
-                line_strip = line.strip()
-                if not line_strip:
-                    continue
-                if re.match(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:', line_strip, re.IGNORECASE):
-                    current_section = 'visual'
-                    content = re.sub(r'^(?:🎥|🎬|📸)?\s*(?:Visual|Visuals|Footage)\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                    if content:
-                        visual_lines.append(content)
-                elif re.match(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:', line_strip, re.IGNORECASE):
-                    current_section = 'vo'
-                    content = re.sub(r'^(?:🎙️|🎙)?\s*VO\s*(?:\([^)]+\))?\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                    if content:
-                        vo_lines.append(content)
-                elif re.match(r'^(?:🎵)?\s*BGM\s*:', line_strip, re.IGNORECASE):
-                    current_section = 'bgm'
-                    content = re.sub(r'^(?:🎵)?\s*BGM\s*:\s*', '', line_strip, flags=re.IGNORECASE).strip()
-                    if content:
-                        bgm_lines.append(content)
-                elif re.match(r'^\[[^\]]+\]', line_strip):
-                    continue
-                else:
-                    if current_section == 'visual':
-                        visual_lines.append(line_strip)
-                    elif current_section == 'vo':
-                        vo_lines.append(line_strip)
-                    elif current_section == 'bgm':
-                        bgm_lines.append(line_strip)
-                        
-            visual_desc = " ".join(visual_lines).strip() if visual_lines else "Cinematic visual"
-            vo_text = " ".join(vo_lines).strip() if vo_lines else ""
-            bgm_desc = " ".join(bgm_lines).strip() if bgm_lines else "Soft ambient background music"
-            
-            vo_text = vo_text.strip('"').strip("'")
-            
-            scenes.append({
-                "scene_num": scene_num,
-                "time_range": m.group(1),
-                "image_prompt": visual_desc,
-                "animation_prompt": f"Animate: {visual_desc}",
-                "dialogue": vo_text,
-                "dialogue_english": vo_text,
-                "bgm_prompt": bgm_desc
-            })
-            scene_num += 1
-            
+
+    if scenes:
+        return scenes
+
+    # ── Strategy 3: [0-5 sec] inline time blocks ──────────────────────────────
+    matches = list(re.finditer(r'\[(\d+-\d+\s*sec)\]', script_text, re.IGNORECASE))
+    for i, m in enumerate(matches):
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(script_text)
+        block_text = script_text[start:end]
+        lines = block_text.split('\n')
+        visual_desc, vo_text, bgm_desc = extract_section_content(lines, VISUAL_PAT, VO_PAT, BGM_PAT)
+        scenes.append({
+            'scene_num': scene_num,
+            'time_range': m.group(1),
+            'image_prompt': visual_desc,
+            'animation_prompt': f'Animate: {visual_desc}',
+            'dialogue': vo_text,
+            'dialogue_english': vo_text,
+            'bgm_prompt': bgm_desc
+        })
+        scene_num += 1
+
     return scenes
 
 
@@ -762,19 +753,24 @@ async def create_extension_job(
 
     target_name = subtopic.name if subtopic else (topic.name if topic else (pyq_set.name if pyq_set else (ca_topic.name if ca_topic else "Reel")))
 
+    # Count scenes in user's script (support 🎥 Scene X format)
+    import re as _re
+    _scene_count_match = _re.findall(r'🎥\s*Scene\s*(\d+)', study_material, _re.IGNORECASE)
+    user_scene_count = len(_scene_count_match) if _scene_count_match else 12
+
     if is_custom:
-        # Verbatim Script Segmenter Prompt
+        # Verbatim Script Segmenter Prompt (uses actual scene count from script)
         prompt = f"""You are a professional educational reel director.
-Your goal is to split the following exact user script into exactly 12 sequential chronological scenes.
+Your goal is to split the following exact user script into exactly {user_scene_count} sequential chronological scenes.
 
 User Script:
 {study_material}
 
 Rules:
-1. You MUST split the user script sequentially into exactly 12 logical parts, so that all parts together form the complete user script without losing any sentence or word.
+1. You MUST split the user script sequentially into exactly {user_scene_count} logical parts, so that all parts together form the complete user script without losing any sentence or word.
 2. For each scene, the "dialogue" field MUST strictly contain the corresponding exact text from the user script in {lang}. Do NOT rewrite, change, summarize, or edit any words in the dialogue!
 3. For each scene, generate:
-   - "scene_num": The scene number (1 to 12).
+   - "scene_num": The scene number (1 to {user_scene_count}).
    - "dialogue": The exact chronological chunk from the user script in {lang} (keep pacing tags e.g. [thoughtful] if they are part of the script).
    - "dialogue_english": A clean, natural English translation of that dialogue chunk (15-25 words) to be used strictly for video subtitles/captions.
    - "image_prompt": A detailed photorealistic 9:16 portrait image description in English, cinematic, 4K, no text, matching the visual concept of this scene's dialogue.
@@ -782,7 +778,7 @@ Rules:
 
 Return a JSON object containing:
 - "bgm_prompt": A descriptive background music prompt (in English, 10-20 words) matching the mood and theme of the script (e.g. "Inspiring and uplifting background music for a historic review").
-- "scenes": A JSON array of exactly 12 scene objects:
+- "scenes": A JSON array of exactly {user_scene_count} scene objects:
   [
     {{
       "scene_num": 1,
@@ -828,12 +824,37 @@ Rules:
 - Make scenes flow as continuous educational explanation
 Return ONLY the JSON object, no markdown."""
 
-    is_timeline_format = is_custom and ("Visual:" in study_material or "VO:" in study_material or "Visual" in study_material)
+    study_material_lower = study_material.lower()
+    is_timeline_format = is_custom and (
+        "visual" in study_material_lower or
+        "video:" in study_material_lower or
+        "vo:" in study_material_lower or
+        "voice over" in study_material_lower or
+        "dialogue:" in study_material_lower or
+        "animate:" in study_material_lower or
+        "script:" in study_material_lower or
+        "\U0001f3a5 scene" in study_material_lower or
+        "bgm:" in study_material_lower
+    )
 
     try:
         if is_timeline_format:
             scenes = parse_custom_timeline_script(study_material)
             bgm_prompt = scenes[0].get("bgm_prompt") if scenes else "Soft ambient background music"
+            
+            # Translate Hinglish/Hindi prompts to English
+            from app.services.llm import translate_hinglish_prompt_to_english
+            for s in scenes:
+                if "image_prompt" in s and s["image_prompt"]:
+                    s["image_prompt"] = await translate_hinglish_prompt_to_english(s["image_prompt"])
+                if "animation_prompt" in s and s["animation_prompt"]:
+                    anim_val = s["animation_prompt"]
+                    if anim_val.startswith("Animate: "):
+                        body = anim_val[9:]
+                        translated_body = await translate_hinglish_prompt_to_english(body)
+                        s["animation_prompt"] = f"Animate: {translated_body}"
+                    else:
+                        s["animation_prompt"] = await translate_hinglish_prompt_to_english(anim_val)
         else:
             raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON object.")
             res_data = robust_json_loads(raw)
@@ -1991,7 +2012,29 @@ async def single_asset_done(
             elif "banner" in filename.lower():
                 ratio = "16:9"
 
-            if temp_id.startswith("subject-"):
+            if temp_id.startswith("exam-"):
+                from app.core.models import Exam
+                exam = db.query(Exam).filter(Exam.exam_id == temp_id).first()
+                if exam:
+                    if ratio == "9:16":
+                        exam.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        exam.image_url_16_9 = url
+                    else:
+                        exam.image_url = url
+                    updated_db = True
+            elif temp_id.startswith("paper-"):
+                from app.core.models import PaperClassroom
+                paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == temp_id).first()
+                if paper:
+                    if ratio == "9:16":
+                        paper.image_url_9_16 = url
+                    elif ratio == "16:9":
+                        paper.image_url_16_9 = url
+                    else:
+                        paper.image_url = url
+                    updated_db = True
+            elif temp_id.startswith("subject-"):
                 from app.core.models import Subject
                 subject = db.query(Subject).filter(Subject.subject_id == temp_id).first()
                 if subject:

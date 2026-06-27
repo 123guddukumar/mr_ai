@@ -2366,14 +2366,46 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
         
         <div class="form-group">
-          <label class="form-label">Exam Image</label>
-          <div style="display:flex; gap:8px; margin-bottom: 15px">
-            <input type="text" class="form-input" id="modal-exam-image-url" readonly placeholder="Upload image or enter URL...">
-            <button class="btn btn-secondary" style="padding:0 12px; font-size:11px; height: 42px;" onclick="triggerExamImageUpload()">📁 Upload</button>
-            <input type="file" id="modal-exam-image-file" style="display:none" accept="image/*" onchange="handleExamImageUpload(this)">
+          <label class="form-label">Exam Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-exam-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-exam-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeExam('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-exam-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-exam-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeExam('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-exam-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-exam-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizeExam('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px; display: flex; gap: 6px;">
+              <button class="btn btn-secondary" type="button" style="padding: 6px 10px; font-size: 10px; height: 32px; display: flex; align-items: center; gap: 4px;" onclick="triggerExamImageUpload()">
+                <span>📁 Upload</span>
+              </button>
+              <input type="file" id="modal-exam-image-file" style="display:none" accept="image/*" onchange="handleExamImageUpload(this)">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewExamAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
           </div>
-          <div id="modal-exam-image-preview-container" style="display:none; margin-bottom: 15px; width: 100%; height: 120px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border)">
-            <img id="modal-exam-image-preview" src="" style="width: 100%; height: 100%; object-fit: cover;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-exam-image-url" placeholder="1:1 Image URL" oninput="updateExamModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-exam-image-url-9-16" placeholder="9:16 Image URL" oninput="updateExamModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-exam-image-url-16-9" placeholder="16:9 Image URL" oninput="updateExamModalPreviews()">
           </div>
         </div>
         
@@ -2396,7 +2428,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
 
     <!-- Paper Modal -->
     <div class="modal-overlay" id="classroom-paper-modal">
-      <div class="modal" style="width: 400px;">
+      <div class="modal" style="width: 460px;">
         <div class="modal-title" id="paper-modal-title">Add New Paper</div>
         <div class="modal-sub">Add a paper to organize subjects</div>
         
@@ -2405,6 +2437,50 @@ body{display:flex;min-height:100vh;overflow:hidden;
         <div class="form-group">
           <label class="form-label">Paper Name</label>
           <input type="text" class="form-input" id="modal-paper-name" placeholder="e.g. Paper 1, Paper 2, General Studies">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Paper Images (1:1, 9:16, 16:9)</label>
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">1:1 Ratio</span>
+              <div style="width: 80px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-paper-placeholder-1-1" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-paper-img-1-1" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizePaper('1:1')">1:1 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">9:16 Ratio</span>
+              <div style="width: 56px; height: 80px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <span id="modal-paper-placeholder-9-16" style="font-size: 20px; color: var(--text3);">📷</span>
+                <img id="modal-paper-img-9-16" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizePaper('9:16')">9:16 Size</button>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span style="font-size: 10px; color: var(--text3); font-weight: 600;">16:9 Ratio</span>
+              <div style="width: 80px; height: 45px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-bottom: 17px;">
+                <span id="modal-paper-placeholder-16-9" style="font-size: 18px; color: var(--text3);">📷</span>
+                <img id="modal-paper-img-16-9" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              </div>
+              <button class="btn btn-secondary" type="button" style="padding: 4px 8px; font-size: 10px; line-height: 1;" onclick="generateOrResizePaper('16:9')">16:9 Size</button>
+            </div>
+            <div style="margin-left: auto; margin-bottom: 2px; display: flex; gap: 6px;">
+              <button class="btn btn-secondary" type="button" style="padding: 6px 10px; font-size: 10px; height: 32px; display: flex; align-items: center; gap: 4px;" onclick="triggerPaperImageUpload()">
+                <span>📁 Upload</span>
+              </button>
+              <input type="file" id="modal-paper-image-file" style="display:none" accept="image/*" onchange="handlePaperImageUpload(this)">
+              <button class="btn" type="button" style="padding: 6px 10px; font-size: 10px; background: #a855f7; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600;" onclick="triggerNewPaperAIImage()">
+                <span>🤖 New Image</span>
+              </button>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-paper-image-url" placeholder="1:1 Image URL" oninput="updatePaperModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-paper-image-url-9-16" placeholder="9:16 Image URL" oninput="updatePaperModalPreviews()">
+            <input type="text" class="form-input" style="font-size: 11px; padding: 6px;" id="modal-paper-image-url-16-9" placeholder="16:9 Image URL" oninput="updatePaperModalPreviews()">
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -8267,7 +8343,7 @@ async function generateSocialContent() {
   if(!dsId || !topic) return toast('Select DataStore and enter a topic.', 'warning');
   if(dsId === 'custom' && !customScript) return toast('Please enter your custom script.', 'warning');
   
-  const isTimelineFormat = dsId === 'custom' && (customScript.includes('Visual:') || customScript.includes('VO:') || customScript.includes('Visual'));
+  const isTimelineFormat = dsId === 'custom';
   if (type === 'reel' && isTimelineFormat) {
       generateCustomTimelineReel(customScript, topic, lang, voiceId);
       return;
@@ -8408,6 +8484,28 @@ async function generateCustomTimelineReel(customScript, topic, lang, voiceId) {
         _customTimelineJobId = jobId;
         _customTimelineScenes = createData.scenes || scenes;
         
+        // Merge bgm_prompt, time_range from parsed scenes into createData.scenes
+        // (create-job LLM fallback may not include these fields)
+        if (scenes && scenes.length > 0) {
+            _customTimelineScenes.forEach((scene, idx) => {
+                if (!scene.bgm_prompt && scenes[idx] && scenes[idx].bgm_prompt) {
+                    scene.bgm_prompt = scenes[idx].bgm_prompt;
+                }
+                if (!scene.time_range && scenes[idx] && scenes[idx].time_range) {
+                    scene.time_range = scenes[idx].time_range;
+                }
+                if (!scene.time_range) {
+                    scene.time_range = `${idx * 7}–${(idx + 1) * 7} sec`;
+                }
+            });
+        } else {
+            _customTimelineScenes.forEach((scene, idx) => {
+                if (!scene.time_range) {
+                    scene.time_range = `${idx * 7}–${(idx + 1) * 7} sec`;
+                }
+            });
+        }
+        
         _customTimelineScenes.forEach(scene => {
             scene.audio_loading = true;
             scene.bgm_loading = true;
@@ -8489,11 +8587,12 @@ async function resolveBgmForScene(jobId, idx) {
     scene.bgm_loading = true;
     renderCustomTimelineUI();
     try {
+        const bgmPromptToSend = scene.bgm_prompt || `Soft cinematic background music for scene ${idx + 1}`;
         const res = await fetch('/api/social/resolve-bgm', {
             method: 'POST',
             headers: hdrs(),
             body: JSON.stringify({
-                bgm_prompt: scene.bgm_prompt
+                bgm_prompt: bgmPromptToSend
             })
         });
         const data = await res.json();
@@ -8724,7 +8823,7 @@ function renderCustomTimelineUI() {
         return `
             <div class="card" style="padding: 20px; border: 1px solid var(--border); background: var(--bg); transition: all 0.2s; border-radius: 12px;" onmouseover="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-                    <span style="font-size: 13px; font-weight: 800; color: var(--accent);">🎬 Scene ${scene.scene_num} <span style="color: var(--text3); font-size: 11px; font-weight: 400; margin-left: 5px;">[${scene.time_range}]</span></span>
+                    <span style="font-size: 13px; font-weight: 800; color: var(--accent);">🎬 Scene ${scene.scene_num} <span style="color: var(--text3); font-size: 11px; font-weight: 400; margin-left: 5px;">[${scene.time_range || (idx * 7) + '–' + ((idx + 1) * 7) + ' sec'}]</span></span>
                     <button class="btn btn-secondary" onclick="openSceneRegenerateDialog(${idx})" style="font-size: 10px; padding: 4px 8px;">
                         🔄 Regenerate
                     </button>
@@ -12127,7 +12226,7 @@ async function loadExams() {
                 const img = exam.image_url || '../assets/vectorize_logo.png';
                 const desc = exam.description || 'No description';
                 html += `
-                <div class="agent-card" id="exam-card-${exam.exam_id}" data-category="${escapeHTML(exam.category || '')}" onclick="showExamDetails('${exam.exam_id}')" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; height: 260px; border-radius: 16px; border: 1px solid var(--border); background: linear-gradient(145deg, var(--card), var(--bg2)); box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative;">
+                <div class="agent-card" id="exam-card-${exam.exam_id}" data-category="${escapeHTML(exam.category || '')}" data-image-url-9-16="${exam.image_url_9_16 || ''}" data-image-url-16-9="${exam.image_url_16_9 || ''}" onclick="showExamDetails('${exam.exam_id}')" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; height: 260px; border-radius: 16px; border: 1px solid var(--border); background: linear-gradient(145deg, var(--card), var(--bg2)); box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative;">
                     <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
                         <div class="ds-actions-wrap" onclick="event.stopPropagation()">
                             <div class="ds-dots" onclick="toggleExamDropdown(event, '${exam.exam_id}')" style="background: rgba(0,0,0,0.5); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); font-size: 14px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.1);">⋮</div>
@@ -12222,33 +12321,32 @@ window.addEventListener('click', () => {
 function showExamModal(exam_id = null) {
     if (exam_id) {
         const examCard = document.getElementById(`exam-card-${exam_id}`);
-        const name = examCard.querySelector('.ac-name').textContent;
-        const desc = examCard.querySelector('.ac-desc').textContent;
+        const name = examCard.querySelector('.ac-name').textContent.trim();
+        const desc = examCard.querySelector('.ac-desc').textContent.trim();
         const imgUrl = examCard.querySelector('.exam-card-img').src;
         const category = examCard.getAttribute('data-category') || '';
+        const imgUrl916 = examCard.getAttribute('data-image-url-9-16') || '';
+        const imgUrl169 = examCard.getAttribute('data-image-url-16-9') || '';
         
         document.getElementById('modal-exam-id').value = exam_id;
         document.getElementById('modal-exam-name').value = name;
         document.getElementById('modal-exam-category').value = category;
         document.getElementById('modal-exam-image-url').value = imgUrl.includes('vectorize_logo.png') ? '' : imgUrl;
+        document.getElementById('modal-exam-image-url-9-16').value = imgUrl916;
+        document.getElementById('modal-exam-image-url-16-9').value = imgUrl169;
         document.getElementById('modal-exam-desc').value = desc === 'No description' ? '' : desc;
         document.getElementById('exam-modal-title').textContent = 'Edit Exam';
-        
-        if (imgUrl && !imgUrl.includes('vectorize_logo.png')) {
-            document.getElementById('modal-exam-image-preview').src = imgUrl;
-            document.getElementById('modal-exam-image-preview-container').style.display = 'block';
-        } else {
-            document.getElementById('modal-exam-image-preview-container').style.display = 'none';
-        }
     } else {
         document.getElementById('modal-exam-id').value = '';
         document.getElementById('modal-exam-name').value = '';
         document.getElementById('modal-exam-category').value = '';
         document.getElementById('modal-exam-image-url').value = '';
+        document.getElementById('modal-exam-image-url-9-16').value = '';
+        document.getElementById('modal-exam-image-url-16-9').value = '';
         document.getElementById('modal-exam-desc').value = '';
         document.getElementById('exam-modal-title').textContent = 'Add New Exam';
-        document.getElementById('modal-exam-image-preview-container').style.display = 'none';
     }
+    updateExamModalPreviews();
     document.getElementById('classroom-exam-modal').classList.add('open');
 }
 
@@ -12276,8 +12374,7 @@ async function handleExamImageUpload(input) {
         const res = await resp.json();
         if (resp.ok && res.success) {
             document.getElementById('modal-exam-image-url').value = res.url;
-            document.getElementById('modal-exam-image-preview').src = res.url;
-            document.getElementById('modal-exam-image-preview-container').style.display = 'block';
+            updateExamModalPreviews();
             toast('Image uploaded successfully', 'success');
         } else {
             toast(res.detail || 'Image upload failed', 'error');
@@ -12292,6 +12389,8 @@ async function saveExam() {
     const name = document.getElementById('modal-exam-name').value.trim();
     const category = document.getElementById('modal-exam-category').value.trim();
     const image_url = document.getElementById('modal-exam-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-exam-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-exam-image-url-16-9').value.trim();
     const description = document.getElementById('modal-exam-desc').value.trim();
     
     if (!name) {
@@ -12314,7 +12413,7 @@ async function saveExam() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name, category, image_url, description })
+            body: JSON.stringify({ name, category, image_url, image_url_9_16, image_url_16_9, description })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -13608,7 +13707,7 @@ function renderPapersList() {
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:#a78bfa; border-color:#a78bfa" onclick="vectorizePaper('${p.paper_id}')">🧠 Vectorize</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:#10b981; border-color:#10b981" onclick="openPaperChat('${p.paper_id}', '${escapeHTML(p.name)}')">💬 Chat</button>
                 <button class="btn btn-primary" style="padding:4px 8px; font-size:11px; background: linear-gradient(90deg, #8b5cf6, #4f46e5); border: none;" onclick="autoGenerateCourse('${p.paper_id}')">✨ Auto-Generate</button>
-                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditPaperModal('${p.paper_id}', '${escapeHTML(p.name)}')">✏️ Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px" onclick="showEditPaperModal('${p.paper_id}', '${escapeHTML(p.name)}', '${escapeHTML(p.image_url || '')}', '${escapeHTML(p.image_url_9_16 || '')}', '${escapeHTML(p.image_url_16_9 || '')}')">✏️ Edit</button>
                 <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px; color:var(--red)" onclick="deletePaper('${p.paper_id}')">🗑️ Delete</button>
             </div>
         </div>
@@ -14784,14 +14883,22 @@ async function saveSubtopicScript() {
 function showAddPaperModal() {
     document.getElementById('modal-paper-id').value = '';
     document.getElementById('modal-paper-name').value = '';
+    document.getElementById('modal-paper-image-url').value = '';
+    document.getElementById('modal-paper-image-url-9-16').value = '';
+    document.getElementById('modal-paper-image-url-16-9').value = '';
     document.getElementById('paper-modal-title').textContent = 'Add Paper';
+    updatePaperModalPreviews();
     document.getElementById('classroom-paper-modal').classList.add('open');
 }
 
-function showEditPaperModal(paper_id, name) {
+function showEditPaperModal(paper_id, name, image_url = '', image_url_9_16 = '', image_url_16_9 = '') {
     document.getElementById('modal-paper-id').value = paper_id;
     document.getElementById('modal-paper-name').value = name;
+    document.getElementById('modal-paper-image-url').value = image_url;
+    document.getElementById('modal-paper-image-url-9-16').value = image_url_9_16;
+    document.getElementById('modal-paper-image-url-16-9').value = image_url_16_9;
     document.getElementById('paper-modal-title').textContent = 'Edit Paper';
+    updatePaperModalPreviews();
     document.getElementById('classroom-paper-modal').classList.add('open');
 }
 
@@ -14801,6 +14908,10 @@ function closePaperModal() {
 
 async function savePaper() {
     const name = document.getElementById('modal-paper-name').value.trim();
+    const image_url = document.getElementById('modal-paper-image-url').value.trim();
+    const image_url_9_16 = document.getElementById('modal-paper-image-url-9-16').value.trim();
+    const image_url_16_9 = document.getElementById('modal-paper-image-url-16-9').value.trim();
+    
     if (!name) {
         toast('Paper name is required', 'error');
         return;
@@ -14821,7 +14932,7 @@ async function savePaper() {
                 'Content-Type': 'application/json',
                 'X-App-Token': session.token
             },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, image_url, image_url_9_16, image_url_16_9 })
         });
         const res = await resp.json();
         if (resp.ok) {
@@ -15294,6 +15405,48 @@ function updateModalSubtopicImagePreview(url) {
     updateSubtopicModalPreviews();
 }
 
+function updateExamModalPreviews() {
+    const url11 = document.getElementById('modal-exam-image-url').value.trim();
+    const url916 = document.getElementById('modal-exam-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-exam-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-exam-img-1-1');
+    const ph11 = document.getElementById('modal-exam-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-exam-img-9-16');
+    const ph916 = document.getElementById('modal-exam-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-exam-img-16-9');
+    const ph169 = document.getElementById('modal-exam-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
+function updatePaperModalPreviews() {
+    const url11 = document.getElementById('modal-paper-image-url').value.trim();
+    const url916 = document.getElementById('modal-paper-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-paper-image-url-16-9').value.trim();
+
+    const img11 = document.getElementById('modal-paper-img-1-1');
+    const ph11 = document.getElementById('modal-paper-placeholder-1-1');
+    if (url11) { img11.src = url11; img11.style.display = 'block'; if (ph11) ph11.style.display = 'none'; }
+    else { img11.style.display = 'none'; if (ph11) ph11.style.display = 'block'; }
+
+    const img916 = document.getElementById('modal-paper-img-9-16');
+    const ph916 = document.getElementById('modal-paper-placeholder-9-16');
+    if (url916) { img916.src = url916; img916.style.display = 'block'; if (ph916) ph916.style.display = 'none'; }
+    else { img916.style.display = 'none'; if (ph916) ph916.style.display = 'block'; }
+
+    const img169 = document.getElementById('modal-paper-img-16-9');
+    const ph169 = document.getElementById('modal-paper-placeholder-16-9');
+    if (url169) { img169.src = url169; img169.style.display = 'block'; if (ph169) ph169.style.display = 'none'; }
+    else { img169.style.display = 'none'; if (ph169) ph169.style.display = 'block'; }
+}
+
 function updateSubjectModalPreviews() {
     const url11 = document.getElementById('modal-subject-image-url').value.trim();
     const url916 = document.getElementById('modal-subject-image-url-9-16').value.trim();
@@ -15428,7 +15581,22 @@ async function triggerMetaAIImage(entityId, entityType, ratio) {
     let entityName = '';
     let contextStr = '';
     
-    if (entityId.includes('-temp-')) {
+    if (entityType === 'exam') {
+        entityName = document.getElementById('modal-exam-name').value.trim();
+        if (!entityName) {
+            toast('Please enter an exam name first', 'warning');
+            return;
+        }
+        contextStr = document.getElementById('modal-exam-category')?.value.trim() || '';
+    } else if (entityType === 'paper') {
+        entityName = document.getElementById('modal-paper-name').value.trim();
+        if (!entityName) {
+            toast('Please enter a paper name first', 'warning');
+            return;
+        }
+        const examName = document.getElementById('detail-exam-name')?.textContent || '';
+        contextStr = examName && examName !== 'Exam Name' && examName !== 'Loading...' ? examName : '';
+    } else if (entityId.includes('-temp-')) {
         entityName = document.getElementById(`modal-${entityType}-name`).value.trim();
         if (!entityName) {
             toast(`Please enter a ${entityType} name first`, 'warning');
@@ -15513,6 +15681,56 @@ async function triggerMetaAIImage(entityId, entityType, ratio) {
         console.error(e);
         document.getElementById('classroom-loading-modal').classList.remove('open');
         toast('Network error during image generation', 'error');
+    }
+}
+
+function generateOrResizeExam(ratio) {
+    const entityId = document.getElementById('modal-exam-id').value;
+    const url11 = document.getElementById('modal-exam-image-url').value.trim();
+    const url916 = document.getElementById('modal-exam-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-exam-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('exam-temp-')) {
+            toast('Please save this Exam first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'exam', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-exam-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-exam-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-exam-image-url-16-9').value = newUrl;
+                updateExamModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'exam-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'exam', ratio);
+    }
+}
+
+function generateOrResizePaper(ratio) {
+    const entityId = document.getElementById('modal-paper-id').value;
+    const url11 = document.getElementById('modal-paper-image-url').value.trim();
+    const url916 = document.getElementById('modal-paper-image-url-9-16').value.trim();
+    const url169 = document.getElementById('modal-paper-image-url-16-9').value.trim();
+    
+    if (url11 || url916 || url169) {
+        if (!entityId || entityId.startsWith('paper-temp-')) {
+            toast('Please save this Paper first before cropping/resizing.', 'warning');
+            return;
+        }
+        resizeImageBackend(entityId, 'paper', ratio).then(newUrl => {
+            if (newUrl) {
+                if (ratio === '1:1') document.getElementById('modal-paper-image-url').value = newUrl;
+                else if (ratio === '9:16') document.getElementById('modal-paper-image-url-9-16').value = newUrl;
+                else if (ratio === '16:9') document.getElementById('modal-paper-image-url-16-9').value = newUrl;
+                updatePaperModalPreviews();
+            }
+        });
+    } else {
+        const finalId = entityId || 'paper-temp-' + Date.now();
+        triggerMetaAIImage(finalId, 'paper', ratio);
     }
 }
 
@@ -15613,6 +15831,47 @@ function generateOrResizeSubtopic(ratio) {
     } else {
         const finalId = entityId || 'subtopic-temp-' + Date.now();
         triggerMetaAIImage(finalId, 'subtopic', ratio);
+    }
+}
+
+function triggerNewExamAIImage() {
+    const entityId = document.getElementById('modal-exam-id').value || 'exam-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'exam', '1:1');
+}
+
+function triggerNewPaperAIImage() {
+    const entityId = document.getElementById('modal-paper-id').value || 'paper-temp-' + Date.now();
+    triggerMetaAIImage(entityId, 'paper', '1:1');
+}
+
+function triggerPaperImageUpload() {
+    document.getElementById('modal-paper-image-file').click();
+}
+
+async function handlePaperImageUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    toast('Uploading image...', 'info');
+    try {
+        const resp = await fetch('/api/clients/upload-image', {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: formData
+        });
+        const res = await resp.json();
+        if (resp.ok && res.success) {
+            document.getElementById('modal-paper-image-url').value = res.url;
+            updatePaperModalPreviews();
+            toast('Image uploaded successfully', 'success');
+        } else {
+            toast(res.detail || 'Image upload failed', 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        toast('Network error during upload', 'error');
     }
 }
 
@@ -20007,7 +20266,39 @@ window.addEventListener("message", (event) => {
         }
         const targetUrl = url || thumb;
         
-        if (baseAssetId.startsWith("subject-")) {
+        if (baseAssetId.startsWith("exam-")) {
+            handled = true;
+            if (suffix === "-9_16") {
+                document.getElementById('modal-exam-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-exam-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-exam-image-url').value = targetUrl;
+            }
+            updateExamModalPreviews();
+            toast('✅ Exam image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!baseAssetId.includes("-temp-")) {
+                loadExams();
+            }
+        } else if (baseAssetId.startsWith("paper-")) {
+            handled = true;
+            if (suffix === "-9_16") {
+                document.getElementById('modal-paper-image-url-9-16').value = targetUrl;
+            } else if (suffix === "-16_9") {
+                document.getElementById('modal-paper-image-url-16-9').value = targetUrl;
+            } else {
+                document.getElementById('modal-paper-image-url').value = targetUrl;
+            }
+            updatePaperModalPreviews();
+            toast('✅ Paper image generated via Meta AI!', 'success');
+            document.getElementById('classroom-loading-modal').classList.remove('open');
+            window.postMessage({ type: "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED" }, "*");
+            if (!baseAssetId.includes("-temp-")) {
+                refreshExamTree();
+            }
+        } else if (baseAssetId.startsWith("subject-")) {
             handled = true;
             if (suffix === "-9_16") {
                 document.getElementById('modal-subject-image-url-9-16').value = targetUrl;

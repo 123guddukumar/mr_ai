@@ -634,3 +634,43 @@ async def llm_with_history(
             return r.json()[0]["generated_text"].strip()
     else:
         raise ValueError(f"Unsupported provider: {provider}")
+
+
+async def translate_hinglish_prompt_to_english(prompt_text: str) -> str:
+    """
+    Checks if a prompt contains Hindi/Hinglish characters or words,
+    and translates it to English using the active LLM.
+    """
+    if not prompt_text:
+        return ""
+    
+    # Quick check: does it have non-ascii characters or common Hinglish words?
+    hinglish_words = {"ek", "ladka", "baitha", "hai", "rakha", "room", "mein", "sirf", "ko", "se", "aur", "pe", "jo", "ki", "ka", "ladki", "akela", "baithi", "chhat", "khada", "khadi", "dekh", "rha", "rhi"}
+    import re
+    clean_words = set(re.findall(r'[a-zA-Z]+', prompt_text.lower()))
+    
+    has_hinglish = not clean_words.isdisjoint(hinglish_words) or any(ord(c) > 127 for c in prompt_text)
+    
+    if not has_hinglish:
+        return prompt_text
+        
+    try:
+        safe_prompt = prompt_text.encode('ascii', errors='replace').decode('ascii')
+        logger.info(f"Translating Hinglish visual prompt: '{safe_prompt}'")
+        system_prompt = (
+            "You are a professional image generation prompt translator. "
+            "Translate the given Hinglish/Hindi text describing a scene into a detailed, "
+            "clear English description suitable for AI image generators (like Stable Diffusion / Flux). "
+            "Do NOT include any introduction or conversation. Output ONLY the English translation."
+        )
+        translated = await generate_simple_response(prompt_text, system_prompt, max_tokens=1024)
+        translated_clean = translated.strip().strip('"').strip("'")
+        if translated_clean:
+            safe_trans = translated_clean.encode('ascii', errors='replace').decode('ascii')
+            logger.info(f"Translated success: '{safe_trans}'")
+            return translated_clean
+    except Exception as e:
+        logger.warning(f"Failed to translate Hinglish prompt: {e}")
+        
+    return prompt_text
+

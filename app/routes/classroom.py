@@ -1377,9 +1377,15 @@ async def _make_image_of_ratio_from_url(image_url: str, ratio: str, out_dir: str
             return r2_url
     except Exception as e:
         logger.warning(f"R2 upload failed: {e}")
-        
-    # Fallback: local URL
-    return f"/uploads/images/{out_filename}"
+
+    # Fallback: local URL (only reliable in local dev; in production R2 must work)
+    import os as _os
+    is_local = _os.environ.get("ENVIRONMENT", "production").lower() in ("local", "development", "dev")
+    if is_local:
+        return f"/uploads/images/{out_filename}"
+
+    logger.error(f"R2 upload failed and not in local env — refusing to save inaccessible local path for {out_filename}")
+    return None
 
 
 def _crop_image_to_banner(img_bytes: bytes, out_path: str) -> bool:
@@ -1406,19 +1412,77 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
     
     # 1. Fetch entity
     entity = None
+    client_id = client["client_id"]
     if entity_type == "exam":
-        entity = db.query(Exam).filter(Exam.exam_id == entity_id, Exam.client_id == client["client_id"]).first()
+        entity = db.query(Exam).filter(Exam.exam_id == entity_id, Exam.client_id == client_id).first()
     elif entity_type == "paper":
-        entity = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == entity_id, Exam.client_id == client["client_id"]).first()
+        # Fetch paper directly, then verify ownership through its exam
+        _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == entity_id).first()
+        if _paper:
+            _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            entity = _paper if _exam else None
+        else:
+            entity = None
     elif entity_type == "subject":
-        entity = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == entity_id, Exam.client_id == client["client_id"]).first()
+        _subj = db.query(Subject).filter(Subject.subject_id == entity_id).first()
+        if _subj:
+            # Subject can belong to an exam directly or via paper
+            _exam = None
+            if _subj.exam_id:
+                _exam = db.query(Exam).filter(Exam.exam_id == _subj.exam_id, Exam.client_id == client_id).first()
+            if not _exam and _subj.paper_id:
+                _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == _subj.paper_id).first()
+                if _paper:
+                    _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            entity = _subj if _exam else None
+        else:
+            entity = None
     elif entity_type == "chapter":
-        entity = db.query(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(ChapterClassroom.chapter_id == entity_id, Exam.client_id == client["client_id"]).first()
+        _ch = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == entity_id).first()
+        if _ch:
+            _subj = db.query(Subject).filter(Subject.subject_id == _ch.subject_id).first()
+            _exam = None
+            if _subj and _subj.exam_id:
+                _exam = db.query(Exam).filter(Exam.exam_id == _subj.exam_id, Exam.client_id == client_id).first()
+            if not _exam and _subj and _subj.paper_id:
+                _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == _subj.paper_id).first()
+                if _paper:
+                    _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            entity = _ch if _exam else None
+        else:
+            entity = None
     elif entity_type == "topic":
-        entity = db.query(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(TopicClassroom.topic_id == entity_id, Exam.client_id == client["client_id"]).first()
+        _topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == entity_id).first()
+        if _topic:
+            _ch = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == _topic.chapter_id).first()
+            _subj = db.query(Subject).filter(Subject.subject_id == _ch.subject_id).first() if _ch else None
+            _exam = None
+            if _subj and _subj.exam_id:
+                _exam = db.query(Exam).filter(Exam.exam_id == _subj.exam_id, Exam.client_id == client_id).first()
+            if not _exam and _subj and _subj.paper_id:
+                _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == _subj.paper_id).first()
+                if _paper:
+                    _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            entity = _topic if _exam else None
+        else:
+            entity = None
     elif entity_type == "subtopic":
-        entity = db.query(SubtopicClassroom).join(TopicClassroom).join(ChapterClassroom).join(Subject).join(PaperClassroom).join(Exam).filter(SubtopicClassroom.subtopic_id == entity_id, Exam.client_id == client["client_id"]).first()
-        
+        _sub = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == entity_id).first()
+        if _sub:
+            _topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == _sub.topic_id).first()
+            _ch = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == _topic.chapter_id).first() if _topic else None
+            _subj = db.query(Subject).filter(Subject.subject_id == _ch.subject_id).first() if _ch else None
+            _exam = None
+            if _subj and _subj.exam_id:
+                _exam = db.query(Exam).filter(Exam.exam_id == _subj.exam_id, Exam.client_id == client_id).first()
+            if not _exam and _subj and _subj.paper_id:
+                _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == _subj.paper_id).first()
+                if _paper:
+                    _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            entity = _sub if _exam else None
+        else:
+            entity = None
+
     if not entity:
         raise HTTPException(404, f"{entity_type.capitalize()} not found or access denied")
         

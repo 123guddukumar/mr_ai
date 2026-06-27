@@ -1936,9 +1936,12 @@ async def single_asset_done(
         # Crop the watermark using FFmpeg in-place!
         remove_watermark_ffmpeg(dest_path, is_video=is_video)
         
-        url = f"/uploads/social/{dest_filename}"
-        
+        local_url = f"/uploads/social/{dest_filename}"
+        url = local_url
+
         # Upload to Cloudflare R2 if configured
+        from app.core.config import settings
+        r2_configured = bool(settings.R2_PUBLIC_URL and settings.R2_ACCESS_KEY_ID)
         try:
             from app.services.r2_storage import upload_to_r2
             if is_job_scene and job_id and scene_num is not None:
@@ -1949,8 +1952,15 @@ async def single_asset_done(
             r2_url = upload_to_r2(dest_path, r2_key, "image/jpeg" if not is_video else "video/mp4")
             if r2_url:
                 url = r2_url
+            elif r2_configured:
+                logger.error(f"R2 upload returned empty URL for {dest_filename}")
+                raise HTTPException(500, "Image upload to R2 failed. Please retry.")
+        except HTTPException:
+            raise
         except Exception as r2_err:
             logger.error(f"R2 upload failed for single asset: {r2_err}")
+            if r2_configured:
+                raise HTTPException(500, f"Image upload to R2 failed: {r2_err}. Please retry.")
             
         # If it is a job scene, update job in memory and on disk
         if is_job_scene and job_id and scene_num is not None:

@@ -1409,29 +1409,43 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
     entity_id = req.entity_id
     entity_type = req.entity_type.lower()
     target_ratio = req.target_ratio
-    
-    # 1. Fetch entity
-    entity = None
+
     client_id = client["client_id"]
+    logger.info(f"resize_classroom_image: type={entity_type} id={entity_id} ratio={target_ratio} client={client_id}")
+
+    # 1. Fetch entity — all lookups use the same DB-level filter style (Subject/Chapter pattern)
+    entity = None
+
     if entity_type == "exam":
-        # Fetch directly by exam_id, then verify client ownership separately (same pattern as subject/chapter)
-        _exam_direct = db.query(Exam).filter(Exam.exam_id == entity_id).first()
-        if _exam_direct and _exam_direct.client_id == client_id:
-            entity = _exam_direct
-        else:
-            entity = None
+        # Use same DB-level filter as subject's exam verification (which works in production)
+        entity = db.query(Exam).filter(
+            Exam.exam_id == entity_id,
+            Exam.client_id == client_id
+        ).first()
+        if not entity:
+            # Debug log: check if exam exists at all
+            _any = db.query(Exam).filter(Exam.exam_id == entity_id).first()
+            if _any:
+                logger.error(f"resize Exam: exam {entity_id} exists but client_id mismatch: stored={_any.client_id} vs request={client_id}")
+            else:
+                logger.error(f"resize Exam: exam {entity_id} NOT found in DB at all")
+
     elif entity_type == "paper":
-        # Fetch paper directly, then verify ownership through its exam
         _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == entity_id).first()
         if _paper:
-            _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id, Exam.client_id == client_id).first()
+            _exam = db.query(Exam).filter(
+                Exam.exam_id == _paper.exam_id,
+                Exam.client_id == client_id
+            ).first()
             entity = _paper if _exam else None
+            if not _exam:
+                logger.error(f"resize Paper: paper {entity_id} exam_id={_paper.exam_id} but exam client check failed for client={client_id}")
         else:
-            entity = None
+            logger.error(f"resize Paper: paper {entity_id} NOT found in DB at all")
+
     elif entity_type == "subject":
         _subj = db.query(Subject).filter(Subject.subject_id == entity_id).first()
         if _subj:
-            # Subject can belong to an exam directly or via paper
             _exam = None
             if _subj.exam_id:
                 _exam = db.query(Exam).filter(Exam.exam_id == _subj.exam_id, Exam.client_id == client_id).first()
@@ -1442,6 +1456,7 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
             entity = _subj if _exam else None
         else:
             entity = None
+
     elif entity_type == "chapter":
         _ch = db.query(ChapterClassroom).filter(ChapterClassroom.chapter_id == entity_id).first()
         if _ch:
@@ -1456,6 +1471,7 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
             entity = _ch if _exam else None
         else:
             entity = None
+
     elif entity_type == "topic":
         _topic = db.query(TopicClassroom).filter(TopicClassroom.topic_id == entity_id).first()
         if _topic:
@@ -1471,6 +1487,7 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
             entity = _topic if _exam else None
         else:
             entity = None
+
     elif entity_type == "subtopic":
         _sub = db.query(SubtopicClassroom).filter(SubtopicClassroom.subtopic_id == entity_id).first()
         if _sub:
@@ -1489,6 +1506,7 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
             entity = None
 
     if not entity:
+        logger.warning(f"resize_classroom_image: entity={entity_type} id={entity_id} NOT resolved for client={client_id}")
         raise HTTPException(404, f"{entity_type.capitalize()} not found or access denied")
         
     # 2. Find any existing source image URL

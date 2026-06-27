@@ -1414,7 +1414,12 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
     entity = None
     client_id = client["client_id"]
     if entity_type == "exam":
-        entity = db.query(Exam).filter(Exam.exam_id == entity_id, Exam.client_id == client_id).first()
+        # Fetch directly by exam_id, then verify client ownership separately (same pattern as subject/chapter)
+        _exam_direct = db.query(Exam).filter(Exam.exam_id == entity_id).first()
+        if _exam_direct and _exam_direct.client_id == client_id:
+            entity = _exam_direct
+        else:
+            entity = None
     elif entity_type == "paper":
         # Fetch paper directly, then verify ownership through its exam
         _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == entity_id).first()

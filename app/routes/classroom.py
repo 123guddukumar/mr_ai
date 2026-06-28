@@ -917,7 +917,9 @@ def download_and_save_image(image_url: str, fallback_keyword: str = None, subtit
         "r2.dev" in url_lower or
         "r2.cloudflarestorage.com" in url_lower or
         "supabase.co" in url_lower or
-        "supabase.in" in url_lower
+        "supabase.in" in url_lower or
+        "classroom/images" in url_lower or
+        "reels/" in url_lower
     )
     if settings.R2_PUBLIC_URL and image_url.startswith(settings.R2_PUBLIC_URL):
         is_already_hosted = True
@@ -1022,11 +1024,13 @@ async def create_exam(req: CreateExamReq, client: dict = Depends(_require_client
     return {"success": True, "exam": exam.to_dict()}
 
 
-@router.put("/classroom/exams/{exam_id}", tags=["Classroom"])
+@router.api_route("/classroom/exams/{exam_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_exam(exam_id: str, req: CreateExamReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
+    exam = db.query(Exam).filter(Exam.exam_id == exam_id).first()
     if not exam:
         raise HTTPException(404, "Exam not found")
+    if exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
         
     image_url = req.image_url
     if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
@@ -1053,9 +1057,11 @@ async def update_exam(exam_id: str, req: CreateExamReq, client: dict = Depends(_
 
 @router.delete("/classroom/exams/{exam_id}", tags=["Classroom"])
 async def delete_exam(exam_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    exam = db.query(Exam).filter(Exam.exam_id == exam_id, Exam.client_id == client["client_id"]).first()
+    exam = db.query(Exam).filter(Exam.exam_id == exam_id).first()
     if not exam:
         raise HTTPException(404, "Exam not found")
+    if exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
     db.delete(exam)
     db.commit()
     return {"success": True, "message": "Exam deleted"}
@@ -1140,11 +1146,14 @@ async def create_paper(exam_id: str, req: CreatePaperReq, client: dict = Depends
     return {"success": True, "paper": paper.to_dict()}
 
 
-@router.put("/classroom/papers/{paper_id}", tags=["Classroom"])
+@router.api_route("/classroom/papers/{paper_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_paper(paper_id: str, req: CreatePaperReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
+    paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == paper_id).first()
     if not paper:
-        raise HTTPException(404, "Paper not found or access denied")
+        raise HTTPException(404, "Paper not found")
+    exam = db.query(Exam).filter(Exam.exam_id == paper.exam_id).first()
+    if not exam or exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
         
     image_url = req.image_url
     if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
@@ -1169,9 +1178,12 @@ async def update_paper(paper_id: str, req: CreatePaperReq, client: dict = Depend
 
 @router.delete("/classroom/papers/{paper_id}", tags=["Classroom"])
 async def delete_paper(paper_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
+    paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == paper_id).first()
     if not paper:
-        raise HTTPException(404, "Paper not found or access denied")
+        raise HTTPException(404, "Paper not found")
+    exam = db.query(Exam).filter(Exam.exam_id == paper.exam_id).first()
+    if not exam or exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
     db.delete(paper)
     db.commit()
     return {"success": True, "message": "Paper deleted"}
@@ -1181,7 +1193,7 @@ async def delete_paper(paper_id: str, client: dict = Depends(_require_client), d
 
 @router.post("/classroom/papers/{paper_id}/subjects", tags=["Classroom"])
 async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    paper = db.query(PaperClassroom).join(Exam).filter(PaperClassroom.paper_id == paper_id, Exam.client_id == client["client_id"]).first()
+    paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == paper_id).first()
     if not paper:
         raise HTTPException(404, "Paper not found or access denied")
     
@@ -1225,9 +1237,20 @@ async def create_subject(paper_id: str, req: CreateSubjectReq, client: dict = De
 
 @router.api_route("/classroom/subjects/{subject_id}", methods=["PUT", "POST"], tags=["Classroom"])
 async def update_subject(subject_id: str, req: CreateSubjectReq, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
+    subject = db.query(Subject).filter(Subject.subject_id == subject_id).first()
     if not subject:
-        raise HTTPException(404, "Subject not found or access denied")
+        raise HTTPException(404, "Subject not found")
+    
+    exam = None
+    if subject.exam_id:
+        exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+    if (not exam or exam.client_id != client["client_id"]) and subject.paper_id:
+        paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == subject.paper_id).first()
+        if paper:
+            exam = db.query(Exam).filter(Exam.exam_id == paper.exam_id).first()
+            
+    if not exam or exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
     
     image_url = req.image_url
     if image_url and image_url.startswith("http") and not image_url.startswith("/uploads"):
@@ -1253,9 +1276,21 @@ async def update_subject(subject_id: str, req: CreateSubjectReq, client: dict = 
 
 @router.delete("/classroom/subjects/{subject_id}", tags=["Classroom"])
 async def delete_subject(subject_id: str, client: dict = Depends(_require_client), db: Session = Depends(get_db)):
-    subject = db.query(Subject).join(PaperClassroom).join(Exam).filter(Subject.subject_id == subject_id, Exam.client_id == client["client_id"]).first()
+    subject = db.query(Subject).filter(Subject.subject_id == subject_id).first()
     if not subject:
-        raise HTTPException(404, "Subject not found or access denied")
+        raise HTTPException(404, "Subject not found")
+        
+    exam = None
+    if subject.exam_id:
+        exam = db.query(Exam).filter(Exam.exam_id == subject.exam_id).first()
+    if (not exam or exam.client_id != client["client_id"]) and subject.paper_id:
+        paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == subject.paper_id).first()
+        if paper:
+            exam = db.query(Exam).filter(Exam.exam_id == paper.exam_id).first()
+            
+    if not exam or exam.client_id != client["client_id"]:
+        raise HTTPException(403, "Access denied")
+        
     db.delete(subject)
     db.commit()
     return {"success": True, "message": "Subject deleted"}
@@ -1461,31 +1496,33 @@ async def resize_classroom_image(req: ResizeImageReq, client: dict = Depends(_re
     entity = None
 
     if entity_type == "exam":
-        # Use same DB-level filter as subject's exam verification (which works in production)
-        entity = db.query(Exam).filter(
-            Exam.exam_id == entity_id,
-            Exam.client_id == client_id
-        ).first()
-        if not entity:
-            # Debug log: check if exam exists at all
-            _any = db.query(Exam).filter(Exam.exam_id == entity_id).first()
-            if _any:
-                logger.error(f"resize Exam: exam {entity_id} exists but client_id mismatch: stored={_any.client_id} vs request={client_id}")
+        _exam = db.query(Exam).filter(Exam.exam_id == entity_id).first()
+        if _exam:
+            if _exam.client_id == client_id:
+                entity = _exam
             else:
-                logger.error(f"resize Exam: exam {entity_id} NOT found in DB at all")
+                logger.error(f"resize Exam: exam {entity_id} exists but client_id mismatch: stored={_exam.client_id} vs request={client_id}")
+                raise HTTPException(403, f"Access denied (Stored client: {_exam.client_id}, Request client: {client_id})")
+        else:
+            logger.error(f"resize Exam: exam {entity_id} NOT found in DB at all")
+            raise HTTPException(404, f"Exam {entity_id} not found in database")
 
     elif entity_type == "paper":
         _paper = db.query(PaperClassroom).filter(PaperClassroom.paper_id == entity_id).first()
         if _paper:
-            _exam = db.query(Exam).filter(
-                Exam.exam_id == _paper.exam_id,
-                Exam.client_id == client_id
-            ).first()
-            entity = _paper if _exam else None
-            if not _exam:
-                logger.error(f"resize Paper: paper {entity_id} exam_id={_paper.exam_id} but exam client check failed for client={client_id}")
+            _exam = db.query(Exam).filter(Exam.exam_id == _paper.exam_id).first()
+            if _exam:
+                if _exam.client_id == client_id:
+                    entity = _paper
+                else:
+                    logger.error(f"resize Paper: paper {entity_id} exam_id={_paper.exam_id} but client_id mismatch: stored={_exam.client_id} vs request={client_id}")
+                    raise HTTPException(403, f"Access denied (Stored client: {_exam.client_id}, Request client: {client_id})")
+            else:
+                logger.error(f"resize Paper: paper {entity_id} has parent exam {_paper.exam_id} but it was not found")
+                raise HTTPException(404, f"Parent exam {_paper.exam_id} not found for paper")
         else:
             logger.error(f"resize Paper: paper {entity_id} NOT found in DB at all")
+            raise HTTPException(404, f"Paper {entity_id} not found in database")
 
     elif entity_type == "subject":
         _subj = db.query(Subject).filter(Subject.subject_id == entity_id).first()

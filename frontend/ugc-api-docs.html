@@ -421,24 +421,24 @@
 
     <h3 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text2)">cURL</h3>
     <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="cmnt"># Step 1: Upload</span>
-curl -X POST https://your-server.com/api/ugc/upload \
+curl -X POST https://test.3rdai.co/api/ugc/upload \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -F <span class="str">"file=@/path/to/video.mp4"</span>
 
 <span class="cmnt"># Step 2: Process (replace JOB_ID with value from step 1)</span>
-curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+curl -X POST https://test.3rdai.co/api/ugc/process/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -H <span class="str">"Content-Type: application/json"</span> \
   -d <span class="str">'{"caption":true,"subtitle_style":"two_line_zoom_in","broll":true,"music":true,"bgm_mood":"Motivational","viral":true}'</span>
 
 <span class="cmnt"># Step 3: Poll (repeat until status = "completed")</span>
-curl https://your-server.com/api/ugc/job/JOB_ID \
+curl https://test.3rdai.co/api/ugc/job/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span></div>
 
     <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;color:var(--text2)">Python</h3>
     <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">import</span> requests, time
 
-BASE  = <span class="str">"https://your-server.com"</span>
+BASE  = <span class="str">"https://test.3rdai.co"</span>
 HDR   = {<span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span>}
 
 <span class="cmnt"># 1. Upload</span>
@@ -465,7 +465,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
     time.sleep(<span class="num">8</span>)</div>
 
     <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;color:var(--text2)">JavaScript (Fetch)</h3>
-    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://your-server.com"</span>;
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://test.3rdai.co"</span>;
 <span class="kw">const</span> HDR  = { <span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span> };
 
 <span class="kw">async function</span> processVideo(file) {
@@ -527,7 +527,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
     </div>
 
     <p class="response-label">Example — Use Pexels Stock Videos</p>
-    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://test.3rdai.co/api/ugc/process/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -H <span class="str">"Content-Type: application/json"</span> \
   -d <span class="str">'{</span>
@@ -538,7 +538,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
   <span class="str">}'</span></div>
 
     <p class="response-label">Example — Use Pollinations AI Images (default)</p>
-    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://test.3rdai.co/api/ugc/process/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -H <span class="str">"Content-Type: application/json"</span> \
   -d <span class="str">'{"broll": true, "broll_source": "pollinations"}'</span></div>
@@ -576,7 +576,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
     </div>
 
     <p class="response-label">cURL Example — Enable AI Background</p>
-    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://test.3rdai.co/api/ugc/process/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -H <span class="str">"Content-Type: application/json"</span> \
   -d '{</pre>
@@ -632,7 +632,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
           <tr><td class="param-name">file</td><td class="param-type">File</td><td class="param-req">Required</td><td class="param-desc">Logo image file (.png recommended with transparent bg).</td></tr>
         </table>
         <p class="response-label">cURL Example</p>
-        <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/upload-logo/JOB_ID \
+        <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://test.3rdai.co/api/ugc/upload-logo/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -F <span class="str">"file=@/path/to/your-logo.png"</span></div>
         <p class="response-label">Response (200 OK)</p>
@@ -645,12 +645,12 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
 
     <p class="response-label">cURL — Full Logo + Process Example</p>
     <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="cmnt"># Step 1: Upload logo</span>
-curl -X POST https://your-server.com/api/ugc/upload-logo/JOB_ID \
+curl -X POST https://test.3rdai.co/api/ugc/upload-logo/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -F <span class="str">"file=@logo.png"</span>
 
 <span class="cmnt"># Step 2: Process with logo enabled</span>
-curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+curl -X POST https://test.3rdai.co/api/ugc/process/JOB_ID \
   -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
   -H <span class="str">"Content-Type: application/json"</span> \
   -d '{</pre>
@@ -664,7 +664,7 @@ curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
     <p class="response-label">Python — Full Logo + Process Example</p>
     <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">import</span> requests
 
-BASE = <span class="str">"https://your-server.com"</span>
+BASE = <span class="str">"https://test.3rdai.co"</span>
 HDR  = {<span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span>}
 
 <span class="cmnt"># 1. Upload video</span>
@@ -692,7 +692,7 @@ requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, heade
 })</div>
 
     <p class="response-label">JavaScript — Full Logo + Background + Process</p>
-    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://your-server.com"</span>;
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://test.3rdai.co"</span>;
 <span class="kw">const</span> HDR  = { <span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span> };
 
 <span class="cmnt">// 1. Upload video</span>
@@ -755,3 +755,4 @@ function copyCode(btn) {
 </script>
 </body>
 </html>
+

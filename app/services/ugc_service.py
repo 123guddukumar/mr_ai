@@ -472,8 +472,35 @@ Output ONLY raw JSON (no markdown fences, no extra text):
             crop_w = orig_w
             crop_h = int(orig_w * 16 / 9)
 
-        # Load Face Cascade
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        # Load Face Cascade (with robust download/fallback for Linux EC2 servers)
+        cascade_filename = "haarcascade_frontalface_default.xml"
+        cascade_path = None
+
+        if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades'):
+            test_path = os.path.join(cv2.data.haarcascades, cascade_filename)
+            if os.path.exists(test_path):
+                cascade_path = test_path
+
+        if not cascade_path:
+            local_path = os.path.join(str(settings.BASE_DIR), cascade_filename)
+            if not os.path.exists(local_path):
+                logger.info("Haarcascade XML not found. Downloading from OpenCV GitHub...")
+                try:
+                    import urllib.request
+                    url = "https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalface_default.xml"
+                    urllib.request.urlretrieve(url, local_path)
+                    logger.info(f"Downloaded haarcascade XML to: {local_path}")
+                except Exception as dl_err:
+                    logger.error(f"Failed to download haarcascade XML: {dl_err}")
+            if os.path.exists(local_path):
+                cascade_path = local_path
+
+        if not cascade_path:
+            raise Exception("Haarcascade XML classifier could not be located or downloaded.")
+
+        face_cascade = cv2.CascadeClassifier(cascade_path)
+        if face_cascade.empty():
+            raise Exception("Loaded face cascade classifier is empty. XML parsing failed.")
 
         # Determine target resolution for scaling/upscaling
         quality = features.get("video_quality") or "1080p"

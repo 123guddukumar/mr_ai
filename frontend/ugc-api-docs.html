@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UGC Video API — Developer Docs</title>
+  <meta name="description" content="Complete API documentation for the MR AI UGC Video Creation API. Upload a video, process it with AI, and download a professionally edited final video."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0c10;--bg2:#0f1117;--bg3:#161b27;--bg4:#1c2333;
+      --border:rgba(255,255,255,0.08);--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+      --purple:#7c3aed;--purple2:#a78bfa;--pink:#db2777;
+      --green:#10b981;--blue:#3b82f6;--yellow:#f59e0b;--red:#ef4444;--orange:#f97316;
+      --grad:linear-gradient(135deg,#7c3aed,#db2777);
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;width:258px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;z-index:100;padding-bottom:24px}
+    .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .sidebar-logo-icon{width:34px;height:34px;border-radius:9px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .sidebar-logo-text{font-size:13px;font-weight:700;color:var(--text)}
+    .sidebar-logo-sub{font-size:10px;color:var(--text3);font-weight:500;margin-top:1px}
+    .sidebar-section{padding:16px 12px 4px;font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+    .sidebar-link{display:flex;align-items:center;gap:8px;padding:7px 20px;font-size:12.5px;font-weight:500;color:var(--text2);text-decoration:none;transition:all .15s;border-left:2px solid transparent}
+    .sidebar-link:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+    .sidebar-link.active{color:var(--purple2);border-color:var(--purple);background:rgba(124,58,237,0.08)}
+    .sidebar-badge{margin-left:auto;font-size:8px;font-weight:800;padding:1px 6px;border-radius:10px;text-transform:uppercase}
+    .badge-get{background:rgba(16,185,129,0.15);color:#34d399}
+    .badge-post{background:rgba(59,130,246,0.15);color:#60a5fa}
+    .main{margin-left:258px;min-height:100vh}
+    .content{max-width:860px;margin:0 auto;padding:48px 32px 80px}
+    .hero{padding:48px 0 40px;border-bottom:1px solid var(--border);margin-bottom:48px}
+    .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);color:var(--purple2);font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-bottom:16px}
+    .hero h1{font-size:36px;font-weight:800;color:var(--text);line-height:1.2;margin-bottom:14px}
+    .hero h1 span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero-desc{font-size:16px;color:var(--text2);max-width:600px;line-height:1.7}
+    .hero-meta{display:flex;gap:20px;margin-top:20px;flex-wrap:wrap}
+    .hero-meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}
+    .hero-meta-item strong{color:var(--text2)}
+    .section{margin-bottom:56px}
+    .section-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px;padding-top:8px}
+    .section-desc{color:var(--text2);margin-bottom:24px;font-size:13.5px}
+    .endpoint{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;transition:border-color .2s}
+    .endpoint:hover{border-color:rgba(124,58,237,0.3)}
+    .endpoint-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;background:rgba(255,255,255,0.01);border-bottom:1px solid transparent;transition:border-color .2s}
+    .endpoint-header.open{border-color:var(--border)}
+    .method-badge{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0}
+    .method-get{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.3)}
+    .method-post{background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)}
+    .endpoint-path{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text);flex:1}
+    .endpoint-summary{font-size:12px;color:var(--text3);margin-left:auto}
+    .endpoint-toggle{color:var(--text3);font-size:14px;margin-left:8px;transition:transform .2s}
+    .endpoint-header.open .endpoint-toggle{transform:rotate(180deg)}
+    .endpoint-body{padding:18px;display:none}
+    .endpoint-body.open{display:block}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .info-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+    .info-box-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .info-box-value{font-size:13px;color:var(--text);font-weight:500}
+    .param-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+    .param-table th{text-align:left;padding:6px 12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border)}
+    .param-table td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
+    .param-table tr:last-child td{border-bottom:none}
+    .param-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)}
+    .param-type{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange)}
+    .param-req{font-size:10px;font-weight:700;color:var(--red)}
+    .param-desc{font-size:12px;color:var(--text2)}
+    .param-default{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)}
+    .code-block{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#cbd5e1;overflow-x:auto;white-space:pre;line-height:1.65;position:relative;margin-bottom:14px}
+    .code-block .kw{color:#c084fc}
+    .code-block .str{color:#86efac}
+    .code-block .num{color:#fb923c}
+    .code-block .cmnt{color:#475569}
+    .code-block .key{color:#60a5fa}
+    .copy-btn{position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text3);font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
+    .copy-btn:hover{background:rgba(255,255,255,0.12);color:var(--text)}
+    .response-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+    .alert{display:flex;gap:10px;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-size:12.5px}
+    .alert-info{background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);color:#93c5fd}
+    .alert-warn{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#fcd34d}
+    .alert-tip{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#6ee7b7}
+    .alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+    .flag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:16px}
+    .flag-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
+    .flag-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue);margin-bottom:2px}
+    .flag-type{font-size:10px;color:var(--orange);margin-bottom:4px}
+    .flag-desc{font-size:11px;color:var(--text2)}
+    .flag-default{font-size:10px;color:var(--green);margin-top:3px}
+    .status-flow{display:flex;align-items:center;gap:0;margin-bottom:20px;flex-wrap:wrap}
+    .status-node{display:flex;flex-direction:column;align-items:center;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;min-width:90px}
+    .status-dot{width:8px;height:8px;border-radius:50%;margin-bottom:4px}
+    .status-name{font-size:11px;font-weight:700;color:var(--text)}
+    .status-arrow{font-size:16px;color:var(--text3);padding:0 6px}
+    .style-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+    .style-chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.25);color:var(--purple2);font-family:'JetBrains Mono',monospace}
+    .divider{height:1px;background:var(--border);margin:40px 0}
+    @media(max-width:768px){.sidebar{display:none}.main{margin-left:0}.content{padding:24px 16px}.info-grid{grid-template-columns:1fr}}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:var(--bg2)}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+    code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue);background:rgba(59,130,246,0.1);padding:1px 6px;border-radius:4px}
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🎬</div>
+    <div>
+      <div class="sidebar-logo-text">UGC Video API</div>
+      <div class="sidebar-logo-sub">Developer Reference</div>
+    </div>
+  </div>
+  <div class="sidebar-section">Overview</div>
+  <a href="#intro"      class="sidebar-link active">Introduction</a>
+  <a href="#auth"       class="sidebar-link">Authentication</a>
+  <a href="#workflow"   class="sidebar-link">Quick Workflow</a>
+  <a href="#errors"     class="sidebar-link">Error Codes</a>
+  <div class="sidebar-section">Endpoints</div>
+  <a href="#ep-upload"  class="sidebar-link">Upload Video <span class="sidebar-badge badge-post">POST</span></a>
+  <a href="#ep-process" class="sidebar-link">Process Video <span class="sidebar-badge badge-post">POST</span></a>
+  <a href="#ep-status"  class="sidebar-link">Job Status <span class="sidebar-badge badge-get">GET</span></a>
+  <a href="#ep-jobs"    class="sidebar-link">List Jobs <span class="sidebar-badge badge-get">GET</span></a>
+  <div class="sidebar-section">Reference</div>
+  <a href="#features"   class="sidebar-link">Feature Flags</a>
+  <a href="#broll-src"  class="sidebar-link">B-roll Sources</a>
+  <a href="#background" class="sidebar-link">AI Background</a>
+  <a href="#logo"       class="sidebar-link">Brand Logo</a>
+  <a href="#styles"     class="sidebar-link">Subtitle Styles</a>
+  <a href="#statuses"   class="sidebar-link">Status Flow</a>
+  <a href="#examples"   class="sidebar-link">Code Examples</a>
+</nav>
+
+<main class="main">
+<div class="content">
+
+  <section class="hero" id="intro">
+    <div class="hero-badge">🎬 UGC Creator API · v1.0</div>
+    <h1>Build AI-powered<br><span>video editors</span> with one API</h1>
+    <p class="hero-desc">Upload a raw video. Get back a professionally edited, captioned, B-roll overlaid, music-synced vertical short — fully automated, ready for social media.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">🔒 <strong>Auth:</strong> X-App-Token header</div>
+      <div class="hero-meta-item">📦 <strong>Format:</strong> multipart/form-data + JSON</div>
+      <div class="hero-meta-item">🚀 <strong>Output:</strong> MP4 (1080×1920)</div>
+      <div class="hero-meta-item">⏱️ <strong>Processing:</strong> 2–5 min per video</div>
+    </div>
+  </section>
+
+  <section class="section" id="auth">
+    <div class="section-title">🔑 Authentication</div>
+    <p class="section-desc">Every request must include your API token in the <code>X-App-Token</code> header. Get your token from the dashboard under <strong>Settings → API Keys</strong>.</p>
+    <div class="alert alert-warn">
+      <span class="alert-icon">⚠️</span>
+      <div>Keep your token private. Never expose it in client-side JavaScript or public repositories.</div>
+    </div>
+    <div class="code-block">X-App-Token: <span class="str">your_api_token_here</span></div>
+  </section>
+
+  <section class="section" id="workflow">
+    <div class="section-title">⚡ Quick Workflow</div>
+    <p class="section-desc">The UGC pipeline is async — trigger it, then poll for completion.</p>
+    <div class="status-flow">
+      <div class="status-node"><div class="status-dot" style="background:#3b82f6"></div><div class="status-name">1. Upload</div></div>
+      <div class="status-arrow">→</div>
+      <div class="status-node"><div class="status-dot" style="background:#a78bfa"></div><div class="status-name">2. Process</div></div>
+      <div class="status-arrow">→</div>
+      <div class="status-node"><div class="status-dot" style="background:#f59e0b"></div><div class="status-name">3. Poll</div></div>
+      <div class="status-arrow">→</div>
+      <div class="status-node"><div class="status-dot" style="background:#10b981"></div><div class="status-name">4. Download</div></div>
+    </div>
+    <div class="alert alert-tip">
+      <span class="alert-icon">💡</span>
+      <div>Poll <code>/api/ugc/job/{job_id}</code> every 5–10 seconds. When <code>status === "completed"</code>, the <code>result_video_path</code> field contains your downloadable video URL (CDN URL if R2 is configured).</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section" id="ep-upload">
+    <div class="section-title">📤 Upload Video</div>
+    <p class="section-desc">Upload a raw video file to create a new UGC job. Returns a <code>job_id</code> to use in subsequent calls.</p>
+    <div class="endpoint" id="end-upload">
+      <div class="endpoint-header open" onclick="toggleEndpoint('end-upload')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/ugc/upload</span>
+        <span class="endpoint-summary">Upload raw video file</span>
+        <span class="endpoint-toggle">▾</span>
+      </div>
+      <div class="endpoint-body open">
+        <div class="info-grid">
+          <div class="info-box"><div class="info-box-label">Content-Type</div><div class="info-box-value">multipart/form-data</div></div>
+          <div class="info-box"><div class="info-box-label">Max File Size</div><div class="info-box-value">100 MB</div></div>
+        </div>
+        <div class="alert alert-info">
+          <span class="alert-icon">ℹ️</span>
+          <div>Accepted formats: <strong>.mp4, .mov, .avi, .mkv</strong>. For best results, use MP4 with H.264 encoding.</div>
+        </div>
+        <p class="response-label">Request Body (form-data)</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td class="param-name">file</td><td class="param-type">File</td><td class="param-req">Required</td><td class="param-desc">The raw video file to upload.</td></tr>
+        </table>
+        <p class="response-label">Response (200 OK)</p>
+        <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>{
+  <span class="key">"success"</span>: <span class="kw">true</span>,
+  <span class="key">"job_id"</span>: <span class="str">"a1b2c3d4e5f6g7h8"</span>,
+  <span class="key">"filename"</span>: <span class="str">"my_video.mp4"</span>,
+  <span class="key">"message"</span>: <span class="str">"Video uploaded successfully."</span>
+}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ep-process">
+    <div class="section-title">⚙️ Process Video</div>
+    <p class="section-desc">Trigger the AI video enhancement pipeline with your chosen feature flags. Processing runs asynchronously — poll for status after calling this.</p>
+    <div class="endpoint" id="end-process">
+      <div class="endpoint-header open" onclick="toggleEndpoint('end-process')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/ugc/process/{job_id}</span>
+        <span class="endpoint-summary">Start AI enhancement pipeline</span>
+        <span class="endpoint-toggle">▾</span>
+      </div>
+      <div class="endpoint-body open">
+        <div class="info-grid">
+          <div class="info-box"><div class="info-box-label">Content-Type</div><div class="info-box-value">application/json</div></div>
+          <div class="info-box"><div class="info-box-label">Processing Time</div><div class="info-box-value">2–8 minutes</div></div>
+        </div>
+        <p class="response-label">Path Parameters</p>
+        <table class="param-table">
+          <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td class="param-name">job_id</td><td class="param-type">string</td><td class="param-req">Required</td><td class="param-desc">The job_id returned from the upload endpoint.</td></tr>
+        </table>
+        <p class="response-label">Request Body (JSON)</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+          <tr><td class="param-name">caption</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Burn animated word-by-word captions onto the video.</td></tr>
+          <tr><td class="param-name">subtitle_style</td><td class="param-type">string</td><td class="param-default">"default"</td><td class="param-desc">Caption animation style. See Subtitle Styles section.</td></tr>
+          <tr><td class="param-name">broll</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">AI-generated B-roll image overlays at key moments.</td></tr>
+          <tr><td class="param-name">broll_source</td><td class="param-type">string</td><td class="param-default">"pollinations"</td><td class="param-desc">"pollinations" = auto-generate via AI. "meta_ai" = use pre-uploaded images. "pexels" = use stock video.</td></tr>
+          <tr><td class="param-name">music</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Background music based on detected mood.</td></tr>
+          <tr><td class="param-name">bgm_mood</td><td class="param-type">string</td><td class="param-default">"Corporate"</td><td class="param-desc">Music mood: Motivational, Sad, Funny, Corporate, News, Podcast.</td></tr>
+          <tr><td class="param-name">sfx</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Transition sound effects (whoosh, pop, swipe).</td></tr>
+          <tr><td class="param-name">zoom</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Dynamic camera zoom-in at high-impact moments.</td></tr>
+          <tr><td class="param-name">silence</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Auto-remove silent gaps between sentences.</td></tr>
+          <tr><td class="param-name">jumpcut</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Jump-cuts at energetic moments for punchy pacing.</td></tr>
+          <tr><td class="param-name">facetrack</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Smart 9:16 reframe with face tracking.</td></tr>
+          <tr><td class="param-name">viral</td><td class="param-type">bool</td><td class="param-default">true</td><td class="param-desc">Extract best 7-12s hook clip as viral_video_path.</td></tr>
+          <tr><td class="param-name">background</td><td class="param-type">bool</td><td class="param-default">false</td><td class="param-desc">AI virtual studio background replacement.</td></tr>
+          <tr><td class="param-name">logo</td><td class="param-type">bool</td><td class="param-default">false</td><td class="param-desc">Overlay brand logo (upload separately first).</td></tr>
+          <tr><td class="param-name">video_quality</td><td class="param-type">string</td><td class="param-default">"1080p"</td><td class="param-desc">Output resolution: "720p" or "1080p".</td></tr>
+        </table>
+        <p class="response-label">Example Request Body</p>
+        <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>{
+  <span class="key">"caption"</span>: <span class="kw">true</span>,
+  <span class="key">"subtitle_style"</span>: <span class="str">"two_line_zoom_in"</span>,
+  <span class="key">"broll"</span>: <span class="kw">true</span>,
+  <span class="key">"music"</span>: <span class="kw">true</span>,
+  <span class="key">"bgm_mood"</span>: <span class="str">"Motivational"</span>,
+  <span class="key">"sfx"</span>: <span class="kw">true</span>,
+  <span class="key">"zoom"</span>: <span class="kw">true</span>,
+  <span class="key">"silence"</span>: <span class="kw">true</span>,
+  <span class="key">"facetrack"</span>: <span class="kw">true</span>,
+  <span class="key">"viral"</span>: <span class="kw">true</span>,
+  <span class="key">"video_quality"</span>: <span class="str">"1080p"</span>
+}</div>
+        <p class="response-label">Response (200 OK)</p>
+        <div class="code-block">{
+  <span class="key">"success"</span>: <span class="kw">true</span>,
+  <span class="key">"job_id"</span>: <span class="str">"a1b2c3d4e5f6g7h8"</span>,
+  <span class="key">"status"</span>: <span class="str">"transcribing"</span>,
+  <span class="key">"message"</span>: <span class="str">"UGC video processing started in the background."</span>
+}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ep-status">
+    <div class="section-title">📊 Get Job Status</div>
+    <p class="section-desc">Poll this endpoint every 5–10 seconds. When <code>status</code> is <code>"completed"</code>, download links are ready.</p>
+    <div class="endpoint" id="end-status">
+      <div class="endpoint-header open" onclick="toggleEndpoint('end-status')">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/ugc/job/{job_id}</span>
+        <span class="endpoint-summary">Get status and download links</span>
+        <span class="endpoint-toggle">▾</span>
+      </div>
+      <div class="endpoint-body open">
+        <p class="response-label">Response Fields</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td class="param-name">job_id</td><td class="param-type">string</td><td class="param-desc">Unique job identifier.</td></tr>
+          <tr><td class="param-name">status</td><td class="param-type">string</td><td class="param-desc">Current stage: pending → transcribing → processing → completed / failed.</td></tr>
+          <tr><td class="param-name">progress</td><td class="param-type">int</td><td class="param-desc">Percentage complete (0–100).</td></tr>
+          <tr><td class="param-name">result_video_path</td><td class="param-type">string</td><td class="param-desc">URL to the final AI-edited video. CDN URL if R2 is configured, otherwise local path.</td></tr>
+          <tr><td class="param-name">viral_video_path</td><td class="param-type">string</td><td class="param-desc">URL to the 7-12s Shorts hook clip (only when viral=true).</td></tr>
+          <tr><td class="param-name">result_thumbnail_path</td><td class="param-type">string</td><td class="param-desc">URL to the AI-generated thumbnail frame.</td></tr>
+          <tr><td class="param-name">error_message</td><td class="param-type">string|null</td><td class="param-desc">Error details when status is "failed".</td></tr>
+          <tr><td class="param-name">created_at</td><td class="param-type">datetime</td><td class="param-desc">Job creation timestamp (ISO 8601).</td></tr>
+        </table>
+        <p class="response-label">Response — Completed Job</p>
+        <div class="code-block">{
+  <span class="key">"job_id"</span>: <span class="str">"a1b2c3d4e5f6g7h8"</span>,
+  <span class="key">"status"</span>: <span class="str">"completed"</span>,
+  <span class="key">"progress"</span>: <span class="num">100</span>,
+  <span class="key">"filename"</span>: <span class="str">"my_video.mp4"</span>,
+  <span class="key">"result_video_path"</span>: <span class="str">"https://cdn.example.com/ugc/a1b2.../result.mp4"</span>,
+  <span class="key">"viral_video_path"</span>: <span class="str">"https://cdn.example.com/ugc/a1b2.../viral.mp4"</span>,
+  <span class="key">"result_thumbnail_path"</span>: <span class="str">"/static/ugc/a1b2.../thumbnail.jpg"</span>,
+  <span class="key">"error_message"</span>: <span class="kw">null</span>,
+  <span class="key">"created_at"</span>: <span class="str">"2025-06-01T12:34:56"</span>
+}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ep-jobs">
+    <div class="section-title">📋 List All Jobs</div>
+    <p class="section-desc">Returns all UGC jobs for your account, newest first.</p>
+    <div class="endpoint" id="end-jobs">
+      <div class="endpoint-header open" onclick="toggleEndpoint('end-jobs')">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/ugc/jobs</span>
+        <span class="endpoint-summary">List all jobs for your account</span>
+        <span class="endpoint-toggle">▾</span>
+      </div>
+      <div class="endpoint-body open">
+        <p class="response-label">Response (200 OK)</p>
+        <div class="code-block">[
+  {
+    <span class="key">"job_id"</span>: <span class="str">"a1b2c3d4e5f6g7h8"</span>,
+    <span class="key">"status"</span>: <span class="str">"completed"</span>,
+    <span class="key">"progress"</span>: <span class="num">100</span>,
+    <span class="key">"result_video_path"</span>: <span class="str">"https://..."</span>,
+    <span class="key">"created_at"</span>: <span class="str">"2025-06-01T12:34:56"</span>
+  }
+]</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section" id="features">
+    <div class="section-title">🎛️ Feature Flags Reference</div>
+    <p class="section-desc">All flags are passed as JSON in the process request body. All are optional with sensible defaults shown below.</p>
+    <div class="flag-grid">
+      <div class="flag-card"><div class="flag-name">caption</div><div class="flag-type">boolean</div><div class="flag-desc">AI word-by-word animated captions.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">broll</div><div class="flag-type">boolean</div><div class="flag-desc">AI-generated cinematic B-roll overlays.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">music</div><div class="flag-type">boolean</div><div class="flag-desc">Mood-matched background music.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">sfx</div><div class="flag-type">boolean</div><div class="flag-desc">Whoosh, pop, swipe sound effects.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">zoom</div><div class="flag-type">boolean</div><div class="flag-desc">Dynamic camera zoom-in at key moments.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">silence</div><div class="flag-type">boolean</div><div class="flag-desc">Auto-cut silent pauses.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">jumpcut</div><div class="flag-type">boolean</div><div class="flag-desc">Jump cuts at energetic moments.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">facetrack</div><div class="flag-type">boolean</div><div class="flag-desc">Smart 9:16 reframe with face tracking.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">viral</div><div class="flag-type">boolean</div><div class="flag-desc">Extract best 7-12s Shorts hook clip.</div><div class="flag-default">default: true</div></div>
+      <div class="flag-card"><div class="flag-name">background</div><div class="flag-type">boolean</div><div class="flag-desc">AI virtual studio background replace.</div><div class="flag-default">default: false</div></div>
+      <div class="flag-card"><div class="flag-name">logo</div><div class="flag-type">boolean</div><div class="flag-desc">Overlay brand logo watermark.</div><div class="flag-default">default: false</div></div>
+      <div class="flag-card"><div class="flag-name">video_quality</div><div class="flag-type">string</div><div class="flag-desc">"720p" or "1080p" output resolution.</div><div class="flag-default">default: "1080p"</div></div>
+    </div>
+  </section>
+
+  <section class="section" id="styles">
+    <div class="section-title">✍️ Subtitle Styles</div>
+    <p class="section-desc">Pass one of these as <code>subtitle_style</code> in the process request.</p>
+    <div class="style-chips">
+      <div class="style-chip">default</div><div class="style-chip">important_large</div>
+      <div class="style-chip">neon_bounce</div><div class="style-chip">minimal_white</div>
+      <div class="style-chip">bold_yellow</div><div class="style-chip">split_top_bottom</div>
+      <div class="style-chip">two_line_slide_right_left</div><div class="style-chip">two_line_slide_left_right</div>
+      <div class="style-chip">two_line_slide_top_bottom</div><div class="style-chip">two_line_zoom_in</div>
+    </div>
+    <table class="param-table">
+      <tr><th>Style</th><th>Description</th></tr>
+      <tr><td class="param-name">default</td><td class="param-desc">First word yellow, rest white. Classic word-reveal.</td></tr>
+      <tr><td class="param-name">important_large</td><td class="param-desc">Longest/most-important word bounces large in yellow.</td></tr>
+      <tr><td class="param-name">neon_bounce</td><td class="param-desc">First word pops in neon green with scale bounce.</td></tr>
+      <tr><td class="param-name">minimal_white</td><td class="param-desc">Clean white text, no animation — minimal look.</td></tr>
+      <tr><td class="param-name">bold_yellow</td><td class="param-desc">Entire line bold yellow — max contrast hook style.</td></tr>
+      <tr><td class="param-name">split_top_bottom</td><td class="param-desc">Line split top/bottom. Key word highlighted at bottom.</td></tr>
+      <tr><td class="param-name">two_line_slide_right_left</td><td class="param-desc">Line 1 slides right→left, Line 2 left→right. Both stay visible together.</td></tr>
+      <tr><td class="param-name">two_line_slide_left_right</td><td class="param-desc">Line 1 slides left→right, Line 2 right→left.</td></tr>
+      <tr><td class="param-name">two_line_slide_top_bottom</td><td class="param-desc">Line 1 drops from top, Line 2 rises from bottom.</td></tr>
+      <tr><td class="param-name">two_line_zoom_in</td><td class="param-desc">Both lines zoom in from center — punchy TikTok-style.</td></tr>
+    </table>
+  </section>
+
+  <section class="section" id="statuses">
+    <div class="section-title">🔄 Job Status Flow</div>
+    <p class="section-desc">A job transitions through these states during processing.</p>
+    <table class="param-table">
+      <tr><th>Status</th><th>Description</th></tr>
+      <tr><td><span style="font-family:monospace;color:#60a5fa">pending</span></td><td class="param-desc">Video uploaded, waiting for /process call.</td></tr>
+      <tr><td><span style="font-family:monospace;color:#a78bfa">transcribing</span></td><td class="param-desc">Whisper AI transcribing speech to words with timestamps.</td></tr>
+      <tr><td><span style="font-family:monospace;color:#f59e0b">processing</span></td><td class="param-desc">All AI stages running: zoom, B-roll gen, reframe, captions, music mix.</td></tr>
+      <tr><td><span style="font-family:monospace;color:#10b981">completed</span></td><td class="param-desc">Done. result_video_path and viral_video_path are available.</td></tr>
+      <tr><td><span style="font-family:monospace;color:#ef4444">failed</span></td><td class="param-desc">Pipeline error. Check error_message for details.</td></tr>
+    </table>
+  </section>
+
+  <section class="section" id="errors">
+    <div class="section-title">🚨 Error Codes</div>
+    <p class="section-desc">All errors return JSON with a <code>detail</code> field describing the issue.</p>
+    <table class="param-table">
+      <tr><th>HTTP Code</th><th>Meaning</th></tr>
+      <tr><td class="param-type">401</td><td class="param-desc">Missing or invalid X-App-Token header.</td></tr>
+      <tr><td class="param-type">400</td><td class="param-desc">Bad request — file too large, invalid format, or job already running.</td></tr>
+      <tr><td class="param-type">404</td><td class="param-desc">Job not found or result not ready yet.</td></tr>
+      <tr><td class="param-type">500</td><td class="param-desc">Internal server error — retry after a few seconds.</td></tr>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section" id="examples">
+    <div class="section-title">💻 Code Examples</div>
+    <p class="section-desc">Full end-to-end examples — upload → process → poll → download.</p>
+
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:10px;color:var(--text2)">cURL</h3>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="cmnt"># Step 1: Upload</span>
+curl -X POST https://your-server.com/api/ugc/upload \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -F <span class="str">"file=@/path/to/video.mp4"</span>
+
+<span class="cmnt"># Step 2: Process (replace JOB_ID with value from step 1)</span>
+curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"caption":true,"subtitle_style":"two_line_zoom_in","broll":true,"music":true,"bgm_mood":"Motivational","viral":true}'</span>
+
+<span class="cmnt"># Step 3: Poll (repeat until status = "completed")</span>
+curl https://your-server.com/api/ugc/job/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span></div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;color:var(--text2)">Python</h3>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">import</span> requests, time
+
+BASE  = <span class="str">"https://your-server.com"</span>
+HDR   = {<span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span>}
+
+<span class="cmnt"># 1. Upload</span>
+<span class="kw">with</span> <span class="kw">open</span>(<span class="str">"video.mp4"</span>, <span class="str">"rb"</span>) <span class="kw">as</span> f:
+    job_id = requests.post(f<span class="str">"{BASE}/api/ugc/upload"</span>, headers=HDR,
+                           files={<span class="str">"file"</span>: f}).json()[<span class="str">"job_id"</span>]
+
+<span class="cmnt"># 2. Process</span>
+requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, headers=HDR, json={
+    <span class="str">"caption"</span>: <span class="kw">True</span>, <span class="str">"subtitle_style"</span>: <span class="str">"two_line_zoom_in"</span>,
+    <span class="str">"broll"</span>: <span class="kw">True</span>, <span class="str">"music"</span>: <span class="kw">True</span>, <span class="str">"bgm_mood"</span>: <span class="str">"Motivational"</span>,
+    <span class="str">"viral"</span>: <span class="kw">True</span>, <span class="str">"video_quality"</span>: <span class="str">"1080p"</span>
+})
+
+<span class="cmnt"># 3. Poll until done</span>
+<span class="kw">while True</span>:
+    job = requests.get(f<span class="str">"{BASE}/api/ugc/job/{job_id}"</span>, headers=HDR).json()
+    <span class="kw">print</span>(f<span class="str">"Status: {job['status']} ({job['progress']}%)"</span>)
+    <span class="kw">if</span> job[<span class="str">"status"</span>] == <span class="str">"completed"</span>:
+        <span class="kw">print</span>(<span class="str">"Done!"</span>, job[<span class="str">"result_video_path"</span>])
+        <span class="kw">break</span>
+    <span class="kw">elif</span> job[<span class="str">"status"</span>] == <span class="str">"failed"</span>:
+        <span class="kw">print</span>(<span class="str">"Error:"</span>, job[<span class="str">"error_message"</span>]); <span class="kw">break</span>
+    time.sleep(<span class="num">8</span>)</div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;color:var(--text2)">JavaScript (Fetch)</h3>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://your-server.com"</span>;
+<span class="kw">const</span> HDR  = { <span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span> };
+
+<span class="kw">async function</span> processVideo(file) {
+  <span class="cmnt">// 1. Upload</span>
+  <span class="kw">const</span> form = <span class="kw">new</span> FormData();
+  form.append(<span class="str">"file"</span>, file);
+  <span class="kw">const</span> { job_id } = <span class="kw">await</span> (
+    <span class="kw">await</span> fetch(`${BASE}/api/ugc/upload`, { method:<span class="str">"POST"</span>, headers:HDR, body:form })
+  ).json();
+
+  <span class="cmnt">// 2. Process</span>
+  <span class="kw">await</span> fetch(`${BASE}/api/ugc/process/${job_id}`, {
+    method:<span class="str">"POST"</span>, headers:{...HDR,<span class="str">"Content-Type"</span>:<span class="str">"application/json"</span>},
+    body: JSON.stringify({ caption:<span class="kw">true</span>, subtitle_style:<span class="str">"two_line_zoom_in"</span>,
+      broll:<span class="kw">true</span>, music:<span class="kw">true</span>, bgm_mood:<span class="str">"Motivational"</span>, viral:<span class="kw">true</span> })
+  });
+
+  <span class="cmnt">// 3. Poll</span>
+  <span class="kw">return new</span> Promise((resolve, reject) => {
+    <span class="kw">const</span> t = setInterval(<span class="kw">async</span> () => {
+      <span class="kw">const</span> job = <span class="kw">await</span> (await fetch(`${BASE}/api/ugc/job/${job_id}`,{headers:HDR})).json();
+      console.log(job.status, job.progress + <span class="str">"%"</span>);
+      <span class="kw">if</span> (job.status === <span class="str">"completed"</span>) { clearInterval(t); resolve(job); }
+      <span class="kw">else if</span> (job.status === <span class="str">"failed"</span>)    { clearInterval(t); reject(job.error_message); }
+    }, <span class="num">8000</span>);
+  });
+}</div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ══════════ B-ROLL SOURCES ══════════ -->
+  <section class="section" id="broll-src">
+    <div class="section-title">🎞️ B-roll Sources Guide</div>
+    <p class="section-desc">Set <code>broll_source</code> in your process request to control how B-roll visuals are generated.</p>
+
+    <table class="param-table">
+      <tr><th>Value</th><th>What it does</th><th>Requirement</th></tr>
+      <tr>
+        <td class="param-name">pollinations</td>
+        <td class="param-desc">🤖 Auto-generates cinematic AI images via Flux model (Pollinations.ai). No API key needed. <strong>Default.</strong></td>
+        <td class="param-desc">None</td>
+      </tr>
+      <tr>
+        <td class="param-name">pexels</td>
+        <td class="param-desc">🎬 Downloads real stock videos from Pexels API matching keywords from transcript. Portrait (9:16) preferred.</td>
+        <td class="param-desc"><code>PEXELS_API_KEY</code> in <code>.env</code></td>
+      </tr>
+      <tr>
+        <td class="param-name">meta_ai</td>
+        <td class="param-desc">📤 Uses images you pre-uploaded via the dashboard Meta AI Extension. You manually generate + upload images first.</td>
+        <td class="param-desc">Pre-upload via dashboard</td>
+      </tr>
+    </table>
+
+    <div class="alert alert-info">
+      <span class="alert-icon">ℹ️</span>
+      <div><strong>Pexels Setup:</strong> Get a free API key at <strong>pexels.com/api</strong>. Add it to your <code>.env</code> file as <code>PEXELS_API_KEY=your_key_here</code> then restart the server.</div>
+    </div>
+
+    <p class="response-label">Example — Use Pexels Stock Videos</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{</span>
+    <span class="str">"broll": true,</span>
+    <span class="str">"broll_source": "pexels",</span>
+    <span class="str">"caption": true,</span>
+    <span class="str">"music": true</span>
+  <span class="str">}'</span></div>
+
+    <p class="response-label">Example — Use Pollinations AI Images (default)</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"broll": true, "broll_source": "pollinations"}'</span></div>
+  </section>
+
+  <!-- ══════════ BACKGROUND ══════════ -->
+  <section class="section" id="background">
+    <div class="section-title">🌆 AI Studio Background</div>
+    <p class="section-desc">Replace the original video background with an AI-generated studio scene using MediaPipe segmentation + Flux AI image generation. No green screen required.</p>
+
+    <div class="alert alert-warn">
+      <span class="alert-icon">⚠️</span>
+      <div>Background replacement requires <strong>MediaPipe</strong> to be installed on the server (<code>pip install mediapipe</code>). The server must also have sufficient GPU/CPU for real-time segmentation.</div>
+    </div>
+
+    <div class="alert alert-tip">
+      <span class="alert-icon">💡</span>
+      <div>You can write any descriptive text as <code>background_style</code> — it's sent as a Flux AI image prompt. The more specific, the better the result.</div>
+    </div>
+
+    <p class="response-label">Process Request Fields for Background</p>
+    <table class="param-table">
+      <tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td class="param-name">background</td><td class="param-type">bool</td><td class="param-default">false</td><td class="param-desc">Enable AI background replacement. Must be <code>true</code> to activate.</td></tr>
+      <tr><td class="param-name">background_style</td><td class="param-type">string</td><td class="param-default">see below</td><td class="param-desc">Flux AI prompt describing the background scene. Any descriptive text works.</td></tr>
+    </table>
+
+    <p class="response-label">Background Style Presets (examples)</p>
+    <div class="style-chips">
+      <div class="style-chip">premium_abstract_dark_studio_background_neon_lights_orange_vertical_aesthetic</div>
+      <div class="style-chip">modern_white_minimalist_studio_soft_lighting_vertical</div>
+      <div class="style-chip">futuristic_blue_neon_cyberpunk_city_background_vertical</div>
+      <div class="style-chip">cozy_library_bookshelves_warm_amber_light_vertical</div>
+      <div class="style-chip">luxury_office_floor_to_ceiling_windows_city_view_night_vertical</div>
+    </div>
+
+    <p class="response-label">cURL Example — Enable AI Background</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d '{</pre>
+    <span class="str">"background"</span>: <span class="kw">true</span>,
+    <span class="str">"background_style"</span>: <span class="str">"luxury office glass windows city night view neon vertical aesthetic"</span>,
+    <span class="str">"caption"</span>: <span class="kw">true</span>,
+    <span class="str">"music"</span>: <span class="kw">true</span>,
+    <span class="str">"viral"</span>: <span class="kw">true</span>
+  }'</div>
+
+    <p class="response-label">Python Example — Enable AI Background</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, headers=HDR, json={
+    <span class="str">"background"</span>: <span class="kw">True</span>,
+    <span class="str">"background_style"</span>: <span class="str">"premium dark studio neon orange lights vertical aesthetic"</span>,
+    <span class="str">"caption"</span>: <span class="kw">True</span>,
+    <span class="str">"music"</span>: <span class="kw">True</span>,
+    <span class="str">"facetrack"</span>: <span class="kw">True</span>,
+    <span class="str">"viral"</span>: <span class="kw">True</span>,
+})</div>
+  </section>
+
+  <!-- ══════════ LOGO ══════════ -->
+  <section class="section" id="logo">
+    <div class="section-title">🏷️ Brand Logo Overlay</div>
+    <p class="section-desc">Overlay your brand logo on every frame of the final video. Requires <strong>two API calls</strong>: first upload the logo file, then enable it in the process request.</p>
+
+    <div class="alert alert-info">
+      <span class="alert-icon">ℹ️</span>
+      <div>The logo upload endpoint stores the logo against the job. Then when <code>logo: true</code> is set in the process request, the pipeline automatically loads and overlays it on every frame.</div>
+    </div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:0 0 12px;color:var(--text2)">Step 1 — Upload Logo File</h3>
+
+    <div class="endpoint" id="end-logo">
+      <div class="endpoint-header open" onclick="toggleEndpoint('end-logo')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/ugc/upload-logo/{job_id}</span>
+        <span class="endpoint-summary">Upload brand logo image</span>
+        <span class="endpoint-toggle">▾</span>
+      </div>
+      <div class="endpoint-body open">
+        <div class="info-grid">
+          <div class="info-box"><div class="info-box-label">Content-Type</div><div class="info-box-value">multipart/form-data</div></div>
+          <div class="info-box"><div class="info-box-label">Accepted Formats</div><div class="info-box-value">.png, .jpg, .webp</div></div>
+        </div>
+        <div class="alert alert-tip">
+          <span class="alert-icon">💡</span>
+          <div>Use a <strong>PNG with transparent background</strong> for best results — the transparency is preserved when overlaying on video frames.</div>
+        </div>
+        <p class="response-label">Request Body (form-data)</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td class="param-name">file</td><td class="param-type">File</td><td class="param-req">Required</td><td class="param-desc">Logo image file (.png recommended with transparent bg).</td></tr>
+        </table>
+        <p class="response-label">cURL Example</p>
+        <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button>curl -X POST https://your-server.com/api/ugc/upload-logo/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -F <span class="str">"file=@/path/to/your-logo.png"</span></div>
+        <p class="response-label">Response (200 OK)</p>
+        <div class="code-block">{  <span class="key">"success"</span>: <span class="kw">true</span>,  <span class="key">"path"</span>: <span class="str">"/uploads/ugc/JOB_ID/brand_logo.png"</span>  }</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:15px;font-weight:700;margin:20px 0 12px;color:var(--text2)">Step 2 — Enable Logo in Process Request</h3>
+    <p class="section-desc" style="margin-bottom:14px">After uploading, include <code>"logo": true</code> in your process call.</p>
+
+    <p class="response-label">cURL — Full Logo + Process Example</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="cmnt"># Step 1: Upload logo</span>
+curl -X POST https://your-server.com/api/ugc/upload-logo/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -F <span class="str">"file=@logo.png"</span>
+
+<span class="cmnt"># Step 2: Process with logo enabled</span>
+curl -X POST https://your-server.com/api/ugc/process/JOB_ID \
+  -H <span class="str">"X-App-Token: YOUR_TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d '{</pre>
+    <span class="str">"logo"</span>: <span class="kw">true</span>,
+    <span class="str">"caption"</span>: <span class="kw">true</span>,
+    <span class="str">"broll"</span>: <span class="kw">true</span>,
+    <span class="str">"music"</span>: <span class="kw">true</span>,
+    <span class="str">"viral"</span>: <span class="kw">true</span>
+  }'</div>
+
+    <p class="response-label">Python — Full Logo + Process Example</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">import</span> requests
+
+BASE = <span class="str">"https://your-server.com"</span>
+HDR  = {<span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span>}
+
+<span class="cmnt"># 1. Upload video</span>
+<span class="kw">with</span> <span class="kw">open</span>(<span class="str">"video.mp4"</span>, <span class="str">"rb"</span>) <span class="kw">as</span> f:
+    job_id = requests.post(f<span class="str">"{BASE}/api/ugc/upload"</span>, headers=HDR,
+                           files={<span class="str">"file"</span>: f}).json()[<span class="str">"job_id"</span>]
+
+<span class="cmnt"># 2. Upload logo (PNG with transparent bg recommended)</span>
+<span class="kw">with</span> <span class="kw">open</span>(<span class="str">"logo.png"</span>, <span class="str">"rb"</span>) <span class="kw">as</span> f:
+    requests.post(
+        f<span class="str">"{BASE}/api/ugc/upload-logo/{job_id}"</span>,
+        headers=HDR,
+        files={<span class="str">"file"</span>: f}
+    )
+
+<span class="cmnt"># 3. Process with logo: true</span>
+requests.post(f<span class="str">"{BASE}/api/ugc/process/{job_id}"</span>, headers=HDR, json={
+    <span class="str">"logo"</span>: <span class="kw">True</span>,
+    <span class="str">"caption"</span>: <span class="kw">True</span>,
+    <span class="str">"subtitle_style"</span>: <span class="str">"two_line_zoom_in"</span>,
+    <span class="str">"broll"</span>: <span class="kw">True</span>,
+    <span class="str">"music"</span>: <span class="kw">True</span>,
+    <span class="str">"viral"</span>: <span class="kw">True</span>,
+    <span class="str">"video_quality"</span>: <span class="str">"1080p"</span>
+})</div>
+
+    <p class="response-label">JavaScript — Full Logo + Background + Process</p>
+    <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><span class="kw">const</span> BASE = <span class="str">"https://your-server.com"</span>;
+<span class="kw">const</span> HDR  = { <span class="str">"X-App-Token"</span>: <span class="str">"YOUR_TOKEN"</span> };
+
+<span class="cmnt">// 1. Upload video</span>
+<span class="kw">const</span> vForm = <span class="kw">new</span> FormData();
+vForm.append(<span class="str">"file"</span>, videoFile);
+<span class="kw">const</span> { job_id } = <span class="kw">await</span> (await fetch(`${BASE}/api/ugc/upload`,
+  { method:<span class="str">"POST"</span>, headers:HDR, body:vForm })).json();
+
+<span class="cmnt">// 2. Upload logo</span>
+<span class="kw">const</span> lForm = <span class="kw">new</span> FormData();
+lForm.append(<span class="str">"file"</span>, logoFile);
+<span class="kw">await</span> fetch(`${BASE}/api/ugc/upload-logo/${job_id}`,
+  { method:<span class="str">"POST"</span>, headers:HDR, body:lForm });
+
+<span class="cmnt">// 3. Process — logo + background + all features</span>
+<span class="kw">await</span> fetch(`${BASE}/api/ugc/process/${job_id}`, {
+  method:<span class="str">"POST"</span>,
+  headers:{ ...HDR, <span class="str">"Content-Type"</span>:<span class="str">"application/json"</span> },
+  body: JSON.stringify({
+    logo: <span class="kw">true</span>,
+    background: <span class="kw">true</span>,
+    background_style: <span class="str">"premium dark studio neon orange vertical"</span>,
+    caption: <span class="kw">true</span>,
+    subtitle_style: <span class="str">"two_line_zoom_in"</span>,
+    broll: <span class="kw">true</span>,
+    broll_source: <span class="str">"pexels"</span>,
+    music: <span class="kw">true</span>,
+    bgm_mood: <span class="str">"Motivational"</span>,
+    viral: <span class="kw">true</span>,
+    video_quality: <span class="str">"1080p"</span>
+  })
+});</div>
+  </section>
+
+</div>
+</main>
+
+<script>
+function toggleEndpoint(id) {
+  const c = document.getElementById(id);
+  c.querySelector('.endpoint-header').classList.toggle('open');
+  const b = c.querySelector('.endpoint-body');
+  b.classList.toggle('open');
+  b.style.display = b.classList.contains('open') ? 'block' : 'none';
+}
+const links = document.querySelectorAll('.sidebar-link');
+const secs  = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  secs.forEach(s => { if (window.scrollY >= s.offsetTop - 120) cur = s.id; });
+  links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + cur));
+}, {passive:true});
+function copyCode(btn) {
+  const text = btn.parentElement.innerText.replace(/^Copy\n/, '');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
+  });
+}
+</script>
+</body>
+</html>

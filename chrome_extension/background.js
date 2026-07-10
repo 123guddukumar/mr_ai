@@ -146,12 +146,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // Keep message channel open
   }
   if (msg.type === "DOWNLOAD_FILE") {
+    const isSingleAsset = !!state.singleAsset;
     if (msg.url && msg.url.startsWith("blob:")) {
-      log(`Detected blob URL download request for: ${msg.filename}. Delegating to native page context click.`);
+      log(`Detected blob URL download request for: ${msg.filename} (isSingleAsset=${isSingleAsset}). Delegating to native page context click.`);
       if (sender.tab && sender.tab.id) {
         pendingNativeDownloads[msg.filename] = {
           tabId: sender.tab.id,
-          downloadId: null
+          downloadId: null,
+          isSingleAsset: isSingleAsset
         };
         sendResponse({ ok: true, use_native_click: true });
       } else {
@@ -288,6 +290,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // ── Get caller's tab ID (so content_dashboard can pass it for routing) ──────
+  if (msg.type === "GET_MY_TAB_ID") {
+    sendResponse({ tabId: sender.tab ? sender.tab.id : null });
+    return false;
+  }
+
   // ── Single Library Asset Generation ─────────────────────────────────────────
   if (msg.type === "GENERATE_SINGLE_ASSET") {
     log(`Single asset request: type=${msg.mediaType}, assetId=${msg.assetId}`);
@@ -300,6 +308,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       chrome.storage.local.set({ backendUrl: msg.backendUrl });
     }
     // Store request in state so onDeterminingFilename can name the file correctly
+    // Prefer explicit dashboardTabId (passed by content_dashboard when triggered via window.postMessage)
+    // over sender.tab.id (which is null for postMessage-triggered messages)
+    const dashTabId = msg.dashboardTabId || (sender.tab ? sender.tab.id : null);
     state.singleAsset = {
       assetId: msg.assetId,
       mediaType: msg.mediaType,
@@ -313,7 +324,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === "SINGLE_ASSET_REPLACED_CONFIRMED") {
     log("Received SINGLE_ASSET_REPLACED_CONFIRMED from page.");
-    if (state.singleAsset && state.singleAsset.tabId) {
+    if (state.singleAsset && state.singleAsset.tabId && (!state.singleAsset.assetId || !state.singleAsset.assetId.startsWith("ugc-broll-"))) {
       chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
     }
     state.singleAsset = null;
@@ -348,7 +359,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           log(`Failed to send MR_AI_SINGLE_ASSET_DOWNLOADED to dashboard tab: ${err.message}`);
         });
       }
-      if (state.singleAsset.tabId) {
+      if (state.singleAsset.tabId && (!state.singleAsset.assetId || !state.singleAsset.assetId.startsWith("ugc-broll-"))) {
         chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
       }
       state.singleAsset = null;
@@ -711,8 +722,27 @@ async function finishSingleAsset(filename) {
       });
     }
     
-    // Close tab if applicable
-    if (sa.tabId) {
+    // Broadcast to any other dashboard tab as a robust fallback
+    if (sa.uploadedUrl) {
+      chrome.tabs.query({}, (tabs) => {
+        if (tabs) {
+          for (const t of tabs) {
+            if (t.id !== dashTabId && t.url && (t.url.includes("/dashboard") || t.url.includes("127.0.0.1") || t.url.includes("localhost"))) {
+              chrome.tabs.sendMessage(t.id, {
+                type: "MR_AI_SINGLE_ASSET_DOWNLOADED",
+                assetId: sa.assetId,
+                mediaType: sa.mediaType,
+                url: sa.uploadedUrl,
+                thumb: sa.uploadedThumb || sa.uploadedUrl
+              }).catch(() => {});
+            }
+          }
+        }
+      });
+    }
+    
+    // Close tab if applicable (only if not a UGC B-roll)
+    if (sa.tabId && (!sa.assetId || !sa.assetId.startsWith("ugc-broll-"))) {
       chrome.tabs.remove(sa.tabId).catch(() => {});
     }
     state.singleAsset = null;
@@ -748,6 +778,23 @@ async function finishSingleAsset(filename) {
         thumb: data.thumb || data.url || ""
       }).catch(() => {});
     }
+    
+    // Broadcast to any other dashboard tab as a robust fallback
+    chrome.tabs.query({}, (tabs) => {
+      if (tabs) {
+        for (const t of tabs) {
+          if (t.id !== dashTabId && t.url && (t.url.includes("/dashboard") || t.url.includes("127.0.0.1") || t.url.includes("localhost"))) {
+            chrome.tabs.sendMessage(t.id, {
+              type: "MR_AI_SINGLE_ASSET_DOWNLOADED",
+              assetId,
+              mediaType,
+              url: data.url || "",
+              thumb: data.thumb || data.url || ""
+            }).catch(() => {});
+          }
+        }
+      }
+    });
   } catch (e) {
     log(`Error syncing single asset: ${e.message}`);
   }

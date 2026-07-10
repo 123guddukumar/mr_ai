@@ -15,7 +15,8 @@ from app.routes import (
     upload, query, health, provider, website, youtube, jsondata, 
     apikeys, clients, admin as admin_routes, memory as memory_routes, 
     reels as reels_routes, agents as agents_routes, social as social_routes,
-    classroom as classroom_routes, extension as extension_routes
+    classroom as classroom_routes, extension as extension_routes,
+    ugc as ugc_routes
 )
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
@@ -91,6 +92,7 @@ app.include_router(reels_routes.router, prefix="/api", tags=["Reels"])
 app.include_router(social_routes.router, prefix="/api", tags=["Social Hub"])
 app.include_router(classroom_routes.router, prefix="/api", tags=["Classroom"])
 app.include_router(extension_routes.router, prefix="/api", tags=["Extension"])
+app.include_router(ugc_routes.router, prefix="/api", tags=["UGC Creator"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────
@@ -185,6 +187,10 @@ if os.path.exists(frontend_path):
     @app.get("/api-document", include_in_schema=False)
     async def api_document_page():
         return FileResponse(os.path.join(frontend_path, "APIdocument.html"))
+
+    @app.get("/ugc-api-docs", include_in_schema=False)
+    async def ugc_api_docs_page():
+        return FileResponse(os.path.join(frontend_path, "ugc-api-docs.html"))
 
     @app.get("/", include_in_schema=False)
     async def root():

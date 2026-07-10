@@ -199,3 +199,16 @@ aur subtopic page pe hi ek button lahga do show reelsjisse click krne pe reels h
 aur bro ek aur update krna h jab image ke liye prompt generate kr rhe ho scene by secen then usi time scene by secne audion prompt generate kro aur ausion generaye kr ke add kr do 
 
 aur bro ek image 3second ka hi rakho yisi type script generate kro 
+
+
+
+bro thanku 
+
+
+ye batao mujhe kya m teligram bot bana sakta hu jisse teligram bot pe video upload kre aur Toggle AI Enhancements aur  B-Roll Image Generator choose kr ke submit kr de aur wo mere backend pe upload ho jaye aur video generate kr ke final video send kr de 
+
+
+Bro but ab jab subtitle edit kr rhe h to jo subtitle style m usi style m edit krne ke baad save nhi hota h wo default wala subtitle le lte h aur phle se jo style subtitle h usko bhi le leta h overlay krke dono subtitle de rha h aisa kyu jab edit kr rhe h to default wala subtitle dele rha h jis style m h usi style m edit krne ke baad bhio ho 
+
+
+aur m chahta hu jo subtitle style h sab wiska ek preview bhi dikha deta testing ke liye jisse user dekh sake kon sa subtitle kaisa h uske baad use krega 

@@ -934,3 +934,53 @@ class PYQChat(Base):
             "timestamp": self.timestamp.isoformat() if self.timestamp else "",
         }
 
+
+class UgcJob(Base):
+    __tablename__ = "ugc_jobs"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    job_id       = Column(String(64), unique=True, index=True, nullable=False)
+    client_id    = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    filename     = Column(String(255), nullable=False)
+    status       = Column(String(20), default="pending")  # pending, transcribing, processing, completed, failed
+    progress     = Column(Integer, default=0)  # 0 to 100
+    error_message = Column(Text, nullable=True)
+    original_video_path = Column(Text, nullable=False)
+    result_video_path = Column(Text, nullable=True)
+    result_thumbnail_path = Column(Text, nullable=True)
+    viral_video_path = Column(Text, nullable=True)
+    transcript_json = Column(Text, default="[]")
+    created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+    metadata_json = Column(Text, default="{}")  # Stores settings selected
+
+    @property
+    def transcript(self):
+        try:
+            return json.loads(self.transcript_json or "[]")
+        except Exception:
+            return []
+
+    @property
+    def settings(self):
+        try:
+            return json.loads(self.metadata_json or "{}")
+        except Exception:
+            return {}
+
+    def to_dict(self):
+        return {
+            "job_id": self.job_id,
+            "filename": self.filename,
+            "status": self.status,
+            "progress": self.progress,
+            "error_message": self.error_message or "",
+            "original_video_path": self.original_video_path,
+            "result_video_url": self.result_video_path or "",
+            "result_thumbnail_url": self.result_thumbnail_path or "",
+            "viral_video_url": self.viral_video_path or "",
+            "transcript": self.transcript,
+            "settings": self.settings,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+

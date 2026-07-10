@@ -740,15 +740,14 @@ async function waitForNewImage(maxSec, initialCardsCount = 0) {
     const effectiveInitialCount = initialCardsCount > 0 ? initialCardsCount : Math.max(0, assistantMessages.length - 1);
     if (assistantMessages.length > effectiveInitialCount) {
       const newCard = assistantMessages[assistantMessages.length - 1];
-      const dlBtn = findDownloadButtonInCard(newCard);
-      
-      if (dlBtn) {
-        const cardImg = newCard.querySelector('img');
-        if (cardImg && isValidGeneratedImageUrl(cardImg.src) && !window._lastImgSrcs.has(cardImg.src)) {
-          log(`Found clean new image src inside new message card at ${i}s: ${cardImg.src.substring(0, 60)}`);
-          return cardImg.src;
-        }
+      const cardImg = newCard.querySelector('img');
+      if (cardImg && isValidGeneratedImageUrl(cardImg.src) && !window._lastImgSrcs.has(cardImg.src)) {
+        log(`Found clean new image src inside new message card at ${i}s: ${cardImg.src.substring(0, 60)}`);
+        return cardImg.src;
+      }
 
+      const dlBtn = findDownloadButtonInCard(newCard);
+      if (dlBtn) {
         // Try to get href from the button/link itself (only if it's a valid remote generated image URL)
         const href = dlBtn.getAttribute('href') || dlBtn.href;
         if (href && isValidGeneratedImageUrl(href) && !window._lastImgSrcs.has(href)) {
@@ -1186,33 +1185,35 @@ async function generateSingleAsset(prompt, mediaType, filename) {
 
   const assetId = filename.replace('single-gen-', '').split('.')[0];
 
-  if (mediaType === 'image') {
+  if (mediaType === 'image' || mediaType === 'video') {
     const initialCardsCount = getAssistantMessageCards().length;
-    log(`Initial assistant message cards count before single image generation: ${initialCardsCount}`);
-
-    // Backend sends complete image description. Use prompt directly — no format suffix added here.
-    // The backend controls format (1:1 for images via Pollinations URL size, 16:9 for banners).
-    const fullPrompt = prompt;
+    log(`Initial assistant message cards count before single asset generation: ${initialCardsCount}`);
+ 
+    // Force B-roll image to generate in vertical 9:16 aspect ratio so subsequent animations are vertical
+    const fullPrompt = `Generate a high quality photorealistic image: ${prompt}. Vertical 9:16 portrait format, cinematic lighting, 4K quality, no text.`;
     await typeInChat(fullPrompt);
     await sleep(500);
     await clickSend();
     const imgSrc = await waitForNewImage(90, initialCardsCount);
     if (!imgSrc) throw new Error('Single image generation timeout');
-
-    // Upload single asset via background script to bypass CORS
-    await new Promise((resolve) => {
-      safeSendMessage({
-        type: 'UPLOAD_SINGLE_ASSET',
-        src: imgSrc,
-        filename: filename,
-        assetId: assetId,
-        mediaType: 'image'
-      }, () => resolve());
-    });
-
-    await downloadFile(imgSrc, filename);
-    await sleep(1000);
-    // video
+ 
+    // If the caller requested an image only, upload and download it, then return
+    if (mediaType === 'image') {
+      await new Promise((resolve) => {
+        safeSendMessage({
+          type: 'UPLOAD_SINGLE_ASSET',
+          src: imgSrc,
+          filename: filename,
+          assetId: assetId,
+          mediaType: 'image'
+        }, () => resolve());
+      });
+      await downloadFile(imgSrc, filename);
+      await sleep(1000);
+      return;
+    }
+ 
+    // Otherwise, generate the video animation from the generated image
     var videoPrompt;
     if (prompt.startsWith("Animate the previously") || prompt.startsWith("Create a smooth 5-second")) {
       videoPrompt = prompt;
@@ -1243,8 +1244,8 @@ async function generateSingleAsset(prompt, mediaType, filename) {
       }
       throw new Error('Single video generation timeout');
     }
-
-    // Upload single asset via background script to bypass CORS
+ 
+    // Upload single video asset via background script to bypass CORS
     await new Promise((resolve) => {
       safeSendMessage({
         type: 'UPLOAD_SINGLE_ASSET',
@@ -1254,7 +1255,7 @@ async function generateSingleAsset(prompt, mediaType, filename) {
         mediaType: 'video'
       }, () => resolve());
     });
-
+ 
     await downloadFile(vidSrc, filename);
     await sleep(1000);
   }

@@ -49,17 +49,22 @@ window.addEventListener("message", (event) => {
   // ── Single Library Asset Generation Request ──────────────────────────────────
   if (event.data && event.data.type === "MR_AI_GENERATE_SINGLE_ASSET") {
     console.log("[MR AI Content Dashboard] Received MR_AI_GENERATE_SINGLE_ASSET:", event.data);
-    const sent = safeSendMessage({
-      type: "GENERATE_SINGLE_ASSET",
-      prompt: event.data.prompt,
-      mediaType: event.data.mediaType,   // "image" | "video"
-      assetId: event.data.assetId,       // library item id to replace
-      token: event.data.token,
-      backendUrl: event.data.backendUrl
+    // Ask background for current tab ID so it can route MR_AI_SINGLE_ASSET_DOWNLOADED back here
+    chrome.runtime.sendMessage({ type: "GET_MY_TAB_ID" }, (resp) => {
+      const myTabId = resp && resp.tabId ? resp.tabId : null;
+      const sent = safeSendMessage({
+        type: "GENERATE_SINGLE_ASSET",
+        prompt: event.data.prompt,
+        mediaType: event.data.mediaType,   // "image" | "video"
+        assetId: event.data.assetId,       // library item id to replace
+        token: event.data.token,
+        backendUrl: event.data.backendUrl,
+        dashboardTabId: myTabId            // ← pass explicit tab ID so response routes back
+      });
+      if (!sent) {
+        window.postMessage({ type: "MR_AI_EXTENSION_INVALIDATED" }, "*");
+      }
     });
-    if (!sent) {
-      window.postMessage({ type: "MR_AI_EXTENSION_INVALIDATED" }, "*");
-    }
   }
   // ── Single Asset Replaced Confirmation ───────────────────────────────────────
   if (event.data && event.data.type === "MR_AI_SINGLE_ASSET_REPLACED_CONFIRMED") {

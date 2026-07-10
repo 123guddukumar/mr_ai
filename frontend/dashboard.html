@@ -948,6 +948,7 @@ body{display:flex;min-height:100vh;overflow:hidden;
     <div class="sb-item" id="nav-webbuilder" onclick="showPanel('webbuilder')"><span class="sb-icon"><i data-lucide="layout"></i></span><span class="sb-label">Website Builder</span></div>
     <div class="sb-item" id="nav-social" onclick="showPanel('social')"><span class="sb-icon"><i data-lucide="share-2"></i></span><span class="sb-label">Social Studio</span></div>
     <div class="sb-item" id="nav-soc-history" onclick="showPanel('soc-history')"><span class="sb-icon"><i data-lucide="archive"></i></span><span class="sb-label">Social Archive</span></div>
+    <div class="sb-item" id="nav-ugc" onclick="showPanel('ugc')"><span class="sb-icon"><i data-lucide="video"></i></span><span class="sb-label">UGC Creator</span></div>
     <div class="sb-item" id="nav-classroom" onclick="showPanel('classroom')"><span class="sb-icon"><i data-lucide="book-open"></i></span><span class="sb-label">Classroom</span></div>
     <a class="sb-item" href="/playground" target="_blank"><span class="sb-icon"><i data-lucide="gamepad-2"></i></span><span class="sb-label">Playground</span></a>
     <div class="sb-item" id="nav-history" onclick="showPanel('history')"><span class="sb-icon"><i data-lucide="message-square"></i></span><span class="sb-label">History</span></div>
@@ -1690,6 +1691,712 @@ body{display:flex;min-height:100vh;overflow:hidden;
         </div>
         <div class="grid-3" id="wb-projects-list">
           <div class="history-empty">No saved projects yet. Create and save your first upgraded website!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UGC STUDIO PANEL ── -->
+    <div class="panel" id="panel-ugc">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">🎬 UGC Creator Studio</h2>
+          <p style="font-size:12px; color:var(--text3); margin-top:4px">Upload local video clips and run automatic AI enhancement pipelines</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Left: Upload and Feature Checklist -->
+        <div class="card">
+          <div class="card-title">📤 Upload & Configure</div>
+          <div class="card-sub">Choose your video and select the AI enhancements to apply</div>
+
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <!-- Upload Area -->
+            <div id="ugc-upload-dropzone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;" ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="event.preventDefault(); handleUgcFileDrop(event)" onclick="document.getElementById('ugc-file-input').click()">
+              <div style="font-size: 36px; color: var(--accent); margin-bottom: 8px;">☁️</div>
+              <p style="font-size: 13px; font-weight: 600;" id="ugc-upload-text">Drag & drop your video here, or click to browse</p>
+              <p style="font-size: 10px; color: var(--text3); margin-top: 4px;">Supports MP4, MOV, AVI (Max 100MB)</p>
+              <input type="file" id="ugc-file-input" style="display: none;" accept="video/*" onchange="handleUgcFileSelect(event)">
+            </div>
+            
+            <div id="ugc-selected-file" style="display: none; background: var(--bg3); padding: 10px; border-radius: 8px; border: 1px solid var(--border); align-items: center; gap: 10px;">
+              <div style="font-size: 18px; color: var(--green);">📹</div>
+              <div style="flex: 1; overflow: hidden;">
+                <div style="font-size: 12px; font-weight: 700; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" id="ugc-file-name">video.mp4</div>
+                <div style="font-size: 10px; color: var(--text3);" id="ugc-file-size">0.0 MB</div>
+              </div>
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px;" onclick="resetUgcUpload()">Remove</button>
+            </div>
+
+            <!-- Features Checklist Grid -->
+            <div>
+              <span class="form-label" style="margin-bottom: 12px;">Toggle AI Enhancements</span>
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-caption" checked style="accent-color: var(--accent);">
+                  <span>💬 Auto Subtitles (Karaoke)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-zoom" checked style="accent-color: var(--accent);">
+                  <span>🔍 Auto Snap Zoom</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-broll" checked style="accent-color: var(--accent);">
+                  <span>🖼️ Auto B-roll Overlays</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-music" checked style="accent-color: var(--accent);">
+                  <span>🎵 AI Music &amp; Ducking</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-sfx" checked style="accent-color: var(--accent);">
+                  <span>🔊 Auto Sound Effects</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-silence" checked style="accent-color: var(--accent);">
+                  <span>✂️ Silence Removal (&gt;2s)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-jumpcut" checked style="accent-color: var(--accent);">
+                  <span>🎬 Jump Cut Filler Words</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-facetrack" checked style="accent-color: var(--accent);">
+                  <span>👤 Face Track 9:16 Crop</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-background" style="accent-color: var(--accent);" onchange="document.getElementById('ugc-bg-style-group').style.display = this.checked ? 'block' : 'none'">
+                  <span>🟢 Chroma Background Replace</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-dress-color-shift" style="accent-color: var(--accent);" onchange="document.getElementById('ugc-dress-color-group').style.display = this.checked ? 'block' : 'none'">
+                  <span>👕 Dress Color Shift</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-viral" checked style="accent-color: var(--accent);">
+                  <span>🔥 Viral shorts moment</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                  <input type="checkbox" id="ugc-feat-logo" style="accent-color: var(--accent);" onchange="document.getElementById('ugc-logo-upload-group').style.display = this.checked ? 'block' : 'none'">
+                  <span>🏷️ Brand Logo Overlay</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Logo Upload Zone (shown when Brand Logo toggle is on) -->
+            <div id="ugc-logo-upload-group" style="display: none;">
+              <span class="form-label" style="margin-bottom: 8px;">🏷️ Brand Logo File</span>
+              <div style="background: var(--bg3); border: 1.5px dashed var(--accent); border-radius: 10px; padding: 16px; text-align: center; transition: border-color 0.2s;" id="ugc-logo-dropzone" ondragover="event.preventDefault()" ondrop="handleUgcLogoDrop(event)">
+                <div style="font-size: 28px; margin-bottom: 6px;">🖼️</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text);">Upload your brand logo</div>
+                <div style="font-size: 11px; color: var(--text3); margin-top: 4px;">PNG with transparent background recommended</div>
+                <div style="margin-top: 10px;">
+                  <button class="btn btn-secondary" style="padding: 6px 14px; font-size: 11px;" onclick="document.getElementById('ugc-logo-input').click()">📂 Choose File</button>
+                  <input type="file" id="ugc-logo-input" style="display:none" accept="image/png,image/jpeg,image/webp" onchange="handleUgcLogoSelect(this.files[0])">
+                </div>
+              </div>
+              <div id="ugc-logo-selected" style="display:none; margin-top: 8px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); padding: 8px 12px; display:none; align-items:center; gap:10px;">
+                <div style="font-size: 20px;">✅</div>
+                <div style="flex:1; font-size: 12px;">
+                  <span id="ugc-logo-filename" style="font-weight:600;">logo.png</span>
+                  <span style="color: var(--text3); font-size: 11px; margin-left: 6px;" id="ugc-logo-filesize">0 KB</span>
+                </div>
+                <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 10px;" onclick="clearUgcLogo()">✕</button>
+              </div>
+            </div>
+
+            <!-- Custom Chroma Background Selector -->
+            <div id="ugc-bg-style-group" style="display: none;">
+              <span class="form-label" style="margin-bottom: 6px;">🟢 Green Screen Studio Backdrop Theme</span>
+              <select class="form-input" id="ugc-bg-style" style="margin-bottom: 0;">
+                <option value="premium_abstract_dark_studio_background_neon_lights_orange_vertical_aesthetic" selected>🔥 Dark Studio Neon Orange</option>
+                <option value="cozy_modern_library_with_warm_bookshelves_blur_bokeh_vertical">📚 Cozy Warm Library</option>
+                <option value="high_tech_cyberpunk_control_room_holograms_vertical">💻 High-Tech Cyberpunk Room</option>
+                <option value="minimalist_luxury_office_interior_wood_plants_vertical_bokeh">🏢 Minimalist Luxury Office</option>
+                <option value="aesthetic_lofi_anime_bedroom_sunset_vertical_cozy">🌸 Cozy Lo-Fi Sunset Anime Setup</option>
+                <option value="luxury_neon_gaming_room_setup_streamer_purple_pink_aesthetic_vertical">🎮 Luxury Streamer Neon Studio</option>
+              </select>
+            </div>
+
+            <!-- Custom Dress Color Selector -->
+            <div id="ugc-dress-color-group" style="display: none;">
+              <span class="form-label" style="margin-bottom: 6px;">👕 Dress Target Color</span>
+              <select class="form-input" id="ugc-dress-color" style="margin-bottom: 10px;">
+                <option value="Red">🔴 Red</option>
+                <option value="Orange">🟠 Orange</option>
+                <option value="Yellow">🟡 Yellow</option>
+                <option value="Green">🟢 Green</option>
+                <option value="Cyan">🔵 Cyan</option>
+                <option value="Blue" selected>💙 Blue</option>
+                <option value="Purple">🟣 Purple</option>
+                <option value="Pink">🌸 Pink</option>
+              </select>
+            </div>
+
+            <!-- Subtitle Style Theme Selector -->
+            <div>
+              <span class="form-label" style="margin-bottom: 6px;">📝 Subtitle Style Theme</span>
+              <select class="form-input" id="ugc-subtitle-style" style="margin-bottom: 10px;" onchange="updateSubtitleStylePreview('ugc-subtitle-style', 'ugc-style-preview-container')">
+                <option value="default" selected>✨ Default (Yellow Word Highlights)</option>
+                <option value="important_large">💥 Important Large (Key Words Large, Rest Small)</option>
+                <option value="neon_bounce">🟢 Neon Bounce (Neon Green Highlights)</option>
+                <option value="minimal_white">⚪ Minimal White (Clean White Text)</option>
+                <option value="bold_yellow">🟡 Bold Yellow (Full Yellow Text)</option>
+                <option value="split_top_bottom">↕️ Split Top/Bottom (Top & Bottom Center)</option>
+                <option value="two_line_slide_right_left">↕️ Two-line Slide (Right & Left)</option>
+                <option value="two_line_slide_left_right">↕️ Two-line Slide (Left & Right)</option>
+                <option value="two_line_slide_top_bottom">↕️ Two-line Slide (Top & Bottom)</option>
+                <option value="two_line_zoom_in">🔍 Two-line Spring Zoom In</option>
+              </select>
+              
+              <!-- Style Preview Box -->
+              <div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:8px;">
+                <div style="font-size:11px; color:var(--text3); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Live Style Preview:</div>
+                <div id="ugc-style-preview-container" style="position:relative; width:100%; height:80px; background:linear-gradient(180deg, #1e1e2e, #0f0f16); border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.05);">
+                  <!-- Rendered via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- B-roll Image Source Selector -->
+            <div id="ugc-broll-source-group">
+              <span class="form-label" style="margin-bottom: 6px;">🖼️ B-Roll Image Generator</span>
+              <div style="display: flex; gap: 10px; flex-direction: column;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--accent); background: rgba(99,102,241,0.07); cursor: pointer;">
+                  <input type="radio" name="ugc-broll-source" id="ugc-broll-source-metaai" value="meta_ai" style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text);">🤖 Meta AI Extension <span style="font-size: 10px; background: linear-gradient(90deg,#f59e0b,#ef4444); color:#fff; padding: 2px 7px; border-radius: 99px; margin-left: 6px;">PRO</span></div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Generates hyper-realistic images via your installed Chrome Extension on meta.ai — requires extension to be active in browser.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer;">
+                  <input type="radio" name="ugc-broll-source" id="ugc-broll-source-pexels" value="pexels" style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text);">📷 Pexels Stock Photos <span style="font-size: 10px; background: linear-gradient(90deg,#10b981,#06b6d4); color:#fff; padding: 2px 7px; border-radius: 99px; margin-left: 6px;">FREE</span></div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Fetches real high-quality stock photographs from Pexels library matching your video's context. Fast & free.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer;">
+                  <input type="radio" name="ugc-broll-source" id="ugc-broll-source-pollinations" value="pollinations" checked style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text);">⚡ Pollinations AI (Flux)</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Automatically generates cinematic B-roll images via Flux AI. No extension required — works instantly.</div>
+                  </div>
+                </label>
+              </div>
+              <!-- Meta AI status indicator (shown when meta_ai selected) -->
+              <div id="ugc-metaai-status" style="display:none; margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); font-size: 11px; color: #f59e0b;"></div>
+            </div>
+
+
+            <!-- BGM Mood Dropdown -->
+            <div>
+              <span class="form-label" style="margin-bottom: 6px;">Background Music Mood</span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select class="form-input" id="ugc-bgm-mood" style="margin-bottom: 0; flex: 1;" onchange="stopBgmPreview()">
+                  <option value="Motivational">🚀 Motivational</option>
+                  <option value="Sad">😢 Sad / Emotional</option>
+                  <option value="Funny">🤪 Funny / Silly</option>
+                  <option value="Corporate" selected>💼 Corporate / Sleek</option>
+                  <option value="News">📰 News / Dramatic</option>
+                  <option value="Podcast">🎙️ Podcast Ambient</option>
+                  <option value="Lo-Fi Chill">🎵 Lo-Fi Chill</option>
+                  <option value="Energetic Hype">⚡ Energetic Hype</option>
+                  <option value="Cinematic Epic">🎬 Cinematic Epic</option>
+                  <option value="Dark Mystery">👻 Dark Mystery</option>
+                  <option value="Ambient Meditation">🧘 Ambient Meditation</option>
+                  <option value="Hip Hop Beat">🎧 Hip Hop Beat</option>
+                  <option value="Acoustic Folk">🎸 Acoustic Folk</option>
+                </select>
+                <button class="btn btn-secondary" id="ugc-bgm-play-btn" style="padding: 10px 14px; display: flex; align-items: center; justify-content: center; height: 38px; border-radius: 8px; cursor: pointer; flex-shrink: 0;" onclick="toggleBgmPreview(event)">
+                  ▶️ Preview
+                </button>
+              </div>
+            </div>
+
+            <!-- Target Video Quality (Resolution) -->
+            <div>
+              <span class="form-label" style="margin-bottom: 6px;">📺 Target Video Quality (Resolution)</span>
+              <select class="form-input" id="ugc-video-quality" style="margin-bottom: 10px;">
+                <option value="720p">720p (HD - 720x1280)</option>
+                <option value="1080p" selected>1080p (Full HD - 1080x1920)</option>
+                <option value="2k">2k (QHD - 1440x2560)</option>
+                <option value="4k">4k (Ultra HD - 2160x3840)</option>
+                <option value="8k">8k (Super HD - 4320x7680)</option>
+              </select>
+            </div>
+
+            <!-- Action Button -->
+            <button class="btn btn-primary" id="ugc-submit-btn" style="width: 100%; justify-content: center; height: 46px;" onclick="uploadAndStartUgcJob()" disabled>
+              ▶️ Upload and Process
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Status, Progress and Output Previews -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="card-title">🖥️ Status &amp; Workspace</div>
+          
+          <!-- Idle / Empty State -->
+          <div id="ugc-workspace-idle" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; color: var(--text3);">
+            <div style="font-size: 40px; margin-bottom: 8px; opacity: 0.5;">🎬</div>
+            <p style="font-size: 13px; font-weight: 500;">No active job selected</p>
+            <p style="font-size: 11px; margin-top: 4px;">Upload and process a video, or select a previous job below</p>
+          </div>
+
+          <!-- Active Progress State -->
+          <div id="ugc-workspace-active" style="display: none; flex-direction: column; gap: 16px; flex: 1;">
+            <div style="background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; font-weight: 600;">
+                <span id="ugc-status-lbl">Processing Video...</span>
+                <span id="ugc-progress-lbl">0%</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
+                <div id="ugc-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(95deg, var(--accent), var(--accent2)); transition: width 0.3s ease;"></div>
+              </div>
+              <div id="ugc-log-area" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text2); height: 120px; overflow-y: auto; background: #07090e; padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+                <!-- Real-time progress logs -->
+              </div>
+            </div>
+
+            <!-- Preview Areas -->
+            <div id="ugc-results-previews" style="display: none; flex-direction: column; gap: 14px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <!-- Main Processed Video -->
+                <div>
+                  <span class="form-label" style="margin-bottom: 6px;">Vertical Enhanced Video</span>
+                  <div style="aspect-ratio: 9/16; background: #000; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); max-height: 250px; display: flex; align-items: center; justify-content: center;">
+                    <video id="ugc-result-video" style="width: 100%; height: 100%; object-fit: contain; display: none;" controls></video>
+                    <div id="ugc-video-placeholder" style="color: var(--text3); font-size: 12px;">No video rendered</div>
+                  </div>
+                  <div style="display: flex; gap: 6px; margin-top: 6px;">
+                    <button class="btn btn-secondary" style="flex:1; font-size: 11px; padding: 6px; justify-content: center;" onclick="downloadUgcVideo('result')">⬇️ Download MP4</button>
+                    <button class="btn btn-secondary" id="ugc-edit-subs-btn" style="flex:1; font-size: 11px; padding: 6px; justify-content: center; display:none;" onclick="openSubtitleEditor()">✏️ Edit Subtitles</button>
+                  </div>
+                  <!-- ✏️ Edit Video Button -->
+                  <button id="ugc-edit-video-btn" onclick="openVideoEditor()" style="display:none; width:100%; margin-top:8px; padding:10px 0; font-size:13px; font-weight:700; border:none; border-radius:10px; cursor:pointer; background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; letter-spacing:0.5px; box-shadow:0 0 18px rgba(124,58,237,0.55); transition:all 0.2s ease;" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 0 28px rgba(124,58,237,0.8)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 18px rgba(124,58,237,0.55)'">
+                    ✏️ Edit Video
+                  </button>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <!-- PRO VIDEO EDITOR PANEL                                  -->
+                <!-- ═══════════════════════════════════════════════════════ -->
+                <div id="ugc-video-editor-panel" style="display:none; margin-top:0;">
+                  <style>
+                    /* ─── Editor Shell ─────────────────────────────────────── */
+                    .veditor-shell {
+                      background: linear-gradient(145deg, #0d1117 0%, #111827 100%);
+                      border: 1px solid rgba(139,92,246,0.25);
+                      border-radius: 18px;
+                      overflow: hidden;
+                      box-shadow: 0 0 0 1px rgba(139,92,246,0.08), 0 24px 60px rgba(0,0,0,0.7);
+                    }
+                    /* ─── Editor Header ──────────────────────────────────── */
+                    .veditor-hdr {
+                      display: flex; align-items: center; gap: 10px;
+                      padding: 14px 18px;
+                      background: linear-gradient(90deg, rgba(139,92,246,0.12) 0%, rgba(236,72,153,0.06) 100%);
+                      border-bottom: 1px solid rgba(139,92,246,0.18);
+                    }
+                    .veditor-hdr-dot { width:8px;height:8px;border-radius:50%; flex-shrink:0; }
+                    .veditor-hdr-title { font-size:13px;font-weight:800;color:#e2e8f0;letter-spacing:.02em;flex:1; }
+                    .veditor-badge {
+                      font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+                      background:linear-gradient(135deg,#7c3aed,#db2777);
+                      color:#fff;padding:2px 8px;border-radius:20px;
+                    }
+                    .veditor-close-btn {
+                      width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);
+                      background:rgba(255,255,255,0.05);color:#94a3b8;font-size:13px;
+                      cursor:pointer;display:flex;align-items:center;justify-content:center;
+                      transition:all .2s;
+                    }
+                    .veditor-close-btn:hover { background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:#ef4444; }
+                    /* ─── Segmented Tabs ─────────────────────────────────── */
+                    .veditor-tabs {
+                      display:grid;grid-template-columns:1fr 1fr;
+                      margin:16px 16px 0;
+                      background:rgba(255,255,255,0.04);
+                      border-radius:10px;border:1px solid rgba(255,255,255,0.07);
+                      overflow:hidden;
+                    }
+                    .veditor-tab {
+                      padding:9px 12px;font-size:11px;font-weight:700;border:none;
+                      cursor:pointer;color:rgba(148,163,184,0.8);background:transparent;
+                      transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;
+                    }
+                    .veditor-tab.active {
+                      background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(236,72,153,0.2));
+                      color:#e2e8f0;border-radius:8px;
+                      box-shadow:inset 0 0 0 1px rgba(139,92,246,0.35);
+                    }
+                    /* ─── Editor Body ─────────────────────────────────────── */
+                    .veditor-body { padding:14px 16px 16px; }
+                    /* ─── B-roll Card ─────────────────────────────────────── */
+                    .vbroll-card {
+                      background:rgba(255,255,255,0.03);
+                      border:1px solid rgba(255,255,255,0.07);
+                      border-radius:12px;padding:12px;
+                      transition:border-color .2s,box-shadow .2s;
+                      margin-bottom:10px;
+                    }
+                    .vbroll-card:hover { border-color:rgba(139,92,246,0.35);box-shadow:0 0 0 1px rgba(139,92,246,0.1); }
+                    .vbroll-thumb {
+                      width:44px;height:78px;border-radius:8px;overflow:hidden;
+                      border:1px solid rgba(255,255,255,0.1);background:#0a0a0f;flex-shrink:0;
+                    }
+                    .vbroll-timeline-bar {
+                      height:4px;border-radius:2px;background:linear-gradient(90deg,#7c3aed,#db2777);
+                      margin:8px 0 6px;position:relative;overflow:hidden;
+                    }
+                    .vbroll-timeline-bar::after {
+                      content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+                      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);
+                      animation:vbroll-shimmer 2s infinite;
+                    }
+                    @keyframes vbroll-shimmer { to { left:200%; } }
+                    .vbroll-action-btn {
+                      flex:1;min-width:72px;padding:6px 8px;border-radius:7px;
+                      font-size:10px;font-weight:700;cursor:pointer;transition:all .18s;
+                      display:flex;align-items:center;justify-content:center;gap:4px;
+                    }
+                    .vbroll-upload-btn {
+                      background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#94a3b8;
+                    }
+                    .vbroll-upload-btn:hover { background:rgba(255,255,255,0.1);color:#e2e8f0; }
+                    .vbroll-regen-btn {
+                      background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#a78bfa;
+                    }
+                    .vbroll-regen-btn:hover { background:rgba(139,92,246,0.25);color:#c4b5fd; }
+                    .vbroll-del-btn {
+                      padding:6px 10px;border-radius:7px;font-size:11px;cursor:pointer;
+                      background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;
+                      transition:all .18s;
+                    }
+                    .vbroll-del-btn:hover { background:rgba(239,68,68,0.18);color:#ef4444; }
+                    /* ─── Regen prompt box ───────────────────────────────── */
+                    .vbroll-regen-box {
+                      display:none;margin-top:10px;padding:10px;
+                      background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);
+                      border-radius:9px;
+                    }
+                    .veditor-textarea {
+                      width:100%;min-height:52px;background:rgba(0,0,0,0.3);
+                      border:1px solid rgba(255,255,255,0.1);border-radius:6px;
+                      color:#e2e8f0;font-size:11px;padding:8px;resize:vertical;
+                      font-family:inherit;outline:none;transition:border-color .2s;
+                    }
+                    .veditor-textarea:focus { border-color:rgba(139,92,246,0.5); }
+                    .veditor-num-input {
+                      width:76px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);
+                      border-radius:6px;color:#e2e8f0;font-size:11px;padding:6px 8px;outline:none;
+                      transition:border-color .2s;
+                    }
+                    .veditor-num-input:focus { border-color:rgba(139,92,246,0.5); }
+                    /* ─── Add B-roll Box ──────────────────────────────────── */
+                    .veditor-add-box {
+                      border:1.5px dashed rgba(139,92,246,0.2);border-radius:10px;padding:12px;
+                      margin-top:12px;transition:border-color .2s;
+                    }
+                    .veditor-add-box:hover { border-color:rgba(139,92,246,0.4); }
+                    /* ─── Music Panel ─────────────────────────────────────── */
+                    .veditor-mood-chip {
+                      display:inline-flex;align-items:center;gap:5px;
+                      padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;
+                      border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);
+                      color:#94a3b8;transition:all .18s;white-space:nowrap;
+                    }
+                    .veditor-mood-chip.selected,.veditor-mood-chip:hover {
+                      background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.4);color:#c4b5fd;
+                    }
+                    /* ─── Re-render Button ───────────────────────────────── */
+                    .veditor-rerender-btn {
+                      width:100%;margin-top:16px;padding:13px;font-size:13px;font-weight:800;
+                      border:none;border-radius:12px;cursor:pointer;
+                      background:linear-gradient(135deg,#059669 0%,#10b981 50%,#34d399 100%);
+                      color:#fff;letter-spacing:.04em;
+                      box-shadow:0 0 20px rgba(16,185,129,0.35),0 4px 15px rgba(0,0,0,0.4);
+                      transition:all .2s;position:relative;overflow:hidden;
+                    }
+                    .veditor-rerender-btn::before {
+                      content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+                      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+                      transition:left .4s;
+                    }
+                    .veditor-rerender-btn:hover::before { left:100%; }
+                    .veditor-rerender-btn:hover { transform:translateY(-1px);box-shadow:0 0 28px rgba(16,185,129,0.5); }
+                    .veditor-rerender-btn:disabled { opacity:.5;cursor:not-allowed;transform:none; }
+                    /* ─── Status ─────────────────────────────────────────── */
+                    .veditor-status {
+                      text-align:center;font-size:11px;color:var(--text3);margin-top:10px;
+                      min-height:16px;transition:color .2s;
+                    }
+                    /* ─── Section label ──────────────────────────────────── */
+                    .veditor-label {
+                      font-size:10px;font-weight:700;color:rgba(148,163,184,0.7);
+                      text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;
+                      display:flex;align-items:center;gap:6px;
+                    }
+                    .veditor-label::after { content:'';flex:1;height:1px;background:rgba(255,255,255,0.06); }
+                  </style>
+
+                  <div class="veditor-shell">
+                    <!-- Header -->
+                    <div class="veditor-hdr">
+                      <div class="veditor-hdr-dot" style="background:#ef4444;box-shadow:0 0 6px #ef4444;"></div>
+                      <div class="veditor-hdr-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b;"></div>
+                      <div class="veditor-hdr-dot" style="background:#10b981;box-shadow:0 0 6px #10b981;"></div>
+                      <div class="veditor-hdr-title" style="margin-left:8px;">🎬 Video Studio Editor</div>
+                      <div class="veditor-badge">PRO</div>
+                      <button class="veditor-close-btn" onclick="closeVideoEditor()" title="Close Editor">✕</button>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="veditor-tabs">
+                      <button id="veditor-tab-broll" class="veditor-tab active" onclick="switchEditorTab('broll')">
+                        🖼️ B-roll Assets
+                      </button>
+                      <button id="veditor-tab-music" class="veditor-tab" onclick="switchEditorTab('music')">
+                        🎵 BGM / Music
+                      </button>
+                    </div>
+
+                    <!-- ── B-roll Tab ───────────────────────────────────── -->
+                    <div id="veditor-broll-content" class="veditor-body">
+                      <div class="veditor-label">B-roll Timeline</div>
+                      <div id="veditor-broll-list" style="display:flex;flex-direction:column;gap:0;">
+                        <!-- Loading skeleton -->
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                          <div style="height:80px;border-radius:10px;background:linear-gradient(90deg,rgba(255,255,255,0.03) 25%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.03) 75%);background-size:200% 100%;animation:vbroll-shimmer 1.4s infinite;"></div>
+                          <div style="height:80px;border-radius:10px;background:linear-gradient(90deg,rgba(255,255,255,0.03) 25%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.03) 75%);background-size:200% 100%;animation:vbroll-shimmer 1.4s infinite;animation-delay:.2s"></div>
+                        </div>
+                      </div>
+
+                      <!-- Add New B-roll -->
+                      <div class="veditor-add-box">
+                        <div class="veditor-label">➕ Generate New B-roll Scene</div>
+                        <textarea id="veditor-new-broll-prompt" class="veditor-textarea"
+                          placeholder="Describe the visual scene (e.g. 'cinematic aerial shot of a glowing city skyline at night, neon reflections, ultra-wide, 8k')"></textarea>
+                        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                          <div style="display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;">
+                            <span style="font-size:10px;color:#64748b;font-weight:600;">Start</span>
+                            <input type="number" id="veditor-new-start" placeholder="0" min="0" step="0.1" class="veditor-num-input" style="width:54px;padding:0;background:transparent;border:none;">
+                            <span style="font-size:10px;color:#64748b;">s</span>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 8px;">
+                            <span style="font-size:10px;color:#64748b;font-weight:600;">End</span>
+                            <input type="number" id="veditor-new-end" placeholder="3" min="0" step="0.1" class="veditor-num-input" style="width:54px;padding:0;background:transparent;border:none;">
+                            <span style="font-size:10px;color:#64748b;">s</span>
+                          </div>
+                          <button onclick="generateNewBroll()"
+                            style="flex:1;padding:8px 12px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(124,58,237,0.3);">
+                            🎨 Generate
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- ── Music Tab ─────────────────────────────────────── -->
+                    <div id="veditor-music-content" class="veditor-body" style="display:none;">
+                      <!-- Current Mood -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 14px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.18);border-radius:10px;">
+                        <div>
+                          <div style="font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Current BGM</div>
+                          <div id="veditor-current-mood" style="font-size:14px;font-weight:800;color:#c4b5fd;"></div>
+                        </div>
+                        <div style="font-size:28px;opacity:.7;">🎵</div>
+                      </div>
+
+                      <!-- Mood Chips -->
+                      <div class="veditor-label">Choose Mood</div>
+                      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'Motivational')">🔥 Motivational</div>
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'Corporate')">💼 Corporate</div>
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'Sad')">💙 Emotional</div>
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'Funny')">😂 Upbeat</div>
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'News')">📰 News</div>
+                        <div class="veditor-mood-chip" onclick="selectMoodChip(this,'Podcast')">🎙️ Podcast</div>
+                      </div>
+                      <!-- Hidden select for compatibility -->
+                      <select id="veditor-mood-select" style="display:none;">
+                        <option value="Motivational">Motivational</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Sad">Sad</option>
+                        <option value="Funny">Funny</option>
+                        <option value="News">News</option>
+                        <option value="Podcast">Podcast</option>
+                      </select>
+                      <button onclick="changeMusicMood()"
+                        style="width:100%;padding:10px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(236,72,153,0.2));border:1px solid rgba(139,92,246,0.35);color:#c4b5fd;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:14px;transition:all .2s;">
+                        ✅ Apply Selected Mood
+                      </button>
+
+                      <!-- Upload Custom -->
+                      <div class="veditor-label">Custom Track</div>
+                      <div style="padding:12px;border:1.5px dashed rgba(255,255,255,0.1);border-radius:10px;margin-bottom:10px;transition:border-color .2s;" 
+                           onmouseenter="this.style.borderColor='rgba(139,92,246,0.35)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">⬆️ Upload MP3 File</div>
+                        <input type="file" id="veditor-music-file" accept=".mp3,audio/*" 
+                          style="font-size:11px;color:#94a3b8;width:100%;background:rgba(0,0,0,0.2);padding:6px;border-radius:6px;cursor:pointer;">
+                        <button onclick="uploadCustomMusic()"
+                          style="width:100%;margin-top:8px;padding:9px;background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"
+                          onmouseenter="this.style.background='rgba(255,255,255,0.1)'" onmouseleave="this.style.background='rgba(255,255,255,0.05)'">
+                          ⬆️ Upload &amp; Set as BGM
+                        </button>
+                      </div>
+
+                      <!-- Remove Music -->
+                      <button onclick="removeMusic()"
+                        style="width:100%;padding:9px;background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"
+                        onmouseenter="this.style.background='rgba(239,68,68,0.15)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
+                        🔇 Remove Music (Silent Mode)
+                      </button>
+                    </div>
+
+                    <!-- Re-render section -->
+                    <div style="padding:0 16px 16px;">
+                      <button id="veditor-rerender-btn" class="veditor-rerender-btn" onclick="triggerFastRerender()">
+                        ⚡ Re-render Final Video
+                      </button>
+                      <div id="veditor-status" class="veditor-status"></div>
+                    </div>
+                  </div>
+                </div>
+
+                
+                <!-- Viral Moment / Shorts -->
+                <div>
+                  <span class="form-label" style="margin-bottom: 6px;">Viral Shorts Moment</span>
+                  <div style="aspect-ratio: 9/16; background: #000; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); max-height: 250px; display: flex; align-items: center; justify-content: center;">
+                    <video id="ugc-viral-video" style="width: 100%; height: 100%; object-fit: contain; display: none;" controls></video>
+                    <div id="ugc-viral-placeholder" style="color: var(--text3); font-size: 11px; text-align: center; padding: 10px;">Not detected or feature disabled</div>
+                  </div>
+                  <button class="btn btn-secondary" id="ugc-viral-dl-btn" style="width: 100%; font-size: 11px; padding: 6px; margin-top: 6px; justify-content: center;" onclick="downloadUgcVideo('viral')" disabled>⬇️ Download Shorts</button>
+                </div>
+              </div>
+
+              <!-- AI Thumbnail Preview -->
+              <div style="background: var(--bg3); padding: 10px; border-radius: 10px; border: 1px solid var(--border); display: flex; gap: 12px; align-items: center;">
+                <div style="width: 45px; aspect-ratio: 9/16; background: #000; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                  <img id="ugc-thumbnail-img" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                  <div id="ugc-thumb-placeholder" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--text3);">No Image</div>
+                </div>
+                <div style="flex: 1;">
+                  <span class="form-label" style="margin-bottom: 2px;">AI Generated Thumbnail</span>
+                  <p style="font-size: 10px; color: var(--text3);">Automatically extracted frame with highlighted card overlay.</p>
+                  <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 10px; margin-top: 6px;" onclick="downloadUgcVideo('thumbnail')">⬇️ Download JPG</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ Subtitle Editor Modal ══════════════════════════════════════════ -->
+      <div id="ugc-subs-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
+        <div style="background:var(--bg2); border:1.5px solid var(--border); border-radius:16px; width:min(700px,95vw); max-height:88vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+
+          <!-- Header -->
+          <div style="padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0;">
+            <div style="font-size:22px;">✏️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:15px;">Subtitle Editor</div>
+              <div style="font-size:11px; color:var(--text3); margin-top:1px;">Edit subtitle lines • Re-render to apply changes</div>
+            </div>
+            <button onclick="closeSubtitleEditor()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; padding:4px; line-height:1;">✕</button>
+          </div>
+
+          <!-- Live Preview Box -->
+          <div style="padding:12px 22px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:6px; background:var(--bg3);">
+            <div style="font-size:11px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Live Style Preview:</div>
+            <div id="modal-style-preview-box" style="position:relative; width:100%; height:75px; background:linear-gradient(180deg, #1e1e2e, #0f0f16); border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.05);">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Search & Replace Bar -->
+          <div style="padding:12px 22px; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:center; flex-shrink:0; background:var(--bg3);">
+            <span style="font-size:11px; color:var(--text3); white-space:nowrap;">🔍 Find</span>
+            <input id="subs-search-input" type="text" placeholder="Search text..." style="flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:12px; color:var(--text); outline:none;">
+            <span style="font-size:11px; color:var(--text3); white-space:nowrap;">→ Replace</span>
+            <input id="subs-replace-input" type="text" placeholder="Replace with..." style="flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:12px; color:var(--text); outline:none;">
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px; white-space:nowrap;" onclick="subsSearchReplace()">Replace All</button>
+          </div>
+
+          <!-- Lines List -->
+          <div id="subs-lines-container" style="flex:1; overflow-y:auto; padding:14px 22px; display:flex; flex-direction:column; gap:6px;">
+            <div style="color:var(--text3); font-size:12px; text-align:center; padding:30px;">Loading subtitles...</div>
+          </div>
+
+          <!-- Footer -->
+          <div style="padding:14px 22px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; flex-shrink:0; background:var(--bg3);">
+            <button class="btn btn-secondary" style="padding:8px 14px; font-size:12px;" onclick="subsAddLine()">＋ Add Line</button>
+            <div style="flex:1;"></div>
+            
+            <span style="font-size:11px; color:var(--text3); white-space:nowrap;">🎨 Style:</span>
+            <select class="form-input" id="subs-style-select" style="width:160px; margin-bottom:0; font-size:11px; padding:6px 10px; height:auto; background:var(--bg2); border:1px solid var(--border); border-radius:6px; color:var(--text);" onchange="updateSubtitleStylePreview('subs-style-select', 'modal-style-preview-box')">
+              <option value="default" selected>✨ Default (Yellow Highlights)</option>
+              <option value="important_large">💥 Important Large</option>
+              <option value="neon_bounce">🟢 Neon Bounce</option>
+              <option value="minimal_white">⚪ Minimal White</option>
+              <option value="bold_yellow">🟡 Bold Yellow</option>
+              <option value="split_top_bottom">↕️ Split Top/Bottom</option>
+              <option value="two_line_slide_right_left">↕️ Two-line Slide (Right/Left)</option>
+              <option value="two_line_slide_left_right">↕️ Two-line Slide (Left/Right)</option>
+              <option value="two_line_slide_top_bottom">↕️ Two-line Slide (Top/Bottom)</option>
+              <option value="two_line_zoom_in">🔍 Two-line Spring Zoom</option>
+            </select>
+            
+            <div id="subs-line-count" style="font-size:11px; color:var(--text3);">0 lines</div>
+            <button class="btn btn-primary" id="subs-rerender-btn" style="padding:8px 18px; font-size:12px; justify-content:center;" onclick="subsRerender()">
+              🔄 Re-render with Edits
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ Subtitle Re-rendering Overlay ══════════════════════════════════ -->
+      <div id="subs-render-overlay" style="display:none; position:fixed; inset:0; z-index:999999; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); align-items:center; justify-content:center; flex-direction:column;">
+        <div style="text-align:center; background:var(--bg2); border:1px solid var(--border); padding:32px; border-radius:20px; box-shadow:0 24px 80px rgba(0,0,0,0.6); max-width:400px; width:90%;">
+          <div style="font-size:60px; margin-bottom:20px; animation:subs-spin 3s linear infinite;">🎬</div>
+          <style>
+            @keyframes subs-spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
+          <div style="font-size:20px; font-weight:800; color:white; margin-bottom:10px;">Re-rendering Subtitles...</div>
+          <div style="color:var(--text3); font-size:13px; margin-bottom:24px; line-height:1.5;">Applying your edits and burning captions back onto the video. This usually takes around 15-30 seconds.</div>
+          
+          <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; position:relative; margin-bottom:12px;">
+            <div id="subs-render-progress-bar" style="position:absolute; top:0; left:0; height:100%; width:0%; background:linear-gradient(90deg, var(--accent), var(--accent2)); transition:width 0.4s ease;"></div>
+          </div>
+          <div id="subs-render-status-text" style="font-size:12px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:1px;">Initializing...</div>
+        </div>
+      </div>
+
+      <!-- UGC Jobs History List -->
+      <div class="card" style="margin-top: 20px;">
+        <div class="card-title">📁 Job History</div>
+        <div class="card-sub">Review and load your past UGC rendering tasks</div>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 1.5px solid var(--border); color: var(--text3); font-weight: 700;">
+                <th style="padding: 10px;">Date</th>
+                <th style="padding: 10px;">Source File</th>
+                <th style="padding: 10px;">Job ID</th>
+                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ugc-jobs-tbody">
+              <tr>
+                <td colspan="5" style="padding: 20px; text-align: center; color: var(--text3);">No past rendering jobs found.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -5251,6 +5958,7 @@ const PANEL_TITLES = {
   settings:{title:'Settings',sub:'Account & preferences'},
   user:{title:'User Management',sub:'Manage your sub-users and partners'},
   classroom:{title:'Classroom Management',sub:'Manage your exams, subjects, chapters, and topics'},
+  ugc:{title:'UGC Creator Studio',sub:'Upload local videos and enhance them with AI pipelines'},
 };
 function showPanel(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -5273,6 +5981,7 @@ function showPanel(id){
   if(id==='user') loadSubUsers();
   if(id==='soc-history') loadSocialHistory();
   if(id==='classroom') loadClassroom();
+  if(id==='ugc') loadUgcJobs();
   
   function startProgress(type) {
     const overlay = document.getElementById('gen-loading-overlay');
@@ -21875,6 +22584,1285 @@ function handleVoiceOverlayClick(event) {
         interruptBotSpeech();
     }
 }
+
+// ── UGC CREATOR STUDIO LOGIC ──────────────────────────────────────────────────
+let selectedUgcFile = null;
+let selectedUgcLogoFile = null;
+let ugcStatusInterval = null;
+
+function handleUgcLogoSelect(file) {
+  if (!file) return;
+  selectedUgcLogoFile = file;
+  document.getElementById("ugc-logo-dropzone").style.display = "none";
+  const sel = document.getElementById("ugc-logo-selected");
+  sel.style.display = "flex";
+  document.getElementById("ugc-logo-filename").textContent = file.name;
+  document.getElementById("ugc-logo-filesize").textContent = (file.size / 1024).toFixed(0) + " KB";
+}
+
+function handleUgcLogoDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (file) handleUgcLogoSelect(file);
+}
+
+function clearUgcLogo() {
+  selectedUgcLogoFile = null;
+  document.getElementById("ugc-logo-input").value = "";
+  document.getElementById("ugc-logo-dropzone").style.display = "block";
+  document.getElementById("ugc-logo-selected").style.display = "none";
+}
+
+
+function handleUgcFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) {
+    setUgcSelectedFile(file);
+  }
+}
+
+function handleUgcFileDrop(event) {
+  const file = event.dataTransfer.files[0];
+  if (file) {
+    setUgcSelectedFile(file);
+  }
+}
+
+function setUgcSelectedFile(file) {
+  if (file.size > 100 * 1024 * 1024) {
+    showToast("File exceeds 100MB size limit.", "error");
+    return;
+  }
+  selectedUgcFile = file;
+  document.getElementById("ugc-file-name").textContent = file.name;
+  document.getElementById("ugc-file-size").textContent = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+  document.getElementById("ugc-upload-dropzone").style.display = "none";
+  document.getElementById("ugc-selected-file").style.display = "flex";
+  document.getElementById("ugc-submit-btn").disabled = false;
+}
+
+function resetUgcUpload() {
+  selectedUgcFile = null;
+  document.getElementById("ugc-file-input").value = "";
+  document.getElementById("ugc-upload-dropzone").style.display = "block";
+  document.getElementById("ugc-selected-file").style.display = "none";
+  document.getElementById("ugc-submit-btn").disabled = true;
+}
+
+async function loadUgcJobs() {
+  const tbody = document.getElementById("ugc-jobs-tbody");
+  if (!tbody) return;
+  try {
+    const res = await fetch("/api/ugc/jobs", {
+      headers: { "X-App-Token": session.token }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to load UGC jobs.");
+    
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text3);">No past rendering jobs found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(job => {
+      const dt = job.created_at ? new Date(job.created_at).toLocaleString() : "—";
+      let statusBadge = "";
+      if (job.status === "completed") {
+        statusBadge = `<span style="color:var(--green); font-weight:700;">🟢 Completed</span>`;
+      } else if (job.status === "failed") {
+        statusBadge = `<span style="color:var(--red); font-weight:700;" title="${escHtml(job.error_message)}">🔴 Failed</span>`;
+      } else if (job.status === "pending") {
+        statusBadge = `<span style="color:var(--text3); font-weight:700;">⏳ Pending</span>`;
+      } else {
+        statusBadge = `<span style="color:var(--accent); font-weight:700; animation:pulse 1s infinite;">⚡ Processing (${job.progress}%)</span>`;
+      }
+
+      const actionBtn = job.status === "completed" || job.status === "failed" || job.status === "transcribing" || job.status === "processing"
+        ? `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="loadJobIntoWorkspace('${job.job_id}')">Load</button>`
+        : "—";
+
+      return `
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 10px;">${dt}</td>
+          <td style="padding: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escHtml(job.filename)}</td>
+          <td style="padding: 10px; font-family: monospace;">${job.job_id}</td>
+          <td style="padding: 10px;">${statusBadge}</td>
+          <td style="padding: 10px;">${actionBtn}</td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--red);">❌ ${err.message}</td></tr>`;
+  }
+}
+
+async function uploadAndStartUgcJob() {
+  if (!selectedUgcFile) return;
+
+  const btn = document.getElementById("ugc-submit-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Uploading Video...";
+  
+  // Show active workspace state
+  document.getElementById("ugc-workspace-idle").style.display = "none";
+  document.getElementById("ugc-workspace-active").style.display = "flex";
+  document.getElementById("ugc-status-lbl").textContent = "Uploading video to server...";
+  document.getElementById("ugc-progress-lbl").textContent = "0%";
+  document.getElementById("ugc-progress-bar").style.width = "0%";
+  document.getElementById("ugc-log-area").innerHTML = "<div>[SYSTEM] Initiating file upload to VectorizeAI storage...</div>";
+  document.getElementById("ugc-results-previews").style.display = "none";
+
+  try {
+    // 1. Upload Video
+    const fd = new FormData();
+    fd.append("file", selectedUgcFile);
+
+    const upRes = await fetch("/api/ugc/upload", {
+      method: "POST",
+      headers: { "X-App-Token": session.token },
+      body: fd
+    });
+    const upData = await upRes.json();
+    if (!upRes.ok) throw new Error(upData.detail || "Upload failed.");
+
+    const jobId = upData.job_id;
+    document.getElementById("ugc-log-area").innerHTML += `<div>[SYSTEM] File uploaded successfully! Job ID: ${jobId}</div>`;
+    document.getElementById("ugc-log-area").innerHTML += `<div>[SYSTEM] Launching AI pipelines...</div>`;
+    btn.textContent = "⏳ Processing Video...";
+
+    // 2. Start Process
+    const brollSourceEl = document.querySelector('input[name="ugc-broll-source"]:checked');
+    const brollSource = brollSourceEl ? brollSourceEl.value : "pollinations";
+    
+    const features = {
+      caption: document.getElementById("ugc-feat-caption").checked,
+      zoom: document.getElementById("ugc-feat-zoom").checked,
+      broll: document.getElementById("ugc-feat-broll").checked,
+      broll_source: brollSource,
+      music: document.getElementById("ugc-feat-music").checked,
+      sfx: document.getElementById("ugc-feat-sfx").checked,
+      silence: document.getElementById("ugc-feat-silence").checked,
+      jumpcut: document.getElementById("ugc-feat-jumpcut").checked,
+      facetrack: document.getElementById("ugc-feat-facetrack").checked,
+      background: document.getElementById("ugc-feat-background").checked,
+      background_style: document.getElementById("ugc-bg-style") ? document.getElementById("ugc-bg-style").value : "",
+      dress_color_shift: document.getElementById("ugc-feat-dress-color-shift").checked,
+      dress_color: document.getElementById("ugc-dress-color") ? document.getElementById("ugc-dress-color").value : "Blue",
+      video_quality: document.getElementById("ugc-video-quality") ? document.getElementById("ugc-video-quality").value : "1080p",
+      bgm_mood: document.getElementById("ugc-bgm-mood") ? document.getElementById("ugc-bgm-mood").value : "Corporate",
+      viral: document.getElementById("ugc-feat-viral").checked,
+      logo: document.getElementById("ugc-feat-logo").checked,
+      subtitle_style: document.getElementById("ugc-subtitle-style") ? document.getElementById("ugc-subtitle-style").value : "default"
+    };
+
+    // 2a. If logo enabled, upload logo file to server first
+    if (features.logo && selectedUgcLogoFile) {
+      try {
+        document.getElementById("ugc-log-area").innerHTML += `<div style="color:#a78bfa">[LOGO] Uploading brand logo to server...</div>`;
+        const logoFd = new FormData();
+        logoFd.append("file", selectedUgcLogoFile);
+        const logoRes = await fetch(`/api/ugc/upload-logo/${jobId}`, {
+          method: "POST",
+          headers: { "X-App-Token": session.token },
+          body: logoFd
+        });
+        if (logoRes.ok) {
+          document.getElementById("ugc-log-area").innerHTML += `<div style="color:#22c55e">[LOGO] Brand logo uploaded successfully ✓</div>`;
+        } else {
+          document.getElementById("ugc-log-area").innerHTML += `<div style="color:#ef4444">[LOGO] Logo upload failed — logo will be skipped.</div>`;
+          features.logo = false;
+        }
+      } catch (logoErr) {
+        document.getElementById("ugc-log-area").innerHTML += `<div style="color:#ef4444">[LOGO] Logo upload error: ${logoErr.message}</div>`;
+        features.logo = false;
+      }
+    } else if (features.logo && !selectedUgcLogoFile) {
+      document.getElementById("ugc-log-area").innerHTML += `<div style="color:#f59e0b">[LOGO] Brand logo enabled but no file selected — skipping logo overlay.</div>`;
+      features.logo = false;
+    }
+
+    // 2b. If Meta AI Extension selected, trigger B-roll generation via extension first
+    if (features.broll && brollSource === "meta_ai") {
+      const metaStatusEl = document.getElementById("ugc-metaai-status");
+      metaStatusEl.style.display = "block";
+      metaStatusEl.textContent = "🤖 Waiting for LLM to plan edit... B-rolls will be generated via Meta AI Extension.";
+      document.getElementById("ugc-log-area").innerHTML += `<div style="color:#f59e0b">[META AI] B-roll source: Meta AI Extension — images will be generated before processing starts.</div>`;
+      
+      // First, do a quick Whisper transcript + LLM plan by calling the process endpoint with a special pre-analysis flag
+      // We'll do the process call immediately but the backend will use pre-uploaded images when they exist
+      // Trigger Meta AI generation in the background via a postMessage to the extension
+      // We'll generate placeholder b-roll prompts from the transcript using a client-side heuristic
+      // The extension will generate and upload them, then processing uses them
+      
+      // Kick off a lightweight client-side LLM query to get B-roll prompts for Meta AI generation
+      try {
+        const planRes = await fetch(`/api/ugc/analyze-broll/${jobId}`, {
+          method: "GET",
+          headers: { "X-App-Token": session.token }
+        });
+        if (planRes.ok) {
+          const planData = await planRes.json();
+          const brolls = planData.brolls || [];
+          
+          if (brolls.length > 0) {
+            metaStatusEl.textContent = `🤖 Triggering Meta AI to generate ${brolls.length} B-roll image(s)...`;
+            document.getElementById("ugc-log-area").innerHTML += `<div style="color:#f59e0b">[META AI] Got ${brolls.length} B-roll prompts. Opening Meta AI Extension...</div>`;
+            
+            // Send each B-roll to the extension for Meta AI generation
+            for (let i = 0; i < brolls.length; i++) {
+              const br = brolls[i];
+              metaStatusEl.textContent = `🤖 Generating B-roll ${i+1}/${brolls.length} via Meta AI...`;
+              
+              // Use the same pattern as other dashboard Meta AI calls
+              await new Promise((resolve, reject) => {
+                const assetId = `ugc-broll-${jobId}-${i}`;
+                let timeoutId = null;
+                
+                // Listen for the result
+                const handler = async (event) => {
+                  if (event.source !== window) return;
+                  const d = event.data;
+                  if (d && d.type === "MR_AI_SINGLE_ASSET_DOWNLOADED" && d.assetId === assetId && d.mediaType === "video") {
+                    window.removeEventListener("message", handler);
+                    if (timeoutId) clearTimeout(timeoutId);
+                    
+                    try {
+                      const uploadRes = await fetch(`/api/ugc/upload-broll/${jobId}?index=${i}&start=${br.start}&end=${br.end}&prompt=${encodeURIComponent(br.prompt)}&local_url=${encodeURIComponent(d.url)}`, {
+                        method: "POST",
+                        headers: { "X-App-Token": session.token }
+                      });
+                      if (uploadRes.ok) {
+                        document.getElementById("ugc-log-area").innerHTML += `<div style="color:#22c55e">[META AI] B-roll Video ${i+1} registered on server ✓</div>`;
+                      } else {
+                        console.error("Failed to register B-roll video");
+                      }
+                    } catch (e) {
+                      console.error("B-roll register error", e);
+                    }
+                    resolve();
+                  }
+                };
+                window.addEventListener("message", handler);
+                
+                // Trigger Meta AI extension generation
+                window.postMessage({
+                  type: "MR_AI_GENERATE_SINGLE_ASSET",
+                  assetId,
+                  prompt: br.prompt,
+                  mediaType: "video",
+                  token: window._currentToken || session.token || "",
+                  backendUrl: window.location.origin
+                }, "*");
+                
+                // Timeout after 240 seconds (4 minutes) per B-roll to allow Meta AI image + video generation time
+                timeoutId = setTimeout(() => {
+                  window.removeEventListener("message", handler);
+                  document.getElementById("ugc-log-area").innerHTML += `<div style="color:#ef4444">[META AI] B-roll ${i+1} timed out. Generation will be skipped.</div>`;
+                  resolve();
+                }, 240000);
+              });
+            }
+            
+            metaStatusEl.textContent = `✅ Meta AI B-rolls ready! Starting main pipeline...`;
+            document.getElementById("ugc-log-area").innerHTML += `<div style="color:#22c55e">[META AI] All B-rolls generated! Launching processing pipeline...</div>`;
+          } else {
+            metaStatusEl.textContent = "⚠️ No B-roll prompts generated.";
+          }
+        } else {
+          metaStatusEl.textContent = "⚠️ Could not fetch B-roll plan.";
+        }
+      } catch (analyzeErr) {
+        console.error("B-roll plan fetch failed:", analyzeErr);
+        document.getElementById("ugc-log-area").innerHTML += `<div style="color:#ef4444">[META AI] Extension error or not available.</div>`;
+      }
+    }
+
+    const prRes = await fetch(`/api/ugc/process/${jobId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-App-Token": session.token
+      },
+      body: JSON.stringify(features)
+    });
+    const prData = await prRes.json();
+    if (!prRes.ok) throw new Error(prData.detail || "Processing initiation failed.");
+
+    // Start Polling Status
+    pollUgcJobStatus(jobId);
+    resetUgcUpload();
+    loadUgcJobs(); // Refresh job list
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "▶️ Upload and Process";
+    document.getElementById("ugc-status-lbl").textContent = "Failed";
+    document.getElementById("ugc-log-area").innerHTML += `<div style="color:var(--red)">[ERROR] ${err.message}</div>`;
+    showToast(err.message, "error");
+  }
+}
+
+function pollUgcJobStatus(jobId) {
+  if (ugcStatusInterval) clearInterval(ugcStatusInterval);
+  
+  const logEl = document.getElementById("ugc-log-area");
+  
+  ugcStatusInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/ugc/status/${jobId}`, {
+        headers: { "X-App-Token": session.token }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Status fetch failed.");
+
+      // Update progress bar
+      document.getElementById("ugc-progress-lbl").textContent = data.progress + "%";
+      document.getElementById("ugc-progress-bar").style.width = data.progress + "%";
+      document.getElementById("ugc-status-lbl").textContent = "Status: " + data.status.toUpperCase();
+
+      // Write logs
+      let logHtml = `<div>[SYSTEM] Job ID: ${jobId}</div>`;
+      if (data.status === "pending") {
+        logHtml += `<div>[WAITING] Job queued for execution...</div>`;
+      } else if (data.status === "transcribing") {
+        logHtml += `<div>[STAGE 1] Extracting audio tracks...</div>`;
+        logHtml += `<div>[STAGE 2] Running local Whisper Speech Recognition model (generating timestamped word mappings)...</div>`;
+      } else if (data.status === "processing") {
+        logHtml += `<div>[STAGE 3] Querying LLM to identify emphasis keywords, emotional zooms, B-roll image prompts, and viral moments...</div>`;
+        if (data.progress >= 45) logHtml += `<div>[STAGE 4] Creating B-roll image overlays via Pollinations AI (Flux Model)...</div>`;
+        if (data.progress >= 50 && data.settings.background) logHtml += `<div>[STAGE 5] Creating AI-generated green screen studio backdrop...</div>`;
+        if (data.progress >= 60) logHtml += `<div>[STAGE 6] Extracting visual frames using OpenCV face detector (Haar Cascades)...</div>`;
+        if (data.progress >= 65) {
+          let reframedMsg = "Reframing 9:16 vertical crop centered around tracked face";
+          let extras = [];
+          if (data.settings && data.settings.dress_color_shift) extras.push(`Dress Color Shift to ${data.settings.dress_color}`);
+          if (data.settings && data.settings.background) extras.push("Chroma Background Replace");
+          if (extras.length > 0) reframedMsg += ` with ${extras.join(" & ")}`;
+          logHtml += `<div>[STAGE 7] ${reframedMsg} (smoothing horizontal pan)...</div>`;
+        }
+        if (data.progress >= 75) logHtml += `<div>[STAGE 8] Generating karaoke-style ASS subtitles with yellow highlighting & bounce effects...</div>`;
+        if (data.progress >= 85) logHtml += `<div>[STAGE 9] Ducking background soundtrack to -24dB and layering Whoosh/Pop sound effects...</div>`;
+        if (data.progress >= 95) logHtml += `<div>[STAGE 10] Running FFmpeg rendering compiler to export video...</div>`;
+      } else if (data.status === "completed") {
+        logHtml += `<div>[STAGE 11] Running OpenCV image metrics to select best thumbnail frame...</div>`;
+        logHtml += `<div>[SUCCESS] Video compilation successful! Finished rendering.</div>`;
+        logEl.innerHTML = logHtml;
+        
+        clearInterval(ugcStatusInterval);
+        loadJobPreviews(data);
+        loadUgcJobs(); // Refresh jobs history list
+        document.getElementById("ugc-submit-btn").disabled = false;
+        document.getElementById("ugc-submit-btn").textContent = "▶️ Upload and Process";
+        return;
+      } else if (data.status === "failed") {
+        logHtml += `<div style="color:var(--red)">[FAILED] Pipeline aborted! Error: ${data.error_message}</div>`;
+        logEl.innerHTML = logHtml;
+        
+        clearInterval(ugcStatusInterval);
+        showToast("Video processing failed: " + data.error_message, "error");
+        document.getElementById("ugc-submit-btn").disabled = false;
+        document.getElementById("ugc-submit-btn").textContent = "▶️ Upload and Process";
+        return;
+      }
+      logEl.innerHTML = logHtml;
+      logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
+    } catch (err) {
+      clearInterval(ugcStatusInterval);
+      logEl.innerHTML += `<div style="color:var(--red)">[ERROR] Polling failed: ${err.message}</div>`;
+    }
+  }, 2000);
+}
+
+function loadJobIntoWorkspace(jobId) {
+  // Show active workspace state
+  document.getElementById("ugc-workspace-idle").style.display = "none";
+  document.getElementById("ugc-workspace-active").style.display = "flex";
+  
+  // Clear previews initially
+  document.getElementById("ugc-results-previews").style.display = "none";
+  
+  fetch(`/api/ugc/status/${jobId}`, {
+    headers: { "X-App-Token": session.token }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "completed") {
+      document.getElementById("ugc-progress-lbl").textContent = "100%";
+      document.getElementById("ugc-progress-bar").style.width = "100%";
+      document.getElementById("ugc-status-lbl").textContent = "Status: COMPLETED";
+      document.getElementById("ugc-log-area").innerHTML = `<div>[SUCCESS] Loaded job successfully! Loading previews...</div>`;
+      loadJobPreviews(data);
+    } else if (data.status === "failed") {
+      document.getElementById("ugc-progress-lbl").textContent = "100%";
+      document.getElementById("ugc-progress-bar").style.width = "100%";
+      document.getElementById("ugc-status-lbl").textContent = "Status: FAILED";
+      document.getElementById("ugc-log-area").innerHTML = `<div style="color:var(--red)">[FAILED] Job failed: ${data.error_message}</div>`;
+    } else {
+      // Running
+      pollUgcJobStatus(jobId);
+    }
+  })
+  .catch(err => {
+    showToast("Error loading job details: " + err.message, "error");
+  });
+}
+
+let activeResultVideoUrl = "";
+let activeViralVideoUrl = "";
+let activeThumbnailUrl = "";
+let activeFilename = "video";
+let activeResultJobId = "";
+
+function loadJobPreviews(job) {
+  document.getElementById("ugc-results-previews").style.display = "flex";
+  
+  activeResultVideoUrl = job.result_video_url;
+  activeViralVideoUrl = job.viral_video_url;
+  activeThumbnailUrl = job.result_thumbnail_url;
+  activeFilename = job.filename.split(".")[0];
+
+  // Load Main video player
+  const videoEl = document.getElementById("ugc-result-video");
+  const placeholderEl = document.getElementById("ugc-video-placeholder");
+  if (job.result_video_url) {
+    videoEl.src = job.result_video_url;
+    videoEl.style.display = "block";
+    placeholderEl.style.display = "none";
+  } else {
+    videoEl.style.display = "none";
+    placeholderEl.style.display = "block";
+  }
+
+  // Load Viral shorts video player
+  const viralEl = document.getElementById("ugc-viral-video");
+  const viralPlaceholderEl = document.getElementById("ugc-viral-placeholder");
+  const viralDlBtn = document.getElementById("ugc-viral-dl-btn");
+  if (job.viral_video_url) {
+    viralEl.src = job.viral_video_url;
+    viralEl.style.display = "block";
+    viralPlaceholderEl.style.display = "none";
+    viralDlBtn.disabled = false;
+  } else {
+    viralEl.style.display = "none";
+    viralPlaceholderEl.style.display = "block";
+    viralDlBtn.disabled = true;
+  }
+
+  // Load Thumbnail image
+  const thumbEl = document.getElementById("ugc-thumbnail-img");
+  const thumbPlaceholderEl = document.getElementById("ugc-thumb-placeholder");
+  if (job.result_thumbnail_url) {
+    thumbEl.src = job.result_thumbnail_url;
+    thumbEl.style.display = "block";
+    thumbPlaceholderEl.style.display = "none";
+  } else {
+    thumbEl.style.display = "none";
+    thumbPlaceholderEl.style.display = "block";
+  }
+
+  // Show/hide Edit Subtitles button
+  activeResultJobId = job.job_id || "";
+  const editSubsBtn = document.getElementById("ugc-edit-subs-btn");
+  if (editSubsBtn) {
+    editSubsBtn.style.display = job.result_video_url ? "flex" : "none";
+  }
+
+  // Show Edit Video button when result is ready
+  const editVideoBtn = document.getElementById("ugc-edit-video-btn");
+  if (editVideoBtn) {
+    editVideoBtn.style.display = job.result_video_url ? "block" : "none";
+  }
+}
+
+// ─── Video Editor JS ──────────────────────────────────────────────────────────
+
+function openVideoEditor() {
+  const panel = document.getElementById("ugc-video-editor-panel");
+  if (!panel) return;
+  panel.style.display = "block";
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  loadBrollList();
+}
+
+function closeVideoEditor() {
+  const panel = document.getElementById("ugc-video-editor-panel");
+  if (panel) panel.style.display = "none";
+}
+
+function switchEditorTab(tab) {
+  const brollContent = document.getElementById("veditor-broll-content");
+  const musicContent = document.getElementById("veditor-music-content");
+  const tabBroll = document.getElementById("veditor-tab-broll");
+  const tabMusic = document.getElementById("veditor-tab-music");
+  if (tab === "broll") {
+    brollContent.style.display = "block";
+    musicContent.style.display = "none";
+    tabBroll.classList.add("active");
+    tabMusic.classList.remove("active");
+  } else {
+    brollContent.style.display = "none";
+    musicContent.style.display = "block";
+    tabBroll.classList.remove("active");
+    tabMusic.classList.add("active");
+  }
+}
+
+function selectMoodChip(el, mood) {
+  document.querySelectorAll(".veditor-mood-chip").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+  const sel = document.getElementById("veditor-mood-select");
+  if (sel) sel.value = mood;
+}
+
+function loadBrollList() {
+  if (!activeResultJobId) return;
+  const listEl = document.getElementById("veditor-broll-list");
+  const token = session.token || "";
+  fetch(`/api/ugc/brolls/${activeResultJobId}`, {
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    const brolls = data.brolls || [];
+    const mood = data.bgm_mood || "Corporate";
+    const moodEl = document.getElementById("veditor-current-mood");
+    if (moodEl) moodEl.textContent = `${mood} 🎵`;
+    const moodSel = document.getElementById("veditor-mood-select");
+    if (moodSel) moodSel.value = mood;
+    // Highlight matching mood chip
+    document.querySelectorAll(".veditor-mood-chip").forEach(c => {
+      c.classList.toggle("selected", c.textContent.trim().toLowerCase().includes(mood.toLowerCase().slice(0,4)));
+    });
+
+    if (brolls.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center;color:rgba(148,163,184,0.5);font-size:12px;padding:30px 20px;">🎞️<br><br>No B-roll assets found for this job.<br><span style='font-size:10px;opacity:.6'>Generate a new one below.</span></div>`;
+      return;
+    }
+
+    listEl.innerHTML = brolls.map(br => `
+      <div class="vbroll-card">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div class="vbroll-thumb">
+            ${br.exists ? `<img src="${br.thumbnail_url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=padding:4px;text-align:center;font-size:9px;color:#475569>No preview</div>'">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#475569;padding:4px;text-align:center">Missing</div>`}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+              <span style="font-size:11px;font-weight:800;color:#e2e8f0;">Scene #${br.index + 1}</span>
+              <span style="font-size:9px;font-weight:600;color:#64748b;background:rgba(255,255,255,0.05);padding:1px 6px;border-radius:4px;">${br.start}s – ${br.end}s</span>
+              <span style="font-size:9px;color:#a78bfa;background:rgba(139,92,246,0.12);padding:1px 6px;border-radius:4px;">${(br.end - br.start).toFixed(1)}s</span>
+            </div>
+            ${br.keyword ? `<div style="font-size:10px;color:#a78bfa;margin-bottom:4px;display:flex;align-items:center;gap:4px;"><span>🔑</span><em>&quot;${br.keyword}&quot;</em></div>` : ''}
+            <div class="vbroll-timeline-bar" style="width:${Math.min(100, (br.end-br.start)/4*100)}%;"></div>
+            <div style="font-size:9px;color:#475569;margin-bottom:8px;word-break:break-word;max-height:32px;overflow:hidden;line-height:1.4;">${(br.prompt||'').slice(0, 120)}${(br.prompt||'').length > 120 ? '…' : ''}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <label class="vbroll-action-btn vbroll-upload-btn" style="flex:1;min-width:70px;cursor:pointer;">
+                <input type="file" accept="image/*,video/*" style="display:none;" onchange="uploadBrollFile(${br.index}, this)">
+                ⬆️ Upload
+              </label>
+              <button onclick="showBrollRegenPrompt(${br.index})" class="vbroll-action-btn vbroll-regen-btn" style="flex:1;min-width:70px;">🔄 Re-gen</button>
+              <button onclick="deleteBroll(${br.index})" class="vbroll-del-btn">🗑️</button>
+            </div>
+          </div>
+        </div>
+        <div id="veditor-regen-box-${br.index}" class="vbroll-regen-box">
+          <textarea id="veditor-regen-prompt-${br.index}" class="veditor-textarea" placeholder="Describe the new visual scene..." style="min-height:44px;">${(br.prompt||'').split(', photorealistic')[0]}</textarea>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button onclick="regenerateBroll(${br.index})" style="flex:1;padding:7px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;border:none;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;">🎨 Re-generate</button>
+            <button onclick="document.getElementById('veditor-regen-box-${br.index}').style.display='none'" style="padding:7px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:7px;font-size:10px;cursor:pointer;color:#94a3b8;">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  })
+  .catch(err => {
+    listEl.innerHTML = `<div style="color:#f87171;font-size:11px;text-align:center;padding:20px;">⚠️ Could not load B-roll list.<br><span style='font-size:10px;color:#64748b;'>${err.message}</span></div>`;
+  });
+}
+
+function showBrollRegenPrompt(index) {
+  const box = document.getElementById(`veditor-regen-box-${index}`);
+  if (box) box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function uploadBrollFile(index, input) {
+  if (!input.files[0]) return;
+  const token = session.token || "";
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  formData.append("index", index);
+  const statusEl = document.getElementById("veditor-status");
+  if (statusEl) statusEl.textContent = `Uploading B-roll #${index}...`;
+  fetch(`/api/ugc/brolls/${activeResultJobId}/replace?index=${index}`, {
+    method: "POST",
+    headers: { "X-App-Token": token },
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (statusEl) statusEl.textContent = "";
+    showToast(data.message || `B-roll #${index} uploaded!`, "success");
+    loadBrollList();
+  })
+  .catch(err => showToast("Upload error: " + err.message, "error"));
+}
+
+function regenerateBroll(index) {
+  const promptEl = document.getElementById(`veditor-regen-prompt-${index}`);
+  const prompt = promptEl ? promptEl.value.trim() : "";
+  if (!prompt) { showToast("Enter a description first.", "warning"); return; }
+  const token = session.token || "";
+  const statusEl = document.getElementById("veditor-status");
+  if (statusEl) statusEl.textContent = `🎨 Regenerating B-roll #${index}... (30-60s)`;
+  fetch(`/api/ugc/brolls/${activeResultJobId}/replace?index=${index}&prompt=${encodeURIComponent(prompt)}`, {
+    method: "POST",
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (statusEl) statusEl.textContent = "";
+    showToast(data.message || `B-roll #${index} regenerated!`, "success");
+    loadBrollList();
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function deleteBroll(index) {
+  if (!confirm(`Delete B-roll #${index}?`)) return;
+  const token = session.token || "";
+  fetch(`/api/ugc/brolls/${activeResultJobId}/delete`, {
+    method: "POST",
+    headers: { "X-App-Token": token, "Content-Type": "application/json" },
+    body: JSON.stringify({ index })
+  })
+  .then(r => r.json())
+  .then(data => {
+    showToast(data.message || "B-roll deleted!", "success");
+    loadBrollList();
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function generateNewBroll() {
+  const prompt = document.getElementById("veditor-new-broll-prompt").value.trim();
+  const start = parseFloat(document.getElementById("veditor-new-start").value) || 0;
+  const end = parseFloat(document.getElementById("veditor-new-end").value) || 3;
+  if (!prompt) { showToast("Enter a visual description!", "warning"); return; }
+  const token = session.token || "";
+  const statusEl = document.getElementById("veditor-status");
+  if (statusEl) statusEl.textContent = "🎨 Generating new B-roll... (30-60s)";
+  // Use the next available index (just use timestamp)
+  const newIndex = Date.now() % 10000;
+  fetch(`/api/ugc/brolls/${activeResultJobId}/replace?index=${newIndex}&prompt=${encodeURIComponent(prompt)}`, {
+    method: "POST",
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (statusEl) statusEl.textContent = "";
+    showToast("New B-roll generated!", "success");
+    loadBrollList();
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function changeMusicMood() {
+  const mood = document.getElementById("veditor-mood-select").value;
+  const token = session.token || "";
+  const statusEl = document.getElementById("veditor-status");
+  if (statusEl) statusEl.textContent = `🎵 Changing mood to ${mood}...`;
+  fetch(`/api/ugc/music/${activeResultJobId}/replace?mood=${encodeURIComponent(mood)}`, {
+    method: "POST",
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (statusEl) statusEl.textContent = "";
+    showToast(`Music mood changed to ${mood}!`, "success");
+    const moodEl = document.getElementById("veditor-current-mood");
+    if (moodEl) moodEl.textContent = `${mood} 🎵`;
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function uploadCustomMusic() {
+  const fileInput = document.getElementById("veditor-music-file");
+  if (!fileInput.files[0]) { showToast("Select an MP3 file first.", "warning"); return; }
+  const token = session.token || "";
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  const statusEl = document.getElementById("veditor-status");
+  if (statusEl) statusEl.textContent = "⬆️ Uploading custom music...";
+  fetch(`/api/ugc/music/${activeResultJobId}/replace`, {
+    method: "POST",
+    headers: { "X-App-Token": token },
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (statusEl) statusEl.textContent = "";
+    showToast("Custom music uploaded!", "success");
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function removeMusic() {
+  if (!confirm("Remove background music? The video will be silent.")) return;
+  changeMusicMood("none");
+  const token = session.token || "";
+  fetch(`/api/ugc/music/${activeResultJobId}/replace?mood=none`, {
+    method: "POST",
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    showToast("BGM removed!", "success");
+    const moodEl = document.getElementById("veditor-current-mood");
+    if (moodEl) moodEl.textContent = "None (Silent) 🔇";
+  })
+  .catch(err => showToast("Error: " + err.message, "error"));
+}
+
+function triggerFastRerender() {
+  if (!activeResultJobId) { showToast("No active job.", "error"); return; }
+  const btn = document.getElementById("veditor-rerender-btn");
+  const statusEl = document.getElementById("veditor-status");
+  if (btn) { btn.disabled = true; btn.textContent = "⚙️ Re-rendering..."; }
+  if (statusEl) statusEl.textContent = "⚙️ Fast re-render started — processing audio & subtitles... (~1-2 min)";
+  const token = session.token || "";
+  fetch(`/api/ugc/rerender/${activeResultJobId}`, {
+    method: "POST",
+    headers: { "X-App-Token": token }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      if (statusEl) statusEl.textContent = "⏳ Re-rendering... Refreshing status...";
+      // Poll status until done
+      const rerendPoll = setInterval(() => {
+        fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": token } })
+        .then(r => r.json())
+        .then(jd => {
+          if (jd.status === "completed") {
+            clearInterval(rerendPoll);
+            if (btn) { btn.disabled = false; btn.textContent = "⚡ Re-render Final Video (Fast)"; }
+            if (statusEl) statusEl.textContent = "✅ Re-render complete!";
+            loadJobPreviews(jd);
+            showToast("✅ Fast re-render completed!", "success");
+          } else if (jd.status === "error") {
+            clearInterval(rerendPoll);
+            if (btn) { btn.disabled = false; btn.textContent = "⚡ Re-render Final Video (Fast)"; }
+            if (statusEl) statusEl.textContent = `❌ Error: ${jd.error_message}`;
+          } else {
+            if (statusEl) statusEl.textContent = `⚙️ Re-rendering... ${jd.progress || 0}%`;
+          }
+        });
+      }, 3000);
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = "⚡ Re-render Final Video (Fast)"; }
+      if (statusEl) statusEl.textContent = `❌ ${data.message}`;
+    }
+  })
+  .catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = "⚡ Re-render Final Video (Fast)"; }
+    if (statusEl) statusEl.textContent = "Error: " + err.message;
+  });
+}
+
+function downloadUgcVideo(type) {
+  let url = "";
+  let ext = "mp4";
+  if (type === "result") {
+    url = activeResultVideoUrl;
+  } else if (type === "viral") {
+    url = activeViralVideoUrl;
+  } else if (type === "thumbnail") {
+    url = activeThumbnailUrl;
+    ext = "jpg";
+  }
+
+  if (!url) {
+    showToast("Asset url not found.", "error");
+    return;
+  }
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${activeFilename}_${type}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ══ SUBTITLE EDITOR JS ═════════════════════════════════════════════════════
+let _subtitleSegments = []; // in-memory editable list
+
+async function openSubtitleEditor() {
+  if (!activeResultJobId) {
+    showToast("No job selected.", "error");
+    return;
+  }
+
+  const modal = document.getElementById("ugc-subs-modal");
+  modal.style.display = "flex";
+  
+  const styleSelect = document.getElementById("subs-style-select");
+  if (styleSelect) styleSelect.value = "default";
+  updateSubtitleStylePreview("subs-style-select", "modal-style-preview-box");
+
+  document.getElementById("subs-lines-container").innerHTML =
+    `<div style="color:var(--text3);font-size:12px;text-align:center;padding:30px;">⏳ Loading subtitles...</div>`;
+
+  try {
+    const res = await fetch(`/api/ugc/subtitles/${activeResultJobId}`, {
+      headers: { "X-App-Token": session.token }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to load subtitles.");
+    _subtitleSegments = data.segments || [];
+    renderSubtitleLines();
+  } catch (err) {
+    document.getElementById("subs-lines-container").innerHTML =
+      `<div style="color:var(--red);font-size:12px;text-align:center;padding:30px;">❌ ${err.message}</div>`;
+  }
+}
+
+function closeSubtitleEditor() {
+  document.getElementById("ugc-subs-modal").style.display = "none";
+  if (_previewIntervals["modal-style-preview-box"]) {
+    clearInterval(_previewIntervals["modal-style-preview-box"]);
+  }
+}
+
+function renderSubtitleLines() {
+  const container = document.getElementById("subs-lines-container");
+  document.getElementById("subs-line-count").textContent = `${_subtitleSegments.length} lines`;
+
+  if (_subtitleSegments.length === 0) {
+    container.innerHTML = `<div style="color:var(--text3);font-size:12px;text-align:center;padding:30px;">No subtitle lines found.</div>`;
+    return;
+  }
+
+  container.innerHTML = _subtitleSegments.map((seg, i) => {
+    const s = seg.start;
+    const e = seg.end;
+    const fmt = (t) => {
+      const m = Math.floor(t / 60);
+      const sec = (t % 60).toFixed(1).padStart(4, "0");
+      return `${m}:${sec}`;
+    };
+    return `
+      <div id="subs-row-${i}" style="display:flex; align-items:center; gap:8px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
+        <span style="font-size:10px; color:var(--text3); white-space:nowrap; min-width:90px; font-family:monospace;">${fmt(s)} → ${fmt(e)}</span>
+        <input
+          id="subs-text-${i}"
+          type="text"
+          value="${escHtml(seg.text)}"
+          oninput="_subtitleSegments[${i}].text = this.value"
+          style="flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:12px; color:var(--text); outline:none; font-weight:500;"
+        >
+        <button onclick="subsDeleteLine(${i})" title="Delete line" style="background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:4px; line-height:1; flex-shrink:0;">🗑</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function subsSearchReplace() {
+  const searchVal = document.getElementById("subs-search-input").value.trim();
+  const replaceVal = document.getElementById("subs-replace-input").value;
+  if (!searchVal) { showToast("Enter a search term.", "error"); return; }
+  let count = 0;
+  _subtitleSegments = _subtitleSegments.map(seg => {
+    if (seg.text.includes(searchVal)) {
+      count++;
+      return { ...seg, text: seg.text.split(searchVal).join(replaceVal) };
+    }
+    return seg;
+  });
+  renderSubtitleLines();
+  showToast(`Replaced ${count} occurrence(s).`, "success");
+}
+
+function subsDeleteLine(i) {
+  _subtitleSegments.splice(i, 1);
+  renderSubtitleLines();
+}
+
+function subsAddLine() {
+  // Add blank line at the end
+  const lastSeg = _subtitleSegments[_subtitleSegments.length - 1];
+  const newStart = lastSeg ? lastSeg.end + 0.1 : 0;
+  _subtitleSegments.push({ start: newStart, end: newStart + 1.5, text: "NEW LINE" });
+  renderSubtitleLines();
+  // Scroll to bottom
+  const container = document.getElementById("subs-lines-container");
+  container.scrollTop = container.scrollHeight;
+}
+
+async function subsRerender() {
+  if (!activeResultJobId) return;
+
+  // Sync any in-focus text field values first
+  _subtitleSegments.forEach((seg, i) => {
+    const inp = document.getElementById(`subs-text-${i}`);
+    if (inp) seg.text = inp.value;
+  });
+
+  // Close the subtitle editor modal immediately
+  closeSubtitleEditor();
+
+  const btn = document.getElementById("subs-rerender-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Re-rendering...";
+
+  // Show the re-render overlay
+  const overlay = document.getElementById("subs-render-overlay");
+  const loadBar = document.getElementById("subs-render-progress-bar");
+  const statusTxt = document.getElementById("subs-render-status-text");
+
+  if (overlay) overlay.style.display = "flex";
+  if (loadBar) loadBar.style.width = "10%";
+  if (statusTxt) statusTxt.textContent = "Requesting re-render...";
+
+  const selectedStyle = document.getElementById("subs-style-select") ? document.getElementById("subs-style-select").value : "default";
+
+  try {
+    const res = await fetch(`/api/ugc/rerender-subtitles/${activeResultJobId}`, {
+      method: "POST",
+      headers: { "X-App-Token": session.token, "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        segments: _subtitleSegments,
+        subtitle_style: selectedStyle
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Re-render failed.");
+
+    if (loadBar) loadBar.style.width = "40%";
+    if (statusTxt) statusTxt.textContent = "Processing started...";
+
+    // Poll for completion then reload video
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      if (attempts > 30) {
+        clearInterval(poll);
+        if (overlay) overlay.style.display = "none";
+        showToast("Re-render timed out.", "error");
+        return;
+      }
+      try {
+        const statusRes = await fetch(`/api/ugc/status/${activeResultJobId}`, {
+          headers: { "X-App-Token": session.token }
+        });
+        const statusData = await statusRes.json();
+        
+        if (statusData.status === "processing") {
+          const progressWidth = Math.min(90, 40 + attempts * 3);
+          if (loadBar) loadBar.style.width = progressWidth + "%";
+          if (statusTxt) statusTxt.textContent = `Burning Subtitles (${progressWidth}%)...`;
+        } else if (statusData.status === "completed") {
+          clearInterval(poll);
+          if (loadBar) loadBar.style.width = "100%";
+          if (statusTxt) statusTxt.textContent = "Success! Updating video...";
+          
+          // Reload video with cache-bust
+          const vid = document.getElementById("ugc-result-video");
+          if (vid) {
+            vid.src = statusData.result_video_url + "?t=" + Date.now();
+            vid.load();
+          }
+          
+          setTimeout(() => {
+            if (overlay) overlay.style.display = "none";
+            showToast("✅ Subtitles re-rendered and video updated!", "success");
+          }, 1000);
+          
+        } else if (statusData.status === "failed") {
+          clearInterval(poll);
+          if (overlay) overlay.style.display = "none";
+          showToast("❌ Re-render failed: " + statusData.error_message, "error");
+        }
+      } catch(e) {
+        // Keep polling even if status fetch fails once
+      }
+    }, 3000);
+
+  } catch (err) {
+    if (overlay) overlay.style.display = "none";
+    showToast("Re-render error: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔄 Re-render with Edits";
+  }
+}
+
+let _previewIntervals = {};
+
+function updateSubtitleStylePreview(selectId, containerId) {
+  const select = document.getElementById(selectId);
+  const container = document.getElementById(containerId);
+  if (!select || !container) return;
+  
+  const style = select.value;
+  const words = ["DREAMS", "DON'T", "WORK", "UNLESS", "YOU", "DO"];
+  
+  if (_previewIntervals[containerId]) {
+    clearInterval(_previewIntervals[containerId]);
+  }
+  
+  let activeIndex = 0;
+  
+  const renderPreview = () => {
+    let html = "";
+    
+    if (style === "important_large") {
+      const importantIndices = [2, 3]; // "WORK", "UNLESS"
+      html = words.map((w, idx) => {
+        const isImportant = importantIndices.includes(idx);
+        const isActive = idx === activeIndex;
+        const color = isActive ? "#ffff00" : "#ffffff";
+        const styleStr = isImportant 
+          ? `font-size: 22px; font-weight: 900; color: ${color}; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 4px;`
+          : `font-size: 13px; font-weight: 700; color: ${color}; text-shadow: 1.5px 1.5px 0px #000; opacity: 0.8; display: inline-block; margin: 0 3px;`;
+        return `<span style="${styleStr}">${w}</span>`;
+      }).join(" ");
+      
+    } else if (style === "neon_bounce") {
+      html = words.map((w, idx) => {
+        const isActive = idx === activeIndex;
+        const styleStr = isActive 
+          ? `color: #00ff00; font-size: 16px; font-weight: 900; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 4px; transform: scale(1.15); transition: all 0.1s ease;`
+          : `color: #ffffff; font-size: 15px; font-weight: 900; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 3px;`;
+        return `<span style="${styleStr}">${w}</span>`;
+      }).join(" ");
+      
+    } else if (style === "minimal_white") {
+      html = words.map((w) => {
+        return `<span style="color: #ffffff; font-size: 15px; font-weight: 800; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 3px;">${w}</span>`;
+      }).join(" ");
+      
+    } else if (style === "bold_yellow") {
+      html = words.map((w) => {
+        return `<span style="color: #ffff00; font-size: 15px; font-weight: 900; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 3px;">${w}</span>`;
+      }).join(" ");
+      
+    } else if (style === "split_top_bottom") {
+      const mid = Math.max(1, Math.floor(words.length / 2));
+      const topWords = words.slice(0, mid);
+      const bottomWords = words.slice(mid);
+      const longestIdx = 2; // "WORK" is the longest word
+      
+      const topHtml = topWords.map((w, idx) => {
+        const isActive = idx === activeIndex;
+        return `<span style="color: ${isActive ? '#ffff00' : '#ffffff'}; font-size: 11px; font-weight: 700; text-shadow: 1px 1px 0px #000; margin: 0 2px;">${w}</span>`;
+      }).join(" ");
+      
+      const bottomHtml = bottomWords.map((w, idx) => {
+        const actualIdx = mid + idx;
+        const isActive = actualIdx === activeIndex;
+        const isImportant = actualIdx === longestIdx;
+        const color = isActive ? "#ffff00" : "#ffffff";
+        
+        const styleStr = isImportant
+          ? `font-size: 19px; font-weight: 900; color: ${color}; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 4px;`
+          : `font-size: 13px; font-weight: 700; color: ${color}; text-shadow: 1.5px 1.5px 0px #000; opacity: 0.8; display: inline-block; margin: 0 3px;`;
+        return `<span style="${styleStr}">${w}</span>`;
+      }).join(" ");
+      
+      container.innerHTML = `
+        <div style="font-family:'Arial', sans-serif; position:relative; width:100%; height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:8px 0; align-items:center;">
+          <div style="text-align:center;">${topHtml}</div>
+          <div style="text-align:center; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; width:100%;">${bottomHtml}</div>
+        </div>
+      `;
+      return;
+      
+    } else if (style.startsWith("two_line_")) {
+      const mid = Math.max(1, Math.floor(words.length / 2));
+      const topWords = words.slice(0, mid);
+      const bottomWords = words.slice(mid);
+      const longestIdx = words.reduce((best, w, i) => w.length > words[best].length ? i : best, 0);
+
+      // Phase: 0..mid-1 = highlighting top words (Line 1), mid..words.length-1 = highlighting bottom words (Line 2)
+      const phase = activeIndex; // 0 to words.length-1
+      const showLine2 = phase >= mid;
+
+      // Entrance animation CSS per style
+      let enterTopAnim = "";
+      let enterBottomAnim = "";
+      if (style === "two_line_slide_right_left") {
+        enterTopAnim = "animation: slideInRight 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+        enterBottomAnim = "animation: slideInLeft 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+      } else if (style === "two_line_slide_left_right") {
+        enterTopAnim = "animation: slideInLeft 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+        enterBottomAnim = "animation: slideInRight 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+      } else if (style === "two_line_slide_top_bottom") {
+        enterTopAnim = "animation: slideInTop 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+        enterBottomAnim = "animation: slideInBottom 0.35s cubic-bezier(0.22,1,0.36,1) forwards;";
+      } else if (style === "two_line_zoom_in") {
+        enterTopAnim = "animation: zoomInSpring 0.35s cubic-bezier(0.175,0.885,0.32,1.275) forwards;";
+        enterBottomAnim = "animation: zoomInSpring 0.35s cubic-bezier(0.175,0.885,0.32,1.275) forwards;";
+      }
+
+      // Line 1: always visible, word highlight active during phase 0..mid-1
+      const activeTopIdx = showLine2 ? -1 : phase; // no highlight once Line 2 is showing
+      const topHtml = topWords.map((w, idx) => {
+        const isActive = idx === activeTopIdx;
+        const isImportant = idx === longestIdx;
+        const sz = isActive && isImportant ? "22px" : isActive ? "18px" : isImportant ? "14px" : "13px";
+        const clr = isActive ? "#FFD54A" : "#fff";
+        const shadow = isActive ? "0 0 12px rgba(255,213,74,0.7)" : "1px 1px 3px rgba(0,0,0,0.8)";
+        const stroke = isImportant ? "-webkit-text-stroke:1px black;" : "";
+        return `<span style="font-family:'Anton',sans-serif;font-size:${sz};font-weight:900;color:${clr};text-shadow:${shadow};${stroke}display:inline-block;margin:0 3px;transition:all 0.2s ease;">${w}</span>`;
+      }).join(" ");
+
+      // Line 2: only appears when showLine2=true, with entrance animation on first appearance
+      const isFirstLine2 = phase === mid; // very first frame Line 2 enters
+      const activeBottomIdx = showLine2 ? phase - mid : -1;
+      const bottomHtml = bottomWords.map((w, idx) => {
+        const isActive = idx === activeBottomIdx;
+        const isImportant = (mid + idx) === longestIdx;
+        const sz = isActive && isImportant ? "22px" : isActive ? "18px" : isImportant ? "14px" : "13px";
+        const clr = isActive ? "#FFD54A" : "#fff";
+        const shadow = isActive ? "0 0 12px rgba(255,213,74,0.7)" : "1px 1px 3px rgba(0,0,0,0.8)";
+        const stroke = isImportant ? "-webkit-text-stroke:1px black;" : "";
+        return `<span style="font-family:'Anton',sans-serif;font-size:${sz};font-weight:900;color:${clr};text-shadow:${shadow};${stroke}display:inline-block;margin:0 3px;transition:all 0.2s ease;">${w}</span>`;
+      }).join(" ");
+
+      container.innerHTML = `
+        <style>
+          @keyframes slideInRight { from { transform: translateX(120px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+          @keyframes slideInLeft { from { transform: translateX(-120px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+          @keyframes slideInTop { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes slideInBottom { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes zoomInSpring { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        </style>
+        <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:10px;">
+          <!-- LINE 1: always visible, entrance animation on first frame -->
+          <div style="text-align:center; ${phase === 0 ? enterTopAnim : ''}">${topHtml}</div>
+          <!-- LINE 2: only visible during phase >= mid, entrance animation fires once -->
+          ${showLine2
+            ? `<div style="text-align:center; ${isFirstLine2 ? enterBottomAnim : ''}">${bottomHtml}</div>`
+            : `<div style="text-align:center; opacity:0; height:18px;"></div>`}
+        </div>
+      `;
+      return;
+
+      
+    } else { // "default"
+      html = words.map((w, idx) => {
+        const isActive = idx === activeIndex;
+        const styleStr = isActive 
+          ? `color: #ffff00; font-size: 16px; font-weight: 900; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 4px; transform: scale(1.1);`
+          : `color: #ffffff; font-size: 15px; font-weight: 900; text-shadow: 2px 2px 0px #000; display: inline-block; margin: 0 3px;`;
+        return `<span style="${styleStr}">${w}</span>`;
+      }).join(" ");
+    }
+    
+    container.innerHTML = `
+      <div style="font-family:'Arial', sans-serif; text-align:center; padding:10px 14px; line-height:1.6; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; width:100%; height:100%;">
+        ${html}
+      </div>
+    `;
+  };
+  
+  renderPreview();
+  
+  if (style !== "minimal_white" && style !== "bold_yellow") {
+    _previewIntervals[containerId] = setInterval(() => {
+      activeIndex = (activeIndex + 1) % words.length;
+      renderPreview();
+    }, 450);
+  }
+}
+
+// Initialize preview on page load
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    updateSubtitleStylePreview("ugc-subtitle-style", "ugc-style-preview-container");
+  }, 1000);
+});
+
+let _bgmAudioPlayer = null;
+let _bgmPlayingMood = null;
+
+const BGM_MOOD_LINKS = {
+  "Motivational": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+  "Sad": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  "Funny": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+  "Corporate": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+  "News": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+  "Podcast": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+  "Lo-Fi Chill": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+  "Energetic Hype": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+  "Cinematic Epic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+  "Dark Mystery": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3",
+  "Ambient Meditation": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+  "Hip Hop Beat": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+  "Acoustic Folk": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3"
+};
+
+function toggleBgmPreview(e) {
+  if (e) e.preventDefault();
+  const select = document.getElementById("ugc-bgm-mood");
+  const btn = document.getElementById("ugc-bgm-play-btn");
+  if (!select || !btn) return;
+  
+  const mood = select.value;
+  const audioUrl = BGM_MOOD_LINKS[mood];
+  if (!audioUrl) return;
+  
+  if (_bgmAudioPlayer && _bgmPlayingMood === mood) {
+    if (!_bgmAudioPlayer.paused) {
+      _bgmAudioPlayer.pause();
+      btn.innerHTML = "▶️ Preview";
+    } else {
+      btn.innerHTML = "⏳ Loading...";
+      _bgmAudioPlayer.play().then(() => {
+        btn.innerHTML = "⏹️ Stop";
+      }).catch(() => {
+        btn.innerHTML = "▶️ Preview";
+      });
+    }
+    return;
+  }
+  
+  stopBgmPreview();
+  
+  btn.innerHTML = "⏳ Loading...";
+  _bgmAudioPlayer = new Audio(audioUrl);
+  _bgmPlayingMood = mood;
+  
+  _bgmAudioPlayer.play().then(() => {
+    btn.innerHTML = "⏹️ Stop";
+  }).catch(() => {
+    btn.innerHTML = "▶️ Preview";
+    showToast("Failed to load audio preview.", "error");
+  });
+  
+  _bgmAudioPlayer.onended = () => {
+    btn.innerHTML = "▶️ Preview";
+    _bgmAudioPlayer = null;
+    _bgmPlayingMood = null;
+  };
+}
+
+function stopBgmPreview() {
+  const btn = document.getElementById("ugc-bgm-play-btn");
+  if (btn) btn.innerHTML = "▶️ Preview";
+  
+  if (_bgmAudioPlayer) {
+    _bgmAudioPlayer.pause();
+    _bgmAudioPlayer = null;
+    _bgmPlayingMood = null;
+  }
+}
+
+
+// Close modal when clicking outside
+document.getElementById("ugc-subs-modal").addEventListener("click", function(e) {
+  if (e.target === this) closeSubtitleEditor();
+});
+
 </script>
 
 <!-- AI Quiz Modal -->

@@ -1,0 +1,30 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,82,&H00FFFFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,6,2,2,30,30,420,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.54,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}PHOTOGRAPHY{\c&H00FFFFFF&}
+Dialogue: 0,0:00:00.00,0:00:01.54,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}HELPS{\r}
+Dialogue: 0,0:00:01.54,0:00:03.02,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}YOU{\c&H00FFFFFF&} TO
+Dialogue: 0,0:00:01.54,0:00:03.02,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}TELL{\r} {\fs115\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}STORIES,{\r}
+Dialogue: 0,0:00:03.66,0:00:05.46,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}PRESERVE{\c&H00FFFFFF&} MEMORIES
+Dialogue: 0,0:00:03.66,0:00:05.46,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}AND{\r} {\fs72\c&H00FFFFFF&}BUILD{\r}
+Dialogue: 0,0:00:05.46,0:00:06.70,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}A{\c&H00FFFFFF&}
+Dialogue: 0,0:00:05.46,0:00:06.70,Default,,0,0,0,,{\an2}{\fs115\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}REWARDING{\r} {\fs72\c&H00FFFFFF&}CAREER.{\r}
+Dialogue: 0,0:00:07.60,0:00:08.74,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}EVERY{\c&H00FFFFFF&}
+Dialogue: 0,0:00:07.60,0:00:08.74,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}GREAT{\r} {\fs115\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}PHOTOGRAPHER{\r}
+Dialogue: 0,0:00:08.74,0:00:10.42,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}STARTED{\c&H00FFFFFF&}
+Dialogue: 0,0:00:08.74,0:00:10.42,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}AS{\r}
+Dialogue: 0,0:00:10.42,0:00:11.94,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}A{\c&H00FFFFFF&}
+Dialogue: 0,0:00:10.42,0:00:11.94,Default,,0,0,0,,{\an2}{\fs115\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}BEGINNER.{\r} {\fs72\c&H00FFFFFF&}YOUR{\r}
+Dialogue: 0,0:00:11.94,0:00:13.28,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}JOURNEY{\c&H00FFFFFF&} CAN
+Dialogue: 0,0:00:11.94,0:00:13.28,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}START{\r} {\fs72\c&H00FFFFFF&}TODAY.{\r}
+Dialogue: 0,0:00:13.92,0:00:15.22,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}DO{\c&H00FFFFFF&} IT
+Dialogue: 0,0:00:13.92,0:00:15.22,Default,,0,0,0,,{\an2}{\fs72\c&H00FFFFFF&}NOW{\r} {\fs115\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}WITH{\r}
+Dialogue: 0,0:00:15.22,0:00:15.62,Default,,0,0,0,,{\an8\fs72}{\c&H0000FFFF&\fscx100\fscy100\t(0,80,\fscx114\fscy114)\t(80,160,\fscx100\fscy100)}IIP.{\c&H00FFFFFF&}

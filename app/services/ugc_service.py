@@ -494,7 +494,6 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                     logger.error(f"Failed to download haarcascade XML: {dl_err}")
             if os.path.exists(local_path):
                 cascade_path = local_path
-
         if not cascade_path:
             raise Exception("Haarcascade XML classifier could not be located or downloaded.")
 

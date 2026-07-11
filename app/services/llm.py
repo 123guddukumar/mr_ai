@@ -636,6 +636,29 @@ async def llm_with_history(
                 json={"inputs": full_prompt, "parameters": {"max_new_tokens": 512, "temperature": 0.1, "return_full_text": False}},
             ); r.raise_for_status()
             return r.json()[0]["generated_text"].strip()
+ 
+    elif provider == "groq":
+        api_key = api_key or settings.GROQ_API_KEY
+        if not api_key:
+            raise RuntimeError("Groq API key required")
+        msgs = [{"role": "system", "content": system}]
+        for t in history:
+            msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+        msgs.append({"role": "user", "content": question})
+        payload = {
+            "model": model,
+            "messages": msgs,
+            "temperature": 0.1,
+            "max_tokens": 1024
+        }
+        hdrs = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        async with httpx.AsyncClient(timeout=60.0) as hc:
+            r = await hc.post("https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload)
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"].strip()
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 

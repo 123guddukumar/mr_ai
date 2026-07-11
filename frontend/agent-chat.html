@@ -98,42 +98,51 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .landing-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 50% 30%, rgba(255, 122, 0, 0.15) 0%, var(--bg) 80%);
+  background: radial-gradient(circle at 50% 25%, rgba(255, 122, 0, 0.18) 0%, var(--bg) 75%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  padding: 24px;
 }
 .landing-content {
   width: 100%;
-  max-width: 440px;
-  background: rgba(30, 34, 53, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 32px;
-  padding: 40px 30px;
+  height: 100%;
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 50px 24px;
   text-align: center;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
-  animation: slide-up-landing 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  animation: fade-in-landing 0.5s ease forwards;
 }
-@keyframes slide-up-landing {
-  from { opacity: 0; transform: translateY(40px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes fade-in-landing {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.landing-top-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 .landing-avatar-container {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  margin: 0 auto 24px auto;
+  margin: 0 auto 28px auto;
   border: 3px solid var(--accent);
   background: var(--bg3);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 30px rgba(255, 122, 0, 0.3);
+  box-shadow: 0 10px 35px rgba(255, 122, 0, 0.35);
 }
 .landing-avatar-img {
   width: 100%;
@@ -141,38 +150,41 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   object-fit: cover;
 }
 #landing-avatar-init {
-  font-size: 44px;
+  font-size: 48px;
 }
 .landing-name {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--text);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   letter-spacing: -0.5px;
 }
 .landing-desc {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text2);
   line-height: 1.6;
-  margin-bottom: 24px;
-  padding: 0 10px;
+  margin-bottom: 28px;
+  max-width: 320px;
 }
 .landing-bubble-wrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 35px;
+  width: 100%;
+  max-width: 350px;
+  margin-bottom: 20px;
 }
 .landing-bubble {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  padding: 14px 20px;
-  font-size: 13.5px;
+  padding: 16px 22px;
+  font-size: 14.5px;
   color: var(--text);
-  max-width: 90%;
+  width: 100%;
   line-height: 1.5;
   text-align: left;
   position: relative;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
 .landing-bubble::after {
   content: '';
@@ -181,11 +193,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   left: 30px;
   border-width: 8px 8px 0 0;
   border-style: solid;
-  border-color: rgba(255, 255, 255, 0.05) transparent transparent transparent;
+  border-color: rgba(255, 255, 255, 0.04) transparent transparent transparent;
 }
 .landing-buttons {
+  width: 100%;
+  max-width: 400px;
   display: flex;
   gap: 16px;
+  margin-top: auto;
+  padding-bottom: 30px;
 }
 .landing-btn {
   flex: 1;
@@ -316,14 +332,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 <!-- Mobile Landing Page Overlay -->
 <div id="mobile-landing-page" class="landing-overlay" style="display:none">
   <div class="landing-content">
-    <div class="landing-avatar-container">
-      <img id="landing-avatar" src="" class="landing-avatar-img" style="display:none">
-      <span id="landing-avatar-init">🤖</span>
-    </div>
-    <h1 class="landing-name" id="landing-name">Agent Name</h1>
-    <p class="landing-desc" id="landing-desc">Agent Description</p>
-    <div class="landing-bubble-wrap">
-      <div class="landing-bubble" id="landing-start-msg">Hello! How can I help you today?</div>
+    <div class="landing-top-body">
+      <div class="landing-avatar-container">
+        <img id="landing-avatar" src="" class="landing-avatar-img" style="display:none">
+        <span id="landing-avatar-init">🤖</span>
+      </div>
+      <h1 class="landing-name" id="landing-name">Agent Name</h1>
+      <p class="landing-desc" id="landing-desc">Agent Description</p>
+      <div class="landing-bubble-wrap">
+        <div class="landing-bubble" id="landing-start-msg">Hello! How can I help you today?</div>
+      </div>
     </div>
     <div class="landing-buttons">
       <button class="landing-btn btn-chat" onclick="startChatFromLanding('text')">

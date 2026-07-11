@@ -568,6 +568,11 @@ async function loadAgent() {
       document.documentElement.style.setProperty('--accent2', c + 'cc');
       document.getElementById('body').style.backgroundImage = `radial-gradient(circle at 10% 20%, ${c}22 0%, transparent 40%), radial-gradient(circle at 90% 80%, ${c}11 0%, transparent 40%)`;
       document.getElementById('body').style.backgroundColor = 'var(--bg)';
+      
+      const lp = document.getElementById('mobile-landing-page');
+      if (lp) {
+        lp.style.background = `radial-gradient(circle at 50% 25%, ${c}2e 0%, var(--bg) 75%)`;
+      }
     }
 
     // Trigger mobile landing page if responsive

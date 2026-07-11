@@ -235,7 +235,7 @@ class Memory(Base):
     # Stored provider config (provider api key is stored plain — user's own key)
     mrairag_api_key  = Column(String(200), nullable=True)   # MR AI RAG API key for this memory
     provider          = Column(String(50), default="gemini")
-    provider_model    = Column(String(100), default="gemini-2.5-flash")
+    provider_model    = Column(String(100), default="gemini-3.5-flash")
     provider_api_key  = Column(String(500), nullable=True)  # AI provider API key
     ollama_url        = Column(String(300), nullable=True)
     is_active  = Column(Boolean, default=True, nullable=False)
@@ -980,7 +980,58 @@ class UgcJob(Base):
             "viral_video_url": self.viral_video_path or "",
             "transcript": self.transcript,
             "settings": self.settings,
+            "metadata_json": self.metadata_json or "{}",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
+
+
+class AgentPublicSession(Base):
+    __tablename__ = "agent_public_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(64), unique=True, index=True, nullable=False)
+    agent_id = Column(String(64), ForeignKey("agents.agent_id", ondelete="CASCADE"), nullable=False, index=True)
+    device_id = Column(String(64), index=True, nullable=False)
+    device_name = Column(String(200), default="Unknown Device")
+    user_name = Column(String(200), nullable=True)
+    phone_number = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    agent = relationship("Agent")
+    messages = relationship("AgentPublicMessage", back_populates="session", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "agent_id": self.agent_id,
+            "device_id": self.device_id,
+            "device_name": self.device_name,
+            "user_name": self.user_name or "",
+            "phone_number": self.phone_number or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+            "updated_at": self.updated_at.isoformat() if self.updated_at else "",
+        }
+
+
+class AgentPublicMessage(Base):
+    __tablename__ = "agent_public_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(64), ForeignKey("agent_public_sessions.session_id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # "user" | "assistant"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    session = relationship("AgentPublicSession", back_populates="messages")
+
+    def to_dict(self):
+        return {
+            "role": self.role,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
 
 

@@ -4444,10 +4444,10 @@ Return ONLY the JSON object. Do NOT wrap in markdown code blocks."""
         except Exception as groq_err:
             logger.warning(f"Groq overview generation failed for Q{idx+1} ({q.question_id}): {groq_err}. Trying Gemini fallback...")
             try:
-                # Fall back to Gemini 2.5 Flash
+                # Fall back to Gemini 3.5 Flash
                 from app.core.config import settings
                 import httpx
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}
@@ -4794,7 +4794,7 @@ async def _chat_llm_with_fallback(prompt: str, system_prompt: str, max_tokens: i
     Try primary Groq model first; auto-fallback on rate-limit / errors:
       1. llama-3.3-70b-versatile  (primary, 100K TPD)
       2. llama-3.1-8b-instant     (separate quota, fastest)
-      3. gemini-2.5-flash         (generous free tier)
+      3. gemini-3.5-flash         (generous free tier)
     Uses a cooldown dictionary to skip models that are currently rate-limited.
     """
     import time
@@ -4857,7 +4857,7 @@ async def _chat_llm_with_fallback(prompt: str, system_prompt: str, max_tokens: i
     # Final fallback: Gemini Flash (generous free quota)
     try:
         logger.warning("All Groq models failed or on cooldown, falling back to Gemini Flash...")
-        set_runtime_provider("gemini", settings.GEMINI_API_KEY, "gemini-2.5-flash")
+        set_runtime_provider("gemini", settings.GEMINI_API_KEY, "gemini-3.5-flash")
         result = await generate_simple_response(prompt, system_prompt, max_tokens=max_tokens)
         set_runtime_provider(primary_provider, "", "")  # revert
         return result

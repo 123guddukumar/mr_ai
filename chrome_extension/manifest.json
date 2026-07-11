@@ -60,7 +60,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*", "http://localhost:*/*", "http://127.0.0.1:*/*", "https://test.3rdai.co/*"],
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "http://localhost:*/*", "http://127.0.0.1:*/*", "https://test.3rdai.co/*", "file://*/*"],
       "js": ["content_dashboard.js"],
       "run_at": "document_start"
     }

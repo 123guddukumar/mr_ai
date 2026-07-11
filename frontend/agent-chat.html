@@ -153,6 +153,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 <script>
 let session = {};
+let isPublic = false;
 try { 
   // Check for impersonation first (matching dashboard logic)
   const imp = localStorage.getItem('mrairag_client_impersonate');
@@ -163,13 +164,44 @@ try {
     if(raw) session = JSON.parse(raw);
   }
 } catch(e) {}
-if(!session || !session.token) window.location.href = '/login';
 
-const hdrs = () => ({'Content-Type':'application/json','X-App-Token':session.token});
+if (!session || !session.token) {
+  isPublic = true;
+}
+
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const params = new URLSearchParams(window.location.search);
 const AGENT_ID = params.get('id');
-if(!AGENT_ID) window.location.href = '/dashboard';
+if(!AGENT_ID) window.location.href = isPublic ? '/login' : '/dashboard';
+
+// Setup device details for public mode
+let deviceId = '';
+let sessionId = '';
+let deviceName = '';
+if (isPublic) {
+  deviceId = localStorage.getItem('ag_device_id');
+  if (!deviceId) {
+    deviceId = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('ag_device_id', deviceId);
+  }
+  sessionId = sessionStorage.getItem('ag_session_id');
+  if (!sessionId) {
+    sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem('ag_session_id', sessionId);
+  }
+  function getDeviceName() {
+    const ua = navigator.userAgent;
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return "Tablet";
+    if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated/i.test(ua)) return "Mobile Phone";
+    if (/Macintosh/i.test(ua)) return "Mac PC";
+    if (/Windows/i.test(ua)) return "Windows PC";
+    if (/Linux/i.test(ua)) return "Linux PC";
+    return "Unknown PC";
+  }
+  deviceName = getDeviceName();
+}
+
+const hdrs = () => isPublic ? {'Content-Type':'application/json'} : {'Content-Type':'application/json','X-App-Token':session.token};
 
 let _agentData = {};
 let isTyping = false;
@@ -190,7 +222,37 @@ initTheme();
 
 async function loadAgent() {
   try {
-    const r = await fetch(`/api/agents/${AGENT_ID}`, { headers: hdrs() });
+    let url = isPublic ? `/api/agents/${AGENT_ID}/public-info` : `/api/agents/${AGENT_ID}`;
+    let r = await fetch(url, { headers: hdrs() });
+    
+    // Automatically fall back to public guest mode if private loading fails
+    if (!isPublic && (r.status === 404 || r.status === 401)) {
+      console.warn('Private agent load failed, falling back to public mode...');
+      isPublic = true;
+      
+      // Initialize public session IDs if not already done
+      if (!deviceId) {
+        deviceId = localStorage.getItem('ag_device_id') || ('dev_' + Math.random().toString(36).substring(2, 15));
+        localStorage.setItem('ag_device_id', deviceId);
+      }
+      if (!sessionId) {
+        sessionId = sessionStorage.getItem('ag_session_id') || ('sess_' + Math.random().toString(36).substring(2, 15));
+        sessionStorage.setItem('ag_session_id', sessionId);
+      }
+      if (!deviceName) {
+        function getDeviceName() {
+          const ua = navigator.userAgent;
+          if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return "Tablet";
+          if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated/i.test(ua)) return "Mobile Phone";
+          return "Windows/Mac PC";
+        }
+        deviceName = getDeviceName();
+      }
+
+      url = `/api/agents/${AGENT_ID}/public-info`;
+      r = await fetch(url, { headers: {'Content-Type':'application/json'} });
+    }
+
     if(!r.ok) {
       const txt = await r.text();
       console.error('Fetch error:', r.status, txt);
@@ -210,7 +272,6 @@ async function loadAgent() {
       document.getElementById('ag-logo-img').src = d.customization.logo_url;
       document.getElementById('ag-logo-img').style.display = 'block';
       document.getElementById('ag-logo-init').style.display = 'none';
-      // Also update hero orb if it's the welcome screen
       const heroOrb = document.querySelector('.hero-orb');
       if(heroOrb) heroOrb.innerHTML = `<img src="${d.customization.logo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
     }
@@ -218,7 +279,6 @@ async function loadAgent() {
       const c = d.customization.color;
       document.documentElement.style.setProperty('--accent', c);
       document.documentElement.style.setProperty('--accent2', c + 'cc');
-      // Apply a more prominent background gradient
       document.getElementById('body').style.backgroundImage = `radial-gradient(circle at 10% 20%, ${c}22 0%, transparent 40%), radial-gradient(circle at 90% 80%, ${c}11 0%, transparent 40%)`;
       document.getElementById('body').style.backgroundColor = 'var(--bg)';
     }
@@ -252,7 +312,17 @@ async function sendMsg() {
     history.push({role: m.classList.contains('user')?'user':'assistant', content: m.querySelector('.bubble').textContent});
   });
   try {
-    const r = await fetch(`/api/agents/${AGENT_ID}/ask`, { method:'POST', headers:hdrs(), body:JSON.stringify({question:text, history:history.slice(-6)}) });
+    const url = isPublic ? `/api/agents/${AGENT_ID}/public-ask` : `/api/agents/${AGENT_ID}/ask`;
+    const bodyObj = isPublic ? {
+      question: text,
+      session_id: sessionId,
+      device_id: deviceId,
+      device_name: deviceName
+    } : {
+      question: text,
+      history: history.slice(-6)
+    };
+    const r = await fetch(url, { method:'POST', headers:hdrs(), body:JSON.stringify(bodyObj) });
     const d = await r.json();
     removeTyping(typing);
     const ans = d.answer || 'No response.';

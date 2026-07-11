@@ -5,7 +5,7 @@ import json
 SessionLocal = get_session_local()
 db = SessionLocal()
 try:
-    agent = db.query(Agent).filter(Agent.agent_id == '3340e1152e9b01fe').first()
+    agent = db.query(Agent).filter(Agent.agent_id == 'da3243d9babb9387').first()
     if agent:
         print(f"DEBUG_NAME: {agent.name}")
         print(f"DEBUG_CONFIG: {agent.system_config_json}")

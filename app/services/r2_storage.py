@@ -71,3 +71,34 @@ def upload_to_r2(local_file_path: str, r2_key: str, content_type: str = "video/m
     except Exception as e:
         logger.error(f"Cloudflare R2 Upload Failed: {e}", exc_info=True)
         return None
+
+
+def delete_from_r2(r2_key: str) -> bool:
+    """
+    Deletes an object from Cloudflare R2 bucket by key.
+    Returns True if successful, or False if failed.
+    """
+    access_key = settings.R2_ACCESS_KEY_ID
+    secret_key = settings.R2_SECRET_ACCESS_KEY
+    bucket_name = settings.R2_BUCKET_NAME
+    endpoint = settings.R2_ENDPOINT
+    
+    if not (access_key and secret_key and bucket_name and endpoint):
+        return False
+        
+    logger.info(f"Deleting key '{r2_key}' from R2 bucket '{bucket_name}'...")
+    try:
+        s3 = boto3.client(
+            service_name="s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name="auto",
+            config=Config(signature_version="s3v4")
+        )
+        s3.delete_object(Bucket=bucket_name, Key=r2_key)
+        logger.info(f"R2 key '{r2_key}' deleted successfully.")
+        return True
+    except Exception as e:
+        logger.error(f"Cloudflare R2 deletion failed for key '{r2_key}': {e}")
+        return False

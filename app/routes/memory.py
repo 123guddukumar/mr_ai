@@ -60,7 +60,7 @@ class CreateMemoryReq(BaseModel):
     description: str = ""
     mrairag_api_key: str = ""
     provider: str = "gemini"
-    provider_model: str = "gemini-2.5-flash"
+    provider_model: str = "gemini-3.5-flash"
     provider_api_key: str = ""
     ollama_url: str = "http://localhost:11434"
 

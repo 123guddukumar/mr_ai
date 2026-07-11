@@ -156,7 +156,7 @@ async def _call_groq(question: str, context: str) -> str:
             gemini_key = settings.GEMINI_API_KEY
             if gemini_key:
                 try:
-                    gemini_model = settings.GEMINI_MODEL or "gemini-2.5-flash"
+                    gemini_model = settings.GEMINI_MODEL or "gemini-3.5-flash"
                     logger.info(f"RAG Gemini fallback: trying model {gemini_model}")
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
                     payload = {
@@ -421,7 +421,7 @@ async def generate_simple_response(prompt: str, system_prompt: str = "You are a 
         gemini_key = settings.GEMINI_API_KEY
         if gemini_key:
             try:
-                gemini_model = settings.GEMINI_MODEL or "gemini-2.5-flash"
+                gemini_model = settings.GEMINI_MODEL or "gemini-3.5-flash"
                 logger.info(f"Fallback: trying Gemini model {gemini_model}")
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
                 payload = {

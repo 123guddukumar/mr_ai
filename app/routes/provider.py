@@ -22,7 +22,7 @@ router = APIRouter()
 # Default models per provider
 PROVIDER_DEFAULTS = {
     "openai":       {"model": "gpt-4o-mini",                          "requires_key": True,  "label": "OpenAI GPT"},
-    "gemini":       {"model": "gemini-2.5-flash",                     "requires_key": True,  "label": "Google Gemini"},
+    "gemini":       {"model": "gemini-3.5-flash",                     "requires_key": True,  "label": "Google Gemini"},
     "claude":       {"model": "claude-3-5-haiku-20241022",            "requires_key": True,  "label": "Anthropic Claude"},
     "ollama":       {"model": "llama3",                               "requires_key": False, "label": "Ollama (Local)"},
     "huggingface":  {"model": "mistralai/Mistral-7B-Instruct-v0.2",   "requires_key": True,  "label": "HuggingFace"},
@@ -30,7 +30,7 @@ PROVIDER_DEFAULTS = {
 
 PROVIDER_MODELS = {
     "openai":      ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-    "gemini":      ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-001"],
+    "gemini":      ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro", "gemini-2.0-flash-001"],
     "claude":      ["claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
     "ollama":      ["llama3", "llama3.1", "mistral", "phi3", "gemma2", "deepseek-r1"],
     "huggingface": ["mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta", "tiiuae/falcon-7b-instruct"],

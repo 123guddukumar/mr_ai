@@ -212,3 +212,24 @@ Bro but ab jab subtitle edit kr rhe h to jo subtitle style m usi style m edit kr
 
 
 aur m chahta hu jo subtitle style h sab wiska ek preview bhi dikha deta testing ke liye jisse user dekh sake kon sa subtitle kaisa h uske baad use krega 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bro when click on add on any scene in generated galary then why not replcaing realtime when click on + icon for add and choose timing and click replce then rocessing show replaced but when play video then why not show real time replcing
+
+and Now add asset setting on UGC request inbox page in which add upload intro/outro/watermark/logo/runnigtab(with bachground color and font size and font style) and click save then when i click any request then show this default in all request when i want to then then click any request then upload then change only for these request not for all 
+
+and when click on download bundle then why not download fix it 
+
+and when again generate any scene with choose meta ai extension then why not working generate image/video from meta ai extention which i used for generating scene on editor  

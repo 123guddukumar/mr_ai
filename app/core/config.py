@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     # Google Gemini
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash"
 
     # Anthropic Claude
     CLAUDE_API_KEY: str = ""

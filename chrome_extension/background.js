@@ -316,7 +316,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       mediaType: msg.mediaType,
       prompt: msg.prompt,
       tabId: null,
-      dashboardTabId: sender.tab ? sender.tab.id : null
+      dashboardTabId: dashTabId
     };
     saveState().then(() => startSingleAssetGeneration());
     sendResponse({ ok: true });

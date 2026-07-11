@@ -218,7 +218,7 @@ async def api_suggest_prompt(req: SuggestPromptReq, x_app_token: Optional[str] =
     try:
         # Using the specific API Key and Model requested by the user
         API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyBt32PpStf7-QfIw56RkR9gEdWWSPvPls8")
-        model_name = "gemini-2.5-flash"
+        model_name = "gemini-3.5-flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
         
         logger.info(f"Generating detailed prompt suggestion via {model_name}...")
@@ -1058,7 +1058,7 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
         answer = await llm_with_history(
             question=req.question, system=system, history=req.history[-6:],
             provider=s_cfg.get('provider', 'gemini'),
-            model=s_cfg.get('model', 'gemini-2.5-flash'),
+            model=s_cfg.get('model', 'gemini-3.5-flash'),
             api_key=s_cfg.get('api_key', ''),
             ollama_url="http://localhost:11434",
         )
@@ -1087,7 +1087,7 @@ async def api_test_voice(req: TestVoiceReq):
         payload = {"text": req.text, "model_id": "eleven_monolingual_v1"}
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers)
-            if not r.ok: raise HTTPException(r.status_code, f"ElevenLabs error: {r.text}")
+            if not r.is_success: raise HTTPException(r.status_code, f"ElevenLabs error: {r.text}")
             return Response(content=r.content, media_type="audio/mpeg")
     elif req.provider == "sarvam":
         url = "https://api.sarvam.ai/text-to-speech"
@@ -1095,9 +1095,177 @@ async def api_test_voice(req: TestVoiceReq):
         payload = {"inputs": [req.text], "target_language_code": "hi-IN", "speaker": req.voice_id}
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers)
-            if not r.ok: raise HTTPException(r.status_code, f"Sarvam error: {r.text}")
+            if not r.is_success: raise HTTPException(r.status_code, f"Sarvam error: {r.text}")
             import base64
             audio_base64 = r.json()["audios"][0]
             return Response(content=base64.b64decode(audio_base64), media_type="audio/wav")
-    else:
         raise HTTPException(400, "Unsupported provider for server-side test")
+
+
+class AgentPublicAskReq(BaseModel):
+    question: str
+    session_id: str
+    device_id: str
+    device_name: Optional[str] = "Unknown Device"
+
+
+@router.get("/agents/{agent_id}/public-info", tags=["Agents & DataStores"])
+async def api_get_agent_public_info(agent_id: str, db: Session = Depends(get_db)):
+    from app.core.models import Agent
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    try: c_cfg = json.loads(agent.customization_json or "{}")
+    except: c_cfg = {}
+
+    return {
+        "agent_id": agent.agent_id,
+        "name": agent.name,
+        "description": agent.description or "",
+        "starting_message": agent.starting_message or "Hello! How can I help you today?",
+        "customization": c_cfg
+    }
+
+
+@router.post("/agents/{agent_id}/public-ask", tags=["Agents & DataStores"])
+async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Session = Depends(get_db)):
+    from app.core.models import Agent, AgentPublicSession, AgentPublicMessage
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
+    if not session:
+        session = AgentPublicSession(
+            session_id=req.session_id,
+            agent_id=agent_id,
+            device_id=req.device_id,
+            device_name=req.device_name
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+    user_msg = AgentPublicMessage(
+        session_id=req.session_id,
+        role="user",
+        content=req.question
+    )
+    db.add(user_msg)
+    db.commit()
+
+    user_msg_count = db.query(AgentPublicMessage).filter(
+        AgentPublicMessage.session_id == req.session_id,
+        AgentPublicMessage.role == "user"
+    ).count()
+
+    answer = ""
+    # Lead Capture state machine
+    if not session.user_name and user_msg_count > 3:
+        name_captured = req.question.strip()
+        session.user_name = name_captured
+        db.commit()
+        answer = f"Nice to meet you, {name_captured}! Could you also share your mobile number?"
+    elif session.user_name and not session.phone_number:
+        phone_captured = req.question.strip()
+        session.phone_number = phone_captured
+        db.commit()
+        answer = "Thank you! I have saved your details. How else can I help you today?"
+    else:
+        # Standard chat RAG logic
+        db_history_msgs = db.query(AgentPublicMessage).filter(
+            AgentPublicMessage.session_id == req.session_id
+        ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
+
+        history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
+
+        try: ds_ids = json.loads(agent.datastores_json or "[]")
+        except: ds_ids = []
+
+        from app.services.embedder import embed_query
+        from app.services.vector_store import get_vector_store
+        from app.services.llm import build_context_and_sources, llm_with_history
+
+        query_emb = embed_query(req.question)
+        results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
+        relevant_results = [res for res in results if res[1] > 0.35]
+        context, sources_data = build_context_and_sources(relevant_results)
+
+        try: s_cfg = json.loads(agent.system_config_json or "{}")
+        except: s_cfg = {}
+
+        identity = (
+            f"You are {agent.name}. {agent.personality}\n"
+            f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi. Do not translate unless asked.\n"
+            f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
+            f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
+            f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
+        )
+
+        if context:
+            system = f"{identity}\n\n--- KNOWLEDGE BASE CONTEXT ---\n{context}\n--- END OF CONTEXT ---\n\nFINAL DIRECTIVE: Always be helpful. If context is provided, use it. If not, use your general knowledge. Stop being robotic."
+        else:
+            system = f"{identity}\n\nNOTE: No specific information was found in the internal knowledge base.\nINSTRUCTION: Please use your general AI knowledge to provide a helpful and accurate answer.\n\nFINAL DIRECTIVE: Always be helpful. Stop being robotic."
+
+        try:
+            answer = await llm_with_history(
+                question=req.question, system=system, history=history_list,
+                provider=s_cfg.get('provider', 'gemini'),
+                model=s_cfg.get('model', 'gemini-3.5-flash'),
+                api_key=s_cfg.get('api_key', ''),
+                ollama_url="http://localhost:11434",
+            )
+            # Prompt for name after 2 turns (on 3rd user message submission)
+            if not session.user_name and user_msg_count == 3:
+                answer += "\n\nBy the way, what is your name?"
+        except Exception as e:
+            answer = f"Error generating response: {e}"
+
+    asst_msg = AgentPublicMessage(
+        session_id=req.session_id,
+        role="assistant",
+        content=answer
+    )
+    db.add(asst_msg)
+    db.commit()
+
+    return {
+        "answer": answer,
+        "is_rag": bool(context) if 'context' in locals() else False
+    }
+
+
+@router.get("/agents/{agent_id}/sessions", tags=["Agents & DataStores"])
+async def api_get_agent_sessions(agent_id: str, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client = _get_client(x_app_token, db)
+    from app.core.models import Agent, AgentPublicSession
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.client_id == client["client_id"]).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    sessions = db.query(AgentPublicSession).filter(
+        AgentPublicSession.agent_id == agent_id
+    ).order_by(AgentPublicSession.updated_at.desc()).all()
+
+    return [s.to_dict() for s in sessions]
+
+
+@router.get("/agents/sessions/{session_id}/history", tags=["Agents & DataStores"])
+async def api_get_session_history(session_id: str, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client = _get_client(x_app_token, db)
+    from app.core.models import AgentPublicSession, AgentPublicMessage, Agent
+    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    agent = db.query(Agent).filter(Agent.agent_id == session.agent_id, Agent.client_id == client["client_id"]).first()
+    if not agent:
+        raise HTTPException(403, "Access denied")
+
+    messages = db.query(AgentPublicMessage).filter(
+        AgentPublicMessage.session_id == session_id
+    ).order_by(AgentPublicMessage.created_at.asc()).all()
+
+    return [m.to_dict() for m in messages]
+

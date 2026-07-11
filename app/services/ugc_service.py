@@ -265,12 +265,27 @@ Output ONLY raw JSON (no markdown fences, no extra text):
             edit_plan = json.loads(cleaned_resp)
         except Exception as e:
             logger.warning(f"LLM json parsing failed, using default edit plan. Response was: {llm_response}. Error: {e}")
-            # Fallback edit plan
+            
+            # Fallback edit plan with default spaced B-rolls
+            total_duration = float(segments[-1]["end"]) if segments else 15.0
+            fallback_brolls = []
+            t = 2.0
+            idx = 0
+            while t + 3.0 <= total_duration:
+                fallback_brolls.append({
+                    "start": t,
+                    "end": t + 3.0,
+                    "keyword": "scene",
+                    "prompt": f"aesthetic cinematic scene for segment {idx + 1}"
+                })
+                t += 6.0
+                idx += 1
+
             edit_plan = {
                 "mood": "Corporate",
                 "zooms": [],
-                "brolls": [],
-                "viral_moment": {"start": 0.0, "end": min(12.0, float(segments[-1]["end"]))}
+                "brolls": fallback_brolls,
+                "viral_moment": {"start": 0.0, "end": min(12.0, total_duration)}
             }
 
         # ── Clamp B-roll durations to 2–4 seconds ──
@@ -515,8 +530,10 @@ Output ONLY raw JSON (no markdown fences, no extra text):
 
         # Reframed output path
         reframed_video_path = os.path.join(work_dir, "reframed_silent.mp4")
+        reframed_clean_path = os.path.join(work_dir, "reframed_clean.mp4")
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out_video = cv2.VideoWriter(reframed_video_path, fourcc, orig_fps, (target_w, target_h))
+        out_video_clean = cv2.VideoWriter(reframed_clean_path, fourcc, orig_fps, (target_w, target_h))
 
         # Face tracking state variables
         last_center_x = orig_w // 2
@@ -815,6 +832,7 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                 cropped = cv2.resize(cropped, (crop_w, crop_h))
 
             # ── B-roll Overlay ──
+            speaker_face_frame = cropped.copy()
             active_broll_path = None
             broll_progress = 0.0
             if features.get("broll"):
@@ -824,6 +842,7 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                         broll_progress = (frame_time - br["start"]) / (br["end"] - br["start"])
                         break
 
+            broll_applied = False
             if active_broll_path and os.path.exists(active_broll_path):
                 broll_img = None
                 
@@ -908,7 +927,9 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                         logger.error(f"Failed to generate face bubble on B-roll: {bubble_err}")
                         
                     cropped = broll_img
-            else:
+                    broll_applied = True
+
+            if not broll_applied:
                 # ── Jump Cut Zoom After B-roll Ends ──
                 broll_ended_recently = False
                 if features.get("zoom") and edit_plan.get("brolls"):
@@ -929,6 +950,9 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                         cropped = cv2.resize(cropped, (crop_w, crop_h))
                     except Exception as zoom_err:
                         pass
+                cropped_clean = cropped.copy()
+            else:
+                cropped_clean = speaker_face_frame
 
             # ── Brand Logo Overlay (Top-Left, Zoom-in/out Pulse) ──
             if logo_img_rgba is not None:
@@ -963,9 +987,16 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                         logo_region = logo_resized[:logo_clip_h, :logo_clip_w]
                         alpha = logo_region[:, :, 3:4] / 255.0
                         logo_bgr = logo_region[:, :, :3]
+                        
+                        # 1. Overlay on main cropped frame
                         canvas_region = cropped[ly:ry, lx:rx]
                         blended = (logo_bgr * alpha + canvas_region * (1.0 - alpha)).astype(np.uint8)
                         cropped[ly:ry, lx:rx] = blended
+
+                        # 2. Overlay on clean speaker frame
+                        canvas_region_clean = cropped_clean[ly:ry, lx:rx]
+                        blended_clean = (logo_bgr * alpha + canvas_region_clean * (1.0 - alpha)).astype(np.uint8)
+                        cropped_clean[ly:ry, lx:rx] = blended_clean
                 except Exception as logo_err:
                     logger.error(f"Logo overlay error: {logo_err}")
 
@@ -978,13 +1009,16 @@ Output ONLY raw JSON (no markdown fences, no extra text):
                 interpolation = cv2.INTER_CUBIC
             
             cropped_final = cv2.resize(cropped, (target_w, target_h), interpolation=interpolation)
+            cropped_clean_final = cv2.resize(cropped_clean, (target_w, target_h), interpolation=interpolation)
 
-            # Write processed frame
+            # Write processed frames
             out_video.write(cropped_final)
+            out_video_clean.write(cropped_clean_final)
             written_frames += 1
 
         cap.release()
         out_video.release()
+        out_video_clean.release()
         if broll_cap is not None:
             broll_cap.release()
 
@@ -1384,6 +1418,12 @@ Output ONLY raw JSON (no markdown fences, no extra text):
         else:
             # Copy clean video directly to result.mp4
             shutil.copy(clean_video_path, final_video_path)
+
+        # Copy clean reframed video (without B-rolls) to output folder
+        clean_reframed_source = os.path.join(work_dir, "reframed_clean.mp4")
+        clean_reframed_dest = os.path.join(output_folder, "reframed_clean.mp4")
+        if os.path.exists(clean_reframed_source):
+            shutil.copy(clean_reframed_source, clean_reframed_dest)
 
         # ── STAGE 11: AI Thumbnail & Viral Moment Shorts ──
         thumbnail_dest_path = os.path.join(output_folder, "thumbnail.jpg")

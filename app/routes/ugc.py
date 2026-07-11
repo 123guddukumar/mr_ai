@@ -66,6 +66,7 @@ class BrollUploadIndex(BaseModel):
 @router.post("/ugc/upload", tags=["UGC Creator"])
 async def upload_ugc_video(
     file: UploadFile = File(...),
+    source: Optional[str] = None,
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
@@ -117,6 +118,9 @@ async def upload_ugc_video(
 
     # Create UgcJob database record
     try:
+        import json
+        is_api_val = (source != "dashboard")
+        job_metadata = {"is_api": is_api_val}
         job = UgcJob(
             job_id=job_id,
             client_id=client["client_id"],
@@ -124,6 +128,7 @@ async def upload_ugc_video(
             status="pending",
             progress=0,
             original_video_path=video_path,
+            metadata_json=json.dumps(job_metadata)
         )
         db.add(job)
         db.commit()
@@ -414,7 +419,11 @@ async def get_ugc_job_status(
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
-    """Returns the current status of the UGC video enhancement job."""
+    """Returns the current status of the UGC video enhancement job, including edited version history."""
+    import json, glob
+    from datetime import datetime
+    from app.core.config import settings
+
     job = db.query(UgcJob).filter(
         UgcJob.job_id == job_id,
         UgcJob.client_id == client["client_id"]
@@ -422,12 +431,36 @@ async def get_ugc_job_status(
     if not job:
         raise HTTPException(404, "UGC Job not found.")
 
-    return job.to_dict()
+    result = job.to_dict()
+
+    # Scan for edited version files (result_edited_1.mp4, result_edited_2.mp4, etc.)
+    work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    edited_versions = []
+    try:
+        pattern = os.path.join(work_dir, "result_edited_*.mp4")
+        for fpath in sorted(glob.glob(pattern)):
+            fname = os.path.basename(fpath)
+            fstat = os.stat(fpath)
+            # Extract version number from filename
+            ver = fname.replace("result_edited_", "").replace(".mp4", "")
+            edited_versions.append({
+                "version": ver,
+                "filename": fname,
+                "url": f"/static/ugc/{job_id}/{fname}",
+                "size_mb": round(fstat.st_size / (1024 * 1024), 2),
+                "saved_at": datetime.fromtimestamp(fstat.st_mtime).isoformat(),
+            })
+    except Exception as e:
+        logger.warning(f"Could not scan edited versions for {job_id}: {e}")
+
+    result["edited_versions"] = edited_versions
+    return result
 
 
 
 @router.get("/ugc/jobs", tags=["UGC Creator"])
 async def list_ugc_jobs(
+    is_api: Optional[bool] = None,
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
@@ -435,6 +468,9 @@ async def list_ugc_jobs(
     jobs = db.query(UgcJob).filter(
         UgcJob.client_id == client["client_id"]
     ).order_by(UgcJob.created_at.desc()).all()
+
+    if is_api is not None:
+        jobs = [j for j in jobs if j.settings.get("is_api", False) == is_api]
 
     return [j.to_dict() for j in jobs]
 
@@ -538,12 +574,8 @@ async def rerender_ugc_subtitles(
     if job.status not in ("completed", "failed"):
         raise HTTPException(400, "Job must be completed before editing subtitles.")
 
-    if not job.result_video_path:
-        raise HTTPException(404, "Result video path is empty. Cannot re-render.")
-
-    # Convert relative web URL path (e.g. /static/ugc/...) to local disk path
-    video_rel_path = job.result_video_path.lstrip("/")
-    local_video_path = os.path.join(str(settings.BASE_DIR), video_rel_path)
+    # Construct the local path based directly on job_id instead of parsing potentially remote URL
+    local_video_path = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id, "result.mp4")
 
     if not os.path.exists(local_video_path):
         raise HTTPException(404, f"Result video not found on disk at: {local_video_path}. Cannot re-render.")
@@ -757,9 +789,36 @@ async def _rerender_subtitles_task(job_id: str, segments: list, result_video_pat
             db2.commit()
             return
 
+        # Check if original was an R2 remote URL
+        is_r2 = False
+        original_db_path = job.result_video_path
+        if original_db_path and original_db_path.startswith("http"):
+            is_r2 = True
+
+        # Backup old result with version tracking (history backup)
+        if os.path.exists(result_video_path):
+            backup_idx = 1
+            while True:
+                backup_path = result_video_path.replace("result.mp4", f"result_edited_{backup_idx}.mp4")
+                if not os.path.exists(backup_path):
+                    break
+                backup_idx += 1
+            import shutil
+            shutil.copy(result_video_path, backup_path)
+
         # Replace old result with new
         import shutil
         shutil.move(new_result_path, result_video_path)
+
+        if is_r2:
+            try:
+                from app.services.r2_storage import upload_to_r2
+                r2_key = f"ugc/{job_id}/result.mp4"
+                new_url = upload_to_r2(result_video_path, r2_key)
+                if new_url:
+                    job.result_video_path = new_url
+            except Exception as r2_err:
+                logger.error(f"Failed to upload re-rendered video to R2: {r2_err}")
 
         job.status = "completed"
         job.progress = 100
@@ -806,8 +865,44 @@ async def get_broll_list(
     job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
     if not job:
         raise HTTPException(404, "Job not found.")
+    from app.core.config import settings
     meta = json.loads(job.metadata_json) if job.metadata_json else {}
     brolls = meta.get("broll_assets", [])
+
+    if not brolls:
+        # Auto-initialize default timeline B-rolls if empty so that the editor displays segments to modify
+        duration = 15.0
+        try:
+            if job.transcript_json:
+                import json as _json
+                transcript = _json.loads(job.transcript_json)
+                if transcript and isinstance(transcript, list):
+                    duration = float(transcript[-1].get("end", 15.0))
+        except Exception:
+            pass
+
+        # Create B-rolls spaced out on the timeline
+        default_brolls = []
+        t = 2.0
+        idx = 0
+        while t + 3.0 <= duration:
+            img_path = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id, f"broll_{idx}.jpg")
+            default_brolls.append({
+                "index": idx,
+                "start": t,
+                "end": t + 3.0,
+                "path": img_path,
+                "prompt": f"aesthetic cinematic B-roll scene {idx + 1}",
+                "keyword": "scene"
+            })
+            t += 6.0
+            idx += 1
+
+        if default_brolls:
+            meta["broll_assets"] = default_brolls
+            job.metadata_json = json.dumps(meta)
+            db.commit()
+            brolls = default_brolls
     result = []
     for ba in brolls:
         path = ba.get("path", "")
@@ -842,10 +937,13 @@ async def replace_broll(
     index: int,
     file: Optional[UploadFile] = File(None),
     prompt: Optional[str] = None,
+    target_path: Optional[str] = None,
+    start: Optional[float] = None,
+    end: Optional[float] = None,
     client=Depends(_require_client),
     db: Session = Depends(get_db),
 ):
-    """Replace a B-roll by uploading a new file OR re-generating via Pollinations."""
+    """Replace a B-roll by uploading a new file, re-generating via Pollinations, or referencing a generated asset path."""
     import json
     from app.core.config import settings
 
@@ -863,6 +961,15 @@ async def replace_broll(
         async with aiofiles.open(img_path, "wb") as f:
             await f.write(content)
         new_prompt = f"custom_upload_index_{index}"
+    elif target_path:
+        # Use preexisting static asset path
+        clean_target = target_path.lstrip("/")
+        local_target_path = os.path.join(str(settings.BASE_DIR), clean_target)
+        if os.path.exists(local_target_path):
+            img_path = local_target_path
+            new_prompt = f"referenced_asset_{os.path.basename(clean_target)}"
+        else:
+            raise HTTPException(400, f"Referenced asset not found: {local_target_path}")
     elif prompt:
         import httpx
         from urllib.parse import quote
@@ -877,22 +984,384 @@ async def replace_broll(
                     await f.write(resp.content)
         new_prompt = enhanced
     else:
-        raise HTTPException(400, "Provide either a file upload or a prompt for regeneration.")
+        raise HTTPException(400, "Provide either a file upload, a prompt, or target_path.")
 
     updated = False
     for ba in brolls:
         if ba.get("index") == index:
             ba["path"] = img_path
             ba["prompt"] = new_prompt
+            if start is not None:
+                ba["start"] = start
+            if end is not None:
+                ba["end"] = end
             updated = True
             break
     if not updated:
-        brolls.append({"index": index, "path": img_path, "prompt": new_prompt, "start": 0, "end": 0})
+        brolls.append({
+            "index": index,
+            "path": img_path,
+            "prompt": new_prompt,
+            "start": start if start is not None else 0.0,
+            "end": end if end is not None else 3.0
+        })
 
     meta["broll_assets"] = brolls
     job.metadata_json = json.dumps(meta)
     db.commit()
     return {"success": True, "message": f"B-roll #{index} replaced.", "path": img_path}
+
+
+class UgcSettingsUpdateRequest(BaseModel):
+    logo_position: Optional[str] = None
+    running_tap_text: Optional[str] = None
+    intro_path: Optional[str] = None
+    outro_path: Optional[str] = None
+    watermark_path: Optional[str] = None
+    logo_path: Optional[str] = None
+    use_intro: Optional[bool] = None
+    use_outro: Optional[bool] = None
+    use_watermark: Optional[bool] = None
+    use_logo: Optional[bool] = None
+    use_running_tap: Optional[bool] = None
+
+
+@router.post("/ugc/assets/{job_id}/upload", tags=["UGC Creator"])
+async def upload_ugc_asset(
+    job_id: str,
+    asset_type: str, # intro, outro, watermark, logo
+    file: UploadFile = File(...),
+    client=Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import json, os
+    from app.core.config import settings
+    
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+        
+    work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    os.makedirs(work_dir, exist_ok=True)
+    
+    # Determine extension
+    _, ext = os.path.splitext(file.filename)
+    if not ext:
+        ext = ".mp4" if asset_type in ("intro", "outro") else ".png"
+        
+    dest_filename = f"{asset_type}{ext.lower()}"
+    dest_path = os.path.join(work_dir, dest_filename)
+    
+    # Write file
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+        
+    # Update metadata_json
+    meta = json.loads(job.metadata_json) if job.metadata_json else {}
+    meta[f"{asset_type}_path"] = dest_path
+    meta[f"use_{asset_type}"] = True  # Automatically enable it upon upload!
+    
+    # Also save as logo_path if logo
+    if asset_type == "logo":
+        meta["logo_path"] = dest_path
+        meta["use_logo"] = True
+        
+    job.metadata_json = json.dumps(meta)
+    db.commit()
+    
+    web_url = f"/static/ugc/{job_id}/{dest_filename}"
+    return {"success": True, "message": f"Asset {asset_type} uploaded successfully.", "url": web_url, "path": dest_path}
+
+
+@router.post("/ugc/settings/{job_id}/update", tags=["UGC Creator"])
+async def update_ugc_settings(
+    job_id: str,
+    req: UgcSettingsUpdateRequest,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import json
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+        
+    meta = json.loads(job.metadata_json) if job.metadata_json else {}
+    
+    if req.logo_position is not None:
+        meta["logo_position"] = req.logo_position
+    if req.running_tap_text is not None:
+        meta["running_tap_text"] = req.running_tap_text
+        
+    if req.intro_path is not None:
+        meta["intro_path"] = req.intro_path if req.intro_path != "" else None
+    if req.outro_path is not None:
+        meta["outro_path"] = req.outro_path if req.outro_path != "" else None
+    if req.watermark_path is not None:
+        meta["watermark_path"] = req.watermark_path if req.watermark_path != "" else None
+    if req.logo_path is not None:
+        meta["logo_path"] = req.logo_path if req.logo_path != "" else None
+
+    # Sync booleans
+    if req.use_intro is not None:
+        meta["use_intro"] = req.use_intro
+    if req.use_outro is not None:
+        meta["use_outro"] = req.use_outro
+    if req.use_watermark is not None:
+        meta["use_watermark"] = req.use_watermark
+    if req.use_logo is not None:
+        meta["use_logo"] = req.use_logo
+    if req.use_running_tap is not None:
+        meta["use_running_tap"] = req.use_running_tap
+        
+    job.metadata_json = json.dumps(meta)
+    db.commit()
+    return {"success": True, "message": "UGC settings updated.", "metadata": meta}
+
+
+class BrollGenerateRequest(BaseModel):
+    prompt: str
+    source: str  # pollinations, pexels, meta_ai
+
+
+@router.post("/ugc/generate/broll/{job_id}", tags=["UGC Creator"])
+async def generate_ugc_broll_item(
+    job_id: str,
+    req: BrollGenerateRequest,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import json, os, secrets
+    from app.core.config import settings
+    from app.services.video_engine import search_pexels_videos
+    from app.services.ugc_service import download_file_async
+
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+
+    work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    os.makedirs(work_dir, exist_ok=True)
+
+    random_id = secrets.token_hex(4)
+
+    if req.source == "pollinations":
+        import urllib.parse
+        encoded_prompt = urllib.parse.quote(req.prompt)
+        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&model=flux&seed={secrets.token_hex(4)}"
+        
+        dest_filename = f"gen_pollinations_{random_id}.png"
+        dest_path = os.path.join(work_dir, dest_filename)
+        
+        try:
+            await download_file_async(img_url, dest_path)
+            web_url = f"/static/ugc/{job_id}/{dest_filename}"
+            return {"success": True, "url": web_url, "type": "image"}
+        except Exception as e:
+            raise HTTPException(500, f"Pollinations AI failed: {e}")
+
+    elif req.source == "pexels":
+        try:
+            video_urls = await search_pexels_videos(req.prompt, count=1)
+            if not video_urls:
+                words = req.prompt.split()
+                if len(words) > 3:
+                    video_urls = await search_pexels_videos(" ".join(words[:3]), count=1)
+            
+            if not video_urls:
+                raise HTTPException(404, "No matching stock videos found on Pexels.")
+                
+            video_url = video_urls[0]
+            dest_filename = f"gen_pexels_{random_id}.mp4"
+            dest_path = os.path.join(work_dir, dest_filename)
+            
+            await download_file_async(video_url, dest_path)
+            web_url = f"/static/ugc/{job_id}/{dest_filename}"
+            return {"success": True, "url": web_url, "type": "video"}
+        except Exception as e:
+            raise HTTPException(500, f"Pexels Video search/download failed: {e}")
+
+    elif req.source == "meta_ai":
+        return {"success": True, "waiting_for_extension": True, "random_id": random_id, "prompt": req.prompt}
+
+    else:
+        raise HTTPException(400, f"Unknown source: {req.source}")
+
+
+@router.get("/ugc/generate/broll/list/{job_id}", tags=["UGC Creator"])
+async def list_generated_brolls(
+    job_id: str,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import os
+    from app.core.config import settings
+    work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    assets = []
+    
+    # 1. Scan job static outputs directory
+    if os.path.exists(work_dir):
+        for f in os.listdir(work_dir):
+            if f.startswith("gen_") or f.startswith("single_gen_"):
+                ext = f.split(".")[-1].lower()
+                media_type = "video" if ext in ["mp4", "mkv", "mov", "avi"] else "image"
+                
+                source = "pollinations"
+                if "pexels" in f:
+                    source = "pexels"
+                elif "meta_ai" in f or "single_gen" in f:
+                    source = "meta_ai"
+                    
+                web_url = f"/static/ugc/{job_id}/{f}"
+                assets.append({
+                    "url": web_url,
+                    "source": source,
+                    "type": media_type
+                })
+                
+    # 2. Scan uploads/social directory for extension-downloaded files
+    social_uploads = os.path.join(os.getcwd(), "uploads", "social")
+    if os.path.exists(social_uploads):
+        for f in os.listdir(social_uploads):
+            if f.startswith("single_gen_"):
+                ext = f.split(".")[-1].lower()
+                media_type = "video" if ext in ["mp4"] else "image"
+                web_url = f"/uploads/social/{f}"
+                # Deduplicate if already present
+                if not any(a["url"] == web_url for a in assets):
+                    assets.append({
+                        "url": web_url,
+                        "source": "meta_ai",
+                        "type": media_type
+                    })
+                    
+    return {"success": True, "assets": assets}
+
+
+@router.post("/ugc/generate/broll/delete-file", tags=["UGC Creator"])
+async def delete_generated_broll_file(
+    job_id: str,
+    url: str,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db)
+):
+    import os, urllib.parse
+    from app.core.config import settings
+    
+    parsed_url = urllib.parse.unquote(url)
+    
+    if parsed_url.startswith(f"/static/ugc/{job_id}/"):
+        filename = parsed_url.split("/")[-1]
+        if not all(c.isalnum() or c in "._-" for c in filename):
+            raise HTTPException(400, "Invalid filename")
+            
+        file_path = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return {"success": True, "message": "File deleted."}
+            
+    elif parsed_url.startswith("/uploads/social/"):
+        filename = parsed_url.split("/")[-1]
+        if not all(c.isalnum() or c in "._-" for c in filename):
+            raise HTTPException(400, "Invalid filename")
+            
+        file_path = os.path.join(os.getcwd(), "uploads", "social", filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return {"success": True, "message": "File deleted."}
+            
+    raise HTTPException(404, "File not found or invalid path.")
+
+
+@router.get("/ugc/jobs/{job_id}/download-bundle", tags=["UGC Creator"])
+async def download_ugc_job_bundle(
+    job_id: str,
+    token: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    import io, zipfile, json, os
+    from fastapi.responses import StreamingResponse
+    from app.core.config import settings
+    from app.core.clients import validate_client_token
+    
+    if not token:
+        raise HTTPException(401, "Token required")
+    record = validate_client_token(token, db=db)
+    if not record:
+        raise HTTPException(401, "Invalid token")
+        
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+        
+    static_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        # 1. Original Video
+        if job.original_video_path and os.path.exists(job.original_video_path):
+            ext = os.path.basename(job.original_video_path).split(".")[-1]
+            zip_file.write(job.original_video_path, f"original_video.{ext}")
+            
+        # 2. Final Video
+        result_path = job.result_video_path
+        if result_path and os.path.exists(result_path):
+            ext = os.path.basename(result_path).split(".")[-1]
+            zip_file.write(result_path, f"final_video.{ext}")
+            
+        # 3. Viral Short Video
+        if job.viral_video_url:
+            viral_filename = os.path.basename(job.viral_video_url)
+            local_viral_path = os.path.join(static_dir, viral_filename)
+            if os.path.exists(local_viral_path):
+                zip_file.write(local_viral_path, f"viral_short.mp4")
+                
+        # 4. Brand Logo
+        meta = json.loads(job.metadata_json) if job.metadata_json else {}
+        logo_path = meta.get("logo_path")
+        if not logo_path and job.settings:
+            logo_path = job.settings.get("logo_path")
+        if logo_path and os.path.exists(logo_path):
+            ext = os.path.basename(logo_path).split(".")[-1]
+            zip_file.write(logo_path, f"brand_logo.{ext}")
+            
+        # 5. Transcript (JSON and text format)
+        if job.transcript_json:
+            try:
+                transcript_data = json.loads(job.transcript_json)
+                zip_file.writestr("transcript.json", json.dumps(transcript_data, indent=2))
+                lines = []
+                for s in transcript_data:
+                    lines.append(f"[{s.get('start', 0.0):.1f}s - {s.get('end', 0.0):.1f}s] {s.get('text', '')}")
+                zip_file.writestr("transcript.txt", "\n".join(lines))
+            except Exception:
+                pass
+                
+        # 6. B-roll assets from metadata timeline
+        brolls = meta.get("broll_assets", [])
+        for ba in brolls:
+            path = ba.get("path")
+            if path and os.path.exists(path):
+                ext = os.path.basename(path).split(".")[-1]
+                zip_file.write(path, f"brolls/broll_segment_{ba.get('index', 0)}.{ext}")
+                
+        # 7. Scan and bundle any other static generated assets in job folder
+        if os.path.exists(static_dir):
+            for f in os.listdir(static_dir):
+                if f.startswith("gen_") or f.startswith("single_gen_") or f.startswith("broll_"):
+                    file_path = os.path.join(static_dir, f)
+                    if os.path.isfile(file_path):
+                        archive_name = f"brolls/{f}"
+                        if archive_name not in zip_file.namelist():
+                            zip_file.write(file_path, archive_name)
+                            
+    zip_buffer.seek(0)
+    
+    safe_filename = f"bundle_{job_id}.zip"
+    headers = {
+        "Content-Disposition": f"attachment; filename={safe_filename}"
+    }
+    return StreamingResponse(zip_buffer, media_type="application/zip", headers=headers)
 
 
 class BrollDeleteRequest(BaseModel):
@@ -984,11 +1453,187 @@ async def fast_rerender(
     return {"success": True, "message": "Fast re-render started."}
 
 
+def overlay_brolls_on_video(clean_video_path: str, output_video_path: str, broll_assets: list):
+    """Dynamically overlays B-roll images and videos on top of a clean reframed video."""
+    import cv2, os, numpy as np
+    
+    cap = cv2.VideoCapture(clean_video_path)
+    if not cap.isOpened():
+        raise Exception(f"Could not open clean video for reading: {clean_video_path}")
+        
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    
+    # Use mp4v fourcc to write temporary silent reframed file
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+    
+    frame_idx = 0
+    broll_cap = None
+    active_broll_cap_path = None
+    
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+                
+            frame_time = frame_idx / fps
+            frame_idx += 1
+            
+            # Find if any B-roll matches current playback timestamp
+            active_broll = None
+            for br in broll_assets:
+                if br.get("start", 0.0) <= frame_time <= br.get("end", 0.0):
+                    active_broll = br
+                    break
+                    
+            if active_broll and active_broll.get("path") and os.path.exists(active_broll["path"]):
+                b_path = active_broll["path"]
+                broll_img = None
+                
+                # Check if B-roll is a video
+                if b_path.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
+                    try:
+                        if active_broll_cap_path != b_path:
+                            if broll_cap is not None:
+                                broll_cap.release()
+                            broll_cap = cv2.VideoCapture(b_path)
+                            active_broll_cap_path = b_path
+                            
+                        if broll_cap is not None and broll_cap.isOpened():
+                            b_fps = broll_cap.get(cv2.CAP_PROP_FPS) or 30.0
+                            b_total = int(broll_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                            elapsed = frame_time - active_broll.get("start", 0.0)
+                            b_frame_idx = int(elapsed * b_fps)
+                            if b_total > 0:
+                                b_frame_idx = b_frame_idx % b_total
+                                
+                            broll_cap.set(cv2.CAP_PROP_POS_FRAMES, b_frame_idx)
+                            ret_v, broll_frame = broll_cap.read()
+                            if ret_v and broll_frame is not None:
+                                broll_img = broll_frame
+                    except Exception:
+                        pass
+                
+                # Fallback to image reading if it's an image or video frame read failed
+                if broll_img is None:
+                    try:
+                        broll_img = cv2.imread(b_path)
+                    except Exception:
+                        pass
+                        
+                if broll_img is not None:
+                    # Apply Ken Burns Zoom effect
+                    broll_progress = 0.0
+                    broll_dur = active_broll.get("end", 1.0) - active_broll.get("start", 0.0)
+                    if broll_dur > 0:
+                        broll_progress = (frame_time - active_broll.get("start", 0.0)) / broll_dur
+                        
+                    scale = 1.0 + 0.05 * broll_progress  # zoom 100% to 105%
+                    bh, bw = broll_img.shape[:2]
+                    sz_h, sz_w = int(bh / scale), int(bw / scale)
+                    sy, sx = (bh - sz_h) // 2, (bw - sz_w) // 2
+                    broll_img = broll_img[sy:sy+sz_h, sx:sx+sz_w]
+                    broll_resized = cv2.resize(broll_img, (w, h))
+                    
+                    # ── Circular Face Bubble on B-roll ──
+                    try:
+                        # Extract a square from the center of the clean speaker frame
+                        face_square_size = min(w, h)
+                        y_center = h // 2
+                        x_center = w // 2
+                        half_s = face_square_size // 2
+                        
+                        square_speaker = frame[max(0, y_center - half_s): min(h, y_center + half_s), max(0, x_center - half_s): min(w, x_center + half_s)]
+                        
+                        # Size of the bubble on screen (38% of canvas width)
+                        bubble_size = int(w * 0.38)
+                        bubble_img = cv2.resize(square_speaker, (bubble_size, bubble_size))
+                        
+                        # Create circular mask
+                        mask = np.zeros((bubble_size, bubble_size), dtype=np.uint8)
+                        cv2.circle(mask, (bubble_size // 2, bubble_size // 2), (bubble_size // 2) - 2, 255, -1)
+                        
+                        # Draw white border
+                        cv2.circle(bubble_img, (bubble_size // 2, bubble_size // 2), (bubble_size // 2) - 2, (255, 255, 255), 5)
+                        
+                        # Position coordinates: bottom-right (clear of subtitles)
+                        px = w - bubble_size - 40
+                        py = h - bubble_size - 220
+                        
+                        for c in range(3):
+                            broll_resized[py:py+bubble_size, px:px+bubble_size, c] = np.where(
+                                mask == 255,
+                                bubble_img[:, :, c],
+                                broll_resized[py:py+bubble_size, px:px+bubble_size, c]
+                            )
+                    except Exception:
+                        pass
+                        
+                    out.write(broll_resized)
+                    continue
+                    
+            out.write(frame)
+    finally:
+        cap.release()
+        out.release()
+        if broll_cap is not None:
+            broll_cap.release()
+def has_audio(video_path: str) -> bool:
+    import subprocess
+    cmd = ["ffprobe", "-show_streams", "-select_streams", "a", "-loglevel", "error", video_path]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return len(res.stdout.strip()) > 0
+
+
+def standardize_video(input_path: str, output_path: str):
+    import subprocess
+    if has_audio(input_path):
+        filter_str = "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(1080-iw)/2:(1920-ih)/2,fps=30,setsar=1[v];[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[a]"
+        cmd = [
+            "ffmpeg", "-y", "-i", input_path,
+            "-filter_complex", filter_str,
+            "-map", "[v]", "-map", "[a]",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            output_path
+        ]
+    else:
+        filter_str = "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(1080-iw)/2:(1920-ih)/2,fps=30,setsar=1[v]"
+        cmd = [
+            "ffmpeg", "-y", "-i", input_path,
+            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-filter_complex", filter_str,
+            "-map", "[v]", "-map", "1:a",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-shortest",
+            output_path
+        ]
+    subprocess.run(cmd, capture_output=True)
+
+
+def concat_videos(video_list: list, output_path: str):
+    import subprocess, os
+    temp_txt = output_path + "_concat.txt"
+    with open(temp_txt, "w") as f:
+        for v in video_list:
+            v_clean = v.replace("\\", "/")
+            f.write(f"file '{v_clean}'\n")
+    cmd = [
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", temp_txt,
+        "-c", "copy", output_path
+    ]
+    subprocess.run(cmd, capture_output=True)
+    if os.path.exists(temp_txt):
+        os.remove(temp_txt)
+
+
 async def _fast_rerender_task(job_id: str):
-    """Re-run only FFmpeg subtitle burn + audio mix using updated metadata."""
-    import json, subprocess, asyncio
+    """Re-run FFmpeg subtitle burn + audio mix using updated metadata and custom B-roll overlay."""
+    import json, subprocess, asyncio, shutil
     from app.core.config import settings
     from app.core.database import get_session_local
+    from app.services.ugc_service import MOOD_MUSIC_URLS, download_file_async
 
     SessionLocal = get_session_local()
     db2 = SessionLocal()
@@ -998,63 +1643,276 @@ async def _fast_rerender_task(job_id: str):
             return
 
         meta = json.loads(job.metadata_json) if job.metadata_json else {}
-        features = meta.get("features", {})
+        # Safely extract features
+        features = meta.get("features", {}) or {}
+        for k, v in meta.items():
+            if k not in features and not isinstance(v, (dict, list)):
+                features[k] = v
+
         work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+        uploads_work_dir = os.path.join(str(settings.BASE_DIR), "uploads", "ugc", job_id)
+        
+        # Output silent, audio, and subtitle output files
+        reframed_silent_path = os.path.join(work_dir, "reframed_silent.mp4")
         reframed_path = os.path.join(work_dir, "reframed.mp4")
+        clean_video_path = os.path.join(work_dir, "reframed_clean.mp4")
 
-        if not os.path.exists(reframed_path):
-            job.status = "error"
-            job.error_message = "reframed.mp4 not found."
-            db2.commit()
-            return
+        # Copy reframed_clean.mp4 from uploads directory if it is missing in static outputs directory
+        if not os.path.exists(clean_video_path):
+            uploads_clean = os.path.join(uploads_work_dir, "reframed_clean.mp4")
+            if os.path.exists(uploads_clean):
+                shutil.copy(uploads_clean, clean_video_path)
 
-        # Find BGM
+        # 1. Dynamically overlay B-rolls on top of reframed_clean.mp4 to write reframed_silent.mp4
+        if os.path.exists(clean_video_path):
+            logger.info(f"Rebuilding reframed_silent.mp4 with updated B-rolls for job {job_id}...")
+            broll_assets = meta.get("broll_assets", [])
+            overlay_brolls_on_video(clean_video_path, reframed_silent_path, broll_assets)
+        else:
+            logger.warning(f"reframed_clean.mp4 not found for job {job_id}. Skipping dynamic B-roll rebuild.")
+            # Fallback: if reframed_clean.mp4 is missing but reframed_silent.mp4 exists, use it
+            if not os.path.exists(reframed_silent_path) and os.path.exists(reframed_path):
+                # We can use reframed_path as silent fallback using ffmpeg strip
+                subprocess.run(["ffmpeg", "-y", "-i", reframed_path, "-an", "-c:v", "copy", reframed_silent_path], capture_output=True)
+
+        job.progress = 60
+        db2.commit()
+
+        # 2. Find and resolve Background Music
         bgm_path = features.get("custom_bgm_path")
+        user_mood = features.get("bgm_mood")
+        
         if not bgm_path or not os.path.exists(str(bgm_path)):
-            bgm_path = os.path.join(work_dir, "bgm.mp3")
-            if not os.path.exists(bgm_path):
-                bgm_path = None
+            if user_mood and user_mood != "none":
+                bgm_url = MOOD_MUSIC_URLS.get(user_mood)
+                if bgm_url:
+                    bgm_path = os.path.join(work_dir, "bgm.mp3")
+                    try:
+                        logger.info(f"Downloading mood BGM track: {bgm_url}")
+                        await download_file_async(bgm_url, bgm_path)
+                    except Exception as e:
+                        logger.error(f"Failed to download BGM mood music: {e}")
+                        bgm_path = None
+            else:
+                bgm_path = os.path.join(work_dir, "bgm.mp3")
+                if not os.path.exists(bgm_path):
+                    bgm_path = None
 
-        # Find subtitles
+        # 3. Construct premium final audio mix (Trimmed Voice, Auto-ducked BGM, SFX)
+        voice_path = os.path.join(uploads_work_dir, "trimmed_audio.mp3")
+        if not os.path.exists(voice_path):
+            voice_path = os.path.join(uploads_work_dir, "extracted_audio.mp3")
+            
+        final_audio_path = os.path.join(work_dir, "final_audio.mp3")
+        
+        if os.path.exists(voice_path):
+            mix_cmd = ["ffmpeg", "-y", "-i", voice_path]
+            mix_filter = []
+            mix_inputs = ["[0:a]volume=1.4[voice];"]
+            current_input_idx = 1
+            
+            if bgm_path and os.path.exists(bgm_path) and features.get("music", True) and user_mood != "none":
+                mix_cmd.extend(["-i", bgm_path])
+                bgm_input_tag = f"[{current_input_idx}:a]"
+                current_input_idx += 1
+                mix_filter.append(f"{bgm_input_tag}volume=0.08[bgm_base];")
+                mix_filter.append(f"[bgm_base][0:a]sidechaincompress=threshold=0.03:ratio=4:attack=100:release=400[bgm_ducked];")
+                mix_inputs.append("[bgm_ducked]")
+                
+            mixed_sfx_path = os.path.join(uploads_work_dir, "mixed_sfx.wav")
+            if features.get("sfx") and os.path.exists(mixed_sfx_path):
+                mix_cmd.extend(["-i", mixed_sfx_path])
+                sfx_input_tag = f"[{current_input_idx}:a]"
+                current_input_idx += 1
+                mix_inputs.append(sfx_input_tag)
+                
+            num_mix = len(mix_inputs) - 1
+            if num_mix == 0:
+                mix_filter.append("[0:a]volume=1.4[a_mix]")
+            elif num_mix == 1 and "[bgm_ducked]" in mix_inputs:
+                mix_filter.append("[voice][bgm_ducked]amix=inputs=2:duration=first[a_mix]")
+            elif num_mix == 1:
+                mix_filter.append(f"[voice]{sfx_input_tag}amix=inputs=2:duration=first[a_mix]")
+            else:
+                mix_filter.append(f"[voice][bgm_ducked]{sfx_input_tag}amix=inputs=3:duration=first[a_mix]")
+                
+            mix_cmd.extend(["-filter_complex", "".join(mix_filter), "-map", "[a_mix]", final_audio_path])
+            subprocess.run(mix_cmd, capture_output=True)
+        else:
+            uploads_final_audio = os.path.join(uploads_work_dir, "final_audio.mp3")
+            if os.path.exists(uploads_final_audio):
+                shutil.copy(uploads_final_audio, final_audio_path)
+
+        # 4. Mux reframed_silent.mp4 + final_audio.mp3 -> reframed.mp4
+        if os.path.exists(reframed_silent_path) and os.path.exists(final_audio_path):
+            mux_cmd = [
+                "ffmpeg", "-y",
+                "-i", reframed_silent_path,
+                "-i", final_audio_path,
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-shortest",
+                reframed_path
+            ]
+            subprocess.run(mux_cmd, capture_output=True)
+
+        job.progress = 75
+        db2.commit()
+
+        # 5. Resolve subtitles, logo positioning, watermark, and running text ticker to produce result.mp4
         subs_edited = os.path.join(work_dir, "subtitles_edited.ass")
         subs_main = os.path.join(work_dir, "subtitles.ass")
         active_subs = subs_edited if os.path.exists(subs_edited) else subs_main
 
-        job.progress = 70
-        db2.commit()
-
         result_path = os.path.join(work_dir, "result.mp4")
 
+        # Backup old result with version tracking (history backup)
+        if os.path.exists(result_path):
+            backup_idx = 1
+            while True:
+                backup_path = os.path.join(work_dir, f"result_edited_{backup_idx}.mp4")
+                if not os.path.exists(backup_path):
+                    break
+                backup_idx += 1
+            shutil.copy(result_path, backup_path)
+
+        # Build FFmpeg command for filters: subtitles, logo, watermark, running tap text
+        cmd_args = ["ffmpeg", "-y", "-i", reframed_path]
+        filter_parts = []
+        current_v = "[0:v]"
+        input_idx = 1
+
+        # A. Subtitles Ass file
         if active_subs and os.path.exists(active_subs):
             safe_subs = active_subs.replace("\\", "/").replace(":", "\\:")
-            vf = f"ass='{safe_subs}'"
-        else:
-            vf = "null"
+            filter_parts.append(f"{current_v}ass='{safe_subs}'[v_subs]")
+            current_v = "[v_subs]"
 
-        if bgm_path and features.get("music", True):
-            cmd = [
-                "ffmpeg", "-y", "-i", reframed_path, "-i", bgm_path,
-                "-filter_complex",
-                f"[0:a]volume=1.0[main];[1:a]volume=0.12[bgm];[main][bgm]amix=inputs=2:duration=first[aout];[0:v]{vf}[vout]",
-                "-map", "[vout]", "-map", "[aout]",
-                "-c:v", "libx264", "-crf", "20", "-preset", "fast",
-                "-c:a", "aac", "-b:a", "192k", result_path
-            ]
-        else:
-            cmd = [
-                "ffmpeg", "-y", "-i", reframed_path,
-                "-vf", vf,
-                "-c:v", "libx264", "-crf", "20", "-preset", "fast",
-                "-c:a", "aac", "-b:a", "192k", result_path
-            ]
+        # B. Watermark overlay (right bottom, scaled to 180px width)
+        watermark_path = meta.get("watermark_path")
+        use_watermark = meta.get("use_watermark", True)
+        if watermark_path and use_watermark and os.path.exists(watermark_path):
+            cmd_args.extend(["-i", watermark_path])
+            filter_parts.append(f"[{input_idx}:v]scale=180:-1[wat_scale]")
+            filter_parts.append(f"{current_v}[wat_scale]overlay=main_w-overlay_w-40:main_h-overlay_h-40[v_wat]")
+            current_v = "[v_wat]"
+            input_idx += 1
 
-        subprocess.run(cmd, capture_output=True)
+        # C. Positional Logo Overlay (Left-Top, Right-Top, Left-Bottom, Right-Bottom, scaled to 150px width)
+        logo_path = meta.get("logo_path")
+        if not logo_path and job.settings:
+            logo_path = job.settings.get("logo_path")
+        use_logo = meta.get("use_logo", True)
+        if logo_path and use_logo and os.path.exists(logo_path):
+            cmd_args.extend(["-i", logo_path])
+            logo_pos = meta.get("logo_position", "left_top")
+            filter_parts.append(f"[{input_idx}:v]scale=150:-1[logo_scale]")
+            
+            overlay_coords = "40:40"
+            if logo_pos == "right_top":
+                overlay_coords = "main_w-overlay_w-40:40"
+            elif logo_pos == "left_bottom":
+                overlay_coords = "40:main_h-overlay_h-40"
+            elif logo_pos == "right_bottom":
+                overlay_coords = "main_w-overlay_w-40:main_h-overlay_h-40"
+                
+            filter_parts.append(f"{current_v}[logo_scale]overlay={overlay_coords}[v_logo]")
+            current_v = "[v_logo]"
+            input_idx += 1
+
+        # D. Running Tap Text ticker drawtext filter
+        running_text = meta.get("running_tap_text")
+        use_running_tap = meta.get("use_running_tap", True)
+        if running_text and use_running_tap:
+            safe_text = running_text.replace("'", "'\\''").replace(":", "\\:")
+            filter_parts.append(f"{current_v}drawtext=text='{safe_text}':x=w-mod(t*120\\,w+tw):y=h-100:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.5[v_run]")
+            current_v = "[v_run]"
+
+        # Compile video filter complex argument
+        if filter_parts:
+            cmd_args.extend(["-filter_complex", ";".join(filter_parts), "-map", current_v, "-map", "0:a"])
+        else:
+            cmd_args.extend(["-map", "0:v", "-map", "0:a"])
+
+        # Write to intermediate video file
+        temp_main_subbed = os.path.join(work_dir, "temp_subbed.mp4")
+        cmd_args.extend([
+            "-c:v", "libx264", "-crf", "20", "-preset", "fast",
+            "-c:a", "copy", temp_main_subbed
+        ])
+        
+        subprocess.run(cmd_args, capture_output=True)
+
+        if os.path.exists(temp_main_subbed):
+            shutil.copy(temp_main_subbed, result_path)
+            os.remove(temp_main_subbed)
+
+        # 6. Intro & Outro Stitches
+        intro_path = meta.get("intro_path")
+        use_intro = meta.get("use_intro", True)
+        outro_path = meta.get("outro_path")
+        use_outro = meta.get("use_outro", True)
+
+        has_intro = intro_path and use_intro and os.path.exists(intro_path)
+        has_outro = outro_path and use_outro and os.path.exists(outro_path)
+
+        if has_intro or has_outro:
+            concat_list = []
+            
+            # Intro
+            if has_intro:
+                intro_std = os.path.join(work_dir, "intro_std.mp4")
+                standardize_video(intro_path, intro_std)
+                if os.path.exists(intro_std):
+                    concat_list.append(intro_std)
+                    
+            # Main video
+            main_std = os.path.join(work_dir, "main_std.mp4")
+            standardize_video(result_path, main_std)
+            if os.path.exists(main_std):
+                concat_list.append(main_std)
+                
+            # Outro
+            if has_outro:
+                outro_std = os.path.join(work_dir, "outro_std.mp4")
+                standardize_video(outro_path, outro_std)
+                if os.path.exists(outro_std):
+                    concat_list.append(outro_std)
+                    
+            if len(concat_list) > 1:
+                concat_output = os.path.join(work_dir, "result_concat.mp4")
+                concat_videos(concat_list, concat_output)
+                if os.path.exists(concat_output):
+                    shutil.copy(concat_output, result_path)
+                    
+                # Clean intermediate standard files
+                for fpath in concat_list:
+                    try:
+                        if os.path.exists(fpath):
+                            os.remove(fpath)
+                    except Exception:
+                        pass
+                try:
+                    if os.path.exists(concat_output):
+                        os.remove(concat_output)
+                except Exception:
+                    pass
+
         job.progress = 95
         db2.commit()
 
-        # Thumbnail
+        # Thumbnail extraction
         thumb_path = os.path.join(work_dir, "thumbnail.jpg")
         subprocess.run(["ffmpeg", "-y", "-i", result_path, "-ss", "00:00:01", "-vframes", "1", "-q:v", "2", thumb_path], capture_output=True)
+
+        if job.result_video_path and job.result_video_path.startswith("http"):
+            try:
+                from app.services.r2_storage import upload_to_r2
+                r2_key = f"ugc/{job_id}/result.mp4"
+                new_url = upload_to_r2(result_path, r2_key)
+                if new_url:
+                    job.result_video_path = new_url
+            except Exception as r2_err:
+                logger.error(f"Failed to upload fast-rerendered video to R2: {r2_err}")
 
         job.status = "completed"
         job.progress = 100
@@ -1073,3 +1931,79 @@ async def _fast_rerender_task(job_id: str):
             pass
     finally:
         db2.close()
+
+
+@router.delete("/ugc/jobs/{job_id}", tags=["UGC Creator"])
+async def delete_ugc_job(
+    job_id: str,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db),
+):
+    """Delete a UGC Job, its files from disk, and R2 metadata."""
+    import shutil
+    from app.core.config import settings
+
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+
+    # Delete R2 files if uploaded
+    try:
+        from app.services.r2_storage import delete_from_r2
+        delete_from_r2(f"ugc/{job_id}/result.mp4")
+        delete_from_r2(f"ugc/{job_id}/thumbnail.jpg")
+    except Exception:
+        pass
+
+    # Delete local folder
+    work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
+    if os.path.exists(work_dir):
+        try:
+            shutil.rmtree(work_dir)
+        except Exception as e:
+            logger.error(f"Failed to delete local workdir {work_dir}: {e}")
+
+    # Delete from DB
+    db.delete(job)
+    db.commit()
+    return {"success": True, "message": f"Job {job_id} deleted successfully."}
+
+
+@router.post("/ugc/jobs/{job_id}/approve", tags=["UGC Creator"])
+async def approve_ugc_job(
+    job_id: str,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db),
+):
+    """Mark a UGC Job as approved by saving the status in metadata_json."""
+    import json
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+
+    meta = json.loads(job.metadata_json) if job.metadata_json else {}
+    meta["approved"] = True
+    meta["rejected"] = False  # Reset rejection if approved
+    job.metadata_json = json.dumps(meta)
+    db.commit()
+    return {"success": True, "message": f"Job {job_id} marked as approved.", "approved": True}
+
+
+@router.post("/ugc/jobs/{job_id}/reject", tags=["UGC Creator"])
+async def reject_ugc_job(
+    job_id: str,
+    client=Depends(_require_client),
+    db: Session = Depends(get_db),
+):
+    """Mark a UGC Job as rejected by saving the status in metadata_json."""
+    import json
+    job = db.query(UgcJob).filter(UgcJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found.")
+
+    meta = json.loads(job.metadata_json) if job.metadata_json else {}
+    meta["rejected"] = True
+    meta["approved"] = False  # Ensure mutual exclusion
+    job.metadata_json = json.dumps(meta)
+    db.commit()
+    return {"success": True, "message": f"Job {job_id} marked as rejected.", "rejected": True}

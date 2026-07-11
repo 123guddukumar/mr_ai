@@ -2922,12 +2922,20 @@
 
                 <!-- 6. Customization -->
                 <div class="tab-pane" id="tab-cust">
-                  <label class="form-label">Business Logo URL</label>
-                  <input type="text" class="form-input" id="ag-cust-logo" placeholder="https://...">
+                  <label class="form-label">Business Logo</label>
+                  <div style="display:flex; gap:10px; margin-bottom:15px">
+                    <input type="text" class="form-input" id="ag-cust-logo" placeholder="https://..." style="flex:1">
+                    <button type="button" class="btn btn-secondary" onclick="triggerLogoImageUpload()" style="flex-shrink:0; padding:10px 15px">⬆️ Upload</button>
+                  </div>
+                  <label class="form-label">Author Profile Image (Landing Page Avatar)</label>
+                  <div style="display:flex; gap:10px; margin-bottom:15px">
+                    <input type="text" class="form-input" id="ag-cust-author" placeholder="https://..." style="flex:1">
+                    <button type="button" class="btn btn-secondary" onclick="triggerAuthorImageUpload()" style="flex-shrink:0; padding:10px 15px">⬆️ Upload</button>
+                  </div>
                   <label class="form-label">Theme Color (for QR & Chat)</label>
                   <input type="color" class="form-input" id="ag-cust-color"
-                    style="height:60px; padding:5px; border-radius:12px" value="#ff7a00">
-                  <label class="form-label" style="margin-top:15px">Custom Chat Link (Webhook / Custom Chat URL)</label>
+                    style="height:60px; padding:5px; border-radius:12px; margin-bottom:15px" value="#ff7a00">
+                  <label class="form-label">Custom Chat Link (Webhook / Custom Chat URL)</label>
                   <input type="text" class="form-input" id="ag-cust-chat-link" placeholder="e.g. https://magnifi.in/agent-chat?id=...">
                 </div>
 
@@ -14945,6 +14953,9 @@
       if (document.getElementById('ag-cust-chat-link')) {
         document.getElementById('ag-cust-chat-link').value = '';
       }
+      if (document.getElementById('ag-cust-author')) {
+        document.getElementById('ag-cust-author').value = '';
+      }
       document.getElementById('ag-qa-list').innerHTML = '';
       document.getElementById('ag-kb-list').innerHTML = '';
 
@@ -15226,7 +15237,22 @@
         customization: {
           logo_url: document.getElementById('ag-cust-logo').value,
           color: document.getElementById('ag-cust-color').value,
-          chat_link: document.getElementById('ag-cust-chat-link') ? document.getElementById('ag-cust-chat-link').value.trim() : ''
+          chat_link: document.getElementById('ag-cust-chat-link') ? document.getElementById('ag-cust-chat-link').value.trim() : '',
+          author_image_url: document.getElementById('ag-cust-author') ? document.getElementById('ag-cust-author').value.trim() : '',
+          qa_pairs: (() => {
+            const qaPairs = [];
+            const qaItems = document.querySelectorAll('#ag-qa-list .source-item');
+            qaItems.forEach(item => {
+              const qInput = item.querySelector('.qa-q');
+              const aText = item.querySelector('.qa-a');
+              if (qInput && aText) {
+                const q = qInput.value.trim();
+                const a = aText.value.trim();
+                if (q && a) qaPairs.push({ q, a });
+              }
+            });
+            return qaPairs;
+          })()
         },
         datastores: Array.from(document.querySelectorAll('.ag-ds-checkbox:checked')).map(cb => cb.value)
       };
@@ -15297,6 +15323,26 @@
       if (document.getElementById('ag-cust-chat-link')) {
         document.getElementById('ag-cust-chat-link').value = a.customization.chat_link || '';
       }
+      if (document.getElementById('ag-cust-author')) {
+        document.getElementById('ag-cust-author').value = a.customization.author_image_url || '';
+      }
+
+      // Reconstruct Q&A Pairs
+      const qaList = document.getElementById('ag-qa-list');
+      qaList.innerHTML = '';
+      const qaPairs = a.customization.qa_pairs || [];
+      qaPairs.forEach(pair => {
+        const div = document.createElement('div');
+        div.className = 'source-item';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'stretch';
+        div.innerHTML = `
+          <input type="text" class="form-input qa-q" style="margin-bottom:5px; height:35px; font-size:12px" placeholder="Question" value="${escHtml(pair.q)}">
+          <textarea class="form-input qa-a" style="height:60px; font-size:12px; padding:8px" placeholder="Answer">${escHtml(pair.a)}</textarea>
+          <div style="text-align:right"><span class="si-del" onclick="this.parentElement.parentElement.remove()">Remove</span></div>
+        `;
+        qaList.appendChild(div);
+      });
 
       await loadDSSelector();
       const linked = a.datastores || [];
@@ -15366,6 +15412,39 @@
       </div>
     `).join('');
       } catch (e) { container.innerHTML = 'Error loading knowledge base'; }
+    }
+
+    function triggerLogoImageUpload() {
+      triggerImageUploadDirect('ag-cust-logo');
+    }
+    function triggerAuthorImageUpload() {
+      triggerImageUploadDirect('ag-cust-author');
+    }
+    function triggerImageUploadDirect(targetId) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          toast('Uploading image...', 'info');
+          const r = await fetch('/api/clients/upload-image', {
+            method: 'POST',
+            headers: { 'X-App-Token': session.token },
+            body: formData
+          });
+          const res = await r.json();
+          if (!r.ok) throw new Error(res.message || 'Upload failed');
+          document.getElementById(targetId).value = res.url;
+          toast('Image uploaded successfully!', 'success');
+        } catch (e) {
+          toast('Upload failed: ' + e.message, 'error');
+        }
+      };
+      input.click();
     }
 
     function triggerFileUpload(type) {

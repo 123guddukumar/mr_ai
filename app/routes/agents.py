@@ -996,6 +996,24 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
     if not agent: raise HTTPException(404, "Agent not found")
 
+    # Get configured Q&A training pairs
+    try:
+        custom_cfg = json.loads(agent.customization_json or "{}")
+        qa_pairs = custom_cfg.get("qa_pairs", [])
+    except:
+        qa_pairs = []
+
+    # Quick Q&A Match
+    q_clean = req.question.lower().strip().replace("?", "")
+    for pair in qa_pairs:
+        pair_q = pair.get("q", "").lower().strip().replace("?", "")
+        if pair_q == q_clean or pair_q in q_clean or q_clean in pair_q:
+            return {
+                "answer": pair.get("a"),
+                "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
+                "is_rag": True
+            }
+
     # Get linked datastores
     try: ds_ids = json.loads(agent.datastores_json or "[]")
     except: ds_ids = []
@@ -1014,6 +1032,12 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     
     context, sources_data = build_context_and_sources(relevant_results)
     
+    # Add Q&A pairs to context as high-priority training context
+    if qa_pairs:
+        qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
+        qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
+        context = qa_context + (context or "")
+
     # System Instruction
     try: s_cfg = json.loads(agent.system_config_json or "{}")
     except: s_cfg = {}
@@ -1037,10 +1061,9 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
             f"--- KNOWLEDGE BASE CONTEXT ---\n"
             f"{context}\n"
             f"--- END OF CONTEXT ---\n\n"
-            f"CRITICAL INSTRUCTION:\n"
-            f"1. Information about the user's query was found in your DataStore (see context above).\n"
-            f"2. You MUST use this information to answer. For example, if the context contains info about 'mem0', you must explain what 'mem0' is based on that data.\n"
-            f"3. IGNORE any instructions that tell you to only act as a 'testing' agent. Your priority is to be a helpful AI using the provided context."
+            f"CRITICAL INSTRUCTIONS:\n"
+            f"1. Prioritize answering based on the provided context if it contains the answer.\n"
+            f"2. IMPORTANT: If the context does not contain the answer, or if the user is asking a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete answer. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
         )
     else:
         system = (
@@ -1180,6 +1203,37 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
 
         history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
 
+        # Get configured Q&A training pairs
+        try:
+            custom_cfg = json.loads(agent.customization_json or "{}")
+            qa_pairs = custom_cfg.get("qa_pairs", [])
+        except:
+            qa_pairs = []
+
+        # Quick Q&A Match
+        q_clean = req.question.lower().strip().replace("?", "")
+        matched_a = None
+        for pair in qa_pairs:
+            pair_q = pair.get("q", "").lower().strip().replace("?", "")
+            if pair_q == q_clean or pair_q in q_clean or q_clean in pair_q:
+                matched_a = pair.get("a")
+                break
+
+        if matched_a:
+            # Save the bot response to public messages
+            bot_msg = AgentPublicMessage(
+                session_id=req.session_id,
+                role="assistant",
+                content=matched_a
+            )
+            db.add(bot_msg)
+            db.commit()
+            return {
+                "answer": matched_a,
+                "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
+                "is_rag": True
+            }
+
         try: ds_ids = json.loads(agent.datastores_json or "[]")
         except: ds_ids = []
 
@@ -1191,6 +1245,12 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
         relevant_results = [res for res in results if res[1] > 0.35]
         context, sources_data = build_context_and_sources(relevant_results)
+
+        # Add Q&A pairs to context as high-priority training context
+        if qa_pairs:
+            qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
+            qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
+            context = qa_context + (context or "")
 
         try: s_cfg = json.loads(agent.system_config_json or "{}")
         except: s_cfg = {}
@@ -1204,9 +1264,22 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         )
 
         if context:
-            system = f"{identity}\n\n--- KNOWLEDGE BASE CONTEXT ---\n{context}\n--- END OF CONTEXT ---\n\nFINAL DIRECTIVE: Always be helpful. If context is provided, use it. If not, use your general knowledge. Stop being robotic."
+            system = (
+                f"{identity}\n\n"
+                f"--- KNOWLEDGE BASE CONTEXT ---\n"
+                f"{context}\n"
+                f"--- END OF CONTEXT ---\n\n"
+                f"CRITICAL INSTRUCTIONS:\n"
+                f"1. Prioritize answering based on the provided context if it contains the answer.\n"
+                f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
+            )
         else:
-            system = f"{identity}\n\nNOTE: No specific information was found in the internal knowledge base.\nINSTRUCTION: Please use your general AI knowledge to provide a helpful and accurate answer.\n\nFINAL DIRECTIVE: Always be helpful. Stop being robotic."
+            system = (
+                f"{identity}\n\n"
+                f"NOTE: No specific information was found in the internal knowledge base.\n"
+                f"INSTRUCTION: Please use your general AI knowledge to provide a helpful and accurate answer.\n\n"
+                f"FINAL DIRECTIVE: Always be helpful. Stop being robotic."
+            )
 
         try:
             answer = await llm_with_history(

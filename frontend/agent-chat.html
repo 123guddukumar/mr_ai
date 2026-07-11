@@ -93,9 +93,248 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .toast-card{padding:14px 24px;border-radius:16px;font-size:13px;font-weight:700;background:var(--bg2);border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.7)}
 .toast-card.err{border-color:var(--red);color:var(--red)}
 .vo-transcript{margin-top:20px;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--border);max-width:80%;font-style:italic;color:var(--text2);font-size:14px;min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center}
+
+/* ── Premium Landing Page ── */
+.landing-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 122, 0, 0.15) 0%, var(--bg) 80%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+.landing-content {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(30, 34, 53, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  padding: 40px 30px;
+  text-align: center;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+  animation: slide-up-landing 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slide-up-landing {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.landing-avatar-container {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 24px auto;
+  border: 3px solid var(--accent);
+  background: var(--bg3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 30px rgba(255, 122, 0, 0.3);
+}
+.landing-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#landing-avatar-init {
+  font-size: 44px;
+}
+.landing-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+.landing-desc {
+  font-size: 14px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 24px;
+  padding: 0 10px;
+}
+.landing-bubble-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 35px;
+}
+.landing-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 14px 20px;
+  font-size: 13.5px;
+  color: var(--text);
+  max-width: 90%;
+  line-height: 1.5;
+  text-align: left;
+  position: relative;
+}
+.landing-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 30px;
+  border-width: 8px 8px 0 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.05) transparent transparent transparent;
+}
+.landing-buttons {
+  display: flex;
+  gap: 16px;
+}
+.landing-btn {
+  flex: 1;
+  height: 52px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-btn.btn-chat {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.landing-btn.btn-chat:hover {
+  background: var(--border);
+  transform: translateY(-2px);
+}
+.landing-btn.btn-talk {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.3);
+}
+.landing-btn.btn-talk:hover {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(255, 122, 0, 0.45);
+}
+
+.input-mic-btn {
+  display: none;
+}
+@media (max-width: 767px) {
+  .input-mic-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
+  .input-mic-btn:hover {
+    color: var(--accent);
+    background: rgba(255, 122, 0, 0.1);
+  }
+  .navbar .mode-switches {
+    display: none !important;
+  }
+  .navbar .nav-left {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  #mobile-landing-page {
+    display: none !important;
+  }
+}
+
+.suggestions-bar {
+  display: none;
+  gap: 10px;
+  padding: 8px 24px 0 24px;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.suggestions-bar::-webkit-scrollbar {
+  display: none;
+}
+.suggestion-chip {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.suggestion-chip:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.vo-close-btn {
+  margin-top: 30px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.vo-close-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
 </style>
 </head>
 <body id="body">
+
+<!-- Mobile Landing Page Overlay -->
+<div id="mobile-landing-page" class="landing-overlay" style="display:none">
+  <div class="landing-content">
+    <div class="landing-avatar-container">
+      <img id="landing-avatar" src="" class="landing-avatar-img" style="display:none">
+      <span id="landing-avatar-init">🤖</span>
+    </div>
+    <h1 class="landing-name" id="landing-name">Agent Name</h1>
+    <p class="landing-desc" id="landing-desc">Agent Description</p>
+    <div class="landing-bubble-wrap">
+      <div class="landing-bubble" id="landing-start-msg">Hello! How can I help you today?</div>
+    </div>
+    <div class="landing-buttons">
+      <button class="landing-btn btn-chat" onclick="startChatFromLanding('text')">
+        <i data-lucide="message-square"></i> Chat
+      </button>
+      <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
+        <i data-lucide="mic"></i> Talk
+      </button>
+    </div>
+  </div>
+</div>
 
 <nav class="navbar">
   <div class="nav-left">
@@ -118,7 +357,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   </div>
   <div class="nav-right">
     <button class="nav-btn" onclick="toggleTheme()"><i data-lucide="moon" id="theme-icon"></i></button>
-    <button class="nav-btn" onclick="location.reload()"><i data-lucide="refresh-cw"></i></button>
   </div>
 </nav>
 
@@ -130,6 +368,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <div class="vo-sub" id="vo-sub">I am listening to your voice</div>
     <div class="vo-transcript" id="vo-transcript"><i>Waiting for speech…</i></div>
     <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
+    <button class="vo-close-btn" onclick="setMode('text')"><i data-lucide="x"></i> Text Chat</button>
   </div>
 
   <div class="chat-window" id="chat-win">
@@ -140,8 +379,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
         <p id="hero-desc">How can I assist you today?</p>
       </div>
     </div>
+    <!-- Suggestions Bar -->
+    <div class="suggestions-bar" id="suggestions-bar"></div>
     <div class="input-dock">
       <div class="input-bar">
+        <button class="input-mic-btn" id="input-mic-btn" onclick="setMode('v2v')"><i data-lucide="mic"></i></button>
         <textarea id="chat-input" rows="1" placeholder="Type here…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="action-btn" onclick="sendMsg()"><i data-lucide="send"></i></button>
       </div>
@@ -268,6 +510,26 @@ async function loadAgent() {
     // Set Page Title
     document.title = (d.name || 'Agent') + ' Chat — VectorizeAI';
 
+    // Populate landing page content
+    document.getElementById('landing-name').textContent = d.name || 'AI Assistant';
+    document.getElementById('landing-desc').textContent = d.description || 'Ready to help.';
+    document.getElementById('landing-start-msg').textContent = d.starting_message || 'Hello! How can I help you today?';
+    
+    if (d.customization && d.customization.author_image_url) {
+      document.getElementById('landing-avatar').src = d.customization.author_image_url;
+      document.getElementById('landing-avatar').style.display = 'block';
+      document.getElementById('landing-avatar-init').style.display = 'none';
+    } else if (d.customization && d.customization.logo_url) {
+      document.getElementById('landing-avatar').src = d.customization.logo_url;
+      document.getElementById('landing-avatar').style.display = 'block';
+      document.getElementById('landing-avatar-init').style.display = 'none';
+    }
+
+    // Initialize suggestions
+    if (d.customization && d.customization.qa_pairs) {
+      renderSuggestions(d.customization.qa_pairs);
+    }
+
     if(d.customization && d.customization.logo_url) {
       document.getElementById('ag-logo-img').src = d.customization.logo_url;
       document.getElementById('ag-logo-img').style.display = 'block';
@@ -282,6 +544,9 @@ async function loadAgent() {
       document.getElementById('body').style.backgroundImage = `radial-gradient(circle at 10% 20%, ${c}22 0%, transparent 40%), radial-gradient(circle at 90% 80%, ${c}11 0%, transparent 40%)`;
       document.getElementById('body').style.backgroundColor = 'var(--bg)';
     }
+
+    // Trigger mobile landing page if responsive
+    checkShowLandingPage();
 
     if(d.starting_message) {
       setTimeout(() => {
@@ -474,6 +739,79 @@ function toast(msg, type) {
   const t = document.createElement('div'); t.className = 'toast-card ' + type; t.textContent = msg;
   tc.appendChild(t); setTimeout(() => t.remove(), 4000);
 }
+
+// ── Mobile Responsive Landing Page Helper ──
+let landingClosed = false;
+
+function checkShowLandingPage() {
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const lp = document.getElementById('mobile-landing-page');
+  if (!lp) return;
+  if (isMobile && !landingClosed) {
+    lp.style.display = 'flex';
+  } else {
+    lp.style.display = 'none';
+  }
+}
+
+function startChatFromLanding(mode) {
+  landingClosed = true;
+  const lp = document.getElementById('mobile-landing-page');
+  if (lp) lp.style.display = 'none';
+  setMode(mode);
+  if (mode === 'v2v') {
+    // Start listening
+    setTimeout(() => { if (!isListening) toggleVoice(); }, 400);
+  }
+}
+
+window.addEventListener('resize', checkShowLandingPage);
+
+// ── Q&A Suggestions Helper ──
+let currentSuggestions = [];
+
+function renderSuggestions(qaPairs) {
+  const bar = document.getElementById('suggestions-bar');
+  if (!bar) return;
+  
+  // Take first 5 suggestions
+  currentSuggestions = (qaPairs || []).slice(0, 5).map(p => p.q);
+  if (!currentSuggestions.length) {
+    bar.style.display = 'none';
+    return;
+  }
+
+  updateSuggestionsUI();
+}
+
+function updateSuggestionsUI() {
+  const bar = document.getElementById('suggestions-bar');
+  if (!bar) return;
+
+  if (!currentSuggestions.length) {
+    bar.style.display = 'none';
+    return;
+  }
+
+  bar.innerHTML = currentSuggestions.map((q, idx) => `
+    <div class="suggestion-chip" onclick="clickSuggestion('${esc(q)}', ${idx})">${esc(q)}</div>
+  `).join('');
+  bar.style.display = 'flex';
+}
+
+function clickSuggestion(questionText, idx) {
+  // Remove it from the list
+  currentSuggestions.splice(idx, 1);
+  updateSuggestionsUI();
+
+  // Send it
+  const inp = document.getElementById('chat-input');
+  if (inp) {
+    inp.value = questionText;
+    sendMsg();
+  }
+}
+
 loadAgent();
 </script>
 </body>

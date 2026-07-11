@@ -571,6 +571,7 @@ async def llm_with_history(
     from app.core.config import settings
 
     if provider == "gemini":
+        api_key = api_key or settings.GEMINI_API_KEY
         if not api_key:
             raise RuntimeError("Gemini API key required")
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -584,8 +585,9 @@ async def llm_with_history(
         async with httpx.AsyncClient(timeout=60.0) as hc:
             r = await hc.post(url, json=payload); r.raise_for_status()
             return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-
+ 
     elif provider == "openai":
+        api_key = api_key or settings.OPENAI_API_KEY
         if not api_key:
             raise RuntimeError("OpenAI API key required")
         from openai import AsyncOpenAI
@@ -596,8 +598,9 @@ async def llm_with_history(
         cl = AsyncOpenAI(api_key=api_key)
         resp = await cl.chat.completions.create(model=model, messages=msgs, max_tokens=1024, temperature=0.1)
         return resp.choices[0].message.content.strip()
-
+ 
     elif provider == "claude":
+        api_key = api_key or settings.CLAUDE_API_KEY
         if not api_key:
             raise RuntimeError("Anthropic API key required")
         hdrs = {"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
@@ -610,7 +613,7 @@ async def llm_with_history(
             r = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
             r.raise_for_status()
             return r.json()["content"][0]["text"].strip()
-
+ 
     elif provider == "ollama":
         msgs = [{"role": "system", "content": system}]
         for t in history:
@@ -620,8 +623,9 @@ async def llm_with_history(
             r = await hc.post(f"{ollama_url}/api/chat", json={"model": model, "stream": False, "messages": msgs})
             r.raise_for_status()
             return r.json()["message"]["content"].strip()
-
+ 
     elif provider == "huggingface":
+        api_key = api_key or settings.HF_API_KEY
         if not api_key:
             raise RuntimeError("HuggingFace API key required")
         full_prompt = f"<s>[INST] {system}\n\nUser: {question} [/INST]"

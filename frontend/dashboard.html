@@ -15059,7 +15059,7 @@
       if (a.customization && a.customization.chat_link) {
         publicUrl = buildAgentChatUrl(a.customization.chat_link, id);
       } else {
-        publicUrl = window.location.origin + '/agent-chat.html?id=' + id;
+        publicUrl = window.location.origin + '/agent-chat?id=' + id;
       }
       let color = '000000';
       if (a.customization && a.customization.color) color = a.customization.color.replace('#', '');

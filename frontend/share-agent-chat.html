@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -98,24 +98,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .landing-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 50% 25%, rgba(255, 122, 0, 0.18) 0%, var(--bg) 75%);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 122, 0, 0.15) 0%, var(--bg) 80%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  padding: 20px;
 }
 .landing-content {
   width: 100%;
-  height: 100%;
-  max-width: 100%;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 50px 24px;
+  max-width: 400px;
+  background: rgba(30, 34, 53, 0.45);
+  border: 1px solid var(--accent);
+  border-radius: 28px;
+  padding: 35px 24px;
   text-align: center;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
   animation: fade-in-landing 0.5s ease forwards;
 }
@@ -128,8 +130,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 .landing-avatar-container {
   width: 110px;
@@ -200,8 +200,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   max-width: 400px;
   display: flex;
   gap: 16px;
-  margin-top: auto;
-  padding-bottom: 30px;
+  margin-top: 15px;
 }
 .landing-btn {
   flex: 1;
@@ -306,6 +305,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   border-color: var(--accent);
   transform: translateY(-1px);
 }
+[data-theme="light"] .suggestion-chip {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+[data-theme="light"] .suggestion-chip:hover {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
 .vo-close-btn {
   margin-top: 30px;
   padding: 10px 24px;
@@ -324,6 +332,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .vo-close-btn:hover {
   background: var(--border);
   color: var(--text);
+}
+.typing-dots span {
+  animation: blink-dots 1.4s infinite both;
+  font-weight: bold;
+  display: inline-block;
+  font-size: 16px;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: .2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: .4s;
+}
+@keyframes blink-dots {
+  0% { opacity: .2; }
+  20% { opacity: 1; }
+  100% { opacity: .2; }
 }
 </style>
 </head>
@@ -568,11 +593,7 @@ async function loadAgent() {
       document.documentElement.style.setProperty('--accent2', c + 'cc');
       document.getElementById('body').style.backgroundImage = `radial-gradient(circle at 10% 20%, ${c}22 0%, transparent 40%), radial-gradient(circle at 90% 80%, ${c}11 0%, transparent 40%)`;
       document.getElementById('body').style.backgroundColor = 'var(--bg)';
-      
-      const lp = document.getElementById('mobile-landing-page');
-      if (lp) {
-        lp.style.background = `radial-gradient(circle at 50% 25%, ${c}2e 0%, var(--bg) 75%)`;
-      }
+      document.getElementById('mobile-landing-page').style.background = `radial-gradient(circle at 50% 30%, ${c}25 0%, var(--bg) 100%)`;
     }
 
     // Trigger mobile landing page if responsive
@@ -642,7 +663,7 @@ function appendTyping() {
   const area = document.getElementById('msg-area');
   const div = document.createElement('div');
   div.className = 'msg-wrap assistant typing-wrap';
-  div.innerHTML = '<div class="msg-icon assistant"><i data-lucide="bot"></i></div><div style="padding:12px;background:var(--bg3);border-radius:12px">Thinking…</div>';
+  div.innerHTML = '<div class="msg-icon assistant"><i data-lucide="bot"></i></div><div style="padding:12px;background:var(--bg3);border-radius:12px;display:flex;align-items:center;gap:4px">typing<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>';
   area.appendChild(div); area.scrollTop = area.scrollHeight;
   lucide.createIcons();
   return div;

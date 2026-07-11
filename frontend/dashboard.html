@@ -15047,7 +15047,7 @@
         if (!base.endsWith('/')) {
           base += '/';
         }
-        return base + 'agent-chat.html?id=' + id;
+        return base + 'agent-chat?id=' + id;
       }
     }
 
@@ -15199,7 +15199,7 @@
         const url = buildAgentChatUrl(a.customization.chat_link, id);
         window.open(url, '_blank');
       } else {
-        let url = `/agent-chat.html?id=${id}`;
+        let url = `/agent-chat?id=${id}`;
         if (mode !== 'text') url += `&mode=${mode}`;
         window.open(url, '_blank');
       }

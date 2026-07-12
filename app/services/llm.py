@@ -571,6 +571,8 @@ async def llm_with_history(
     from app.core.config import settings
 
     if provider == "gemini":
+        if api_key and (api_key.startswith("sk-") or api_key.startswith("gsk_")):
+            api_key = ""
         api_key = api_key or settings.GEMINI_API_KEY
         if not api_key:
             raise RuntimeError("Gemini API key required")
@@ -587,6 +589,8 @@ async def llm_with_history(
             return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
  
     elif provider == "openai":
+        if api_key and (api_key.startswith("AIzaSy") or api_key.startswith("gsk_")):
+            api_key = ""
         api_key = api_key or settings.OPENAI_API_KEY
         if not api_key:
             raise RuntimeError("OpenAI API key required")
@@ -638,6 +642,8 @@ async def llm_with_history(
             return r.json()[0]["generated_text"].strip()
  
     elif provider == "groq":
+        if api_key and (api_key.startswith("sk-") or api_key.startswith("AIzaSy")):
+            api_key = ""
         api_key = api_key or settings.GROQ_API_KEY
         if not api_key:
             raise RuntimeError("Groq API key required")

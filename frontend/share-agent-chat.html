@@ -809,7 +809,7 @@ async function speakText(text) {
     window.speechSynthesis?.cancel();
     
     // Play backend audio stream
-    const audioUrl = `/api/agents/${AGENT_ID}/speak?text=${encodeURIComponent(text)}`;
+    const audioUrl = BACKEND_URL + `/api/agents/${AGENT_ID}/speak?text=${encodeURIComponent(text)}`;
     if (window.currentAudio) {
       window.currentAudio.pause();
       window.currentAudio = null;

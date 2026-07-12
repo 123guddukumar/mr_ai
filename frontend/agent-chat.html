@@ -78,7 +78,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .voice-overlay{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:40px;text-align:center;animation:fade-in 0.5s ease}
 @keyframes fade-in{from{opacity:0}to{opacity:1}}
 .voice-overlay.active{display:flex}
-.vo-orb{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--accent), var(--accent2));display:flex;align-items:center;justify-content:center;font-size:60px;margin-bottom:40px;position:relative;box-shadow:0 0 60px rgba(255,122,0,0.3)}
+.vo-orb{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--accent), var(--accent2));display:flex;align-items:center;justify-content:center;font-size:60px;margin-bottom:40px;position:relative;box-shadow:0 0 60px rgba(255,122,0,0.3);overflow:hidden;border:4px solid var(--accent)}
 .vo-orb.listening{animation:pulse-vo 1.5s infinite}
 @keyframes pulse-vo{0%{transform:scale(1);box-shadow:0 0 60px rgba(255,122,0,0.3)}50%{transform:scale(1.1);box-shadow:0 0 100px rgba(255,122,0,0.6)}100%{transform:scale(1);box-shadow:0 0 60px rgba(255,122,0,0.3)}}
 .vo-status{font-size:24px;font-weight:800;color:var(--text);margin-bottom:12px}
@@ -568,6 +568,18 @@ async function loadAgent() {
       document.getElementById('landing-avatar-init').style.display = 'none';
     }
 
+    // Set Voice orb avatar image
+    const voOrb = document.getElementById('vo-orb');
+    if (voOrb) {
+      if (d.customization && d.customization.author_image_url) {
+        voOrb.innerHTML = `<img src="${d.customization.author_image_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+      } else if (d.customization && d.customization.logo_url) {
+        voOrb.innerHTML = `<img src="${d.customization.logo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+      } else {
+        voOrb.innerHTML = `<span style="font-size:70px">🤖</span>`;
+      }
+    }
+
     // Initialize suggestions
     if (d.customization && d.customization.qa_pairs) {
       renderSuggestions(d.customization.qa_pairs);
@@ -784,15 +796,35 @@ async function speakText(text) {
 
   const u = new SpeechSynthesisUtterance(text);
   const cfg = _agentData.voice_config || {};
+  const voiceName = (cfg.voice_name || '').toLowerCase();
   
   // Try to find a matching voice
   const voices = speechSynthesis.getVoices();
   const isHindi = text.match(/[\u0900-\u097F]/);
   
-  let v = voices.find(v => v.name.includes(cfg.voice_name || ''));
-  if(!v) {
-    if(isHindi) v = voices.find(v => v.lang.startsWith('hi'));
-    else v = voices.find(v => v.lang.startsWith('en')); // Default to English if no Hindi found
+  let v = null;
+  if (voices.length > 0) {
+    if (voiceName) {
+      // 1. Exact or partial match on voice name or lang identifier
+      v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
+      
+      // 2. Custom logical mapping for default options
+      if (!v) {
+        if (voiceName === 'natural') {
+          v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
+        } else if (voiceName === 'friendly') {
+          v = voices.find(vo => vo.name.toLowerCase().includes('zira') || vo.name.toLowerCase().includes('samantha') || vo.name.toLowerCase().includes('female'));
+        } else if (voiceName === 'pro') {
+          v = voices.find(vo => vo.name.toLowerCase().includes('david') || vo.name.toLowerCase().includes('mark') || vo.name.toLowerCase().includes('male'));
+        }
+      }
+    }
+    
+    // 3. Language fallback
+    if (!v) {
+      if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
+      else v = voices.find(vo => vo.lang.startsWith('en'));
+    }
   }
   
   if(v) u.voice = v;

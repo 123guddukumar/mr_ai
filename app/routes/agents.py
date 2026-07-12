@@ -1147,13 +1147,16 @@ async def api_get_agent_public_info(agent_id: str, db: Session = Depends(get_db)
 
     try: c_cfg = json.loads(agent.customization_json or "{}")
     except: c_cfg = {}
+    try: v_cfg = json.loads(agent.voice_config_json or "{}")
+    except: v_cfg = {}
 
     return {
         "agent_id": agent.agent_id,
         "name": agent.name,
         "description": agent.description or "",
         "starting_message": agent.starting_message or "Hello! How can I help you today?",
-        "customization": c_cfg
+        "customization": c_cfg,
+        "voice_config": v_cfg
     }
 
 

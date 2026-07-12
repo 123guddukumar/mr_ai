@@ -1003,11 +1003,17 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     except:
         qa_pairs = []
 
-    # Quick Q&A Match
-    q_clean = req.question.lower().strip().replace("?", "")
+    # Quick Q&A Match (Instant Sub-second response)
+    def clean_match_string(s: str) -> str:
+        import re
+        if not s: return ""
+        s_clean = re.sub(r'[^\w\s\u0900-\u097F]', '', s).lower().strip()
+        return " ".join(s_clean.split())
+
+    q_clean = clean_match_string(req.question)
     for pair in qa_pairs:
-        pair_q = pair.get("q", "").lower().strip().replace("?", "")
-        if pair_q == q_clean or pair_q in q_clean or q_clean in pair_q:
+        pair_q = clean_match_string(pair.get("q", ""))
+        if pair_q and (pair_q == q_clean or pair_q in q_clean or q_clean in pair_q):
             return {
                 "answer": pair.get("a"),
                 "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
@@ -1158,6 +1164,64 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     if not agent:
         raise HTTPException(404, "Agent not found")
 
+    # Get configured Q&A training pairs
+    try:
+        custom_cfg = json.loads(agent.customization_json or "{}")
+        qa_pairs = custom_cfg.get("qa_pairs", [])
+    except:
+        qa_pairs = []
+
+    # Quick Q&A Match (Instant Sub-second response)
+    def clean_match_string(s: str) -> str:
+        import re
+        if not s: return ""
+        s_clean = re.sub(r'[^\w\s\u0900-\u097F]', '', s).lower().strip()
+        return " ".join(s_clean.split())
+
+    q_clean = clean_match_string(req.question)
+    matched_a = None
+    for pair in qa_pairs:
+        pair_q = clean_match_string(pair.get("q", ""))
+        if pair_q and (pair_q == q_clean or pair_q in q_clean or q_clean in pair_q):
+            matched_a = pair.get("a")
+            break
+
+    if matched_a:
+        # User logging
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
+        if not session:
+            session = AgentPublicSession(
+                session_id=req.session_id,
+                agent_id=agent_id,
+                device_id=req.device_id,
+                device_name=req.device_name
+            )
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+
+        user_msg = AgentPublicMessage(
+            session_id=req.session_id,
+            role="user",
+            content=req.question
+        )
+        db.add(user_msg)
+        
+        bot_msg = AgentPublicMessage(
+            session_id=req.session_id,
+            role="assistant",
+            content=matched_a
+        )
+        db.add(bot_msg)
+        db.commit()
+
+        return {
+            "answer": matched_a,
+            "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
+            "is_rag": True
+        }
+
+    # Standard chat RAG logic & Lead Capture logic below
     session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
     if not session:
         session = AgentPublicSession(
@@ -1202,38 +1266,6 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
 
         history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
-
-        # Get configured Q&A training pairs
-        try:
-            custom_cfg = json.loads(agent.customization_json or "{}")
-            qa_pairs = custom_cfg.get("qa_pairs", [])
-        except:
-            qa_pairs = []
-
-        # Quick Q&A Match
-        q_clean = req.question.lower().strip().replace("?", "")
-        matched_a = None
-        for pair in qa_pairs:
-            pair_q = pair.get("q", "").lower().strip().replace("?", "")
-            if pair_q == q_clean or pair_q in q_clean or q_clean in pair_q:
-                matched_a = pair.get("a")
-                break
-
-        if matched_a:
-            # Save the bot response to public messages
-            bot_msg = AgentPublicMessage(
-                session_id=req.session_id,
-                role="assistant",
-                content=matched_a
-            )
-            db.add(bot_msg)
-            db.commit()
-            return {
-                "answer": matched_a,
-                "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
-                "is_rag": True
-            }
-
         try: ds_ids = json.loads(agent.datastores_json or "[]")
         except: ds_ids = []
 

@@ -794,21 +794,55 @@ async function speakText(text) {
   const status = document.getElementById('vo-status');
   if(chatMode === 'v2v') status.textContent = 'Speaking…';
 
+  const cfg = _agentData.voice_config || {};
+  const provider = (cfg.provider || 'mrai').toLowerCase();
+  
+  if (provider === 'elevenlabs' || provider === 'sarvam') {
+    // Stop local speech first
+    window.speechSynthesis?.cancel();
+    
+    // Play backend audio stream
+    const audioUrl = `/api/agents/${AGENT_ID}/speak?text=${encodeURIComponent(text)}`;
+    if (window.currentAudio) {
+      window.currentAudio.pause();
+      window.currentAudio = null;
+    }
+    const audio = new Audio(audioUrl);
+    window.currentAudio = audio;
+    
+    audio.onended = () => {
+      if(chatMode === 'v2v') {
+        status.textContent = 'Tap to Speak';
+        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+      }
+    };
+    
+    audio.onerror = (e) => {
+      console.warn("Backend TTS audio failed, falling back to local speech synthesis...", e);
+      speakLocalSpeech(text);
+    };
+    
+    audio.play().catch(err => {
+      console.warn("Audio play failed, falling back to local speech synthesis...", err);
+      speakLocalSpeech(text);
+    });
+  } else {
+    speakLocalSpeech(text);
+  }
+}
+
+function speakLocalSpeech(text) {
+  const status = document.getElementById('vo-status');
   const u = new SpeechSynthesisUtterance(text);
   const cfg = _agentData.voice_config || {};
   const voiceName = (cfg.voice_name || '').toLowerCase();
-  
-  // Try to find a matching voice
   const voices = speechSynthesis.getVoices();
   const isHindi = text.match(/[\u0900-\u097F]/);
   
   let v = null;
   if (voices.length > 0) {
     if (voiceName) {
-      // 1. Exact or partial match on voice name or lang identifier
       v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
-      
-      // 2. Custom logical mapping for default options
       if (!v) {
         if (voiceName === 'natural') {
           v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
@@ -819,8 +853,6 @@ async function speakText(text) {
         }
       }
     }
-    
-    // 3. Language fallback
     if (!v) {
       if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
       else v = voices.find(vo => vo.lang.startsWith('en'));
@@ -834,7 +866,6 @@ async function speakText(text) {
   u.onend = () => {
     if(chatMode === 'v2v') {
       status.textContent = 'Tap to Speak';
-      // Auto-start listening after a short delay
       setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
     }
   };

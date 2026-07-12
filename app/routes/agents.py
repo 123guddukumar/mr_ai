@@ -1131,6 +1131,50 @@ async def api_test_voice(req: TestVoiceReq):
         raise HTTPException(400, "Unsupported provider for server-side test")
 
 
+@router.get("/agents/{agent_id}/speak", tags=["Agents & DataStores"])
+async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db)):
+    from app.core.models import Agent
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+        
+    try:
+        cfg = json.loads(agent.voice_config_json or "{}")
+    except:
+        cfg = {}
+        
+    provider = cfg.get("provider", "mrai")
+    voice_id = cfg.get("voice_name", "")
+    api_key = cfg.get("api_key", "")
+    
+    import httpx
+    import os
+    if provider == "elevenlabs":
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        headers = {"xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""), "Content-Type": "application/json"}
+        payload = {"text": text, "model_id": "eleven_monolingual_v1"}
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(url, json=payload, headers=headers)
+            if not r.is_success:
+                raise HTTPException(r.status_code, f"ElevenLabs error: {r.text}")
+            return Response(content=r.content, media_type="audio/mpeg")
+            
+    elif provider == "sarvam":
+        url = "https://api.sarvam.ai/text-to-speech"
+        headers = {"api-subscription-key": api_key or os.getenv("SARVAM_API_KEY", ""), "Content-Type": "application/json"}
+        payload = {"inputs": [text], "target_language_code": "hi-IN", "speaker": voice_id}
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(url, json=payload, headers=headers)
+            if not r.is_success:
+                raise HTTPException(r.status_code, f"Sarvam error: {r.text}")
+            import base64
+            audio_base64 = r.json()["audios"][0]
+            return Response(content=base64.b64decode(audio_base64), media_type="audio/wav")
+            
+    else:
+        raise HTTPException(400, "TTS handled locally by browser for mrai provider")
+
+
 class AgentPublicAskReq(BaseModel):
     question: str
     session_id: str

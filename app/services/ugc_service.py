@@ -162,11 +162,35 @@ async def run_ugc_pipeline(job_id: str, client_id: str, video_path: str, filenam
         import whisper
         # Load local Whisper model (base)
         model = whisper.load_model("base")
+        # 1. Detect language
+        audio = whisper.load_audio(audio_path)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        _, probs = model.detect_language(mel)
+        detected_lang = max(probs, key=probs.get)
+        logger.info(f"UGC pipeline detected language: {detected_lang}")
+        
+        # 2. Select prompt based on detected language
+        whisper_prompt = "Transcribe the audio accurately."
+        if detected_lang == "hi":
+            whisper_prompt = "Hindi speech in Devanagari script (हिंदी में). जैसे: नमस्कार दोस्तों, आज हम बात करेंगे..."
+        elif detected_lang == "mr":
+            whisper_prompt = "Marathi speech in Devanagari script (मराठीत). जैसे: नमस्कार मित्रांनो, आज आपण बोलणार आहोत..."
+        elif detected_lang == "bn":
+            whisper_prompt = "Bengali speech in Bengali script (বাংলায়). যেমন: নমস্কার বন্ধুরা, আজকে আমরা কথা বলব..."
+        elif detected_lang == "en":
+            whisper_prompt = "English speech transcription."
+        elif detected_lang == "es":
+            whisper_prompt = "Spanish speech transcription."
+        elif detected_lang == "fr":
+            whisper_prompt = "French speech transcription."
+
         trans_res = model.transcribe(
             audio_path,
             fp16=False,
             word_timestamps=True,
-            initial_prompt="Hindi voice to be written in Devanagari script. English voice to be written in English script. Mixed English and Hindi Hinglish transcription. Do not translate Hindi spoken words to English."
+            language=detected_lang,
+            initial_prompt=whisper_prompt
         )
 
         segments = trans_res.get("segments", [])
@@ -235,13 +259,16 @@ Analyze the transcript and provide PRECISION editing suggestions:
 
 2. ZOOMS: Identify 2-4 high-impact moments for camera zoom. Pick the most emotional or keyword-heavy words.
 
-3. B-ROLLS (CRITICAL): Suggest exactly 2-3 B-roll overlays. For each:
+3. B-ROLLS (CRITICAL): Suggest B-roll overlays spaced every 3 to 5 seconds throughout the entire video duration. For each:
    - Pick the exact timestamp when an important concept/keyword is spoken.
+   - Each B-roll should be between 2.0 to 3.0 seconds long (e.g. start at 5.0, end at 7.5).
+   - The start and end times of B-rolls must not overlap.
    - Create a HYPER-SPECIFIC Flux AI visual prompt that DIRECTLY illustrates what is being said at that moment.
    - The prompt MUST be cinematic, photorealistic, and ultra-detailed (not generic).
    - Example: if speaker says 'I grew my business from zero' at 5.2s → prompt: 'cinematic close-up of a glowing holographic bar chart rising from flat to peak inside a dark minimalist office, warm amber accent lighting, shallow depth of field, 85mm lens, 8k photorealistic, masterpiece'
    - Example: if speaker says 'meditation changed my life' at 8.1s → prompt: 'serene aerial drone shot of a lone person sitting cross-legged on a mountain peak above clouds at golden hour, ultra wide, cinematic color grading, masterpiece, 8k'
    - DO NOT use generic prompts like 'person working' or 'business meeting'. Be SPECIFIC.
+   - Ensure the B-rolls cover the entire video timeline at a frequency of one B-roll every 3-5 seconds (e.g. for a 30-second video, you should suggest around 5-7 B-rolls).
 
 4. VIRAL MOMENT: The single most engaging 10-15 second clip.
 
@@ -252,7 +279,8 @@ Output ONLY raw JSON (no markdown fences, no extra text):
     {{"start": 1.5, "end": 4.0, "reason": "emphasis on keyword"}}
   ],
   "brolls": [
-    {{"start": 5.2, "end": 9.0, "keyword": "exact word spoken", "prompt": "hyper-specific cinematic Flux AI scene prompt here"}}
+    {{"start": 2.0, "end": 4.5, "keyword": "exact word spoken", "prompt": "hyper-specific cinematic Flux AI scene prompt here"}},
+    {{"start": 7.0, "end": 9.5, "keyword": "another word", "prompt": "another cinematic Flux AI prompt"}}
   ],
   "viral_moment": {{"start": 2.0, "end": 14.5}}
 }}
@@ -271,14 +299,14 @@ Output ONLY raw JSON (no markdown fences, no extra text):
             fallback_brolls = []
             t = 2.0
             idx = 0
-            while t + 3.0 <= total_duration:
+            while t + 2.5 <= total_duration:
                 fallback_brolls.append({
                     "start": t,
-                    "end": t + 3.0,
+                    "end": t + 2.5,
                     "keyword": "scene",
                     "prompt": f"aesthetic cinematic scene for segment {idx + 1}"
                 })
-                t += 6.0
+                t += 5.0
                 idx += 1
 
             edit_plan = {

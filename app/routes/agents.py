@@ -1131,6 +1131,16 @@ async def api_test_voice(req: TestVoiceReq):
         raise HTTPException(400, "Unsupported provider for server-side test")
 
 
+_agents_tts_http_client = None
+
+def get_agents_tts_http_client():
+    global _agents_tts_http_client
+    if _agents_tts_http_client is None:
+        import httpx
+        _agents_tts_http_client = httpx.AsyncClient(timeout=30.0)
+    return _agents_tts_http_client
+
+
 @router.get("/agents/{agent_id}/speak", tags=["Agents & DataStores"])
 async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db)):
     from app.core.models import Agent
@@ -1149,20 +1159,56 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
     
     import httpx
     import os
+    import re
+    from fastapi.responses import StreamingResponse
+    
+    # Clean markdown and formatting from the text
+    cleaned_text = re.sub(r'#{1,6}\s+', '', text)
+    cleaned_text = re.sub(r'[*_`~]', '', cleaned_text)
+    cleaned_text = re.sub(r'\n+', ' ', cleaned_text)
+    cleaned_text = cleaned_text.strip()
+    
+    if not cleaned_text:
+        raise HTTPException(400, "Cleaned text is empty")
+        
     if provider == "elevenlabs":
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-        headers = {"xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""), "Content-Type": "application/json"}
-        payload = {"text": text, "model_id": "eleven_monolingual_v1"}
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(url, json=payload, headers=headers)
-            if not r.is_success:
-                raise HTTPException(r.status_code, f"ElevenLabs error: {r.text}")
-            return Response(content=r.content, media_type="audio/mpeg")
+        # Stream audio via ElevenLabs V2.5 Multilingual model (optimized for speed and quality)
+        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128&optimize_streaming_latency=3"
+        headers = {
+            "xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""),
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+        }
+        payload = {
+            "text": cleaned_text,
+            "model_id": "eleven_multilingual_v2",  # Premium high-quality multilingual model
+            "voice_settings": {
+                "stability": 0.75,         # Higher stability prevents pitch glitches in Hindi
+                "similarity_boost": 0.85,  # Ensures character voice clarity
+                "style": 0.05,
+                "use_speaker_boost": True  # Keep speaker boost active for clear audio
+            }
+        }
+        
+        async def audio_generator():
+            try:
+                hc = get_agents_tts_http_client()
+                async with hc.stream("POST", tts_url, json=payload, headers=headers) as r:
+                    if r.status_code == 200:
+                        async for chunk in r.aiter_bytes(chunk_size=1024):
+                            yield chunk
+                    else:
+                        err_text = await r.aread()
+                        logger.error(f"ElevenLabs TTS error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
+            except Exception as e:
+                logger.error(f"ElevenLabs streaming failed: {e}")
+
+        return StreamingResponse(audio_generator(), media_type="audio/mpeg")
             
     elif provider == "sarvam":
         url = "https://api.sarvam.ai/text-to-speech"
         headers = {"api-subscription-key": api_key or os.getenv("SARVAM_API_KEY", ""), "Content-Type": "application/json"}
-        payload = {"inputs": [text], "target_language_code": "hi-IN", "speaker": voice_id}
+        payload = {"inputs": [cleaned_text], "target_language_code": "hi-IN", "speaker": voice_id}
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.post(url, json=payload, headers=headers)
             if not r.is_success:

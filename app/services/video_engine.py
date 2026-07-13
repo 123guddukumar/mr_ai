@@ -399,10 +399,121 @@ def create_subtitle_file(script_text: str, total_duration: float, work_dir: str)
             
     return sub_path
 
-def create_scene_subtitles_pro(scenes: List[dict], work_dir: str) -> str:
-    """Creates a premium CapCut-style .ass subtitle file with bold uppercase 3-word chunks synchronized per scene."""
+def create_scene_subtitles_pro(
+    scenes: List[dict], 
+    work_dir: str, 
+    audio_path: Optional[str] = None, 
+    language: Optional[str] = None
+) -> str:
+    """Creates a premium CapCut-style .ass subtitle file. If audio_path is provided,
+    it transcribes using OpenAI Whisper with word-level timestamps to ensure perfect synchronization.
+    Otherwise, or as fallback, it estimates timings per scene duration.
+    """
     sub_path = os.path.join(work_dir, "subs.ass")
+    chunks = []
     
+    if audio_path and os.path.exists(audio_path):
+        try:
+            import whisper
+            logger.info(f"Loading Whisper model 'base' for precise subtitle alignment of {audio_path}...")
+            model = whisper.load_model("base")
+            
+            lang_map = {"hindi": "hi", "english": "en", "spanish": "es", "french": "fr", "bengali": "bn", "marathi": "mr"}
+            whisper_lang = lang_map.get(language.lower()) if language else None
+            
+            whisper_prompt = "English and Hindi spoken mixed speech. Transcribe English words in English script and Hindi words in Devanagari (Hindi) script."
+            if language and language.lower() == "hindi":
+                whisper_prompt = "Hindi speech transcription in Devanagari script (हिंदी में). हिंदी सबटाइटल्स।"
+            elif language and language.lower() == "english":
+                whisper_prompt = "English speech transcription."
+            elif language and language.lower() == "spanish":
+                whisper_prompt = "Spanish speech transcription."
+            elif language and language.lower() == "french":
+                whisper_prompt = "French speech transcription."
+            elif language and language.lower() == "bengali":
+                whisper_prompt = "Bengali speech transcription."
+            elif language and language.lower() == "marathi":
+                whisper_prompt = "Marathi speech transcription."
+            
+            logger.info(f"Transcribing {audio_path} using Whisper (lang={whisper_lang})...")
+            trans_res = model.transcribe(
+                audio_path,
+                fp16=False,
+                word_timestamps=True,
+                language=whisper_lang,
+                initial_prompt=whisper_prompt
+            )
+            
+            segments = trans_res.get("segments", [])
+            for seg in segments:
+                words = seg.get("words", [])
+                if words:
+                    # Group words into 3-word chunks
+                    chunk_size = 3
+                    for i in range(0, len(words), chunk_size):
+                        chunk_words = words[i:i+chunk_size]
+                        chunk_text = " ".join([w["word"].strip().upper() for w in chunk_words if w["word"].strip()])
+                        if not chunk_text:
+                            continue
+                        start_sec = chunk_words[0]["start"]
+                        end_sec = chunk_words[-1]["end"]
+                        chunks.append((start_sec, end_sec, chunk_text))
+                else:
+                    # Fallback for segment if word timestamps are missing
+                    text = seg.get("text", "").strip()
+                    if not text:
+                        continue
+                    words_list = [w.strip().upper() for w in text.split() if w.strip()]
+                    if not words_list:
+                        continue
+                    seg_start = seg["start"]
+                    seg_end = seg["end"]
+                    seg_dur = seg_end - seg_start
+                    
+                    chunk_words_list = []
+                    chunk_size = 3
+                    for i in range(0, len(words_list), chunk_size):
+                        chunk_words_list.append(" ".join(words_list[i:i+chunk_size]))
+                    
+                    dur_per_chunk = seg_dur / len(chunk_words_list)
+                    for idx, chunk_text in enumerate(chunk_words_list):
+                        start_sec = seg_start + (idx * dur_per_chunk)
+                        end_sec = seg_start + ((idx + 1) * dur_per_chunk)
+                        chunks.append((start_sec, end_sec, chunk_text))
+            
+            logger.info(f"Successfully generated {len(chunks)} precise subtitle chunks using Whisper.")
+        except Exception as e:
+            logger.error(f"Whisper subtitle transcription failed: {e}. Falling back to default scene-based subtitles.")
+            chunks = []
+
+    # Fallback to scene-duration based subtitles if Whisper failed or was not used
+    if not chunks:
+        logger.info("Generating fallback scene-duration based subtitles.")
+        current_time = 0.0
+        for i, s in enumerate(scenes):
+            dialogue = (s.get("script") or s.get("dialogue") or "").strip()
+            scene_dur = float(s.get("duration") or s.get("suggested_duration") or 5.0)
+            
+            if dialogue:
+                # Clean and split into 3-word chunks (in uppercase)
+                words = [w.strip().upper() for w in dialogue.split() if w.strip()]
+                chunk_words_list = []
+                chunk_size = 3
+                for j in range(0, len(words), chunk_size):
+                    chunk_words_list.append(" ".join(words[j:j+chunk_size]))
+                
+                if not chunk_words_list:
+                    chunk_words_list = [dialogue.upper()]
+                
+                dur_per_chunk = scene_dur / len(chunk_words_list)
+                for j, chunk_text in enumerate(chunk_words_list):
+                    start_sec = current_time + (j * dur_per_chunk)
+                    end_sec = current_time + ((j + 1) * dur_per_chunk)
+                    chunks.append((start_sec, end_sec, chunk_text))
+            
+            current_time += scene_dur
+
+    # Write ASS subtitle file
     with open(sub_path, "w", encoding="utf-8") as f:
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
@@ -416,32 +527,10 @@ def create_scene_subtitles_pro(scenes: List[dict], work_dir: str) -> str:
             sec = s % 60
             return f"{h}:{m:02d}:{sec:05.2f}"
             
-        current_time = 0.0
-        for i, s in enumerate(scenes):
-            dialogue = (s.get("script") or s.get("dialogue") or "").strip()
-            scene_dur = float(s.get("duration") or s.get("suggested_duration") or 5.0)
-            
-            if dialogue:
-                # Clean and split into 3-word chunks (in uppercase)
-                words = [w.strip().upper() for w in dialogue.split() if w.strip()]
-                chunks = []
-                chunk_size = 3
-                for j in range(0, len(words), chunk_size):
-                    chunks.append(" ".join(words[j:j+chunk_size]))
-                
-                if not chunks:
-                    chunks = [dialogue.upper()]
-                
-                dur_per_chunk = scene_dur / len(chunks)
-                for j, chunk_text in enumerate(chunks):
-                    start_sec = current_time + (j * dur_per_chunk)
-                    end_sec = current_time + ((j + 1) * dur_per_chunk)
-                    
-                    # Pop-scale transition animation
-                    animated_text = f"{{\\fscx100\\fscy100\\t(0,100,\\fscx120\\fscy120)\\t(100,200,\\fscx100\\fscy100)}}{chunk_text}"
-                    f.write(f"Dialogue: 0,{format_time(start_sec)},{format_time(end_sec)},Default,,0,0,0,,{animated_text}\n")
-            
-            current_time += scene_dur
+        for start_sec, end_sec, chunk_text in chunks:
+            # Pop-scale transition animation
+            animated_text = f"{{\\fscx100\\fscy100\\t(0,100,\\fscx120\\fscy120)\\t(100,200,\\fscx100\\fscy100)}}{chunk_text}"
+            f.write(f"Dialogue: 0,{format_time(start_sec)},{format_time(end_sec)},Default,,0,0,0,,{animated_text}\n")
             
     return sub_path
 
@@ -703,7 +792,7 @@ async def assemble_pro_reel(
                 
         # 5. Create Subtitles (synchronized by scene)
         scenes_for_subtitles = [s for s in scene_data_ordered if s is not None]
-        sub_path = create_scene_subtitles_pro(scenes_for_subtitles, work_dir)
+        sub_path = create_scene_subtitles_pro(scenes_for_subtitles, work_dir, audio_path=audio_path, language=language)
         
         # 6. Final Assembly
         safe_sub_path = sub_path.replace("\\", "/").replace(":", "\\:")
@@ -1054,7 +1143,7 @@ async def assemble_advanced_reel(
     except: bgm_path = None
 
     # ── 7. Subtitles from full dialogue (synchronized by scene) ──────────────
-    sub_path = create_scene_subtitles_pro(advanced_scenes_data, work_dir)
+    sub_path = create_scene_subtitles_pro(advanced_scenes_data, work_dir, audio_path=full_voice_path, language=language)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
     # ── 8. Final assembly: video + full_voice + bgm + subs ───────────────────
@@ -1367,7 +1456,7 @@ async def assemble_edited_reel(
         except: bgm_path = None
 
     # 7. Create Subtitles (synchronized by scene)
-    sub_path = create_scene_subtitles_pro(final_scenes_data, work_dir)
+    sub_path = create_scene_subtitles_pro(final_scenes_data, work_dir, audio_path=temp_concat, language=language)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
 
     # 8. Render Final Output with Subtitles, Watermark and Multi-Track Audio Mixing

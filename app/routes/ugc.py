@@ -368,14 +368,39 @@ async def analyze_broll_prompts(
         extract_cmd = ["ffmpeg", "-y", "-i", video_path, "-vn", "-acodec", "libmp3lame", "-ar", "16000", audio_path]
         subprocess.run(extract_cmd, capture_output=True)
         
-        # Transcribe with Whisper
+        # Transcribe with Whisper (detecting language first to load correct prompt bias and set language code)
         import whisper
         model = whisper.load_model("base")
+        
+        # 1. Detect language
+        audio = whisper.load_audio(audio_path)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        _, probs = model.detect_language(mel)
+        detected_lang = max(probs, key=probs.get)
+        logger.info(f"UGC analyze detected language: {detected_lang}")
+        
+        # 2. Select prompt based on detected language
+        whisper_prompt = "Transcribe the audio accurately."
+        if detected_lang == "hi":
+            whisper_prompt = "Hindi speech in Devanagari script (हिंदी में). जैसे: नमस्कार दोस्तों, आज हम बात करेंगे..."
+        elif detected_lang == "mr":
+            whisper_prompt = "Marathi speech in Devanagari script (मराठीत). जैसे: नमस्कार मित्रांनो, आज आपण बोलणार आहोत..."
+        elif detected_lang == "bn":
+            whisper_prompt = "Bengali speech in Bengali script (বাংলায়). যেমন: নমস্কার বন্ধুরা, আজকে আমরা কথা বলব..."
+        elif detected_lang == "en":
+            whisper_prompt = "English speech transcription."
+        elif detected_lang == "es":
+            whisper_prompt = "Spanish speech transcription."
+        elif detected_lang == "fr":
+            whisper_prompt = "French speech transcription."
+
         trans_res = model.transcribe(
             audio_path,
             fp16=False,
             word_timestamps=True,
-            initial_prompt="English and Hindi spoken mixed speech. Transcribe English words in English script and Hindi words in Devanagari (Hindi) script. Hinglish transcription."
+            language=detected_lang,
+            initial_prompt=whisper_prompt
         )
         segments = trans_res.get("segments", [])
         

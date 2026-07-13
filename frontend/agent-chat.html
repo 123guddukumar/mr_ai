@@ -656,6 +656,9 @@ function appendMessage(role, text, srcs) {
   const area = document.getElementById('msg-area');
   const div = document.createElement('div');
   div.className = 'msg-wrap ' + role;
+  if (role === 'user' && chatMode === 'v2v') {
+    div.style.display = 'none'; // Keep user spoken bubbles hidden in voice mode
+  }
   let sHtml = '';
   if(srcs && srcs.length) sHtml = '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' + srcs.slice(0,2).map(s=>`<span style="font-size:10px;background:rgba(255,122,0,0.1);padding:3px 8px;border-radius:6px;color:var(--accent);border:1px solid rgba(255,122,0,0.2)">📎 ${esc(s.source_name||s.filename)}</span>`).join('') + '</div>';
   const icon = role === 'user' ? '<i data-lucide="user"></i>' : '<i data-lucide="bot"></i>';
@@ -749,7 +752,7 @@ function startRecognition() {
   if(recognition) recognition.stop();
   
   recognition = new Speech();
-  recognition.lang = 'hi-IN, en-IN'; 
+  recognition.lang = 'hi-IN'; 
   recognition.interimResults = true; // Enabled interim results
   
   recognition.onresult = (e) => {
@@ -761,16 +764,27 @@ function startRecognition() {
     }
     
     const trans = document.getElementById('vo-transcript');
+    if (chatMode === 'v2v') {
+      if(final) {
+          trans.innerHTML = `<i>Processing voice...</i>`;
+      } else {
+          trans.innerHTML = `<i>Listening…</i>`;
+      }
+    } else {
+      if(final) {
+          trans.innerHTML = `<b>${final}</b>`;
+      } else {
+          trans.innerHTML = `<span>${interim}</span>`;
+      }
+    }
+    
     if(final) {
-        trans.innerHTML = `<b>${final}</b>`;
         document.getElementById('chat-input').value = final;
         isListening = false;
         document.getElementById('vo-btn').classList.remove('active');
         document.getElementById('vo-orb').classList.remove('listening');
         document.getElementById('vo-status').textContent = 'Processing…';
         sendMsg();
-    } else {
-        trans.innerHTML = `<span>${interim}</span>`;
     }
   };
 
@@ -818,13 +832,19 @@ async function speakText(text) {
     };
     
     audio.onerror = (e) => {
-      console.warn("Backend TTS audio failed, falling back to local speech synthesis...", e);
-      speakLocalSpeech(text);
+      console.warn("Backend TTS audio failed...", e);
+      if(chatMode === 'v2v') {
+        status.textContent = 'Tap to Speak';
+        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+      }
     };
     
     audio.play().catch(err => {
-      console.warn("Audio play failed, falling back to local speech synthesis...", err);
-      speakLocalSpeech(text);
+      console.warn("Audio play failed...", err);
+      if(chatMode === 'v2v') {
+        status.textContent = 'Tap to Speak';
+        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+      }
     });
   } else {
     speakLocalSpeech(text);

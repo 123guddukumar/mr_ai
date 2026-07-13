@@ -445,7 +445,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 const BACKEND_URL = "https://your-backend-api.com";
 
 let session = {};
-let isPublic = false;
+let isPublic = true; // Always guest/public mode for the shared chat link so Lead Capture triggers
 try { 
   // Check for impersonation first (matching dashboard logic)
   const imp = localStorage.getItem('mrairag_client_impersonate');
@@ -456,10 +456,6 @@ try {
     if(raw) session = JSON.parse(raw);
   }
 } catch(e) {}
-
-if (!session || !session.token) {
-  isPublic = true;
-}
 
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const params = new URLSearchParams(window.location.search);
@@ -476,11 +472,9 @@ if (isPublic) {
     deviceId = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     localStorage.setItem('ag_device_id', deviceId);
   }
-  sessionId = sessionStorage.getItem('ag_session_id');
-  if (!sessionId) {
-    sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    sessionStorage.setItem('ag_session_id', sessionId);
-  }
+  // Generate a fresh session ID on every page load to ensure clean conversation history
+  sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  sessionStorage.setItem('ag_session_id', sessionId);
   function getDeviceName() {
     const ua = navigator.userAgent;
     if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return "Tablet";
@@ -528,7 +522,7 @@ async function loadAgent() {
         localStorage.setItem('ag_device_id', deviceId);
       }
       if (!sessionId) {
-        sessionId = sessionStorage.getItem('ag_session_id') || ('sess_' + Math.random().toString(36).substring(2, 15));
+        sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         sessionStorage.setItem('ag_session_id', sessionId);
       }
       if (!deviceName) {
@@ -654,8 +648,43 @@ async function sendMsg() {
     const d = await r.json();
     removeTyping(typing);
     const ans = d.answer || 'No response.';
-    appendMessage('assistant', ans, d.sources || []);
-    if(chatMode === 'v2v') speakText(ans);
+    const enNamePrompt = "\n\nBy the way, what is your name?";
+    const hiNamePromptActual = "\n\nवैसे, आपका नाम क्या है?";
+    const enPhoneMarker = "! Could you also share your mobile number?";
+    const hiPhoneMarker = "! क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?";
+
+    if (ans.includes(enNamePrompt)) {
+      const parts = ans.split(enNamePrompt);
+      appendMessage('assistant', parts[0], d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "By the way, what is your name?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else if (ans.includes(hiNamePromptActual)) {
+      const parts = ans.split(hiNamePromptActual);
+      appendMessage('assistant', parts[0], d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "वैसे, आपका नाम क्या है?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else if (ans.includes(enPhoneMarker)) {
+      const parts = ans.split(enPhoneMarker);
+      appendMessage('assistant', parts[0] + "!", d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "Could you also share your mobile number?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else if (ans.includes(hiPhoneMarker)) {
+      const parts = ans.split(hiPhoneMarker);
+      appendMessage('assistant', parts[0] + "!", d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else {
+      appendMessage('assistant', ans, d.sources || []);
+      if(chatMode === 'v2v') speakText(ans);
+    }
   } catch(e) { removeTyping(typing); toast('❌ Send failed', 'err'); } finally { isTyping = false; }
 }
 

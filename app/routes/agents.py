@@ -1092,7 +1092,22 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
             ollama_url="http://localhost:11434",
         )
     except Exception as e:
-        raise HTTPException(502, f"LLM error: {e}")
+        if s_cfg.get('provider') != 'gemini':
+            logger.warning(f"Primary LLM provider {s_cfg.get('provider')} failed: {e}. Falling back to Gemini...")
+            try:
+                import os
+                fallback_api_key = os.getenv("GOOGLE_API_KEY", "")
+                answer = await llm_with_history(
+                    question=req.question, system=system, history=req.history[-6:],
+                    provider='gemini',
+                    model='gemini-3.5-flash',
+                    api_key=fallback_api_key,
+                    ollama_url="http://localhost:11434",
+                )
+            except Exception as fallback_err:
+                raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
+        else:
+            raise HTTPException(502, f"LLM error: {e}")
 
     return {
         "answer": answer,
@@ -1252,6 +1267,7 @@ async def api_get_agent_public_info(agent_id: str, db: Session = Depends(get_db)
 
 @router.post("/agents/{agent_id}/public-ask", tags=["Agents & DataStores"])
 async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Session = Depends(get_db)):
+    import re
     from app.core.models import Agent, AgentPublicSession, AgentPublicMessage
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
     if not agent:
@@ -1264,7 +1280,7 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     except:
         qa_pairs = []
 
-    # Quick Q&A Match (Instant Sub-second response)
+    # Quick Q&A Match helper
     def clean_match_string(s: str) -> str:
         import re
         if not s: return ""
@@ -1272,49 +1288,8 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         return " ".join(s_clean.split())
 
     q_clean = clean_match_string(req.question)
-    matched_a = None
-    for pair in qa_pairs:
-        pair_q = clean_match_string(pair.get("q", ""))
-        if pair_q and (pair_q == q_clean or pair_q in q_clean or q_clean in pair_q):
-            matched_a = pair.get("a")
-            break
 
-    if matched_a:
-        # User logging
-        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
-        if not session:
-            session = AgentPublicSession(
-                session_id=req.session_id,
-                agent_id=agent_id,
-                device_id=req.device_id,
-                device_name=req.device_name
-            )
-            db.add(session)
-            db.commit()
-            db.refresh(session)
-
-        user_msg = AgentPublicMessage(
-            session_id=req.session_id,
-            role="user",
-            content=req.question
-        )
-        db.add(user_msg)
-        
-        bot_msg = AgentPublicMessage(
-            session_id=req.session_id,
-            role="assistant",
-            content=matched_a
-        )
-        db.add(bot_msg)
-        db.commit()
-
-        return {
-            "answer": matched_a,
-            "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
-            "is_rag": True
-        }
-
-    # Standard chat RAG logic & Lead Capture logic below
+    # 1. Commit user message to DB
     session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
     if not session:
         session = AgentPublicSession(
@@ -1340,86 +1315,158 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         AgentPublicMessage.role == "user"
     ).count()
 
+    is_lead_captured = False
     answer = ""
-    # Lead Capture state machine
-    if not session.user_name and user_msg_count > 3:
+    sources_data = []
+    is_rag = False
+
+    # 2. Lead Capture Interception State Machine
+    if not session.user_name and user_msg_count > 2:
         name_captured = req.question.strip()
         session.user_name = name_captured
         db.commit()
-        answer = f"Nice to meet you, {name_captured}! Could you also share your mobile number?"
+        
+        # Check if conversation is in Hindi to reply in the appropriate language
+        is_hindi = bool(re.search(r'[\u0900-\u097F]', name_captured))
+        if not is_hindi:
+            last_msg = db.query(AgentPublicMessage).filter(
+                AgentPublicMessage.session_id == req.session_id,
+                AgentPublicMessage.role == "assistant"
+            ).order_by(AgentPublicMessage.created_at.desc()).first()
+            if last_msg and re.search(r'[\u0900-\u097F]', last_msg.content):
+                is_hindi = True
+                
+        if is_hindi:
+            answer = f"आपसे मिलकर अच्छा लगा, {name_captured}! क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?"
+        else:
+            answer = f"Nice to meet you, {name_captured}! Could you also share your mobile number?"
+        is_lead_captured = True
+            
     elif session.user_name and not session.phone_number:
         phone_captured = req.question.strip()
         session.phone_number = phone_captured
         db.commit()
-        answer = "Thank you! I have saved your details. How else can I help you today?"
-    else:
-        # Standard chat RAG logic
-        db_history_msgs = db.query(AgentPublicMessage).filter(
-            AgentPublicMessage.session_id == req.session_id
-        ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
-
-        history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
-        try: ds_ids = json.loads(agent.datastores_json or "[]")
-        except: ds_ids = []
-
-        from app.services.embedder import embed_query
-        from app.services.vector_store import get_vector_store
-        from app.services.llm import build_context_and_sources, llm_with_history
-
-        query_emb = embed_query(req.question)
-        results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
-        relevant_results = [res for res in results if res[1] > 0.35]
-        context, sources_data = build_context_and_sources(relevant_results)
-
-        # Add Q&A pairs to context as high-priority training context
-        if qa_pairs:
-            qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
-            qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
-            context = qa_context + (context or "")
-
-        try: s_cfg = json.loads(agent.system_config_json or "{}")
-        except: s_cfg = {}
-
-        identity = (
-            f"You are {agent.name}. {agent.personality}\n"
-            f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi. Do not translate unless asked.\n"
-            f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
-            f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
-            f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
-        )
-
-        if context:
-            system = (
-                f"{identity}\n\n"
-                f"--- KNOWLEDGE BASE CONTEXT ---\n"
-                f"{context}\n"
-                f"--- END OF CONTEXT ---\n\n"
-                f"CRITICAL INSTRUCTIONS:\n"
-                f"1. Prioritize answering based on the provided context if it contains the answer.\n"
-                f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
-            )
+        
+        is_hindi = bool(re.search(r'[\u0900-\u097F]', phone_captured))
+        if not is_hindi:
+            last_msg = db.query(AgentPublicMessage).filter(
+                AgentPublicMessage.session_id == req.session_id,
+                AgentPublicMessage.role == "assistant"
+            ).order_by(AgentPublicMessage.created_at.desc()).first()
+            if last_msg and re.search(r'[\u0900-\u097F]', last_msg.content):
+                is_hindi = True
+                
+        if is_hindi:
+            answer = "धन्यवाद! मैंने आपकी जानकारी सुरक्षित कर ली है। आज मैं आपकी और क्या सहायता कर सकता हूँ?"
         else:
-            system = (
-                f"{identity}\n\n"
-                f"NOTE: No specific information was found in the internal knowledge base.\n"
-                f"INSTRUCTION: Please use your general AI knowledge to provide a helpful and accurate answer.\n\n"
-                f"FINAL DIRECTIVE: Always be helpful. Stop being robotic."
+            answer = "Thank you! I have saved your details. How else can I help you today?"
+        is_lead_captured = True
+
+    # 3. Standard Chat flow (if not currently capturing lead details)
+    if not is_lead_captured:
+        # Quick Q&A Match
+        matched_a = None
+        for pair in qa_pairs:
+            pair_q = clean_match_string(pair.get("q", ""))
+            if pair_q and (pair_q == q_clean or pair_q in q_clean or q_clean in pair_q):
+                matched_a = pair.get("a")
+                break
+
+        if matched_a:
+            answer = matched_a
+            sources_data = [{"source_file": "Training Q&A Pairs", "page_number": 1}]
+            is_rag = True
+        else:
+            # Standard chat RAG logic
+            db_history_msgs = db.query(AgentPublicMessage).filter(
+                AgentPublicMessage.session_id == req.session_id
+            ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
+
+            history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
+            try: ds_ids = json.loads(agent.datastores_json or "[]")
+            except: ds_ids = []
+
+            from app.services.embedder import embed_query
+            from app.services.vector_store import get_vector_store
+            from app.services.llm import build_context_and_sources, llm_with_history
+
+            query_emb = embed_query(req.question)
+            results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
+            relevant_results = [res for res in results if res[1] > 0.35]
+            context, sources_data_raw = build_context_and_sources(relevant_results)
+            sources_data = sources_data_raw
+            is_rag = bool(context)
+
+            # Add Q&A pairs to context as high-priority training context
+            if qa_pairs:
+                qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
+                qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
+                context = qa_context + (context or "")
+
+            try: s_cfg = json.loads(agent.system_config_json or "{}")
+            except: s_cfg = {}
+
+            identity = (
+                f"You are {agent.name}. {agent.personality}\n"
+                f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi. Do not translate unless asked.\n"
+                f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
+                f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
+                f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
             )
 
-        try:
-            answer = await llm_with_history(
-                question=req.question, system=system, history=history_list,
-                provider=s_cfg.get('provider', 'gemini'),
-                model=s_cfg.get('model', 'gemini-3.5-flash'),
-                api_key=s_cfg.get('api_key', ''),
-                ollama_url="http://localhost:11434",
-            )
-            # Prompt for name after 2 turns (on 3rd user message submission)
-            if not session.user_name and user_msg_count == 3:
+            if context:
+                system = (
+                    f"{identity}\n\n"
+                    f"--- KNOWLEDGE BASE CONTEXT ---\n"
+                    f"{context}\n"
+                    f"--- END OF CONTEXT ---\n\n"
+                    f"CRITICAL INSTRUCTIONS:\n"
+                    f"1. Prioritize answering based on the provided context if it contains the answer.\n"
+                    f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
+                )
+            else:
+                system = (
+                    f"{identity}\n\n"
+                    f"NOTE: No specific information was found in the internal knowledge base.\n"
+                    f"INSTRUCTION: Please use your general AI knowledge to provide a helpful and accurate answer.\n\n"
+                    f"FINAL DIRECTIVE: Always be helpful. Stop being robotic."
+                )
+
+            try:
+                answer = await llm_with_history(
+                    question=req.question, system=system, history=history_list,
+                    provider=s_cfg.get('provider', 'gemini'),
+                    model=s_cfg.get('model', 'gemini-3.5-flash'),
+                    api_key=s_cfg.get('api_key', ''),
+                    ollama_url="http://localhost:11434",
+                )
+            except Exception as e:
+                if s_cfg.get('provider') != 'gemini':
+                    logger.warning(f"Primary LLM provider {s_cfg.get('provider')} failed: {e}. Falling back to Gemini...")
+                    try:
+                        import os
+                        fallback_api_key = os.getenv("GOOGLE_API_KEY", "")
+                        answer = await llm_with_history(
+                            question=req.question, system=system, history=history_list,
+                            provider='gemini',
+                            model='gemini-3.5-flash',
+                            api_key=fallback_api_key,
+                            ollama_url="http://localhost:11434",
+                        )
+                    except Exception as fallback_err:
+                        answer = f"Error generating response (Primary and Fallback failed): {fallback_err}"
+                else:
+                    answer = f"Error generating response: {e}"
+
+        # 4. Append name prompt if Turn 2 and name not set
+        if not session.user_name and user_msg_count == 2:
+            is_hindi = bool(re.search(r'[\u0900-\u097F]', answer))
+            if is_hindi:
+                answer += "\n\nवैसे, आपका नाम क्या है?"
+            else:
                 answer += "\n\nBy the way, what is your name?"
-        except Exception as e:
-            answer = f"Error generating response: {e}"
 
+    # 5. Log assistant response to DB
     asst_msg = AgentPublicMessage(
         session_id=req.session_id,
         role="assistant",
@@ -1430,7 +1477,8 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
 
     return {
         "answer": answer,
-        "is_rag": bool(context) if 'context' in locals() else False
+        "sources": [s.__dict__ if hasattr(s, '__dict__') else dict(s) for s in sources_data],
+        "is_rag": is_rag
     }
 
 

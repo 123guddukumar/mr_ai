@@ -692,9 +692,6 @@ function appendMessage(role, text, srcs) {
   const area = document.getElementById('msg-area');
   const div = document.createElement('div');
   div.className = 'msg-wrap ' + role;
-  if (role === 'user' && chatMode === 'v2v') {
-    div.style.display = 'none'; // Keep user spoken bubbles hidden in voice mode
-  }
   let sHtml = '';
   if(srcs && srcs.length) sHtml = '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' + srcs.slice(0,2).map(s=>`<span style="font-size:10px;background:rgba(255,122,0,0.1);padding:3px 8px;border-radius:6px;color:var(--accent);border:1px solid rgba(255,122,0,0.2)">📎 ${esc(s.source_name||s.filename)}</span>`).join('') + '</div>';
   const icon = role === 'user' ? '<i data-lucide="user"></i>' : '<i data-lucide="bot"></i>';
@@ -781,6 +778,46 @@ function toggleVoice() {
   }
 }
 
+function cleanSpeechText(txt) {
+  if(!txt) return '';
+  let t = txt;
+  // Replace Hindi phonetic variations of UPAVP
+  t = t.replace(/एवीपी/gi, 'UPAVP');
+  t = t.replace(/एबीपी/gi, 'UPAVP');
+  t = t.replace(/यूपीएवीपी/gi, 'UPAVP');
+  t = t.replace(/यू पी ए वी पी/gi, 'UPAVP');
+  // Lowercase/uppercase English variants
+  t = t.replace(/upavp/gi, 'UPAVP');
+  t = t.replace(/up avp/gi, 'UPAVP');
+  t = t.replace(/yupvp/gi, 'UPAVP');
+  return t;
+}
+
+let subtitleInterval;
+function showSubtitles(text, delayPerWord) {
+  const trans = document.getElementById('vo-transcript');
+  if (!trans) return;
+  clearInterval(subtitleInterval);
+  
+  const cleanTxt = cleanSpeechText(text);
+  const words = cleanTxt.split(/\s+/).filter(w => w.trim().length > 0);
+  if (words.length === 0) return;
+  
+  let currentIdx = 0;
+  trans.innerHTML = '';
+  
+  const delay = delayPerWord || 400; // Fallback to 400ms if not provided
+  
+  subtitleInterval = setInterval(() => {
+    if (currentIdx < words.length) {
+      trans.innerHTML = words.slice(0, currentIdx + 1).join(' ');
+      currentIdx++;
+    } else {
+      clearInterval(subtitleInterval);
+    }
+  }, delay);
+}
+
 let recognition;
 function startRecognition() {
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -800,22 +837,17 @@ function startRecognition() {
     }
     
     const trans = document.getElementById('vo-transcript');
-    if (chatMode === 'v2v') {
-      if(final) {
-          trans.innerHTML = `<i>Processing voice...</i>`;
-      } else {
-          trans.innerHTML = `<i>Listening…</i>`;
-      }
+    const cleanedFinal = cleanSpeechText(final);
+    const cleanedInterim = cleanSpeechText(interim);
+    
+    if(cleanedFinal) {
+        trans.innerHTML = `<b>${cleanedFinal}</b>`;
     } else {
-      if(final) {
-          trans.innerHTML = `<b>${final}</b>`;
-      } else {
-          trans.innerHTML = `<span>${interim}</span>`;
-      }
+        trans.innerHTML = `<span>${cleanedInterim}</span>`;
     }
     
     if(final) {
-        document.getElementById('chat-input').value = final;
+        document.getElementById('chat-input').value = cleanedFinal;
         isListening = false;
         document.getElementById('vo-btn').classList.remove('active');
         document.getElementById('vo-orb').classList.remove('listening');
@@ -840,9 +872,12 @@ function stopRecognition() { if(recognition) { recognition.onend = null; recogni
 async function speakText(text) {
   if(!window.speechSynthesis) return;
   speechSynthesis.cancel();
+  clearInterval(subtitleInterval);
   
   const status = document.getElementById('vo-status');
-  if(chatMode === 'v2v') status.textContent = 'Speaking…';
+  if(chatMode === 'v2v') {
+    status.textContent = 'Speaking…';
+  }
 
   const cfg = _agentData.voice_config || {};
   const provider = (cfg.provider || 'mrai').toLowerCase();
@@ -860,7 +895,20 @@ async function speakText(text) {
     const audio = new Audio(audioUrl);
     window.currentAudio = audio;
     
+    audio.onplaying = () => {
+      if(chatMode === 'v2v') {
+        const words = cleanSpeechText(text).split(/\s+/).filter(w => w.trim().length > 0);
+        let delay = 400;
+        if (audio.duration && isFinite(audio.duration)) {
+          const totalMs = Math.max(0, (audio.duration * 1000) - 200);
+          delay = totalMs / words.length;
+        }
+        showSubtitles(text, delay);
+      }
+    };
+
     audio.onended = () => {
+      clearInterval(subtitleInterval);
       if(chatMode === 'v2v') {
         status.textContent = 'Tap to Speak';
         setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
@@ -868,6 +916,7 @@ async function speakText(text) {
     };
     
     audio.onerror = (e) => {
+      clearInterval(subtitleInterval);
       console.warn("Backend TTS audio failed...", e);
       if(chatMode === 'v2v') {
         status.textContent = 'Tap to Speak';
@@ -876,6 +925,7 @@ async function speakText(text) {
     };
     
     audio.play().catch(err => {
+      clearInterval(subtitleInterval);
       console.warn("Audio play failed...", err);
       if(chatMode === 'v2v') {
         status.textContent = 'Tap to Speak';
@@ -919,7 +969,12 @@ function speakLocalSpeech(text) {
   u.lang = isHindi ? 'hi-IN' : 'en-US';
   u.rate = 1.0;
   
+  u.onstart = () => {
+    if(chatMode === 'v2v') showSubtitles(text, 380);
+  };
+  
   u.onend = () => {
+    clearInterval(subtitleInterval);
     if(chatMode === 'v2v') {
       status.textContent = 'Tap to Speak';
       setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);

@@ -4,7 +4,7 @@ import secrets
 import os
 from datetime import datetime
 from typing import Optional, List, Dict
-from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Request, Response, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -1187,8 +1187,8 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
         raise HTTPException(400, "Cleaned text is empty")
         
     if provider == "elevenlabs":
-        # Stream audio via ElevenLabs V2.5 Multilingual model (optimized for speed and quality)
-        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128&optimize_streaming_latency=3"
+        # Stream audio via ElevenLabs V2.5 Multilingual model (optimized for latency=2 for clear/crisp speech)
+        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128&optimize_streaming_latency=2"
         headers = {
             "xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""),
             "Content-Type": "application/json",
@@ -1198,10 +1198,10 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             "text": cleaned_text,
             "model_id": "eleven_multilingual_v2",  # Premium high-quality multilingual model
             "voice_settings": {
-                "stability": 0.75,         # Higher stability prevents pitch glitches in Hindi
-                "similarity_boost": 0.85,  # Ensures character voice clarity
-                "style": 0.05,
-                "use_speaker_boost": True  # Keep speaker boost active for clear audio
+                "stability": 0.55,         # Natural human rhythm and intonation (prevents robotic voice)
+                "similarity_boost": 0.75,  # Reduces digital artifacts and noise (much clearer English/Hindi)
+                "style": 0.0,              # Pure/clean output
+                "use_speaker_boost": True  # Active speaker boost
             }
         }
         
@@ -1514,4 +1514,69 @@ async def api_get_session_history(session_id: str, x_app_token: Optional[str] = 
     ).order_by(AgentPublicMessage.created_at.asc()).all()
 
     return [m.to_dict() for m in messages]
+
+
+@router.websocket("/agents/ws/transcribe")
+async def websocket_transcribe(websocket: WebSocket):
+    import websockets
+    import os
+    import json
+    import asyncio
+    from fastapi import WebSocketDisconnect
+    
+    await websocket.accept()
+    
+    dg_api_key = os.getenv("DEEPGRAM_API_KEY", "5d3770e0a1b4aa755f6d799839bb62ba5561a868")
+    if not dg_api_key:
+        await websocket.send_json({"error": "DEEPGRAM_API_KEY not configured"})
+        await websocket.close()
+        return
+
+    # Nova-2 streaming STT with language=multi & WebM auto-detection
+    dg_url = "wss://api.deepgram.com/v1/listen?model=nova-2&language=multi&interim_results=true"
+    headers = {
+        "Authorization": f"Token {dg_api_key}"
+    }
+
+    try:
+        async with websockets.connect(dg_url, additional_headers=headers) as dg_ws:
+            async def receive_from_client():
+                try:
+                    while True:
+                        data = await websocket.receive()
+                        if "bytes" in data:
+                            await dg_ws.send(data["bytes"])
+                        elif "text" in data:
+                            msg = json.loads(data["text"])
+                            if msg.get("type") == "stop":
+                                    break
+                except WebSocketDisconnect:
+                    pass
+                except Exception as e:
+                    logger.error(f"Error receiving from client: {e}")
+                finally:
+                    try:
+                        await dg_ws.send(b"")
+                    except:
+                        pass
+
+            async def send_to_client():
+                try:
+                    async for message in dg_ws:
+                        await websocket.send_text(message)
+                except Exception as e:
+                    logger.error(f"Error sending to client: {e}")
+
+            await asyncio.gather(receive_from_client(), send_to_client())
+    except Exception as e:
+        logger.error(f"Deepgram WebSocket error: {e}")
+        try:
+            await websocket.send_json({"error": f"Connection failed: {e}"})
+        except:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 

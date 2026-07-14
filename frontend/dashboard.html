@@ -3392,7 +3392,7 @@
                 <span class="form-label" style="margin-bottom: 6px;">🖼️ B-Roll Image Generator</span>
                 <div style="display: flex; gap: 10px; flex-direction: column;">
                   <label
-                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--accent); background: rgba(99,102,241,0.07); cursor: pointer;">
+                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer;">
                     <input type="radio" name="ugc-broll-source" id="ugc-broll-source-metaai" value="meta_ai"
                       style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
                     <div>
@@ -3405,9 +3405,9 @@
                     </div>
                   </label>
                   <label
-                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer;">
+                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--accent); background: rgba(99,102,241,0.07); cursor: pointer;">
                     <input type="radio" name="ugc-broll-source" id="ugc-broll-source-pexels" value="pexels"
-                      style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
+                      checked style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
                     <div>
                       <div style="font-size: 13px; font-weight: 600; color: var(--text);">📷 Pexels Stock Photos <span
                           style="font-size: 10px; background: linear-gradient(90deg,#10b981,#06b6d4); color:#fff; padding: 2px 7px; border-radius: 99px; margin-left: 6px;">FREE</span>
@@ -3419,7 +3419,7 @@
                   <label
                     style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer;">
                     <input type="radio" name="ugc-broll-source" id="ugc-broll-source-pollinations" value="pollinations"
-                      checked style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
+                      style="accent-color: var(--accent); margin-top: 2px; flex-shrink: 0;">
                     <div>
                       <div style="font-size: 13px; font-weight: 600; color: var(--text);">⚡ Pollinations AI (Flux)</div>
                       <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Automatically generates
@@ -3982,10 +3982,10 @@
                                 <div style="display:flex; gap:10px; margin: 8px 0; align-items:center;">
                                   <span style="font-size:10px; font-weight:700; color:var(--text2);">Source:</span>
                                   <label style="font-size:10px; color:#fff; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                                    <input type="radio" name="broll-source" value="pollinations" checked> Pollinations AI
+                                    <input type="radio" name="broll-source" value="pollinations"> Pollinations AI
                                   </label>
                                   <label style="font-size:10px; color:#fff; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                                    <input type="radio" name="broll-source" value="pexels"> Pexels Video
+                                    <input type="radio" name="broll-source" value="pexels" checked> Pexels Video
                                   </label>
                                   <label style="font-size:10px; color:#fff; display:flex; align-items:center; gap:3px; cursor:pointer;">
                                     <input type="radio" name="broll-source" value="meta_ai"> Meta AI
@@ -26808,7 +26808,7 @@
 
         // 2. Start Process
         const brollSourceEl = document.querySelector('input[name="ugc-broll-source"]:checked');
-        const brollSource = brollSourceEl ? brollSourceEl.value : "pollinations";
+        const brollSource = brollSourceEl ? brollSourceEl.value : "pexels";
 
         const features = {
           caption: document.getElementById("ugc-feat-caption").checked,

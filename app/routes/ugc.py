@@ -37,7 +37,7 @@ class UgcProcessRequest(BaseModel):
     caption: bool = Field(default=True)
     zoom: bool = Field(default=True)
     broll: bool = Field(default=True)
-    broll_source: Optional[str] = Field(default="pollinations", description="'pollinations' (AI image), 'pexels' (stock video), or 'meta_ai' (pre-uploaded images)")
+    broll_source: Optional[str] = Field(default="pexels", description="'pollinations' (AI image), 'pexels' (stock video), or 'meta_ai' (pre-uploaded images)")
     music: bool = Field(default=True)
     sfx: bool = Field(default=True)
     silence: bool = Field(default=True)

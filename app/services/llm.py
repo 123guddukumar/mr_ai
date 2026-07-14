@@ -12,6 +12,17 @@ from app.models.schemas import ChunkMetadata, SourceCitation
 
 logger = logging.getLogger(__name__)
 
+_llm_async_client = None
+
+def get_llm_async_client() -> httpx.AsyncClient:
+    global _llm_async_client
+    if _llm_async_client is None:
+        _llm_async_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=5.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        )
+    return _llm_async_client
+
 # ── Runtime State (overrides settings at runtime) ─────────────────────────────
 _runtime = {
     "provider": None,      # None = use settings.LLM_PROVIDER
@@ -584,9 +595,9 @@ async def llm_with_history(
         contents.append({"role": "user", "parts": [{"text": question}]})
         payload = {"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}}
-        async with httpx.AsyncClient(timeout=60.0) as hc:
-            r = await hc.post(url, json=payload); r.raise_for_status()
-            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        hc = get_llm_async_client()
+        r = await hc.post(url, json=payload); r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
  
     elif provider == "openai":
         if api_key and (api_key.startswith("AIzaSy") or api_key.startswith("gsk_")):
@@ -661,10 +672,10 @@ async def llm_with_history(
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        async with httpx.AsyncClient(timeout=60.0) as hc:
-            r = await hc.post("https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload)
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"].strip()
+        hc = get_llm_async_client()
+        r = await hc.post("https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 

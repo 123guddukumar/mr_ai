@@ -408,6 +408,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   <div class="voice-overlay" id="vo-overlay">
     <div class="vo-orb" id="vo-orb"><i data-lucide="mic" style="width:60px;height:60px"></i></div>
     <div class="vo-status" id="vo-status">Tap to Speak</div>
+    <div class="vo-timer" id="vo-timer" style="display:none;font-size:14px;color:var(--accent);margin-top:5px">Time: 0.0s</div>
     <div class="vo-sub" id="vo-sub">I am listening to your voice</div>
     <div class="vo-transcript" id="vo-transcript"><i>Waiting for speech…</i></div>
     <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
@@ -629,6 +630,11 @@ async function sendMsg() {
   document.getElementById('hero').style.display = 'none';
   appendMessage('user', text);
   const typing = appendTyping();
+  
+  if (chatMode === 'v2v') {
+    startResponseTimer();
+  }
+
   const history = [];
   document.querySelectorAll('.msg-wrap:not(.typing-wrap)').forEach(m => {
     history.push({role: m.classList.contains('user')?'user':'assistant', content: m.querySelector('.bubble').textContent});
@@ -646,6 +652,7 @@ async function sendMsg() {
     };
     const r = await fetch(BACKEND_URL + url, { method:'POST', headers:hdrs(), body:JSON.stringify(bodyObj) });
     const d = await r.json();
+    stopResponseTimer();
     removeTyping(typing);
     const ans = d.answer || 'No response.';
     const enNamePrompt = "\n\nBy the way, what is your name?";
@@ -685,7 +692,7 @@ async function sendMsg() {
       appendMessage('assistant', ans, d.sources || []);
       if(chatMode === 'v2v') speakText(ans);
     }
-  } catch(e) { removeTyping(typing); toast('❌ Send failed', 'err'); } finally { isTyping = false; }
+  } catch(e) { stopResponseTimer(); removeTyping(typing); toast('❌ Send failed', 'err'); } finally { isTyping = false; }
 }
 
 function appendMessage(role, text, srcs) {
@@ -818,56 +825,192 @@ function showSubtitles(text, delayPerWord) {
   }, delay);
 }
 
-let recognition;
-function startRecognition() {
-  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!Speech) return toast('Browser does not support speech recognition', 'err');
-  if(recognition) recognition.stop();
+let dgSocket;
+let mediaRecorder;
+let audioStream;
+
+let responseTimer;
+let timerStart;
+
+let silenceTimer;
+let speechTranscript = '';
+let currentInterim = '';
+
+function startResponseTimer() {
+  const timerEl = document.getElementById('vo-timer');
+  if(!timerEl) return;
+  timerEl.style.display = 'block';
+  timerEl.textContent = 'Time: 0.0s';
+  clearInterval(responseTimer);
   
-  recognition = new Speech();
-  recognition.lang = 'hi-IN'; 
-  recognition.interimResults = true; // Enabled interim results
-  
-  recognition.onresult = (e) => {
-    let interim = '';
-    let final = '';
-    for (let i = e.resultIndex; i < e.results.length; ++i) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    
-    const trans = document.getElementById('vo-transcript');
-    const cleanedFinal = cleanSpeechText(final);
-    const cleanedInterim = cleanSpeechText(interim);
-    
-    if(cleanedFinal) {
-        trans.innerHTML = `<b>${cleanedFinal}</b>`;
-    } else {
-        trans.innerHTML = `<span>${cleanedInterim}</span>`;
-    }
-    
-    if(final) {
-        document.getElementById('chat-input').value = cleanedFinal;
-        isListening = false;
-        document.getElementById('vo-btn').classList.remove('active');
-        document.getElementById('vo-orb').classList.remove('listening');
-        document.getElementById('vo-status').textContent = 'Processing…';
-        sendMsg();
-    }
-  };
-
-  recognition.onerror = (e) => {
-    console.error('Recognition error:', e.error);
-    if(e.error !== 'no-speech') toggleVoice();
-  };
-
-  recognition.onend = () => {
-    if(isListening) recognition.start(); // Keep listening if we didn't get a result yet
-  };
-
-  recognition.start();
+  timerStart = Date.now();
+  responseTimer = setInterval(() => {
+    const elapsed = ((Date.now() - timerStart) / 1000).toFixed(1);
+    timerEl.textContent = `Response Time: ${elapsed}s`;
+  }, 100);
 }
-function stopRecognition() { if(recognition) { recognition.onend = null; recognition.stop(); } }
+
+function stopResponseTimer() {
+  const timerEl = document.getElementById('vo-timer');
+  if (timerEl) {
+    timerEl.style.display = 'none';
+  }
+  clearInterval(responseTimer);
+}
+
+function resetSilenceTimer() {
+  clearTimeout(silenceTimer);
+  
+  // 1.5 seconds of silence means user has finished speaking
+  silenceTimer = setTimeout(() => {
+    const finalCleaned = cleanSpeechText(speechTranscript).trim();
+    if (finalCleaned) {
+      console.log("Silence detected. Sending message:", finalCleaned);
+      
+      const trans = document.getElementById('vo-transcript');
+      trans.innerHTML = `<b>${finalCleaned}</b>`;
+      document.getElementById('chat-input').value = finalCleaned;
+      
+      isListening = false;
+      document.getElementById('vo-btn').classList.remove('active');
+      document.getElementById('vo-orb').classList.remove('listening');
+      document.getElementById('vo-status').textContent = 'Processing…';
+      
+      stopRecognition();
+      sendMsg();
+    }
+  }, 1500);
+}
+
+function startRecognition() {
+  const trans = document.getElementById('vo-transcript');
+  if (dgSocket) {
+    try { dgSocket.close(); } catch(e){}
+  }
+  
+  speechTranscript = '';
+  currentInterim = '';
+  clearTimeout(silenceTimer);
+  
+  const loc = window.location;
+  const wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+  let wsUrl = wsProto + '//' + loc.host + '/api/agents/ws/transcribe';
+  if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) {
+    const cleanUrl = BACKEND_URL.replace(/^https?:\/\//, '');
+    wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
+  }
+  
+  dgSocket = new WebSocket(wsUrl);
+  
+  dgSocket.onopen = async () => {
+    console.log("Deepgram WS connected!");
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1
+        } 
+      });
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/ogg';
+      }
+      
+      mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0 && dgSocket.readyState === WebSocket.OPEN) {
+          dgSocket.send(event.data);
+        }
+      };
+      
+      mediaRecorder.start(250);
+      
+      if (chatMode === 'v2v') {
+        trans.innerHTML = `<i>Listening…</i>`;
+      }
+    } catch (err) {
+      console.error("Mic access denied or error:", err);
+      toast("❌ Microphone access denied", "err");
+      toggleVoice();
+    }
+  };
+
+  dgSocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      const channel = data.channel || (data.results && data.results.channels && data.results.channels[0]);
+      if (!channel) return;
+      
+      const alternatives = channel.alternatives || [];
+      if (alternatives.length === 0) return;
+      
+      const transcript = alternatives[0].transcript || '';
+      const isFinal = data.is_final;
+      
+      if (transcript.trim()) {
+        resetSilenceTimer();
+        
+        // Barge-In Interruption: if user starts speaking while bot speaks, stop speaking instantly!
+        if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+          console.log("Barge-In detected! User started speaking. Interrupting bot voice...");
+          if (window.currentAudio) {
+            window.currentAudio.pause();
+            window.currentAudio = null;
+          }
+          if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+          }
+          clearInterval(subtitleInterval);
+          const status = document.getElementById('vo-status');
+          if (chatMode === 'v2v') {
+            status.textContent = 'Listening…';
+          }
+        }
+        
+        if (isFinal) {
+          speechTranscript += (speechTranscript ? ' ' : '') + transcript;
+          currentInterim = '';
+        } else {
+          currentInterim = transcript;
+        }
+        
+        const display = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
+        trans.innerHTML = `<span>${display}</span>`;
+      }
+    } catch (e) {
+      console.error("Error parsing Deepgram message:", e);
+    }
+  };
+
+  dgSocket.onerror = (e) => {
+    console.error("Deepgram WS error:", e);
+  };
+
+  dgSocket.onclose = () => {
+    console.log("Deepgram WS connection closed.");
+  };
+}
+
+function stopRecognition() {
+  clearTimeout(silenceTimer);
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try { mediaRecorder.stop(); } catch(e){}
+  }
+  if (audioStream) {
+    audioStream.getTracks().forEach(track => track.stop());
+  }
+  if (dgSocket) {
+    try {
+      dgSocket.send(JSON.stringify({ type: 'stop' }));
+      dgSocket.close();
+    } catch(e){}
+    dgSocket = null;
+  }
+}
 
 async function speakText(text) {
   if(!window.speechSynthesis) return;
@@ -904,14 +1047,19 @@ async function speakText(text) {
           delay = totalMs / words.length;
         }
         showSubtitles(text, delay);
+        
+        // Turn microphone back on during play so user can interrupt (Barge-In)
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
       }
     };
 
     audio.onended = () => {
       clearInterval(subtitleInterval);
       if(chatMode === 'v2v') {
-        status.textContent = 'Tap to Speak';
-        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+        status.textContent = 'Listening…';
       }
     };
     
@@ -919,8 +1067,11 @@ async function speakText(text) {
       clearInterval(subtitleInterval);
       console.warn("Backend TTS audio failed...", e);
       if(chatMode === 'v2v') {
-        status.textContent = 'Tap to Speak';
-        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+        status.textContent = 'Listening…';
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
       }
     };
     
@@ -928,8 +1079,11 @@ async function speakText(text) {
       clearInterval(subtitleInterval);
       console.warn("Audio play failed...", err);
       if(chatMode === 'v2v') {
-        status.textContent = 'Tap to Speak';
-        setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+        status.textContent = 'Listening…';
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
       }
     });
   } else {
@@ -970,14 +1124,19 @@ function speakLocalSpeech(text) {
   u.rate = 1.0;
   
   u.onstart = () => {
-    if(chatMode === 'v2v') showSubtitles(text, 380);
+    if(chatMode === 'v2v') {
+      showSubtitles(text, 380);
+      isListening = true;
+      document.getElementById('vo-btn').classList.add('active');
+      document.getElementById('vo-orb').classList.add('listening');
+      startRecognition();
+    }
   };
   
   u.onend = () => {
     clearInterval(subtitleInterval);
     if(chatMode === 'v2v') {
-      status.textContent = 'Tap to Speak';
-      setTimeout(() => { if(chatMode === 'v2v' && !isListening) toggleVoice(); }, 500);
+      status.textContent = 'Listening…';
     }
   };
 

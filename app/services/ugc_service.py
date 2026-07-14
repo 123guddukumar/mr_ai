@@ -328,7 +328,7 @@ Output ONLY raw JSON (no markdown fences, no extra text):
 
         # ── STAGE 4: Generate B-roll Assets (Flux AI or Meta AI pre-uploaded) ──
         broll_assets = []
-        broll_source = features.get("broll_source", "pollinations")
+        broll_source = features.get("broll_source", "pexels")
         
         if features.get("broll") and edit_plan.get("brolls"):
             update_job_status(job_id, "processing", 45)

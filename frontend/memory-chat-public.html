@@ -655,6 +655,45 @@ async function handleGreeting() {
   await speakMRAI(fullText, targetLang);
 }
 
+function deduplicateText(text) {
+  if (!text) return "";
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  function cleanStr(str) {
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  
+  let words = text.split(' ');
+  if (words.length <= 1) return text;
+  
+  // Try to find a split point where the left part and the right part are phonetically identical
+  for (let i = 1; i < words.length; i++) {
+    let part1 = words.slice(0, i).join(' ');
+    let part2 = words.slice(i).join(' ');
+    
+    let c1 = cleanStr(part1);
+    let c2 = cleanStr(part2);
+    
+    if (c1 === c2 && c1.length > 2) {
+      return part1;
+    }
+  }
+  
+  // Check for sliding window phrase repetitions
+  for (let len = Math.floor(words.length / 2); len >= 1; len--) {
+    for (let i = 0; i <= words.length - 2 * len; i++) {
+      let w1 = words.slice(i, i + len).join(' ');
+      let w2 = words.slice(i + len, i + 2 * len).join(' ');
+      if (cleanStr(w1) === cleanStr(w2) && cleanStr(w1).length > 1) {
+        words.splice(i + len, len);
+        return words.join(' ');
+      }
+    }
+  }
+  
+  return text;
+}
+
 function listenOnce(){
   return new Promise(resolve=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -662,9 +701,10 @@ function listenOnce(){
     rec.lang=localStorage.getItem('mrairag_sv_lang')||'en-IN'; isRec=true;
     let ft='';
     rec.onresult=(e)=>{ let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-      ft=t; detectedLang=detectLangFromText(t);
-      document.getElementById('chat-input').value=t; autoResize(document.getElementById('chat-input'));
-      document.getElementById('vo-sublabel').textContent='“'+t+'”'; };
+      const cleanT = deduplicateText(t);
+      ft=cleanT; detectedLang=detectLangFromText(cleanT);
+      document.getElementById('chat-input').value=cleanT; autoResize(document.getElementById('chat-input'));
+      document.getElementById('vo-sublabel').textContent='“'+cleanT+'”'; };
     rec.onend=()=>{ isRec=false; resolve(ft.trim()); };
     rec.onerror=(e)=>{ isRec=false; resolve(''); };
     rec.start();
@@ -679,9 +719,10 @@ function startVTT(){
   rec=new SR(); rec.continuous=false; rec.interimResults=true;
   rec.lang=localStorage.getItem('mrairag_sv_lang')||'en-IN'; isRec=true;
   rec.onresult=(e)=>{ let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
+    const cleanT = deduplicateText(t);
     detectedLang=rec.lang||'';
-    document.getElementById('chat-input').value=t; autoResize(document.getElementById('chat-input'));
-    document.getElementById('vtt-transcript').textContent=t; };
+    document.getElementById('chat-input').value=cleanT; autoResize(document.getElementById('chat-input'));
+    document.getElementById('vtt-transcript').textContent=cleanT; };
   rec.onend=()=>{
     isRec=false; document.getElementById('vtt-overlay').classList.remove('active');
     const q=document.getElementById('chat-input').value.trim();

@@ -4664,6 +4664,7 @@ async def delete_pyq_reel(reel_id: str, client: dict = Depends(_require_client),
 class ChatRequest(BaseModel):
     question: str
     top_k: Optional[int] = 5
+    is_voice: Optional[bool] = False
 
 
 @router.post("/classroom/papers/{paper_id}/vectorize", tags=["Classroom Chatbot"])
@@ -4783,6 +4784,7 @@ async def vectorize_pyq_set(
 class ChatRequest(BaseModel):
     question: str
     top_k: Optional[int] = 5
+    is_voice: Optional[bool] = False
 
 
 # Cooldown memory for rate-limited models to prevent repeated latency on subsequent requests
@@ -4929,7 +4931,15 @@ async def chat_classroom_paper(
     if any(ord(char) > 127 for char in question):
         try:
             translation_prompt = f"Translate the following Hindi query into a concise English search query for information retrieval. Only return the direct English translation, nothing else.\nQuery: {question}"
-            translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+            if req.is_voice:
+                from app.services.llm import generate_simple_response, set_runtime_provider, get_active_provider
+                from app.core.config import settings
+                primary_provider = get_active_provider()
+                set_runtime_provider("groq", settings.GROQ_API_KEY, "llama-3.1-8b-instant")
+                translated = await generate_simple_response(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+                set_runtime_provider(primary_provider, "", "")
+            else:
+                translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
             search_query = translated.strip()
             logger.info(f"Translated paper query: '{question}' -> '{search_query}'")
         except Exception as e:
@@ -4965,7 +4975,15 @@ async def chat_classroom_paper(
     )
 
     try:
-        raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
+        if req.is_voice:
+            from app.services.llm import generate_simple_response, set_runtime_provider, get_active_provider
+            from app.core.config import settings
+            primary_provider = get_active_provider()
+            set_runtime_provider("groq", settings.GROQ_API_KEY, "llama-3.1-8b-instant")
+            raw_answer = await generate_simple_response(prompt, system_prompt, max_tokens=500)
+            set_runtime_provider(primary_provider, "", "")
+        else:
+            raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
         answer = prefix_msg + raw_answer
     except Exception as e:
         logger.error(f"Paper chat LLM failed (all fallbacks): {e}")
@@ -5087,7 +5105,15 @@ async def chat_classroom_pyq_set(
     if any(ord(char) > 127 for char in question):
         try:
             translation_prompt = f"Translate the following Hindi query into a concise English search query for information retrieval. Only return the direct English translation, nothing else.\nQuery: {question}"
-            translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+            if req.is_voice:
+                from app.services.llm import generate_simple_response, set_runtime_provider, get_active_provider
+                from app.core.config import settings
+                primary_provider = get_active_provider()
+                set_runtime_provider("groq", settings.GROQ_API_KEY, "llama-3.1-8b-instant")
+                translated = await generate_simple_response(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
+                set_runtime_provider(primary_provider, "", "")
+            else:
+                translated = await _chat_llm_with_fallback(translation_prompt, "You are a translator. Only return the direct translation.", max_tokens=128)
             search_query = translated.strip()
             logger.info(f"Translated PYQ query: '{question}' -> '{search_query}'")
         except Exception as e:
@@ -5123,7 +5149,15 @@ async def chat_classroom_pyq_set(
     )
 
     try:
-        raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
+        if req.is_voice:
+            from app.services.llm import generate_simple_response, set_runtime_provider, get_active_provider
+            from app.core.config import settings
+            primary_provider = get_active_provider()
+            set_runtime_provider("groq", settings.GROQ_API_KEY, "llama-3.1-8b-instant")
+            raw_answer = await generate_simple_response(prompt, system_prompt, max_tokens=500)
+            set_runtime_provider(primary_provider, "", "")
+        else:
+            raw_answer = await _chat_llm_with_fallback(prompt, system_prompt, max_tokens=1024)
         answer = prefix_msg + raw_answer
     except Exception as e:
         logger.error(f"PYQ chat LLM failed (all fallbacks): {e}")
@@ -5222,13 +5256,13 @@ async def elevenlabs_tts_proxy(
         cut = text.rfind(' ', 0, 250)
         text = text[:cut if cut > 150 else 250]
 
-    # eleven_flash_v2_5 = ElevenLabs fastest model (~0.3s latency, supports Hindi/English)
+    # eleven_multilingual_v2 = ElevenLabs high-quality multilingual model (for realistic Hindi/English speech)
     payload = {
         "text": text,
-        "model_id": "eleven_flash_v2_5",
+        "model_id": "eleven_multilingual_v2",
         "voice_settings": {
             "stability": 0.45,
-            "similarity_boost": 0.80,
+            "similarity_boost": 0.85,
             "style": 0.0,
             "use_speaker_boost": True
         }
@@ -5291,12 +5325,12 @@ async def elevenlabs_tts_proxy_get(
 
     payload = {
         "text": text,
-        "model_id": "eleven_flash_v2_5",
+        "model_id": "eleven_multilingual_v2",
         "voice_settings": {
             "stability": 0.45,
-            "similarity_boost": 0.80,
+            "similarity_boost": 0.85,
             "style": 0.0,
-            "use_speaker_boost": False
+            "use_speaker_boost": True
         }
     }
     headers = {

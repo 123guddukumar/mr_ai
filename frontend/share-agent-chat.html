@@ -78,12 +78,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .voice-overlay{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:40px;text-align:center;animation:fade-in 0.5s ease}
 @keyframes fade-in{from{opacity:0}to{opacity:1}}
 .voice-overlay.active{display:flex}
-.vo-orb{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--accent), var(--accent2));display:flex;align-items:center;justify-content:center;font-size:60px;margin-bottom:40px;position:relative;box-shadow:0 0 60px rgba(255,122,0,0.3);overflow:hidden;border:4px solid var(--accent)}
+.vo-orb{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--accent), var(--accent2));display:flex;align-items:center;justify-content:center;font-size:60px;margin-bottom:40px;position:relative;box-shadow:0 0 60px rgba(255,122,0,0.3);overflow:hidden;border:4px solid var(--accent);flex-shrink:0}
+.vo-orb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.vo-orb i, .vo-orb svg{width:60px;height:60px;flex-shrink:0;display:block}
 .vo-orb.listening{animation:pulse-vo 1.5s infinite}
 @keyframes pulse-vo{0%{transform:scale(1);box-shadow:0 0 60px rgba(255,122,0,0.3)}50%{transform:scale(1.1);box-shadow:0 0 100px rgba(255,122,0,0.6)}100%{transform:scale(1);box-shadow:0 0 60px rgba(255,122,0,0.3)}}
 .vo-status{font-size:24px;font-weight:800;color:var(--text);margin-bottom:12px}
 .vo-sub{font-size:16px;color:var(--text2);margin-bottom:40px}
-.vo-mic-btn{width:80px;height:80px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(255,122,0,0.4);transition:all 0.3s}
+.vo-mic-btn{width:80px;height:80px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(255,122,0,0.4);transition:all 0.3s;flex-shrink:0}
+.vo-mic-btn i, .vo-mic-btn svg{width:32px;height:32px;flex-shrink:0;display:block}
 .vo-mic-btn:hover{transform:scale(1.1);background:var(--accent2)}
 .vo-mic-btn.active{background:var(--red);animation:vibe-btn .2s infinite}
 @keyframes vibe-btn{0%{transform:rotate(0)}25%{transform:rotate(3deg)}75%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
@@ -93,6 +96,230 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .toast-card{padding:14px 24px;border-radius:16px;font-size:13px;font-weight:700;background:var(--bg2);border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.7)}
 .toast-card.err{border-color:var(--red);color:var(--red)}
 .vo-transcript{margin-top:20px;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--border);max-width:80%;font-style:italic;color:var(--text2);font-size:14px;min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center}
+
+/* Feedback & Report Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 15, 23, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 20px;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 460px;
+  padding: 30px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.modal-overlay.open .modal-box {
+  transform: translateY(0);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover {
+  color: var(--red);
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.form-input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.15);
+}
+.type-toggle-group {
+  display: flex;
+  background: var(--bg3);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.type-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.type-btn.active {
+  background: var(--accent);
+  color: #000000;
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.25);
+}
+.star-rating {
+  display: flex;
+  gap: 8px;
+  font-size: 24px;
+  color: var(--text3);
+  align-items: center;
+}
+.star-rating i, .star-rating svg {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.star-rating i:hover, .star-rating svg:hover,
+.star-rating i.active, .star-rating svg.active {
+  color: var(--accent);
+  transform: scale(1.1);
+}
+.star-rating i.active, .star-rating svg.active {
+  fill: var(--accent);
+}
+.submit-btn {
+  background: var(--accent);
+  color: #000000;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.submit-btn:hover {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.3);
+}
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Action Banner ── */
+.ag-action-banner {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(124, 58, 237, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  color: #ffffff;
+  font-size: 13px;
+  animation: slideUpAction 0.3s ease;
+}
+.ag-action-banner.whatsapp {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+}
+@keyframes slideUpAction {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ag-action-btn {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 7px 15px;
+  border-radius: 20px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+.ag-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.ag-action-close {
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  color: #ffffff;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  margin-left: 10px;
+  transition: all 0.2s;
+}
+.ag-action-close:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(1.1);
+}
 
 /* ── Premium Landing Page ── */
 .landing-overlay {
@@ -350,6 +577,34 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   20% { opacity: 1; }
   100% { opacity: .2; }
 }
+.lang-selector {
+  display: inline-flex !important;
+  gap: 12px;
+  margin-bottom: 25px;
+  background: rgba(255,255,255,0.05);
+  padding: 6px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.lang-pill {
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text2) !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+.lang-pill.active {
+  background: var(--accent) !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 15px rgba(255, 122, 0, 0.4) !important;
+}
 </style>
 </head>
 <body id="body">
@@ -399,6 +654,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     </div>
   </div>
   <div class="nav-right">
+    <button class="nav-btn" onclick="clearLocalChat()" title="Clear Chat Screen"><i data-lucide="trash-2"></i></button>
+    <button class="nav-btn" onclick="openFeedbackModal()" title="Report & Feedback"><i data-lucide="flag"></i></button>
     <button class="nav-btn" onclick="toggleTheme()"><i data-lucide="moon" id="theme-icon"></i></button>
   </div>
 </nav>
@@ -410,6 +667,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <div class="vo-status" id="vo-status">Tap to Speak</div>
     <div class="vo-timer" id="vo-timer" style="display:none;font-size:14px;color:var(--accent);margin-top:5px">Time: 0.0s</div>
     <div class="vo-sub" id="vo-sub">I am listening to your voice</div>
+    
+
     <div class="vo-transcript" id="vo-transcript"><i>Waiting for speech…</i></div>
     <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
     <button class="vo-close-btn" onclick="setMode('text')"><i data-lucide="x"></i> Text Chat</button>
@@ -426,6 +685,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <!-- Suggestions Bar -->
     <div class="suggestions-bar" id="suggestions-bar"></div>
     <div class="input-dock">
+      <div id="action-banner-wrapper"></div>
       <div class="input-bar">
         <button class="input-mic-btn" id="input-mic-btn" onclick="setMode('v2v')"><i data-lucide="mic"></i></button>
         <textarea id="chat-input" rows="1" placeholder="Type here…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -473,9 +733,11 @@ if (isPublic) {
     deviceId = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     localStorage.setItem('ag_device_id', deviceId);
   }
-  // Generate a fresh session ID on every page load to ensure clean conversation history
-  sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  sessionStorage.setItem('ag_session_id', sessionId);
+  sessionId = localStorage.getItem('ag_session_id_' + AGENT_ID);
+  if (!sessionId) {
+    sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+  }
   function getDeviceName() {
     const ua = navigator.userAgent;
     if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return "Tablet";
@@ -606,7 +868,9 @@ async function loadAgent() {
     // Trigger mobile landing page if responsive
     checkShowLandingPage();
 
-    if(d.starting_message) {
+    const hasPastHistory = await loadPublicHistory();
+
+    if(!hasPastHistory && d.starting_message) {
       setTimeout(() => {
         const h = document.getElementById('hero');
         if(h) h.style.display = 'none';
@@ -616,10 +880,122 @@ async function loadAgent() {
     }
     setMode(chatMode);
     lucide.createIcons();
+
+    // Start background polling for creator action buttons
+    setInterval(checkSessionAction, 4000);
   } catch(e) {
     console.error('Load Failed:', e);
     toast('⚠️ Connection error. Please reload.', 'err');
   }
+}
+
+let currentActionData = null;
+let dismissedActionTime = null;
+
+function renderActionBanner(action) {
+  const container = document.getElementById('action-banner-wrapper');
+  if (!container) return;
+  
+  if (!action || !action.action_type) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  if (dismissedActionTime === action.created_at) {
+    return;
+  }
+  
+  currentActionData = action;
+  const isWa = action.action_type === 'whatsapp';
+  const cleanPhone = (action.phone_number || '').replace(/[^\d+]/g, '');
+  const targetUrl = isWa 
+    ? `https://wa.me/${cleanPhone.replace('+', '')}`
+    : `tel:${cleanPhone}`;
+    
+  const bannerClass = isWa ? 'ag-action-banner whatsapp' : 'ag-action-banner';
+  const icon = isWa ? '💬' : '📞';
+  const label = action.message || (isWa ? 'Connect on WhatsApp' : 'Call Us Now');
+  const btnText = isWa ? 'Chat on WhatsApp' : `Call ${cleanPhone}`;
+  
+  container.innerHTML = `
+    <div class="${bannerClass}">
+      <div style="display:flex; align-items:center; gap:8px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+        <span style="font-size:16px">${icon}</span>
+        <span style="overflow:hidden; text-overflow:ellipsis">${esc(label)}</span>
+      </div>
+      <div style="display:flex; align-items:center; flex-shrink:0">
+        <a href="${targetUrl}" target="${isWa ? '_blank' : '_self'}" class="ag-action-btn">
+          ${btnText}
+        </a>
+        <button class="ag-action-close" onclick="dismissActionBanner()" title="Close">&times;</button>
+      </div>
+    </div>
+  `;
+}
+
+function dismissActionBanner() {
+  if (currentActionData) {
+    dismissedActionTime = currentActionData.created_at;
+  }
+  const container = document.getElementById('action-banner-wrapper');
+  if (container) container.innerHTML = '';
+}
+
+async function checkSessionAction() {
+  if (!AGENT_ID || !deviceId || !isPublic) return;
+  try {
+    const url = `/api/agents/${AGENT_ID}/session-status?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+    const r = await fetch(url);
+    if (r.ok) {
+      const data = await r.json();
+      if (data.session) {
+        if (data.session.session_id) {
+          sessionId = data.session.session_id;
+          localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+        }
+        renderActionBanner(data.session.action_button);
+      }
+    }
+  } catch (e) {}
+}
+
+async function loadPublicHistory() {
+  if (!isPublic || !AGENT_ID || !deviceId) return false;
+  try {
+    const url = `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+    const r = await fetch(url);
+    if (!r.ok) return false;
+    const data = await r.json();
+    if (data.session && data.session.session_id) {
+      sessionId = data.session.session_id;
+      localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+    }
+    if (data.messages && data.messages.length > 0) {
+      const hero = document.getElementById('hero');
+      if (hero) hero.style.display = 'none';
+      
+      data.messages.forEach(m => {
+        appendMessage(m.role === 'user' ? 'user' : 'assistant', m.content);
+      });
+      if (data.session && data.session.action_button) {
+        renderActionBanner(data.session.action_button);
+      }
+      return true;
+    }
+    if (data.session && data.session.action_button) {
+      renderActionBanner(data.session.action_button);
+    }
+  } catch (e) {
+    console.warn("Could not load past chat history:", e);
+  }
+function clearLocalChat() {
+  const msgArea = document.getElementById('msg-area');
+  if (!msgArea) return;
+  msgArea.querySelectorAll('.msg-wrap').forEach(el => el.remove());
+  const hero = document.getElementById('hero');
+  if (hero) hero.style.display = 'block';
+  dismissActionBanner();
+  toast('🧹 Chat screen cleared', 'success');
 }
 
 async function sendMsg() {
@@ -645,10 +1021,12 @@ async function sendMsg() {
       question: text,
       session_id: sessionId,
       device_id: deviceId,
-      device_name: deviceName
+      device_name: deviceName,
+      is_voice: chatMode === 'v2v'
     } : {
       question: text,
-      history: history.slice(-6)
+      history: history.slice(-6),
+      is_voice: chatMode === 'v2v'
     };
     const r = await fetch(BACKEND_URL + url, { method:'POST', headers:hdrs(), body:JSON.stringify(bodyObj) });
     const d = await r.json();
@@ -797,6 +1175,10 @@ function cleanSpeechText(txt) {
   t = t.replace(/upavp/gi, 'UPAVP');
   t = t.replace(/up avp/gi, 'UPAVP');
   t = t.replace(/yupvp/gi, 'UPAVP');
+  // Brand name corrections
+  t = t.replace(/the dean technology/gi, 'Diin Technology');
+  t = t.replace(/dean technology/gi, 'Diin Technology');
+  t = t.replace(/diin technology/gi, 'Diin Technology');
   return t;
 }
 
@@ -858,12 +1240,102 @@ function stopResponseTimer() {
   clearInterval(responseTimer);
 }
 
+function removeSentenceRestarts(text) {
+  if (!text) return '';
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // List of common query starters (English and Hindi/Hinglish)
+  const starters = [
+    'who is', 'what is', 'where is', 'how is', 'why is', 'tell me', 'can you', 'do you', 'show me', 'how to',
+    'what are', 'who are', 'who was', 'what was', 'where was',
+    'कौन है', 'क्या है', 'कहाँ है', 'कैसे', 'क्यों', 'बताओ', 'दिखाओ', 'naam kya', 'kya hai', 'kaun hai', 'kaha hai'
+  ];
+  
+  const lower = text.toLowerCase();
+  for (let starter of starters) {
+    const idx = lower.lastIndexOf(starter);
+    if (idx > 0) {
+      // If the starter appears again later in the string, keep only from that last occurrence
+      return text.substring(idx);
+    }
+  }
+  return text;
+}
+
+function cleanMixedScript(text) {
+  if (!text) return '';
+  const hasLatin = /[a-zA-Z]/.test(text);
+  const hasDevanagari = /[\u0900-\u097F]/.test(text);
+  
+  if (hasLatin && hasDevanagari) {
+    // Transliterate Devanagari characters to English phonetics
+    const devanagariMap = {
+      'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+      'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
+      'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
+      'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+      'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+      'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+      'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+      'ा': 'a', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'ृ': 'ri', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n', '्': '',
+      '।': '.'
+    };
+    let out = '';
+    for (let char of text) {
+      out += devanagariMap[char] || char;
+    }
+    return out;
+  }
+  return text;
+}
+
+function deduplicateText(text) {
+  if (!text) return "";
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  function cleanStr(str) {
+    // Keep Unicode letters (including Hindi Devanagari) and digits
+    return str.toLowerCase().replace(/[^\p{L}\d]/gu, '');
+  }
+  
+  let words = text.split(' ');
+  if (words.length <= 1) return text;
+  
+  // Try to find a split point where the left part and the right part are phonetically identical
+  for (let i = 1; i < words.length; i++) {
+    let part1 = words.slice(0, i).join(' ');
+    let part2 = words.slice(i).join(' ');
+    
+    let c1 = cleanStr(part1);
+    let c2 = cleanStr(part2);
+    
+    if (c1 === c2 && c1.length > 2) {
+      return part1;
+    }
+  }
+  
+  // Check for sliding window phrase repetitions
+  for (let len = Math.floor(words.length / 2); len >= 1; len--) {
+    for (let i = 0; i <= words.length - 2 * len; i++) {
+      let w1 = words.slice(i, i + len).join(' ');
+      let w2 = words.slice(i + len, i + 2 * len).join(' ');
+      if (cleanStr(w1) === cleanStr(w2) && cleanStr(w1).length > 1) {
+        words.splice(i + len, len);
+        return words.join(' ');
+      }
+    }
+  }
+  
+  return text;
+}
+
 function resetSilenceTimer() {
   clearTimeout(silenceTimer);
   
   // 1.5 seconds of silence means user has finished speaking
   silenceTimer = setTimeout(() => {
-    const finalCleaned = cleanSpeechText(speechTranscript).trim();
+    const rawCleaned = cleanSpeechText(speechTranscript);
+    const finalCleaned = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawCleaned))).trim();
     if (finalCleaned) {
       console.log("Silence detected. Sending message:", finalCleaned);
       
@@ -893,10 +1365,12 @@ function startRecognition() {
   clearTimeout(silenceTimer);
   
   const loc = window.location;
-  const wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+  let wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
   let wsUrl = wsProto + '//' + loc.host + '/api/agents/ws/transcribe';
   if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) {
-    const cleanUrl = BACKEND_URL.replace(/^https?:\/\//, '');
+    const cleanUrl = BACKEND_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (BACKEND_URL.startsWith('https://')) wsProto = 'wss:';
+    else if (BACKEND_URL.startsWith('http://')) wsProto = 'ws:';
     wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
   }
   
@@ -978,7 +1452,8 @@ function startRecognition() {
           currentInterim = transcript;
         }
         
-        const display = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
+        const rawDisplay = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
+        const display = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawDisplay)));
         trans.innerHTML = `<span>${display}</span>`;
       }
     } catch (e) {
@@ -1066,6 +1541,7 @@ async function speakText(text) {
     audio.onerror = (e) => {
       clearInterval(subtitleInterval);
       console.warn("Backend TTS audio failed...", e);
+      toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
       if(chatMode === 'v2v') {
         status.textContent = 'Listening…';
         isListening = true;
@@ -1078,6 +1554,7 @@ async function speakText(text) {
     audio.play().catch(err => {
       clearInterval(subtitleInterval);
       console.warn("Audio play failed...", err);
+      toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
       if(chatMode === 'v2v') {
         status.textContent = 'Listening…';
         isListening = true;
@@ -1221,7 +1698,174 @@ function clickSuggestion(questionText, idx) {
   }
 }
 
+let currentFeedbackType = 'feedback';
+let currentFeedbackRating = 0;
+
+function openFeedbackModal() {
+  document.getElementById('fb-user-name').value = '';
+  document.getElementById('fb-user-email').value = '';
+  document.getElementById('fb-comment').value = '';
+  setFeedbackType('feedback');
+  setFeedbackRating(0);
+  document.getElementById('feedback-modal').classList.add('open');
+}
+
+function closeFeedbackModal() {
+  document.getElementById('feedback-modal').classList.remove('open');
+}
+
+function setFeedbackType(type) {
+  currentFeedbackType = type;
+  const btnFb = document.getElementById('type-btn-feedback');
+  const btnRep = document.getElementById('type-btn-report');
+  const ratingGroup = document.getElementById('fb-rating-group');
+  const commentLabel = document.getElementById('fb-comment-label');
+  const commentInput = document.getElementById('fb-comment');
+  const submitBtn = document.getElementById('fb-submit-btn');
+
+  if (type === 'feedback') {
+    btnFb.classList.add('active');
+    btnRep.classList.remove('active');
+    ratingGroup.style.display = 'flex';
+    commentLabel.textContent = 'Feedback Message';
+    commentInput.placeholder = 'Write your experience or concerns...';
+    submitBtn.textContent = 'Submit Feedback';
+  } else {
+    btnFb.classList.remove('active');
+    btnRep.classList.add('active');
+    ratingGroup.style.display = 'none';
+    commentLabel.textContent = 'Report Reason';
+    commentInput.placeholder = 'Please describe the issue or policy violation...';
+    submitBtn.textContent = 'Report Agent';
+  }
+}
+
+function setFeedbackRating(rating) {
+  currentFeedbackRating = rating;
+  const stars = document.querySelectorAll('#fb-star-rating [data-val]');
+  stars.forEach(star => {
+    const val = parseInt(star.getAttribute('data-val'));
+    if (val <= rating) {
+      star.classList.add('active');
+    } else {
+      star.classList.remove('active');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ratingContainer = document.getElementById('fb-star-rating');
+  if (ratingContainer) {
+    ratingContainer.addEventListener('click', e => {
+      const star = e.target.closest('[data-val]');
+      if (star) {
+        const val = parseInt(star.getAttribute('data-val'));
+        setFeedbackRating(val);
+      }
+    });
+  }
+  // Initial lucide check
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+
+async function submitFeedback() {
+  const comment = document.getElementById('fb-comment').value.trim();
+  if (!comment) {
+    alert(currentFeedbackType === 'feedback' ? 'Please enter feedback message' : 'Please enter report reason');
+    return;
+  }
+
+  const name = document.getElementById('fb-user-name').value.trim();
+  const email = document.getElementById('fb-user-email').value.trim();
+  const btn = document.getElementById('fb-submit-btn');
+  
+  const payload = {
+    user_name: name || null,
+    user_email: email || null,
+    feedback_type: currentFeedbackType,
+    rating: currentFeedbackType === 'feedback' ? (currentFeedbackRating || null) : null,
+    comment: comment
+  };
+
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = 'Sending...';
+
+  try {
+    const r = await fetch(`/api/agents/${AGENT_ID}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const res = await r.json();
+    if (!r.ok) throw new Error(res.detail || 'Submission failed');
+
+    if (typeof showToast === 'function') {
+      showToast('Thank you! Submitted successfully.', 'success');
+    } else {
+      alert('Thank you! Submitted successfully.');
+    }
+    closeFeedbackModal();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+}
+
 loadAgent();
+</script>
+
+<!-- Feedback & Report Modal -->
+<div class="modal-overlay" id="feedback-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="fb-modal-title">Share Feedback / Report Agent</div>
+      <button class="modal-close" onclick="closeFeedbackModal()"><i data-lucide="x" style="width:20px;height:20px"></i></button>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-toggle-group">
+        <button class="type-btn active" id="type-btn-feedback" onclick="setFeedbackType('feedback')"><i data-lucide="message-square" style="width:14px;height:14px"></i> Feedback</button>
+        <button class="type-btn" id="type-btn-report" onclick="setFeedbackType('report')"><i data-lucide="alert-triangle" style="width:14px;height:14px"></i> Report</button>
+      </div>
+    </div>
+
+    <div class="form-group" id="fb-rating-group">
+      <label class="form-label">Rating</label>
+      <div class="star-rating" id="fb-star-rating">
+        <i data-lucide="star" data-val="1"></i>
+        <i data-lucide="star" data-val="2"></i>
+        <i data-lucide="star" data-val="3"></i>
+        <i data-lucide="star" data-val="4"></i>
+        <i data-lucide="star" data-val="5"></i>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Your Name (Optional)</label>
+      <input type="text" class="form-input" id="fb-user-name" placeholder="e.g. John Doe">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Your Email (Optional)</label>
+      <input type="email" class="form-input" id="fb-user-email" placeholder="e.g. john@example.com">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" id="fb-comment-label">Feedback Message</label>
+      <textarea class="form-input" id="fb-comment" style="height:100px; resize:none" placeholder="Write your experience or concerns..."></textarea>
+    </div>
+
+    <button class="submit-btn" id="fb-submit-btn" onclick="submitFeedback()">Submit Feedback</button>
+  </div>
+</div>
+
+<script>
+// Re-trigger lucide icons since we added new elements to the DOM
+if (typeof lucide !== 'undefined') lucide.createIcons();
 </script>
 </body>
 </html>

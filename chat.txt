@@ -233,3 +233,9 @@ and Now add asset setting on UGC request inbox page in which add upload intro/ou
 and when click on download bundle then why not download fix it 
 
 and when again generate any scene with choose meta ai extension then why not working generate image/video from meta ai extention which i used for generating scene on editor  
+
+
+
+
+
+

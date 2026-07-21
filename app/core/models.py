@@ -995,6 +995,8 @@ class AgentPublicSession(Base):
     device_name = Column(String(200), default="Unknown Device")
     user_name = Column(String(200), nullable=True)
     phone_number = Column(String(50), nullable=True)
+    analysis_json = Column(Text, nullable=True)
+    action_button_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -1002,6 +1004,16 @@ class AgentPublicSession(Base):
     messages = relationship("AgentPublicMessage", back_populates="session", cascade="all, delete-orphan")
 
     def to_dict(self):
+        try:
+            analysis = json.loads(self.analysis_json) if self.analysis_json else None
+        except:
+            analysis = None
+
+        try:
+            action_btn = json.loads(self.action_button_json) if self.action_button_json else None
+        except:
+            action_btn = None
+
         return {
             "id": self.id,
             "session_id": self.session_id,
@@ -1010,6 +1022,8 @@ class AgentPublicSession(Base):
             "device_name": self.device_name,
             "user_name": self.user_name or "",
             "phone_number": self.phone_number or "",
+            "analysis": analysis,
+            "action_button": action_btn,
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "updated_at": self.updated_at.isoformat() if self.updated_at else "",
         }

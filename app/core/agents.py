@@ -100,7 +100,7 @@ def delete_agent_source(agent_id: str, source_id: int, client_id: str, db: Sessi
     
     # Purge from Vector Store
     from app.services.vector_store import get_vector_store
-    get_vector_store().purge_by_source(agent_id=agent_id, source_file=src.filename)
+    get_vector_store().purge_by_source(agent_id=agent_id, source_file=src.source_name)
     
     db.delete(src)
     db.commit()

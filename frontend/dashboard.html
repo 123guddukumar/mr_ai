@@ -2253,6 +2253,43 @@
       user-select: none;
     }
 
+    /* Language Selection Pills inside Voice Overlay */
+    .voice-lang-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 25px;
+      z-index: 1002;
+    }
+
+    .lang-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      outline: none;
+    }
+
+    .lang-pill:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .lang-pill.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.6);
+      color: #60a5fa;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+    }
+
     .voice-close-btn {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid rgba(239, 68, 68, 0.25);
@@ -2271,6 +2308,1229 @@
       background: rgba(239, 68, 68, 0.2);
       border-color: rgba(239, 68, 68, 0.4);
       box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       ADS GENERATOR — PREMIUM UI
+    ═══════════════════════════════════════════════════════════════════ */
+
+    /* ── Panel wrapper ─────────────────────────────────────────────── */
+    #panel-ads {
+      height: 100%;
+      overflow-y: auto;
+      padding: 0;
+      background: var(--bg);
+    }
+
+    .ads-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+    }
+
+    /* ── HERO ──────────────────────────────────────────────────────── */
+    .ads-hero {
+      position: relative;
+      border-radius: 24px;
+      padding: 36px 40px;
+      margin-bottom: 28px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0d0f17 0%, #1a1040 50%, #0d1a2e 100%);
+      border: 1px solid rgba(255,122,0,0.2);
+    }
+
+    .ads-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 10% 50%, rgba(255,122,0,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(139,92,246,0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 90%, rgba(59,130,246,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .ads-hero::after {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ff7a00, #a855f7, #3b82f6, transparent);
+      border-radius: 24px 24px 0 0;
+    }
+
+    .ads-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,122,0,0.12);
+      border: 1px solid rgba(255,122,0,0.3);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .ads-hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #ffffff 0%, #ffb347 40%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .ads-hero-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+      max-width: 520px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .ads-hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ads-hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .ads-hero-stat {
+      text-align: left;
+    }
+
+    .ads-hero-stat-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .ads-hero-stat-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
+    }
+
+    /* ── PRIMARY BUTTON ─────────────────────────────────────────────── */
+    .ads-btn-primary {
+      background: linear-gradient(135deg, #ff7a00 0%, #ff4500 100%);
+      color: white;
+      border: none;
+      padding: 13px 30px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px rgba(255,122,0,0.4), 0 0 0 0 rgba(255,122,0,0.3);
+      font-family: 'Inter', sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ads-btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .ads-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255,122,0,0.55), 0 0 0 4px rgba(255,122,0,0.15);
+    }
+
+    .ads-btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .ads-btn-script {
+      background: rgba(139,92,246,0.1);
+      color: #c4b5fd;
+      border: 1px solid rgba(139,92,246,0.3);
+      padding: 13px 26px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Inter', sans-serif;
+      backdrop-filter: blur(8px);
+    }
+
+    .ads-btn-script:hover {
+      background: rgba(139,92,246,0.2);
+      border-color: rgba(139,92,246,0.55);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.25);
+    }
+
+    /* ── SECTION CARDS ──────────────────────────────────────────────── */
+    .ads-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px 28px;
+      margin-bottom: 14px;
+      position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .ads-section:hover {
+      border-color: rgba(255,122,0,0.2);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+
+    .ads-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .ads-section-num {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #ff7a00, #ff5500);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(255,122,0,0.4);
+    }
+
+    .ads-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0;
+    }
+
+    .ads-section-sub {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 18px;
+      margin-left: 40px;
+      margin-top: -10px;
+    }
+
+    /* ── PLATFORM CARDS ─────────────────────────────────────────────── */
+    .ads-platform-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .ads-platform-card {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 10px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ads-platform-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,122,0,0.08), transparent);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .ads-platform-card:hover {
+      border-color: rgba(255,122,0,0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .ads-platform-card:hover::before { opacity: 1; }
+
+    .ads-platform-card.selected {
+      border-color: var(--accent);
+      background: rgba(255,122,0,0.08);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.2), 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .ads-platform-card.selected::before { opacity: 1; }
+
+    .ads-platform-icon {
+      font-size: 26px;
+      margin-bottom: 8px;
+      display: block;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    .ads-platform-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .ads-platform-card.selected .ads-platform-name {
+      color: var(--accent);
+    }
+
+    /* ── CHIPS ──────────────────────────────────────────────────────── */
+    .ads-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ads-chip {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 22px;
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ads-chip:hover {
+      border-color: rgba(255,122,0,0.5);
+      color: var(--accent);
+      background: rgba(255,122,0,0.05);
+      transform: translateY(-1px);
+    }
+
+    .ads-chip.selected {
+      background: rgba(255,122,0,0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.15);
+    }
+
+    /* ── FORM FIELDS ────────────────────────────────────────────────── */
+    .ads-field {
+      margin-bottom: 16px;
+    }
+
+    .ads-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 7px;
+      display: block;
+      letter-spacing: 0.2px;
+    }
+
+    .ads-input, .ads-select, .ads-textarea {
+      width: 100%;
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 15px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .ads-input:focus, .ads-select:focus, .ads-textarea:focus {
+      border-color: var(--accent);
+      background: rgba(255,122,0,0.04);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.12);
+    }
+
+    .ads-input::placeholder, .ads-textarea::placeholder {
+      color: var(--text3);
+    }
+
+    .ads-textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .ads-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    .ads-select option { background: var(--bg2); }
+
+    .ads-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .ads-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .ads-grid-2, .ads-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── UPLOAD AREAS ───────────────────────────────────────────────── */
+    .ads-upload-area {
+      border: 1.5px dashed rgba(255,122,0,0.3);
+      border-radius: 14px;
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255,122,0,0.02);
+      position: relative;
+    }
+
+    .ads-upload-area:hover, .ads-upload-area.drag-over {
+      border-color: var(--accent);
+      background: rgba(255,122,0,0.06);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.1);
+    }
+
+    .ads-upload-icon { font-size: 26px; margin-bottom: 8px; }
+
+    .ads-upload-text {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.5;
+    }
+
+    .ads-upload-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .ads-upload-thumb {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1.5px solid var(--border);
+    }
+
+    /* ── COLOR ROW ──────────────────────────────────────────────────── */
+    .ads-color-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    input[type="color"].ads-color-input {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      padding: 3px;
+      cursor: pointer;
+      background: var(--bg3);
+      transition: transform 0.15s;
+    }
+
+    input[type="color"].ads-color-input:hover { transform: scale(1.1); }
+
+    /* ── DURATION PILLS ─────────────────────────────────────────────── */
+    .ads-duration-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
+    }
+
+    .ads-duration-pill {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text2);
+    }
+
+    .ads-duration-pill:hover {
+      border-color: rgba(255,122,0,0.5);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .ads-duration-pill.selected {
+      background: rgba(255,122,0,0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.15);
+    }
+
+    /* ── ASPECT RATIO ───────────────────────────────────────────────── */
+    .ads-ratio-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) { .ads-ratio-grid { grid-template-columns: repeat(2,1fr); } }
+
+    .ads-ratio-card {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 8px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ads-ratio-card:hover {
+      border-color: rgba(255,122,0,0.5);
+      transform: translateY(-2px);
+    }
+
+    .ads-ratio-card.selected {
+      border-color: var(--accent);
+      background: rgba(255,122,0,0.08);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.15);
+    }
+
+    .ads-ratio-visual {
+      background: linear-gradient(135deg, rgba(255,122,0,0.35), rgba(139,92,246,0.3));
+      border-radius: 5px;
+    }
+
+    .ads-ratio-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text2);
+      letter-spacing: 0.3px;
+    }
+
+    .ads-ratio-desc {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: -6px;
+    }
+
+    .ads-ratio-card.selected .ads-ratio-label { color: var(--accent); }
+
+    /* ── VOICE PROVIDER CARDS ───────────────────────────────────────── */
+    .ads-voice-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .ads-voice-card {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ads-voice-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #ff7a00, #a855f7);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .ads-voice-card:hover {
+      border-color: rgba(255,122,0,0.4);
+      transform: translateY(-2px);
+    }
+
+    .ads-voice-card.selected {
+      border-color: var(--accent);
+      background: rgba(255,122,0,0.06);
+      box-shadow: 0 0 0 3px rgba(255,122,0,0.15);
+    }
+
+    .ads-voice-card.selected::before { opacity: 1; }
+
+    .ads-voice-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+
+    .ads-voice-card-sub {
+      font-size: 11px;
+      color: var(--text3);
+      line-height: 1.4;
+    }
+
+    /* ── PROGRESS OVERLAY ───────────────────────────────────────────── */
+    #ads-progress-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(5,5,15,0.92);
+      backdrop-filter: blur(12px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    #ads-progress-overlay.visible { display: flex; }
+
+    .ads-progress-box {
+      background: linear-gradient(135deg, #13161f 0%, #1a1040 100%);
+      border: 1px solid rgba(255,122,0,0.2);
+      border-radius: 28px;
+      padding: 44px 52px;
+      width: 100%;
+      max-width: 540px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(255,122,0,0.1), 0 24px 60px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ads-progress-box::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, #ff7a00, #a855f7, #3b82f6, #ff7a00);
+      background-size: 200%;
+      animation: ads-gradient-move 2s linear infinite;
+    }
+
+    @keyframes ads-gradient-move {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    .ads-progress-logo {
+      font-size: 52px;
+      margin-bottom: 18px;
+      animation: ads-float 2s ease-in-out infinite;
+    }
+
+    @keyframes ads-float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-6px) scale(1.05); }
+    }
+
+    .ads-progress-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .ads-progress-subtitle {
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 30px;
+      min-height: 20px;
+    }
+
+    .ads-progress-bar-wrap {
+      background: rgba(255,255,255,0.06);
+      border-radius: 100px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .ads-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff7a00, #ffb347, #a855f7, #3b82f6);
+      background-size: 200%;
+      border-radius: 100px;
+      transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+      width: 0%;
+      animation: ads-bar-shimmer 1.5s linear infinite;
+    }
+
+    @keyframes ads-bar-shimmer {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    .ads-progress-step-text {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 22px;
+      min-height: 18px;
+    }
+
+    .ads-progress-steps {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ads-step-dot {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text3);
+      transition: all 0.3s ease;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid transparent;
+    }
+
+    .ads-step-dot.active {
+      color: var(--accent);
+      border-color: rgba(255,122,0,0.3);
+      background: rgba(255,122,0,0.08);
+    }
+
+    .ads-step-dot.done {
+      color: var(--green);
+      border-color: rgba(52,211,153,0.3);
+      background: rgba(52,211,153,0.08);
+    }
+
+    .ads-step-dot-icon {
+      font-size: 14px;
+    }
+
+    .ads-step-dot.active .ads-step-dot-icon {
+      animation: ads-spin 1.2s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes ads-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── OUTPUT SECTION ─────────────────────────────────────────────── */
+    .ads-output-wrap { display: none; margin-top: 24px; }
+    .ads-output-wrap.visible { display: block; }
+
+    .ads-output-banner {
+      background: linear-gradient(135deg, rgba(52,211,153,0.1) 0%, rgba(59,130,246,0.08) 100%);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 20px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .ads-output-banner-icon { font-size: 36px; }
+
+    .ads-output-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .ads-output-subtitle {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 3px;
+    }
+
+    .ads-output-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 800px) { .ads-output-grid { grid-template-columns: 1fr; } }
+
+    .ads-output-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .ads-output-card:hover { border-color: rgba(255,122,0,0.25); }
+
+    .ads-output-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #ff7a00, #ffb347);
+    }
+
+    .ads-output-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    .ads-output-card-content {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .ads-copy-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ads-copy-btn:hover {
+      color: var(--accent);
+      border-color: rgba(255,122,0,0.4);
+      background: rgba(255,122,0,0.06);
+    }
+
+    .ads-regenerate-btn {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      color: var(--text2);
+      padding: 13px 28px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 16px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ads-regenerate-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,122,0,0.06);
+      transform: translateY(-1px);
+    }
+
+    /* ── SCENES GRID ────────────────────────────────────────────────── */
+    .ads-scenes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .ads-scene-card {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      position: relative;
+      aspect-ratio: 9/16;
+      background: var(--bg3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .ads-scene-label {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.75);
+      padding: 6px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ── FROM SCRIPT MODAL ──────────────────────────────────────────── */
+    #ads-script-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99998;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #ads-script-modal.visible { display: flex; }
+
+    .ads-script-modal-box {
+      background: linear-gradient(135deg, #13161f 0%, #1c1535 100%);
+      border: 1px solid rgba(255,122,0,0.2);
+      border-radius: 26px;
+      padding: 34px 36px;
+      width: 100%;
+      max-width: 660px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    .ads-script-modal-box::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px;
+      height: 2px;
+      background: linear-gradient(90deg, #ff7a00, #a855f7, #3b82f6);
+      border-radius: 26px 26px 0 0;
+    }
+
+    .ads-script-modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .ads-script-modal-sub {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+
+    /* ── LOGO POSITION ──────────────────────────────────────────────── */
+    .ads-logo-pos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ads-logo-pos-btn {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ads-logo-pos-btn:hover, .ads-logo-pos-btn.selected {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,122,0,0.08);
+    }
+
+    /* ── EXT WARNING ────────────────────────────────────────────────── */
+    .ads-ext-warning {
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.25);
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 12px;
+      color: #fbbf24;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1.5;
+    }
+
+    /* ── TOGGLE ─────────────────────────────────────────────────────── */
+    .ads-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ads-toggle-row:last-child { border-bottom: none; }
+
+    .ads-toggle-label {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .ads-toggle-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    .ads-toggle {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .ads-toggle input { opacity: 0; width: 0; height: 0; }
+
+    .ads-toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--bg3);
+      border-radius: 24px;
+      border: 1.5px solid var(--border);
+      transition: 0.3s;
+    }
+
+    .ads-toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 15px;
+      width: 15px;
+      left: 3px;
+      bottom: 2.5px;
+      background: var(--text3);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .ads-toggle input:checked + .ads-toggle-slider {
+      background: rgba(255,122,0,0.18);
+      border-color: var(--accent);
+    }
+
+    .ads-toggle input:checked + .ads-toggle-slider::before {
+      transform: translateX(18px);
+      background: var(--accent);
+    }
+
+    /* ── GENERATE BUTTON AREA ───────────────────────────────────────── */
+    .ads-generate-area {
+      text-align: center;
+      padding: 8px 0 36px;
+    }
+
+    .ads-generate-big-btn {
+      background: linear-gradient(135deg, #ff7a00 0%, #ff4500 100%);
+      color: white;
+      border: none;
+      padding: 18px 56px;
+      border-radius: 18px;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 6px 30px rgba(255,122,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
+      font-family: 'Inter', sans-serif;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.3px;
+    }
+
+    .ads-generate-big-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .ads-generate-big-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(255,122,0,0.6), 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .ads-generate-big-btn:active { transform: translateY(0); }
+
+    .ads-generate-hint {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 12px;
+    }
+
+    /* ── AUDIO PLAYER ───────────────────────────────────────────────── */
+    .ads-audio-player {
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+      filter: contrast(0.9);
+    }
+
+    /* ── DIVIDER ─────────────────────────────────────────────────────  */
+    .ads-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    .ads-logo-pos-btn:hover, .ads-logo-pos-btn.selected {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,122,0,0.08);
+    }
+
+    /* voiceover inline player */
+    .ads-audio-player {
+      width: 100%;
+      margin-top: 8px;
+      border-radius: 8px;
+    }
+
+    /* Notification badge for Ads */
+    .ads-badge-new {
+      background: linear-gradient(135deg, #ff7a00, #ff5500);
+      color: white;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+
+    .ads-ext-warning {
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #fbbf24;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ads-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ads-toggle-row:last-child {
+      border-bottom: none;
+    }
+
+    .ads-toggle-label {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .ads-toggle-sub {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .ads-toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+    }
+
+    .ads-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .ads-toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--bg3);
+      border-radius: 22px;
+      border: 1.5px solid var(--border);
+      transition: 0.3s;
+    }
+
+    .ads-toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 2px;
+      background: var(--text3);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .ads-toggle input:checked + .ads-toggle-slider {
+      background: rgba(255,122,0,0.2);
+      border-color: var(--accent);
+    }
+
+    .ads-toggle input:checked + .ads-toggle-slider::before {
+      transform: translateX(17px);
+      background: var(--accent);
     }
   </style>
 </head>
@@ -2315,6 +3575,8 @@
             data-lucide="video"></i></span><span class="sb-label">UGC Creator</span></div>
       <div class="sb-item" id="nav-ugc-request" onclick="showPanel('ugc-request')"><span class="sb-icon"><i
             data-lucide="film"></i></span><span class="sb-label">UGC Request</span></div>
+      <div class="sb-item" id="nav-ads" onclick="showPanel('ads')"><span class="sb-icon"><i
+            data-lucide="megaphone"></i></span><span class="sb-label">Ads Generator</span></div>
       <div class="sb-item" id="nav-classroom" onclick="showPanel('classroom')"><span class="sb-icon"><i
             data-lucide="book-open"></i></span><span class="sb-label">Classroom</span></div>
       <a class="sb-item" href="/playground" target="_blank"><span class="sb-icon"><i
@@ -2806,6 +4068,7 @@
               <div class="agent-sidebar-item" data-tab="cust">🎨 Custom</div>
               <div class="agent-sidebar-item" data-tab="kb">📚 KB</div>
               <div class="agent-sidebar-item" data-tab="ds">📂 DataSources</div>
+              <div class="agent-sidebar-item" data-tab="feedback" id="tab-btn-feedback" style="display:none">🚩 Reports & Feedback</div>
             </div>
 
             <div class="agent-modal-content">
@@ -2956,6 +4219,18 @@
                   <div id="ag-ds-selector"
                     style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:15px">
                     <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+                <!-- 9. Reports & Feedback -->
+                <div class="tab-pane" id="tab-feedback">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                    <div style="font-size:15px; font-weight:700; color:var(--text)">Agent Reports & Feedback</div>
+                    <button class="btn btn-secondary" onclick="loadAgentFeedbackList(_currentAgentId)" style="padding: 6px 12px; font-size:12px; display:flex; align-items:center; gap:6px"><i data-lucide="refresh-cw" style="width:12px;height:12px"></i> Refresh</button>
+                  </div>
+                  <div id="ag-feedback-list" class="source-list" style="margin-top:10px; max-height:450px; overflow-y:auto; display:flex; flex-direction:column; gap:12px">
+                    <!-- Feedback items populated dynamically -->
+                    <div class="history-empty" style="padding:40px">No reports or feedback received yet.</div>
                   </div>
                 </div>
               </div>
@@ -5006,7 +6281,6 @@
       </div>
       <button class="btn btn-primary" id="btn-gen-social" style="width:100%; margin-top:15px"
         onclick="generateSocialContent()">✨ Generate Social Content</button>
-    </div>
 
     <div id="soc-results-section" style="display:none; animation:fadeIn 0.3s ease">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
@@ -6711,6 +7985,1103 @@
     </div>
   </div>
 
+
+  <!-- ── ADS GENERATOR PANEL ── -->
+  <div class="panel" id="panel-ads">
+    <style>
+      /* Scoped styling to override/extend for the premium layout */
+      .ads-main-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 28px;
+        align-items: start;
+      }
+      
+      @media (max-width: 1024px) {
+        .ads-main-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Premium Tabs Navigation */
+      .ads-tabs-nav {
+        display: flex;
+        gap: 6px;
+        background: var(--bg3);
+        padding: 6px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        margin-bottom: 20px;
+        overflow-x: auto;
+      }
+
+      .ads-tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text2);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .ads-tab-btn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .ads-tab-btn.active {
+        color: var(--accent);
+        background: var(--card);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 122, 0, 0.25);
+      }
+
+      .ads-tab-content {
+        display: none;
+      }
+
+      .ads-tab-content.active {
+        display: block;
+        animation: ads-fade-in 0.3s ease;
+      }
+
+      @keyframes ads-fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Preview Mockup Card */
+      .ads-preview-sticky {
+        position: sticky;
+        top: 24px;
+      }
+
+      .ads-preview-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 24px;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .ads-preview-device {
+        background: #090a0f;
+        border: 4px solid #1f2230;
+        border-radius: 32px;
+        aspect-ratio: 9/16;
+        width: 100%;
+        max-width: 280px;
+        margin: 0 auto 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 122, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Aspect Ratio classes for preview device */
+      .ads-preview-device.ratio-1-1 { aspect-ratio: 1/1; max-width: 320px; }
+      .ads-preview-device.ratio-4-5 { aspect-ratio: 4/5; max-width: 300px; }
+      .ads-preview-device.ratio-9-16 { aspect-ratio: 9/16; max-width: 250px; }
+      .ads-preview-device.ratio-16-9 { aspect-ratio: 16/9; max-width: 340px; }
+
+      .ads-preview-inner {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 16px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.7) 100%);
+      }
+
+      .ads-preview-media-bg {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, #1b1635 0%, #0d0f17 100%);
+        z-index: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ads-preview-media-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.6;
+        display: none;
+      }
+
+      .ads-preview-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        z-index: 2;
+      }
+
+      .ads-preview-logo-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.1);
+        border: 1px dashed rgba(255,255,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        overflow: hidden;
+      }
+
+      .ads-preview-logo-placeholder img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .ads-preview-platform-badge {
+        font-size: 9px;
+        font-weight: 700;
+        color: white;
+        background: rgba(255, 122, 0, 0.85);
+        padding: 3px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .ads-preview-middle {
+        z-index: 2;
+        width: 100%;
+        padding: 0 8px;
+      }
+
+      .ads-preview-caption {
+        font-size: 11px;
+        color: #fff;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        line-height: 1.4;
+        text-align: center;
+        font-weight: 600;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 6px 10px;
+        border-radius: 8px;
+        backdrop-filter: blur(4px);
+      }
+
+      .ads-preview-bottom {
+        z-index: 2;
+        width: 100%;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .ads-preview-brand-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      }
+
+      .ads-preview-desc {
+        font-size: 10px;
+        color: rgba(255,255,255,0.8);
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      }
+
+      .ads-preview-cta-btn {
+        width: 100%;
+        background: var(--accent);
+        color: white;
+        text-align: center;
+        padding: 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 12px rgba(255, 122, 0, 0.3);
+      }
+
+      /* Active preview guides */
+      .ads-ratio-guide-text {
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: -8px;
+        margin-bottom: 12px;
+        font-weight: 500;
+      }
+    </style>
+
+    <div class="ads-wrap">
+      <!-- Hero -->
+      <div class="ads-hero">
+        <div class="ads-hero-badge">⚡ Next-Gen Marketing</div>
+        <div class="ads-hero-title">AI Ads Creative Suite</div>
+        <div class="ads-hero-sub">Create conversion-optimized ads for any social platform instantly. Leverage multi-engine AI models to generate high-performing scripts, studio-quality voiceovers, visual storyboards, and captions.</div>
+        <div class="ads-hero-actions">
+          <button class="ads-btn-primary" id="ads-generate-btn" onclick="generateAd()">
+            <span>✨</span> Generate Ad Campaign
+          </button>
+          <button class="ads-btn-script" onclick="openAdsScriptModal()">
+            <span>📄</span> Generate from Script
+          </button>
+        </div>
+        <div class="ads-hero-stats">
+          <div class="ads-hero-stat">
+            <div class="ads-hero-stat-num">100%</div>
+            <div class="ads-hero-stat-label">AI Automations</div>
+          </div>
+          <div class="ads-hero-stat">
+            <div class="ads-hero-stat-num">7+</div>
+            <div class="ads-hero-stat-label">Platforms Supported</div>
+          </div>
+          <div class="ads-hero-stat">
+            <div class="ads-hero-stat-num">Ultra</div>
+            <div class="ads-hero-stat-label">Voice Realism</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXT Warning -->
+      <div class="ads-ext-warning" id="ads-ext-warning" style="display:none;">
+        ⚠️ <strong>Extension Mode Required</strong> for scene visual generation. Make sure <a href="https://www.meta.ai" target="_blank" style="color:#fbbf24; text-decoration: underline;">meta.ai</a> is active in your browser tabs.
+      </div>
+
+      <!-- Main Columns Grid -->
+      <div class="ads-main-grid">
+        
+        <!-- Left Column: Configurator -->
+        <div class="ads-configurator-col">
+          
+          <!-- Navigation Tabs -->
+          <div class="ads-tabs-nav">
+            <button class="ads-tab-btn active" onclick="switchAdsTab('campaign')">🎯 Campaign</button>
+            <button class="ads-tab-btn" onclick="switchAdsTab('creative')">🎨 Creative Details</button>
+            <button class="ads-tab-btn" onclick="switchAdsTab('audio')">🎙️ Audio & Voice</button>
+            <button class="ads-tab-btn" onclick="switchAdsTab('advanced')">⚙️ Advanced</button>
+          </div>
+
+          <!-- TAB 1: Campaign & Brand -->
+          <div class="ads-tab-content active" id="ads-tab-campaign">
+            <!-- SECTION 1: Platform -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">1</span>
+                <span class="ads-section-title">Platform Select</span>
+              </div>
+              <div class="ads-section-sub">Optimizes layout, formatting guidelines, and generation guidelines.</div>
+              <div class="ads-platform-grid" id="ads-platform-grid">
+                <div class="ads-platform-card selected" data-platform="google" onclick="selectAdsPlatform(this,'google')">
+                  <div class="ads-platform-icon">🔍</div>
+                  <div class="ads-platform-name">Google</div>
+                </div>
+                <div class="ads-platform-card" data-platform="meta" onclick="selectAdsPlatform(this,'meta')">
+                  <div class="ads-platform-icon">📘</div>
+                  <div class="ads-platform-name">Meta</div>
+                </div>
+                <div class="ads-platform-card" data-platform="linkedin" onclick="selectAdsPlatform(this,'linkedin')">
+                  <div class="ads-platform-icon">💼</div>
+                  <div class="ads-platform-name">LinkedIn</div>
+                </div>
+                <div class="ads-platform-card" data-platform="youtube" onclick="selectAdsPlatform(this,'youtube')">
+                  <div class="ads-platform-icon">▶️</div>
+                  <div class="ads-platform-name">YouTube</div>
+                </div>
+                <div class="ads-platform-card" data-platform="tiktok" onclick="selectAdsPlatform(this,'tiktok')">
+                  <div class="ads-platform-icon">🎵</div>
+                  <div class="ads-platform-name">TikTok</div>
+                </div>
+                <div class="ads-platform-card" data-platform="twitter" onclick="selectAdsPlatform(this,'twitter')">
+                  <div class="ads-platform-icon">🐦</div>
+                  <div class="ads-platform-name">X (Twitter)</div>
+                </div>
+                <div class="ads-platform-card" data-platform="snapchat" onclick="selectAdsPlatform(this,'snapchat')">
+                  <div class="ads-platform-icon">👻</div>
+                  <div class="ads-platform-name">Snapchat</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 2: Brand Details -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">2</span>
+                <span class="ads-section-title">Brand Identity</span>
+              </div>
+              <div class="ads-section-sub">Describe your business branding details.</div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Brand Name *</label>
+                  <input type="text" class="ads-input" id="ads-brand-name" placeholder="e.g. Nike, Zomato, MyStartup" onkeyup="updateAdsPreview()">
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Website URL (Optional)</label>
+                  <input type="url" class="ads-input" id="ads-brand-url" placeholder="https://yourbrand.com">
+                </div>
+              </div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Industry</label>
+                  <select class="ads-select" id="ads-brand-industry">
+                    <option value="">Select Industry...</option>
+                    <option>E-Commerce</option>
+                    <option>Fashion & Apparel</option>
+                    <option>Food & Beverage</option>
+                    <option>Health & Fitness</option>
+                    <option>Technology</option>
+                    <option>Education</option>
+                    <option>Real Estate</option>
+                    <option>Finance & Insurance</option>
+                    <option>Travel & Tourism</option>
+                    <option>Beauty & Cosmetics</option>
+                    <option>Automotive</option>
+                    <option>Entertainment</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">CTA Button Text</label>
+                  <select class="ads-select" id="ads-cta" onchange="updateAdsPreview()">
+                    <option>Shop Now</option>
+                    <option>Learn More</option>
+                    <option>Sign Up</option>
+                    <option>Book Now</option>
+                    <option>Contact Us</option>
+                    <option>Download App</option>
+                    <option>Get Quote</option>
+                    <option>Watch Now</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ads-field">
+                <label class="ads-label">Brand Logo</label>
+                <div class="ads-upload-area" id="ads-logo-drop" onclick="document.getElementById('ads-logo-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="adsHandleDrop(event,'logo')">
+                  <div class="ads-upload-icon">🏷️</div>
+                  <div class="ads-upload-text">Drop logo file here or click to browse</div>
+                </div>
+                <div class="ads-upload-preview" id="ads-logo-preview"></div>
+                <input type="file" id="ads-logo-input" accept="image/*" style="display:none" onchange="adsHandleLogoUpload(this.files[0])">
+              </div>
+              <div class="ads-field" id="ads-logo-pos-section-scratch" style="display:none; margin-top:12px;">
+                <label class="ads-label">Logo Position</label>
+                <div class="ads-logo-pos-grid" id="ads-logo-pos-grid-scratch">
+                  <div class="ads-logo-pos-btn selected" data-val="top-left" onclick="selectAdsLogoPosScratch(this,'top-left')">↖ Top Left</div>
+                  <div class="ads-logo-pos-btn" data-val="top-right" onclick="selectAdsLogoPosScratch(this,'top-right')">↗ Top Right</div>
+                  <div class="ads-logo-pos-btn" data-val="bottom-left" onclick="selectAdsLogoPosScratch(this,'bottom-left')">↙ Bottom Left</div>
+                  <div class="ads-logo-pos-btn" data-val="bottom-right" onclick="selectAdsLogoPosScratch(this,'bottom-right')">↘ Bottom Right</div>
+                </div>
+              </div>
+              <div class="ads-field">
+                <label class="ads-label">Brand Colors</label>
+                <div class="ads-color-row" id="ads-color-row">
+                  <input type="color" class="ads-color-input" id="ads-color-1" value="#ff7a00" title="Primary Color">
+                  <input type="color" class="ads-color-input" id="ads-color-2" value="#ffffff" title="Secondary Color">
+                  <input type="color" class="ads-color-input" id="ads-color-3" value="#0d0f17" title="Background Color">
+                  <span style="font-size:11px;color:var(--text3);margin-left:8px;">Auto-extracts from uploaded logos</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 4: AI Goal -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">3</span>
+                <span class="ads-section-title">Marketing Objective</span>
+              </div>
+              <div class="ads-section-sub">What target conversion goal do you want to hit?</div>
+              <div class="ads-chips" id="ads-goal-chips">
+                <div class="ads-chip selected" data-val="brand_awareness" onclick="selectAdsChip(this,'goal')">🌟 Awareness</div>
+                <div class="ads-chip" data-val="website_traffic" onclick="selectAdsChip(this,'goal')">🌐 Traffic</div>
+                <div class="ads-chip" data-val="sales" onclick="selectAdsChip(this,'goal')">💰 Sales</div>
+                <div class="ads-chip" data-val="leads" onclick="selectAdsChip(this,'goal')">🎯 Leads</div>
+                <div class="ads-chip" data-val="app_install" onclick="selectAdsChip(this,'goal')">📲 Installs</div>
+                <div class="ads-chip" data-val="video_views" onclick="selectAdsChip(this,'goal')">▶️ Video Views</div>
+                <div class="ads-chip" data-val="engagement" onclick="selectAdsChip(this,'goal')">❤️ Engagement</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: Creative & Audience -->
+          <div class="ads-tab-content" id="ads-tab-creative">
+            <!-- SECTION 3: Product Details -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">4</span>
+                <span class="ads-section-title">Product / Service Description</span>
+              </div>
+              <div class="ads-section-sub">Describe what you are advertising to consumers.</div>
+              <div class="ads-field">
+                <label class="ads-label">Brief Overview *</label>
+                <textarea class="ads-textarea" id="ads-product-desc" placeholder="e.g. We sell premium gym wear for men. Our target audience is 18-30 year olds. We want more website sales." style="min-height:120px;" onkeyup="updateAdsPreview()"></textarea>
+              </div>
+              <div class="ads-field">
+                <label class="ads-label">Product Visual Reference (Optional)</label>
+                <div class="ads-upload-area" id="ads-product-drop" onclick="document.getElementById('ads-product-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="adsHandleDrop(event,'product')">
+                  <div class="ads-upload-icon">📸</div>
+                  <div class="ads-upload-text">Browse or drop product images/videos here</div>
+                </div>
+                <div class="ads-upload-preview" id="ads-product-preview"></div>
+                <input type="file" id="ads-product-input" accept="image/*,video/*" multiple style="display:none" onchange="adsHandleProductUpload(this.files)">
+              </div>
+            </div>
+
+            <!-- SECTION 5: Target Audience -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">5</span>
+                <span class="ads-section-title">Target Demographics</span>
+              </div>
+              <div class="ads-section-sub">Define the targeted customer segments.</div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Country / Region</label>
+                  <input type="text" class="ads-input" id="ads-country" placeholder="e.g. India, USA, Global">
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Age Range</label>
+                  <input type="text" class="ads-input" id="ads-age" placeholder="e.g. 18-35">
+                </div>
+              </div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Target Gender</label>
+                  <select class="ads-select" id="ads-gender">
+                    <option value="all">All Genders</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Customer Interests</label>
+                  <input type="text" class="ads-input" id="ads-interests" placeholder="e.g. fitness, gym, sports, wellness">
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 6: Ad Style & Objective -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">6</span>
+                <span class="ads-section-title">Creative Art Style</span>
+              </div>
+              <div class="ads-section-sub">Choose visual design theme.</div>
+              <div class="ads-chips" id="ads-style-chips">
+                <div class="ads-chip selected" data-val="modern" onclick="selectAdsChip(this,'style')">⚡ Modern</div>
+                <div class="ads-chip" data-val="minimal" onclick="selectAdsChip(this,'style')">✦ Minimal</div>
+                <div class="ads-chip" data-val="luxury" onclick="selectAdsChip(this,'style')">👑 Luxury</div>
+                <div class="ads-chip" data-val="bold" onclick="selectAdsChip(this,'style')">🔥 Bold</div>
+                <div class="ads-chip" data-val="professional" onclick="selectAdsChip(this,'style')">💼 Professional</div>
+                <div class="ads-chip" data-val="corporate" onclick="selectAdsChip(this,'style')">🏢 Corporate</div>
+                <div class="ads-chip" data-val="dark" onclick="selectAdsChip(this,'style')">🌑 Dark</div>
+                <div class="ads-chip" data-val="colorful" onclick="selectAdsChip(this,'style')">🌈 Colorful</div>
+                <div class="ads-chip" data-val="funny" onclick="selectAdsChip(this,'style')">😂 Funny</div>
+                <div class="ads-chip" data-val="premium" onclick="selectAdsChip(this,'style')">💎 Premium</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: Audio & Voice -->
+          <div class="ads-tab-content" id="ads-tab-audio">
+            <!-- SECTION 8: Video Duration -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">7</span>
+                <span class="ads-section-title">Video Timeline</span>
+              </div>
+              <div class="ads-section-sub">Sets length and scenes count constraints.</div>
+              <div class="ads-duration-grid" id="ads-duration-grid">
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'6')">6 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'10')">10 sec</div>
+                <div class="ads-duration-pill selected" onclick="selectAdsDuration(this,'15')">15 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'20')">20 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'30')">30 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'45')">45 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'60')">60 sec</div>
+                <div class="ads-duration-pill" onclick="selectAdsDuration(this,'custom')">Custom</div>
+              </div>
+              <div id="ads-custom-duration-wrap" style="display:none;margin-top:12px;">
+                <input type="number" class="ads-input" id="ads-custom-duration" placeholder="Seconds" min="1" max="300" style="max-width:160px;">
+              </div>
+            </div>
+
+            <!-- SECTION 9: Aspect Ratio -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">8</span>
+                <span class="ads-section-title">Aspect Ratio / Format</span>
+              </div>
+              <div class="ads-section-sub">Format layout constraints for social targets.</div>
+              <div class="ads-ratio-grid" id="ads-ratio-grid">
+                <div class="ads-ratio-card" onclick="selectAdsRatio(this,'1:1')" title="Square">
+                  <div class="ads-ratio-visual" style="width:40px;height:40px;"></div>
+                  <div class="ads-ratio-label">1:1</div>
+                  <div class="ads-ratio-desc">Square</div>
+                </div>
+                <div class="ads-ratio-card" onclick="selectAdsRatio(this,'4:5')" title="Portrait">
+                  <div class="ads-ratio-visual" style="width:32px;height:40px;"></div>
+                  <div class="ads-ratio-label">4:5</div>
+                  <div class="ads-ratio-desc">Portrait</div>
+                </div>
+                <div class="ads-ratio-card selected" onclick="selectAdsRatio(this,'9:16')" title="Reel/Story">
+                  <div class="ads-ratio-visual" style="width:24px;height:42px;"></div>
+                  <div class="ads-ratio-label">9:16</div>
+                  <div class="ads-ratio-desc">Reels</div>
+                </div>
+                <div class="ads-ratio-card" onclick="selectAdsRatio(this,'16:9')" title="YouTube">
+                  <div class="ads-ratio-visual" style="width:48px;height:28px;"></div>
+                  <div class="ads-ratio-label">16:9</div>
+                  <div class="ads-ratio-desc">Landscape</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 11: Voice Over Engine -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">9</span>
+                <span class="ads-section-title">Voice Synthesis Configuration</span>
+              </div>
+              <div class="ads-section-sub">Engines for audio scripting voice synthesis.</div>
+              <div class="ads-voice-grid" id="ads-voiceprovider-grid">
+                <div class="ads-voice-card selected" data-val="elevenlabs" onclick="selectAdsVoiceProvider(this,'elevenlabs')">
+                  <div class="ads-voice-card-title">🎙️ ElevenLabs Engine</div>
+                  <div class="ads-voice-card-sub">Global accent realism models</div>
+                </div>
+                <div class="ads-voice-card" data-val="sarvam" onclick="selectAdsVoiceProvider(this,'sarvam')">
+                  <div class="ads-voice-card-title">🇮🇳 Sarvam AI Engine</div>
+                  <div class="ads-voice-card-sub">Best for Hindi/Hinglish tones</div>
+                </div>
+              </div>
+              <div class="ads-grid-2" style="margin-top:12px;">
+                <div class="ads-field">
+                  <label class="ads-label">Voice Gender</label>
+                  <div class="ads-chips">
+                    <div class="ads-chip selected" data-val="male" onclick="selectAdsMultiChip(this,'voiceGender')">👨 Male</div>
+                    <div class="ads-chip" data-val="female" onclick="selectAdsMultiChip(this,'voiceGender')">👩 Female</div>
+                  </div>
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Voice Language</label>
+                  <div class="ads-chips">
+                    <div class="ads-chip selected" data-val="english" onclick="selectAdsMultiChip(this,'voiceLang')">🇬🇧 English</div>
+                    <div class="ads-chip" data-val="hindi" onclick="selectAdsMultiChip(this,'voiceLang')">🇮🇳 Hindi</div>
+                    <div class="ads-chip" data-val="hinglish" onclick="selectAdsMultiChip(this,'voiceLang')">🎭 Hinglish</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ads-field" style="margin-top:8px;">
+                <label class="ads-label">Or Upload Voice Clip (Optional)</label>
+                <div class="ads-upload-area" onclick="document.getElementById('ads-voice-input').click()">
+                  <div class="ads-upload-icon">🎤</div>
+                  <div class="ads-upload-text">Browse file (MP3, WAV)</div>
+                </div>
+                <input type="file" id="ads-voice-input" accept="audio/*" style="display:none" onchange="adsHandleVoiceUpload(this.files[0])">
+                <div id="ads-voice-name" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+              </div>
+            </div>
+
+            <!-- SECTION 10: Background Music -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">10</span>
+                <span class="ads-section-title">Background Music Theme</span>
+              </div>
+              <div class="ads-section-sub">Choose theme track styling constraints.</div>
+              <div class="ads-chips" id="ads-music-chips">
+                <div class="ads-chip selected" data-val="ai_suggest" onclick="selectAdsChip(this,'music')">🤖 AI Suggest</div>
+                <div class="ads-chip" data-val="upload" onclick="selectAdsChip(this,'music');document.getElementById('ads-music-input').click()">📤 Upload Music</div>
+                <div class="ads-chip" data-val="none" onclick="selectAdsChip(this,'music')">🔇 No Music</div>
+              </div>
+              <input type="file" id="ads-music-input" accept="audio/*" style="display:none" onchange="adsHandleMusicUpload(this.files[0])">
+              <div id="ads-music-name" style="font-size:11px;color:var(--text3);margin-top:8px;"></div>
+            </div>
+
+            <!-- SECTION 12: Captions -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">11</span>
+                <span class="ads-section-title">Video On-Screen Captions</span>
+              </div>
+              <div class="ads-section-sub">Auto-captions configurations.</div>
+              <div class="ads-toggle-row">
+                <div>
+                  <div class="ads-toggle-label">Enable Styled Captions</div>
+                  <div class="ads-toggle-sub">Extract scripts and render dynamic captions</div>
+                </div>
+                <label class="ads-toggle"><input type="checkbox" id="ads-captions-toggle" checked><span class="ads-toggle-slider"></span></label>
+              </div>
+              <div style="margin-top:14px;">
+                <label class="ads-label">Caption Rendering Language</label>
+                <div class="ads-chips" id="ads-caption-lang-chips">
+                  <div class="ads-chip selected" data-val="english" onclick="selectAdsChip(this,'captionLang')">🇬🇧 English</div>
+                  <div class="ads-chip" data-val="hindi" onclick="selectAdsChip(this,'captionLang')">🇮🇳 Hindi</div>
+                  <div class="ads-chip" data-val="hinglish" onclick="selectAdsChip(this,'captionLang')">🎭 Hinglish</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: Advanced & Assets -->
+          <div class="ads-tab-content" id="ads-tab-advanced">
+            <!-- SECTION 13: Brand Assets -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">12</span>
+                <span class="ads-section-title">Media Studio Assets</span>
+              </div>
+              <div class="ads-section-sub">Secondary assets reference libraries.</div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Photo References</label>
+                  <div class="ads-upload-area" onclick="document.getElementById('ads-assets-img-input').click()">
+                    <div class="ads-upload-icon">🖼️</div>
+                    <div class="ads-upload-text">JPG / PNG files</div>
+                  </div>
+                  <input type="file" id="ads-assets-img-input" accept="image/*" multiple style="display:none" onchange="adsHandleAssetsUpload(this.files,'img')">
+                  <div class="ads-upload-preview" id="ads-assets-img-preview"></div>
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">B-Roll Footage</label>
+                  <div class="ads-upload-area" onclick="document.getElementById('ads-assets-vid-input').click()">
+                    <div class="ads-upload-icon">🎬</div>
+                    <div class="ads-upload-text">MP4 / MOV clips</div>
+                  </div>
+                  <input type="file" id="ads-assets-vid-input" accept="video/*" multiple style="display:none" onchange="adsHandleAssetsUpload(this.files,'vid')">
+                  <div id="ads-assets-vid-list" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+                </div>
+              </div>
+              <div class="ads-field">
+                <label class="ads-label">Custom Branding Typography (TTF/OTF)</label>
+                <div class="ads-upload-area" onclick="document.getElementById('ads-font-input').click()">
+                  <div class="ads-upload-icon">🔤</div>
+                  <div class="ads-upload-text">Upload font file</div>
+                </div>
+                <input type="file" id="ads-font-input" accept=".ttf,.otf,.woff,.woff2" multiple style="display:none" onchange="adsHandleFontUpload(this.files)">
+                <div id="ads-font-name" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+              </div>
+            </div>
+
+            <!-- SECTION 14: Promotional Details -->
+            <div class="ads-section">
+              <div class="ads-section-header">
+                <span class="ads-section-num">13</span>
+                <span class="ads-section-title">Campaign Copy Details</span>
+              </div>
+              <div class="ads-section-sub">Add advanced values to script parameters.</div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Discount Offering</label>
+                  <input type="text" class="ads-input" id="ads-discount" placeholder="e.g. 30% Off Today" onkeyup="updateAdsPreview()">
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Promo Code</label>
+                  <input type="text" class="ads-input" id="ads-promo" placeholder="e.g. EXTRA30">
+                </div>
+              </div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Contact Line</label>
+                  <input type="text" class="ads-input" id="ads-contact" placeholder="e.g. +91 99999 88888">
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">WhatsApp Channel</label>
+                  <input type="text" class="ads-input" id="ads-whatsapp" placeholder="e.g. +91 99999 88888">
+                </div>
+              </div>
+              <div class="ads-grid-2">
+                <div class="ads-field">
+                  <label class="ads-label">Contact Email</label>
+                  <input type="email" class="ads-input" id="ads-email" placeholder="support@brand.com">
+                </div>
+                <div class="ads-field">
+                  <label class="ads-label">Storefront Location Address</label>
+                  <input type="text" class="ads-input" id="ads-address" placeholder="Address lines">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wizard Navigation Buttons -->
+          <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+            <button class="ads-btn-script" id="ads-wizard-prev" onclick="navigateAdsTab(-1)" style="visibility: hidden;">⬅️ Back</button>
+            <button class="ads-btn-primary" id="ads-wizard-next" onclick="navigateAdsTab(1)">Next Step ➡️</button>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Interactive Real-Time Preview Device -->
+        <div class="ads-preview-sticky">
+          <div class="ads-preview-card">
+            <div class="ads-ratio-guide-text">🎨 Visualizer Real-Time Preview Mockup</div>
+            <div class="ads-preview-device ratio-9-16" id="ads-preview-device">
+              <div class="ads-preview-media-bg">
+                <span style="font-size:36px; opacity:0.15; z-index:0;" id="ads-preview-fallback-icon">📸</span>
+                <img class="ads-preview-media-img" id="ads-preview-media-img" src="" alt="product">
+              </div>
+              <div class="ads-preview-inner">
+                <div class="ads-preview-top">
+                  <div class="ads-preview-logo-placeholder" id="ads-preview-logo-placeholder">Logo</div>
+                  <div class="ads-preview-platform-badge" id="ads-preview-platform-badge">Google Ads</div>
+                </div>
+                <div class="ads-preview-middle">
+                  <div class="ads-preview-caption" id="ads-preview-caption-text">Dynamic On-Screen Captions</div>
+                </div>
+                <div class="ads-preview-bottom">
+                  <div class="ads-preview-brand-name" id="ads-preview-brand-name-text">Brand Name</div>
+                  <div class="ads-preview-desc" id="ads-preview-desc-text">Describe your product. Your ad details will be displayed here in layout.</div>
+                  <div class="ads-preview-cta-btn" id="ads-preview-cta-btn-text">Shop Now</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ads-generate-area">
+              <button class="ads-generate-big-btn" onclick="generateAd()">
+                ✨ Generate Campaign Now
+              </button>
+              <div class="ads-generate-hint">Compiling variables and executing AI generation steps...</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- OUTPUT SECTION -->
+      <div class="ads-output-wrap" id="ads-output-wrap">
+        <div class="ads-output-banner">
+          <div class="ads-output-banner-icon">🎉</div>
+          <div>
+            <div class="ads-output-title">Your Generated Ad Campaign Package</div>
+            <div class="ads-output-subtitle">AI copy, scripts, scenes prompts and synthesized voice tracks completed.</div>
+          </div>
+        </div>
+
+        <!-- Generated Scenes storyboards -->
+        <div class="ads-section" id="ads-scenes-section" style="display:none; border-color: rgba(139,92,246,0.3);">
+          <div class="ads-section-header">
+            <span class="ads-section-num" style="background: linear-gradient(135deg, #a855f7, #6366f1); box-shadow: 0 2px 8px rgba(139,92,246,0.4);">🎨</span>
+            <span class="ads-section-title">Generated Storyboard Scenes</span>
+          </div>
+          <div class="ads-scenes-grid" id="ads-scenes-grid"></div>
+        </div>
+
+        <div class="ads-output-grid">
+          <!-- Full Voiceover script content -->
+          <div class="ads-output-card" style="grid-column: 1 / -1;">
+            <div class="ads-output-card-title">📄 Full Voiceover & Screenplay Script</div>
+            <button class="ads-copy-btn" onclick="adsCopy('ads-out-script')">Copy Script</button>
+            <div class="ads-output-card-content" id="ads-out-script" style="white-space:pre-wrap; max-height:280px; overflow-y:auto; font-family: monospace;"></div>
+          </div>
+          <!-- Creative Headlines -->
+          <div class="ads-output-card">
+            <div class="ads-output-card-title">📣 Meta Headlines & Hooks</div>
+            <button class="ads-copy-btn" onclick="adsCopy('ads-out-headlines')">Copy</button>
+            <div class="ads-output-card-content" id="ads-out-headlines"></div>
+          </div>
+          <!-- Landing Page Copy -->
+          <div class="ads-output-card">
+            <div class="ads-output-card-title">📝 Creative Ad Body Copy</div>
+            <button class="ads-copy-btn" onclick="adsCopy('ads-out-copy')">Copy</button>
+            <div class="ads-output-card-content" id="ads-out-copy"></div>
+          </div>
+          <!-- Social Captions -->
+          <div class="ads-output-card">
+            <div class="ads-output-card-title">📱 Social Copy & Hashtags</div>
+            <button class="ads-copy-btn" onclick="adsCopy('ads-out-caption')">Copy</button>
+            <div class="ads-output-card-content" id="ads-out-caption"></div>
+          </div>
+          <!-- Ad Hook line -->
+          <div class="ads-output-card">
+            <div class="ads-output-card-title">🪝 Attention Retention Hook</div>
+            <button class="ads-copy-btn" onclick="adsCopy('ads-out-hook')">Copy</button>
+            <div class="ads-output-card-content" id="ads-out-hook"></div>
+          </div>
+        </div>
+
+        <!-- Final Compiled Ad Video -->
+        <div class="ads-output-card" id="ads-out-compiled-card" style="display:none; margin-bottom:16px; border: 1px solid var(--accent);">
+          <div class="ads-output-card-title">🎬 Final Compiled Ad Video (Reel)</div>
+          <div id="ads-out-compiled-video"></div>
+        </div>
+
+        <!-- Synthesized Voice Tracks -->
+        <div class="ads-output-card" style="margin-bottom:16px;">
+          <div class="ads-output-card-title">🎙️ Synthesized AI Voiceover Track</div>
+          <div id="ads-out-voiceover">
+            <span style="color:var(--text3); font-size:12px;">Track will generate upon running synthesize tasks.</span>
+          </div>
+        </div>
+
+        <!-- Dynamic scene breakdown log -->
+        <div class="ads-output-card" style="margin-bottom:28px;">
+          <div class="ads-output-card-title">🎬 Detailed Segment & Screenplay Breakdown</div>
+          <button class="ads-copy-btn" onclick="adsCopy('ads-out-scenes')">Copy Breakdown</button>
+          <div class="ads-output-card-content" id="ads-out-scenes" style="white-space:pre-wrap; max-height:280px; overflow-y:auto; font-family: monospace;"></div>
+        </div>
+
+        <div style="text-align:center;">
+          <button class="ads-regenerate-btn" onclick="generateAd()">🔄 Regenerate Campaign Package</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- UI Helper scripts for Wizard navigation and preview update scripts -->
+    <script>
+      // Tab Wizard navigation logic
+      const adsTabNames = ['campaign', 'creative', 'audio', 'advanced'];
+      let adsCurrentTabIdx = 0;
+
+      function switchAdsTab(tabName) {
+        adsCurrentTabIdx = adsTabNames.indexOf(tabName);
+        
+        document.querySelectorAll('.ads-tab-btn').forEach((btn, idx) => {
+          btn.classList.toggle('active', idx === adsCurrentTabIdx);
+        });
+
+        document.querySelectorAll('.ads-tab-content').forEach((content) => {
+          content.classList.toggle('active', content.id === 'ads-tab-' + tabName);
+        });
+
+        // Update Nav buttons
+        const prevBtn = document.getElementById('ads-wizard-prev');
+        const nextBtn = document.getElementById('ads-wizard-next');
+        
+        if (prevBtn) {
+          prevBtn.style.visibility = adsCurrentTabIdx === 0 ? 'hidden' : 'visible';
+        }
+        if (nextBtn) {
+          if (adsCurrentTabIdx === adsTabNames.length - 1) {
+            nextBtn.textContent = 'Preview campaign ✨';
+            nextBtn.onclick = () => {
+              const previewSection = document.getElementById('ads-preview-device');
+              if (previewSection) {
+                previewSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Briefly glow preview device
+                previewSection.style.boxShadow = '0 0 30px var(--accent)';
+                setTimeout(() => { previewSection.style.boxShadow = ''; }, 1000);
+              }
+            };
+          } else {
+            nextBtn.textContent = 'Next Step ➡️';
+            nextBtn.onclick = () => navigateAdsTab(1);
+          }
+        }
+      }
+
+      function navigateAdsTab(direction) {
+        let newIdx = adsCurrentTabIdx + direction;
+        if (newIdx >= 0 && newIdx < adsTabNames.length) {
+          switchAdsTab(adsTabNames[newIdx]);
+        }
+      }
+
+      // Live visual preview updating engine
+      function updateAdsPreview() {
+        // Brand Name
+        const nameVal = document.getElementById('ads-brand-name').value.trim();
+        document.getElementById('ads-preview-brand-name-text').textContent = nameVal || 'Brand Name';
+
+        // CTA text
+        const ctaVal = document.getElementById('ads-cta').value;
+        document.getElementById('ads-preview-cta-btn-text').textContent = ctaVal;
+
+        // Description / Product details
+        const descVal = document.getElementById('ads-product-desc').value.trim();
+        document.getElementById('ads-preview-desc-text').textContent = descVal || 'Describe your product. Your ad details will be displayed here in layout.';
+
+        // Discount Offering
+        const discVal = document.getElementById('ads-discount').value.trim();
+        if (discVal) {
+          document.getElementById('ads-preview-caption-text').textContent = discVal;
+        } else {
+          document.getElementById('ads-preview-caption-text').textContent = 'Styled Captions Output';
+        }
+      }
+
+      // Intercept aspect ratio selection to scale preview mockup aspect ratios
+      function patchAdsAspectPreviews() {
+        const originalSelectRatio = window.selectAdsRatio;
+        window.selectAdsRatio = function(el, val) {
+          if (typeof originalSelectRatio === 'function') {
+            originalSelectRatio(el, val);
+          }
+          
+          // Modify device class preview aspects
+          const device = document.getElementById('ads-preview-device');
+          if (device) {
+            device.className = 'ads-preview-device';
+            if (val === '1:1') device.classList.add('ratio-1-1');
+            if (val === '4:5') device.classList.add('ratio-4-5');
+            if (val === '9:16') device.classList.add('ratio-9-16');
+            if (val === '16:9') device.classList.add('ratio-16-9');
+          }
+        };
+
+        const originalSelectPlatform = window.selectAdsPlatform;
+        window.selectAdsPlatform = function(el, platform) {
+          if (typeof originalSelectPlatform === 'function') {
+            originalSelectPlatform(el, platform);
+          }
+
+          // Update platform preview label
+          const label = document.getElementById('ads-preview-platform-badge');
+          if (label) {
+            label.textContent = platform.charAt(0).toUpperCase() + platform.slice(1) + ' Ads';
+          }
+
+          // Trigger aspect ratio update for preview
+          setTimeout(() => {
+            const selectedRatioCard = document.querySelector('#ads-ratio-grid .ads-ratio-card.selected');
+            if (selectedRatioCard) {
+              const labelEl = selectedRatioCard.querySelector('.ads-ratio-label');
+              if (labelEl) {
+                const ratioText = labelEl.textContent;
+                const device = document.getElementById('ads-preview-device');
+                if (device) {
+                  device.className = 'ads-preview-device';
+                  if (ratioText === '1:1') device.classList.add('ratio-1-1');
+                  if (ratioText === '4:5') device.classList.add('ratio-4-5');
+                  if (ratioText === '9:16') device.classList.add('ratio-9-16');
+                  if (ratioText === '16:9') device.classList.add('ratio-16-9');
+                }
+              }
+            }
+          }, 100);
+        };
+
+        // Intercept logo load to put inside preview logo frame
+        const originalLogoHandle = window.adsHandleLogoUpload;
+        window.adsHandleLogoUpload = function(file) {
+          if (typeof originalLogoHandle === 'function') {
+            originalLogoHandle(file);
+          }
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const previewLogoPlaceholder = document.getElementById('ads-preview-logo-placeholder');
+              if (previewLogoPlaceholder) {
+                previewLogoPlaceholder.innerHTML = `<img src="${e.target.result}" alt="logo">`;
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+
+        // Intercept product upload to put into preview background frame
+        const originalProductHandle = window.adsHandleProductUpload;
+        window.adsHandleProductUpload = function(files) {
+          if (typeof originalProductHandle === 'function') {
+            originalProductHandle(files);
+          }
+          if (files && files[0] && files[0].type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const previewImg = document.getElementById('ads-preview-media-img');
+              const fallbackIcon = document.getElementById('ads-preview-fallback-icon');
+              if (previewImg) {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+              }
+              if (fallbackIcon) {
+                fallbackIcon.style.display = 'none';
+              }
+            };
+            reader.readAsDataURL(files[0]);
+          }
+        };
+      }
+
+      // Execute scripts initialization hooks
+      setTimeout(patchAdsAspectPreviews, 1000);
+    </script>
+  </div><!-- /panel-ads -->
+
+  <!-- ── ADS PROGRESS OVERLAY ── -->
+  <div id="ads-progress-overlay">
+    <div class="ads-progress-box">
+      <div class="ads-progress-logo" id="ads-progress-logo">🎯</div>
+      <div class="ads-progress-title">Generating Your Ad...</div>
+      <div class="ads-progress-subtitle" id="ads-progress-subtitle">AI is crafting your perfect ad</div>
+      <div class="ads-progress-bar-wrap">
+        <div class="ads-progress-bar-fill" id="ads-progress-bar"></div>
+      </div>
+      <div class="ads-progress-step-text" id="ads-progress-step"></div>
+      <div class="ads-progress-steps" id="ads-progress-dots"></div>
+    </div>
+  </div>
+
+  <!-- ── ADS FROM SCRIPT MODAL ── -->
+  <div id="ads-script-modal">
+    <div class="ads-script-modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div>
+          <div class="ads-script-modal-title">📄 Generate Ad from Your Script</div>
+          <div class="ads-script-modal-sub">Paste your script — AI will auto-generate image/video prompts via Groq, then create visuals via Meta AI extension</div>
+        </div>
+        <button onclick="closeAdsScriptModal()" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:4px;">✕</button>
+      </div>
+
+      <div class="ads-field">
+        <label class="ads-label">Your Ad Script *</label>
+        <textarea class="ads-textarea" id="ads-script-input" placeholder="Paste your complete ad script here...&#10;&#10;Example:&#10;[HOOK] Tired of paying too much for gym wear?&#10;[SCENE 1] Show product close-up&#10;[VO] Introducing FitPro — premium gym wear at half the price.&#10;[CTA] Shop now at fitpro.com" style="min-height:180px;"></textarea>
+      </div>
+
+      <div class="ads-field">
+        <label class="ads-label">Upload Product Media (Images/Videos)</label>
+        <div class="ads-upload-area" onclick="document.getElementById('ads-script-media-input').click()">
+          <div class="ads-upload-icon">📁</div>
+          <div class="ads-upload-text">Upload images or video clips for your ad scenes</div>
+        </div>
+        <div class="ads-upload-preview" id="ads-script-media-preview"></div>
+        <input type="file" id="ads-script-media-input" accept="image/*,video/*" multiple style="display:none" onchange="adsHandleScriptMedia(this.files)">
+      </div>
+
+      <div class="ads-field">
+        <label class="ads-label">Add Brand Logo? (Optional)</label>
+        <div class="ads-upload-area" onclick="document.getElementById('ads-script-logo-input').click()" style="padding:12px;">
+          <div class="ads-upload-text">📎 Upload logo for overlay</div>
+        </div>
+        <input type="file" id="ads-script-logo-input" accept="image/*" style="display:none" onchange="adsHandleScriptLogo(this.files[0])">
+        <div id="ads-script-logo-name" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+      </div>
+
+      <div class="ads-field" id="ads-logo-pos-section" style="display:none;">
+        <label class="ads-label">Logo Position</label>
+        <div class="ads-logo-pos-grid" id="ads-logo-pos-grid">
+          <div class="ads-logo-pos-btn selected" data-val="top-left" onclick="selectAdsLogoPos(this,'top-left')">↖ Top Left</div>
+          <div class="ads-logo-pos-btn" data-val="top-right" onclick="selectAdsLogoPos(this,'top-right')">↗ Top Right</div>
+          <div class="ads-logo-pos-btn" data-val="bottom-left" onclick="selectAdsLogoPos(this,'bottom-left')">↙ Bottom Left</div>
+          <div class="ads-logo-pos-btn" data-val="bottom-right" onclick="selectAdsLogoPos(this,'bottom-right')">↘ Bottom Right</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:20px;">
+        <button class="ads-btn-primary" style="flex:1;justify-content:center;" onclick="generateAdFromScript()">
+          ✨ Generate Ad from Script
+        </button>
+        <button onclick="closeAdsScriptModal()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:12px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── TOOLS PANEL ── -->
   <div class="panel" id="panel-tools">
     <div class="card">
@@ -7244,6 +9615,27 @@
     </div>
   </div>
 
+  <!-- ── AGENT FEEDBACK MODAL ── -->
+  <div class="modal-overlay" id="modal-agent-feedback">
+    <div class="modal" style="max-width: 600px; width: 90%; display: flex; flex-direction: column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <div>
+          <div class="modal-title" id="fb-modal-title">Agent Reports & Feedback</div>
+          <div class="modal-sub" id="fb-modal-sub">View feedback and reports received from users</div>
+        </div>
+        <button class="btn btn-secondary" onclick="refreshCardFeedbackList()" style="padding: 6px 12px; font-size:12px; display:flex; align-items:center; gap:6px"><i data-lucide="refresh-cw" style="width:12px;height:12px"></i> Refresh</button>
+      </div>
+
+      <div id="card-feedback-list" class="source-list" style="margin-top:10px; max-height:450px; overflow-y:auto; display:flex; flex-direction:column; gap:12px">
+        <!-- Dynamic content goes here -->
+      </div>
+
+      <div class="modal-actions" style="margin-top:20px">
+        <button class="modal-btn secondary" onclick="closeModal('agent-feedback')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── QR CODE MODAL ── -->
   <div class="modal-overlay" id="modal-qr">
     <div class="modal" style="max-width: 400px; text-align: center;">
@@ -7264,6 +9656,36 @@
       <div class="modal-actions" style="flex-direction: column; gap: 10px;">
         <button class="modal-btn primary" onclick="downloadQR()" style="width: 100%">💾 Download QR Code</button>
         <button class="modal-btn secondary" onclick="closeModal('qr')" style="width: 100%">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .ag-kb-analysis-btn {
+      color: var(--text3);
+    }
+    .ag-kb-analysis-btn:hover {
+      background: var(--bg3);
+      color: var(--accent);
+      transform: scale(1.15);
+    }
+  </style>
+
+  <!-- ── AGENT CHAT ANALYSIS MODAL ── -->
+  <div class="modal-overlay" id="modal-agent-session-analysis" style="z-index: 1000;">
+    <div class="modal" style="max-width: 550px; width: 90%; display: flex; flex-direction: column; padding: 25px; border-radius: 16px; background: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,0.3)">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:12px">
+        <div>
+          <div class="modal-title" style="margin:0; display:flex; align-items:center; gap:8px">
+            <span>🧠</span> AI Conversation Analysis
+          </div>
+          <div class="modal-sub">AI-powered categorization and behavior analysis</div>
+        </div>
+        <button class="modal-btn secondary" onclick="closeModal('agent-session-analysis')" style="padding: 6px 12px;">Close</button>
+      </div>
+      
+      <div id="ag-session-analysis-content" style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; max-height: 60vh; padding-right: 5px;">
+        <!-- Analysis Content will go here -->
       </div>
     </div>
   </div>
@@ -7290,7 +9712,13 @@
 
         <!-- Right Side: Chat Viewport -->
         <div style="width: 60%; display: flex; flex-direction: column; min-height:0">
-          <div style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; margin-bottom:10px">Chat Messages</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+            <div style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase">Chat Messages</div>
+            <div id="ag-action-toolbar" style="display:none; gap:6px; align-items:center">
+              <button class="ag-kb-analysis-btn" onclick="promptSendAction('call')" title="Send Call Now Button" style="font-size:11px; padding:4px 10px; border-radius:15px; background:linear-gradient(135deg, #4f46e5, #7c3aed); color:#fff; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px">📞 Call Now</button>
+              <button class="ag-kb-analysis-btn" onclick="promptSendAction('whatsapp')" title="Send WhatsApp Connect Button" style="font-size:11px; padding:4px 10px; border-radius:15px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px">💬 WhatsApp Connect</button>
+            </div>
+          </div>
           <div id="ag-history-chat-area" style="flex:1; overflow-y:auto; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:12px">
             <div style="font-size:12px; color:var(--text3); text-align:center; margin:auto">Select a visitor from the list to view their chat log.</div>
           </div>
@@ -9702,6 +12130,27 @@
   <div class="toasts" id="toasts"></div>
 
   <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      fetch('/api/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message + ' at ' + source + ':' + lineno + ':' + colno,
+          stack: error ? error.stack : ''
+        })
+      });
+    };
+    window.onunhandledrejection = function(event) {
+      fetch('/api/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Unhandled promise rejection: ' + event.reason,
+          stack: event.reason ? event.reason.stack : ''
+        })
+      });
+    };
+
     // UGC Request State (Defined at top to prevent TDZ reference errors on initialization)
     let selectedRequestJobId = null;
     let ugcRequestJobs = [];
@@ -9818,6 +12267,7 @@
       classroom: { title: 'Classroom Management', sub: 'Manage your exams, subjects, chapters, and topics' },
       ugc: { title: 'UGC Creator Studio', sub: 'Upload local videos and enhance them with AI pipelines' },
       'ugc-request': { title: 'UGC Request Manager', sub: 'Manage and edit video requests received via the developer API' },
+      'ads': { title: '🎯 Ads Generator', sub: 'Create AI-powered ads for any platform in one click' },
     };
     function showPanel(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -9842,6 +12292,7 @@
       if (id === 'classroom') loadClassroom();
       if (id === 'ugc') loadUgcJobs();
       if (id === 'ugc-request') loadUgcRequestJobs();
+      if (id === 'ads') initAdsPanel();
 
       function startProgress(type) {
         const overlay = document.getElementById('gen-loading-overlay');
@@ -13041,7 +15492,8 @@
             ca_topic_id: '',
             language: lang,
             voice_id: voiceId,
-            transcript: customScript
+            transcript: customScript,
+            subtitle_lang: lang
           })
         });
         const createData = await createRes.json();
@@ -14928,6 +17380,8 @@
 
     function openCreateAgentModal() {
       _currentAgentId = null;
+      const fbTab = document.getElementById('tab-btn-feedback');
+      if (fbTab) fbTab.style.display = 'none';
       document.getElementById('agent-grid-view').style.display = 'none';
       const adv = document.getElementById('agent-detail-view');
       adv.style.display = '';
@@ -15024,6 +17478,7 @@
           <button class="ac-icon-btn" onclick="showAgentQR('${a.agent_id}')" title="QR Code"><i data-lucide="qr-code"></i></button>
           <button class="ac-icon-btn" onclick="openAgentHistory('${a.agent_id}')" title="Chat History"><i data-lucide="history"></i></button>
           <button class="ac-icon-btn" onclick="openAgentChat('${a.agent_id}', 'v2v')" title="Voice Chat"><i data-lucide="mic"></i></button>
+          <button class="ac-icon-btn" onclick="openAgentFeedbackFromCard('${a.agent_id}')" title="Reports & Feedback" style="color:var(--accent)"><i data-lucide="flag"></i></button>
           <button class="ac-icon-btn" onclick="editAgent('${a.agent_id}')" title="Edit"><i data-lucide="edit-3"></i></button>
           <button class="ac-icon-btn" onclick="deleteAgent('${a.agent_id}')" title="Delete" style="color:var(--red)"><i data-lucide="trash-2"></i></button>
         </div>
@@ -15147,11 +17602,19 @@
           const phonePart = s.phone_number ? `<div style="font-size:11px; color:var(--text2); margin-top:2px">📞 ${escHtml(s.phone_number)}</div>` : '';
           
           return `
-            <div class="session-item-card" onclick="viewSessionChat('${s.session_id}', this)" 
-                 style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; transition:all 0.2s">
+            <div class="session-item-card" onclick="viewSessionChat('${s.session_id}', this, '${escHtml(s.phone_number || '')}')" 
+                 style="position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; transition:all 0.2s">
+              
+              <!-- Knowledge Icon Button -->
+              <button class="ag-kb-analysis-btn" onclick="event.stopPropagation(); analyzeAndShowSession('${s.session_id}')"
+                title="View AI Chat Analysis"
+                style="position:absolute; top:10px; right:10px; border:none; background:none; cursor:pointer; font-size:18px; padding:4px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.2s">
+                🧠
+              </button>
+
               ${namePart}
               ${phonePart}
-              <div style="font-size:11px; color:var(--text3); margin-top:4px; display:flex; justify-content:space-between">
+              <div style="font-size:11px; color:var(--text3); margin-top:4px; display:flex; justify-content:space-between; width: calc(100% - 25px)">
                 <span>💻 ${escHtml(s.device_name)}</span>
                 <span>${dateStr}</span>
               </div>
@@ -15164,7 +17627,93 @@
       }
     }
 
-    async function viewSessionChat(sessionId, el) {
+    async function analyzeAndShowSession(sessionId) {
+      openModal('agent-session-analysis');
+      const container = document.getElementById('ag-session-analysis-content');
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px 0; color: var(--text3)">
+          <span class="loader-spin" style="width:24px; height:24px; margin-bottom:10px"></span>
+          <div>Analyzing conversation history...</div>
+        </div>
+      `;
+
+      try {
+        const r = await fetch(`/api/agents/sessions/${sessionId}/analyze`, {
+          method: 'POST',
+          headers: hdrs()
+        });
+        if (!r.ok) {
+          const errData = await r.json();
+          throw new Error(errData.detail || 'Analysis failed');
+        }
+        const data = await r.json();
+        
+        let badgeHtml = '';
+        if (data.category === 'marketing') {
+          badgeHtml = '<span style="background: linear-gradient(135deg, #818cf8, #4f46e5); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(79,70,229,0.3)">📢 Marketing</span>';
+        } else if (data.category === 'calling') {
+          badgeHtml = '<span style="background: linear-gradient(135deg, #2dd4bf, #0d9488); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(13,148,136,0.3)">📞 Calling</span>';
+        } else if (data.category === 'meeting') {
+          badgeHtml = '<span style="background: linear-gradient(135deg, #fb923c, #ea580c); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(234,88,12,0.3)">🤝 Meeting</span>';
+        } else {
+          badgeHtml = `<span style="background: linear-gradient(135deg, #94a3b8, #475569); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(71,85,105,0.3)">💡 ${escHtml(data.category)}</span>`;
+        }
+
+        container.innerHTML = `
+          <!-- Category Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 15px; display: flex; align-items: center; justify-content: space-between">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text2)">Detected Category:</span>
+            ${badgeHtml}
+          </div>
+
+          <!-- Intent Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
+            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">🎯</div>
+            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
+              <span>🎯</span> User Intent (Kya krna chahta h)
+            </div>
+            <div style="font-size: 13px; line-height: 1.6; color: var(--text)">${escHtml(data.intent)}</div>
+          </div>
+
+          <!-- Meaning Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
+            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">🔍</div>
+            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
+              <span>🔍</span> Chat Meaning (Matlab kya h)
+            </div>
+            <div style="font-size: 13px; line-height: 1.6; color: var(--text)">${escHtml(data.meaning)}</div>
+          </div>
+
+          <!-- Next Steps Card -->
+          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
+            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">📋</div>
+            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
+              <span>📋</span> Next Actions (Kya krna chahiye)
+            </div>
+            <div style="font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-line">${escHtml(data.next_steps)}</div>
+          </div>
+        `;
+      } catch (e) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 0; color: var(--red)">
+            <span style="font-size: 32px; display: block; margin-bottom: 10px">⚠️</span>
+            <div style="font-weight: 600; margin-bottom: 5px">Analysis Failed</div>
+            <div style="font-size: 12px; color: var(--text3)">${escHtml(e.message)}</div>
+          </div>
+        `;
+      }
+    }
+
+    let activeSessionId = null;
+    let activeSessionPhone = '';
+
+    async function viewSessionChat(sessionId, el, sessionPhone = '') {
+      activeSessionId = sessionId;
+      if (sessionPhone) activeSessionPhone = sessionPhone;
+
+      const toolbar = document.getElementById('ag-action-toolbar');
+      if (toolbar) toolbar.style.display = 'flex';
+
       document.querySelectorAll('.session-item-card').forEach(c => {
         c.style.borderColor = 'var(--border)';
         c.style.background = 'var(--bg2)';
@@ -15208,6 +17757,45 @@
       }
     }
 
+    async function promptSendAction(actionType) {
+      if (!activeSessionId) {
+        toast('⚠️ Please select a visitor session first.', 'err');
+        return;
+      }
+      
+      const label = actionType === 'call' ? 'Call Now' : 'WhatsApp Connect';
+      const phone = prompt(`Enter phone number for "${label}" button to send to visitor:`, activeSessionPhone || '');
+      
+      if (phone === null) return;
+      const cleanPhone = phone.trim();
+      if (!cleanPhone) {
+        toast('⚠️ Phone number is required.', 'err');
+        return;
+      }
+      
+      try {
+        const r = await fetch(`/api/agents/sessions/${activeSessionId}/send-action`, {
+          method: 'POST',
+          headers: hdrs(),
+          body: JSON.stringify({
+            action_type: actionType,
+            phone_number: cleanPhone,
+            message: actionType === 'call' ? 'Call Us Now' : 'Connect on WhatsApp'
+          })
+        });
+        
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.detail || 'Failed to send action button');
+        }
+        
+        toast(`✅ ${label} button sent to visitor!`, 'success');
+        viewSessionChat(activeSessionId, null, activeSessionPhone);
+      } catch (e) {
+        toast(`❌ Error: ${e.message}`, 'err');
+      }
+    }
+
     function openAgentChat(id, mode = 'text') {
       const a = _agents.find(x => x.agent_id === id);
       if (a && a.customization && a.customization.chat_link) {
@@ -15217,6 +17805,71 @@
         let url = `/agent-chat?id=${id}`;
         if (mode !== 'text') url += `&mode=${mode}`;
         window.open(url, '_blank');
+      }
+    }
+
+    let _feedbackAgentId = '';
+    async function openAgentFeedbackFromCard(agentId) {
+      _feedbackAgentId = agentId;
+      const a = _agents.find(x => x.agent_id === agentId);
+      const agentName = a ? a.name : 'Agent';
+      
+      const titleElem = document.getElementById('fb-modal-title');
+      if (titleElem) {
+        titleElem.textContent = `Reports & Feedback — ${agentName}`;
+      }
+      
+      document.getElementById('modal-agent-feedback').classList.add('open');
+      await refreshCardFeedbackList();
+    }
+
+    async function refreshCardFeedbackList() {
+      if (!_feedbackAgentId) return;
+      const container = document.getElementById('card-feedback-list');
+      if (!container) return;
+      
+      container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:20px;text-align:center"><span class="loader-spin"></span> Loading reports & feedback…</div>';
+
+      try {
+        const r = await fetch(`/api/agents/${_feedbackAgentId}/feedback`, { headers: hdrs() });
+        if (!r.ok) throw new Error();
+        const list = await r.json();
+
+        if (!list || !list.length) {
+          container.innerHTML = '<div class="history-empty" style="padding:40px">🚩 No reports or feedback received yet.</div>';
+          return;
+        }
+
+        container.innerHTML = list.map(item => {
+          const typeLabel = item.feedback_type === 'report' ? 'Report' : 'Feedback';
+          const typeClass = item.feedback_type === 'report' ? 'red' : 'green';
+          const ratingStars = item.feedback_type === 'feedback' && item.rating
+            ? '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating)
+            : '';
+          const dateStr = new Date(item.created_at).toLocaleString();
+
+          return `
+            <div class="source-item" style="padding:15px; background:var(--bg3); flex-direction:column; align-items:stretch; gap:8px; border-radius:12px; border:1px solid var(--border)">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div style="display:flex; align-items:center; gap:8px">
+                  <span style="font-weight:700; font-size:13px; color:var(--text)">${escHtml(item.user_name || 'Anonymous')}</span>
+                  ${item.user_email ? `<span style="font-size:11px; color:var(--text3)">(${escHtml(item.user_email)})</span>` : ''}
+                </div>
+                <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(${item.feedback_type === 'report' ? '248,113,113' : '52,211,153'}, 0.15); color:var(--${typeClass})">${typeLabel}</span>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
+                ${ratingStars ? `<div style="color:var(--accent); font-size:13px; margin-left:12px; font-weight:700; white-space:nowrap">${ratingStars}</div>` : ''}
+              </div>
+
+              <div style="text-align:right; font-size:10px; color:var(--text3)">${dateStr}</div>
+            </div>
+          `;
+        }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center">Failed to load reports and feedback.</div>';
       }
     }
 
@@ -15355,6 +18008,10 @@
       });
 
       loadAgentKB(id);
+      
+      const fbTab = document.getElementById('tab-btn-feedback');
+      if (fbTab) fbTab.style.display = 'block';
+      loadAgentFeedbackList(id);
     }
 
     async function loadDSSources(id) {
@@ -15416,6 +18073,54 @@
       </div>
     `).join('');
       } catch (e) { container.innerHTML = 'Error loading knowledge base'; }
+    }
+
+    async function loadAgentFeedbackList(agentId) {
+      const container = document.getElementById('ag-feedback-list');
+      if (!container) return;
+      container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:20px;text-align:center"><span class="loader-spin"></span> Loading reports & feedback…</div>';
+
+      try {
+        const r = await fetch(`/api/agents/${agentId}/feedback`, { headers: hdrs() });
+        if (!r.ok) throw new Error();
+        const list = await r.json();
+
+        if (!list || !list.length) {
+          container.innerHTML = '<div class="history-empty" style="padding:40px">🚩 No reports or feedback received yet.</div>';
+          return;
+        }
+
+        container.innerHTML = list.map(item => {
+          const typeLabel = item.feedback_type === 'report' ? 'Report' : 'Feedback';
+          const typeClass = item.feedback_type === 'report' ? 'red' : 'green';
+          const ratingStars = item.feedback_type === 'feedback' && item.rating
+            ? '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating)
+            : '';
+          const dateStr = new Date(item.created_at).toLocaleString();
+
+          return `
+            <div class="source-item" style="padding:15px; background:var(--bg3); flex-direction:column; align-items:stretch; gap:8px; border-radius:12px; border:1px solid var(--border)">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div style="display:flex; align-items:center; gap:8px">
+                  <span style="font-weight:700; font-size:13px; color:var(--text)">${escHtml(item.user_name || 'Anonymous')}</span>
+                  ${item.user_email ? `<span style="font-size:11px; color:var(--text3)">(${escHtml(item.user_email)})</span>` : ''}
+                </div>
+                <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(${item.feedback_type === 'report' ? '248,113,113' : '52,211,153'}, 0.15); color:var(--${typeClass})">${typeLabel}</span>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
+                ${ratingStars ? `<div style="color:var(--accent); font-size:13px; margin-left:12px; font-weight:700; white-space:nowrap">${ratingStars}</div>` : ''}
+              </div>
+
+              <div style="text-align:right; font-size:10px; color:var(--text3)">${dateStr}</div>
+            </div>
+          `;
+        }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--red);padding:20px;text-align:center">Failed to load reports and feedback.</div>';
+      }
     }
 
     function triggerLogoImageUpload() {
@@ -22842,7 +25547,8 @@
         const bodyPayload = {
           language: lang,
           voice_id: voiceId,
-          transcript: transcriptText
+          transcript: transcriptText,
+          subtitle_lang: lang
         };
         if (wizardContextType === 'subtopic') {
           bodyPayload.subtopic_id = wizardContextId;
@@ -23787,7 +26493,8 @@
             subtopic_id: currentActiveSubtopicId,
             language: lang,
             voice_id: voiceId,
-            transcript: transcript
+            transcript: transcript,
+            subtitle_lang: lang
           })
         });
         const data = await res.json();
@@ -26283,6 +28990,45 @@
       }
     }
 
+    function deduplicateText(text) {
+      if (!text) return "";
+      text = text.replace(/\s+/g, ' ').trim();
+      
+      function cleanStr(str) {
+        return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+      
+      let words = text.split(' ');
+      if (words.length <= 1) return text;
+      
+      // Try to find a split point where the left part and the right part are phonetically identical
+      for (let i = 1; i < words.length; i++) {
+        let part1 = words.slice(0, i).join(' ');
+        let part2 = words.slice(i).join(' ');
+        
+        let c1 = cleanStr(part1);
+        let c2 = cleanStr(part2);
+        
+        if (c1 === c2 && c1.length > 2) {
+          return part1;
+        }
+      }
+      
+      // Check for sliding window phrase repetitions
+      for (let len = Math.floor(words.length / 2); len >= 1; len--) {
+        for (let i = 0; i <= words.length - 2 * len; i++) {
+          let w1 = words.slice(i, i + len).join(' ');
+          let w2 = words.slice(i + len, i + 2 * len).join(' ');
+          if (cleanStr(w1) === cleanStr(w2) && cleanStr(w1).length > 1) {
+            words.splice(i + len, len);
+            return words.join(' ');
+          }
+        }
+      }
+      
+      return text;
+    }
+
     function initVoiceSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -26290,14 +29036,16 @@
         return null;
       }
       const rec = new SpeechRecognition();
-      rec.continuous = true;         // Keep listening even while bot speaks → enables interrupt
+      let processingQuestion = false; // Prevent double-processing
+      rec.continuous = false;        // Fast transcription finalization as soon as user pauses speaking
       rec.interimResults = true;     // Show live text while speaking
-      rec.lang = 'hi-IN';            // Hindi/Hinglish/English
+      rec.lang = localStorage.getItem('mrairag_sv_lang') || 'hi-IN';            // Hindi/Hinglish/English from settings
       rec.maxAlternatives = 1;
 
       rec.onstart = () => {
         isListening = true;
         setVoiceState('listening');
+        processingQuestion = false; // Reset the guard when starting listening
       };
 
       rec.onerror = (e) => {
@@ -26333,9 +29081,9 @@
         }
       };
 
-      let processingQuestion = false; // Prevent double-processing
-
       rec.onresult = async (event) => {
+        if (processingQuestion) return;
+
         let interimTranscript = '';
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -26351,16 +29099,27 @@
 
         // Show live interim text
         if (interimTranscript && !finalTranscript) {
-          transcriptEl.innerHTML = `<span style="opacity:0.5;font-style:italic;">${escapeHTML(interimTranscript)}</span>`;
+          const cleanInterimText = deduplicateText(interimTranscript);
+          transcriptEl.innerHTML = `<span style="opacity:0.5;font-style:italic;">${escapeHTML(cleanInterimText)}</span>`;
 
           // If bot is speaking and user has started talking → INTERRUPT immediately
-          if (isSpeaking && interimTranscript.length > 3) {
+          if (isSpeaking && cleanInterimText.length > 3) {
             interruptBotSpeech();
           }
         }
 
         if (finalTranscript) {
+          const cleanText = deduplicateText(finalTranscript);
+          if (!cleanText) return;
+
+          processingQuestion = true; // Guard it immediately
           const myRequestId = ++currentVoiceRequestId;
+
+          // Stop listening and auto restart while fetching/speaking the response
+          autoRestartRecognition = false;
+          try {
+            rec.abort();
+          } catch(e) {}
 
           // Abort previous active request
           if (voiceChatAbortController) {
@@ -26370,7 +29129,7 @@
           }
           voiceChatAbortController = new AbortController();
 
-          transcriptEl.innerHTML = `<span style="color:#fff;font-weight:600;">🗣️ ${escapeHTML(finalTranscript)}</span>`;
+          transcriptEl.innerHTML = `<span style="color:#fff;font-weight:600;">🗣️ ${escapeHTML(cleanText)}</span>`;
 
           // Clear and hide previous bot response text while thinking
           const botResponseEl = document.getElementById('voice-bot-response');
@@ -26460,7 +29219,7 @@
           'Content-Type': 'application/json',
           'X-App-Token': session.token
         },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, is_voice: true }),
         signal: signal
       });
 
@@ -26528,7 +29287,8 @@
       }
 
       try {
-        const audioUrl = `/api/classroom/tts/speak?text=${encodeURIComponent(cleanText)}&voice_id=${ELEVENLABS_VOICE_ID}&token=${encodeURIComponent(session.token)}`;
+        const configuredVoiceId = localStorage.getItem('mrairag_el_voice') || 'ypnkIsDASPgHZuanrF0q';
+        const audioUrl = `/api/classroom/tts/speak?text=${encodeURIComponent(cleanText)}&voice_id=${configuredVoiceId}&token=${encodeURIComponent(session.token)}`;
         currentVoiceAudio = new Audio();
         currentVoiceAudio.src = audioUrl;
 
@@ -26567,6 +29327,39 @@
       }
     }
 
+    function setVoiceChatLanguage(langCode) {
+      localStorage.setItem('mrairag_sv_lang', langCode);
+      
+      const pills = document.querySelectorAll('.lang-pill');
+      pills.forEach(p => p.classList.remove('active'));
+      
+      if (langCode === 'hi-IN') {
+        const hiBtn = document.getElementById('btn-lang-hi');
+        if (hiBtn) hiBtn.classList.add('active');
+      } else {
+        const enBtn = document.getElementById('btn-lang-en');
+        if (enBtn) enBtn.classList.add('active');
+      }
+      
+      toast(`Listening language set to: ${langCode === 'hi-IN' ? 'Hindi/Hinglish' : 'English'}`, 'info');
+      
+      if (voiceSpeechRecognition) {
+        try {
+          const prevAutoRestart = autoRestartRecognition;
+          autoRestartRecognition = false;
+          voiceSpeechRecognition.abort();
+          
+          voiceSpeechRecognition = initVoiceSpeechRecognition();
+          autoRestartRecognition = prevAutoRestart;
+          if (autoRestartRecognition && document.getElementById('voice-overlay').classList.contains('open') && !isSpeaking) {
+            voiceSpeechRecognition.start();
+          }
+        } catch (e) {
+          console.error("Failed to dynamically switch recognition language:", e);
+        }
+      }
+    }
+
     // Start Full page Voice Chat
     async function startVoiceChat() {
       if (!activeChatType || !activeChatTargetId) return;
@@ -26578,6 +29371,17 @@
       }
 
       document.getElementById('voice-overlay').classList.add('open');
+      
+      // Update active state on language pills
+      const currentLang = localStorage.getItem('mrairag_sv_lang') || 'hi-IN';
+      const pills = document.querySelectorAll('.lang-pill');
+      pills.forEach(p => p.classList.remove('active'));
+      if (currentLang === 'hi-IN') {
+        document.getElementById('btn-lang-hi')?.classList.add('active');
+      } else {
+        document.getElementById('btn-lang-en')?.classList.add('active');
+      }
+
       document.getElementById('voice-transcript').textContent = '🗣️ Speak now...';
       const botResponseEl = document.getElementById('voice-bot-response');
       if (botResponseEl) {
@@ -28650,8 +31454,10 @@
 
 
     // Close modal when clicking outside
-    document.getElementById("ugc-subs-modal").addEventListener("click", function (e) {
-      if (e.target === this) closeSubtitleEditor();
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("ugc-subs-modal")?.addEventListener("click", function (e) {
+        if (e.target === this) closeSubtitleEditor();
+      });
     });
 
     // ── UGC REQUEST WORKSPACE LOGIC ──────────────────────────────────────────────
@@ -29591,6 +32397,1165 @@
       return p;
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       ADS GENERATOR — Full JavaScript
+    ═══════════════════════════════════════════════════════════════ */
+
+    // ── State ───────────────────────────────────────────────────────
+    const ADS_STATE = {
+      platform: 'google',
+      goal: 'brand_awareness',
+      style: 'modern',
+      tone: 'friendly',
+      duration: '15',
+      ratio: '9:16',
+      music: 'ai_suggest',
+      voiceProvider: 'elevenlabs',
+      voiceGender: 'male',
+      voiceLang: 'english',
+      captionLang: 'english',
+      logoFile: null,
+      logoDataUrl: null,
+      productFiles: [],
+      voiceFile: null,
+      musicFile: null,
+      scriptLogoFile: null,
+      scriptLogoPos: 'top-left',
+      scriptMediaFiles: [],
+      assetImgFiles: [],
+      assetVidFiles: [],
+      fontFiles: [],
+      generated: {}
+    };
+
+    // ── GROQ config (from env - hardcoded for browser use) ──────────
+    const GROQ_KEY = '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';
+    const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+    // ── ElevenLabs config ────────────────────────────────────────────
+    const EL_KEY = 'sk_19cb4f04d1ac748748f616e03942362e19b74090bf88fbe0';
+    const EL_VOICE_MAP = {
+      'male-english': '29vD33N1CtxCmqQRPOHJ',   // Drew
+      'female-english': 'EXAVITQu4vr4xnSDxMaL', // Bella
+      'male-hindi': 'onwK4e9ZLuTAKqWW03F9',      // Daniel (closest for Hindi)
+      'female-hindi': 'XB0fDUnXU5powFXDhCwa',    // Charlotte
+      'male-hinglish': 'onwK4e9ZLuTAKqWW03F9',
+      'female-hinglish': 'EXAVITQu4vr4xnSDxMaL'
+    };
+
+    // ── Sarvam config ────────────────────────────────────────────────
+    const SARVAM_KEY = 'sk_km80yacz_W5GgtGH2zuDv18hQ4iuMwU2a';
+    const SARVAM_VOICES = {
+      'male-hindi': 'hitesh',
+      'female-hindi': 'anushka',
+      'male-hinglish': 'hitesh',
+      'female-hinglish': 'anushka',
+      'male-english': 'hitesh',
+      'female-english': 'anushka'
+    };
+
+    // ── Init ─────────────────────────────────────────────────────────
+    function initAdsPanel() {
+      // Check extension availability
+      const hasExt = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+      const warn = document.getElementById('ads-ext-warning');
+      if (!hasExt && warn) warn.style.display = 'flex';
+    }
+
+    // ── Platform Selection ───────────────────────────────────────────
+    function selectAdsPlatform(el, platform) {
+      document.querySelectorAll('#ads-platform-grid .ads-platform-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.platform = platform;
+      // Auto-set recommended ratio
+      const ratioMap = { google: '16:9', meta: '9:16', linkedin: '4:5', youtube: '16:9', tiktok: '9:16', twitter: '16:9', snapchat: '9:16' };
+      const rec = ratioMap[platform] || '9:16';
+      document.querySelectorAll('#ads-ratio-grid .ads-ratio-card').forEach(c => {
+        c.classList.remove('selected');
+        if (c.getAttribute('title') === rec || c.querySelector('.ads-ratio-label')?.textContent === rec) c.classList.add('selected');
+      });
+      ADS_STATE.ratio = rec;
+    }
+
+    // ── Single-select chip ───────────────────────────────────────────
+    function selectAdsChip(el, group) {
+      const container = el.closest('.ads-chips');
+      if (!container) return;
+      container.querySelectorAll('.ads-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE[group] = el.getAttribute('data-val');
+    }
+
+    // ── Multi-select chip (single within group, but separate from other groups) ──
+    function selectAdsMultiChip(el, group) {
+      const container = el.closest('.ads-chips');
+      if (!container) return;
+      container.querySelectorAll('.ads-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE[group] = el.getAttribute('data-val');
+    }
+
+    // ── Duration ─────────────────────────────────────────────────────
+    function selectAdsDuration(el, val) {
+      document.querySelectorAll('#ads-duration-grid .ads-duration-pill').forEach(p => p.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.duration = val;
+      const wrap = document.getElementById('ads-custom-duration-wrap');
+      if (wrap) wrap.style.display = val === 'custom' ? 'block' : 'none';
+    }
+
+    // ── Aspect Ratio ─────────────────────────────────────────────────
+    function selectAdsRatio(el, val) {
+      document.querySelectorAll('#ads-ratio-grid .ads-ratio-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.ratio = val;
+    }
+
+    // ── Voice Provider ───────────────────────────────────────────────
+    function selectAdsVoiceProvider(el, val) {
+      document.querySelectorAll('#ads-voiceprovider-grid .ads-voice-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.voiceProvider = val;
+    }
+
+    // ── Logo Position ─────────────────────────────────────────────────
+    function selectAdsLogoPos(el, val) {
+      document.querySelectorAll('#ads-logo-pos-grid .ads-logo-pos-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.scriptLogoPos = val;
+    }
+
+    function selectAdsLogoPosScratch(el, val) {
+      document.querySelectorAll('#ads-logo-pos-grid-scratch .ads-logo-pos-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      ADS_STATE.scriptLogoPos = val;
+    }
+
+    // ── File Upload Handlers ─────────────────────────────────────────
+    function adsHandleLogoUpload(file) {
+      if (!file) return;
+      ADS_STATE.logoFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        ADS_STATE.logoDataUrl = e.target.result;
+        const prev = document.getElementById('ads-logo-preview');
+        if (prev) prev.innerHTML = `<img src="${e.target.result}" class="ads-upload-thumb" title="${file.name}">`;
+        const posScratch = document.getElementById('ads-logo-pos-section-scratch');
+        if (posScratch) posScratch.style.display = 'block';
+        extractBrandColors(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function adsHandleProductUpload(files) {
+      ADS_STATE.productFiles = Array.from(files);
+      const prev = document.getElementById('ads-product-preview');
+      if (!prev) return;
+      prev.innerHTML = '';
+      ADS_STATE.productFiles.forEach(f => {
+        if (f.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = e => prev.innerHTML += `<img src="${e.target.result}" class="ads-upload-thumb" title="${f.name}">`;
+          reader.readAsDataURL(f);
+        } else {
+          prev.innerHTML += `<div class="ads-upload-thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);">🎬<br>${f.name.slice(0,12)}</div>`;
+        }
+      });
+    }
+
+    function adsHandleMusicUpload(file) {
+      if (!file) return;
+      ADS_STATE.musicFile = file;
+      const el = document.getElementById('ads-music-name');
+      if (el) el.textContent = '🎵 ' + file.name;
+    }
+
+    function adsHandleVoiceUpload(file) {
+      if (!file) return;
+      ADS_STATE.voiceFile = file;
+      const el = document.getElementById('ads-voice-name');
+      if (el) el.textContent = '🎤 ' + file.name;
+    }
+
+    function adsHandleAssetsUpload(files, type) {
+      const arr = Array.from(files);
+      if (type === 'img') {
+        ADS_STATE.assetImgFiles = arr;
+        const prev = document.getElementById('ads-assets-img-preview');
+        if (prev) {
+          prev.innerHTML = '';
+          arr.forEach(f => {
+            const reader = new FileReader();
+            reader.onload = e => prev.innerHTML += `<img src="${e.target.result}" class="ads-upload-thumb">`;
+            reader.readAsDataURL(f);
+          });
+        }
+      } else {
+        ADS_STATE.assetVidFiles = arr;
+        const el = document.getElementById('ads-assets-vid-list');
+        if (el) el.textContent = arr.map(f => '🎬 ' + f.name).join(', ');
+      }
+    }
+
+    function adsHandleFontUpload(files) {
+      ADS_STATE.fontFiles = Array.from(files);
+      const el = document.getElementById('ads-font-name');
+      if (el) el.textContent = ADS_STATE.fontFiles.map(f => '🔤 ' + f.name).join(', ');
+    }
+
+    function adsHandleDrop(e, target) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (target === 'logo' && files[0]) adsHandleLogoUpload(files[0]);
+      if (target === 'product' && files.length) adsHandleProductUpload(files);
+    }
+
+    // Script modal file handlers
+    function adsHandleScriptMedia(files) {
+      ADS_STATE.scriptMediaFiles = Array.from(files);
+      const prev = document.getElementById('ads-script-media-preview');
+      if (!prev) return;
+      prev.innerHTML = '';
+      ADS_STATE.scriptMediaFiles.forEach(f => {
+        if (f.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = e => prev.innerHTML += `<img src="${e.target.result}" class="ads-upload-thumb">`;
+          reader.readAsDataURL(f);
+        } else {
+          prev.innerHTML += `<div class="ads-upload-thumb" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3);text-align:center;">🎬<br>${f.name.slice(0,10)}</div>`;
+        }
+      });
+    }
+
+    function adsHandleScriptLogo(file) {
+      if (!file) return;
+      ADS_STATE.scriptLogoFile = file;
+      document.getElementById('ads-script-logo-name').textContent = '🏷️ ' + file.name;
+      document.getElementById('ads-logo-pos-section').style.display = 'block';
+      const reader = new FileReader();
+      reader.onload = e => {
+        ADS_STATE.logoDataUrl = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ── Brand Color Extraction ────────────────────────────────────────
+    function extractBrandColors(dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 50; canvas.height = 50;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 50, 50);
+        const data = ctx.getImageData(0, 0, 50, 50).data;
+        // Sample pixels and pick dominant non-transparent colors
+        const colorCounts = {};
+        for (let i = 0; i < data.length; i += 16) {
+          if (data[i + 3] < 128) continue;
+          const hex = '#' + [data[i], data[i+1], data[i+2]].map(v => v.toString(16).padStart(2, '0')).join('');
+          colorCounts[hex] = (colorCounts[hex] || 0) + 1;
+        }
+        const sorted = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+        if (sorted[0]) document.getElementById('ads-color-1').value = sorted[0][0];
+        if (sorted[1]) document.getElementById('ads-color-2').value = sorted[1][0];
+        if (sorted[2]) document.getElementById('ads-color-3').value = sorted[2][0];
+      };
+      img.src = dataUrl;
+    }
+
+    // ── Modal Controls ────────────────────────────────────────────────
+    function openAdsScriptModal() {
+      document.getElementById('ads-script-modal').classList.add('visible');
+    }
+
+    function closeAdsScriptModal() {
+      document.getElementById('ads-script-modal').classList.remove('visible');
+    }
+
+    // ── Progress Overlay ──────────────────────────────────────────────
+    const ADS_STEPS = [
+      { emoji: '📋', label: 'Generating Script' },
+      { emoji: '🎨', label: 'Building Scenes' },
+      { emoji: '🖼️', label: 'Generating Visuals' },
+      { emoji: '🎙️', label: 'Creating Voiceover' },
+      { emoji: '✂️', label: 'Assembling Ad' },
+      { emoji: '✅', label: 'Finalizing' }
+    ];
+
+    function showAdsProgress() {
+      const overlay = document.getElementById('ads-progress-overlay');
+      const bar = document.getElementById('ads-progress-bar');
+      const dots = document.getElementById('ads-progress-dots');
+      overlay.classList.add('visible');
+      bar.style.width = '3%';
+      // Render step dots
+      dots.innerHTML = ADS_STEPS.map((s, i) =>
+        `<div class="ads-step-dot" id="ads-dot-${i}">
+          <div class="ads-step-dot-icon">${s.emoji}</div>
+          <span>${s.label}</span>
+        </div>`
+      ).join('');
+    }
+
+    function updateAdsProgress(stepIdx, msg) {
+      const bar = document.getElementById('ads-progress-bar');
+      const stepText = document.getElementById('ads-progress-step');
+      const subtitle = document.getElementById('ads-progress-subtitle');
+      // Progress: each step = 100/ADS_STEPS.length %
+      const pct = Math.min(95, ((stepIdx + 1) / ADS_STEPS.length) * 100);
+      if (bar) bar.style.width = pct + '%';
+      if (stepText) stepText.textContent = msg || ADS_STEPS[stepIdx]?.label || '';
+      if (subtitle) subtitle.textContent = ADS_STEPS[stepIdx]?.emoji + ' ' + (ADS_STEPS[stepIdx]?.label || '');
+      // Update dots
+      ADS_STEPS.forEach((_, i) => {
+        const dot = document.getElementById('ads-dot-' + i);
+        if (!dot) return;
+        dot.className = 'ads-step-dot' + (i < stepIdx ? ' done' : i === stepIdx ? ' active' : '');
+        dot.querySelector('.ads-step-dot-icon').textContent = i < stepIdx ? '✓' : ADS_STEPS[i].emoji;
+      });
+    }
+
+    function hideAdsProgress() {
+      const overlay = document.getElementById('ads-progress-overlay');
+      const bar = document.getElementById('ads-progress-bar');
+      if (bar) bar.style.width = '100%';
+      setTimeout(() => {
+        if (overlay) overlay.classList.remove('visible');
+        if (bar) bar.style.width = '0%';
+      }, 800);
+    }
+
+    // ── Groq API Helper ───────────────────────────────────────────────
+    async function callGroq(prompt, systemMsg) {
+      const res = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: systemMsg || 'You are an expert advertising copywriter and creative director.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.8,
+          max_tokens: 4000
+        })
+      });
+      if (!res.ok) throw new Error(`Groq error: ${res.status}`);
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || '';
+    }
+
+    // ── Build prompt from form state ──────────────────────────────────
+    function buildAdsPrompt(refDesc = "") {
+      const brand = document.getElementById('ads-brand-name')?.value || 'Brand';
+      const url = document.getElementById('ads-brand-url')?.value || '';
+      const industry = document.getElementById('ads-brand-industry')?.value || '';
+      const cta = document.getElementById('ads-cta')?.value || 'Shop Now';
+      const product = document.getElementById('ads-product-desc')?.value || '';
+      const country = document.getElementById('ads-country')?.value || '';
+      const age = document.getElementById('ads-age')?.value || '';
+      const gender = document.getElementById('ads-gender')?.value || 'all';
+      const interests = document.getElementById('ads-interests')?.value || '';
+      const discount = document.getElementById('ads-discount')?.value || '';
+      const promo = document.getElementById('ads-promo')?.value || '';
+      const contact = document.getElementById('ads-contact')?.value || '';
+      const whatsapp = document.getElementById('ads-whatsapp')?.value || '';
+      const captionLang = ADS_STATE.captionLang;
+      const voiceLang = ADS_STATE.voiceLang;
+      const durSec = ADS_STATE.duration === 'custom' ? (document.getElementById('ads-custom-duration')?.value || '30') : ADS_STATE.duration;
+
+      let languageInstructions = "";
+      if (voiceLang.toLowerCase() === 'hindi' || voiceLang.toLowerCase() === 'hinglish') {
+        languageInstructions = `
+CRITICAL LANGUAGE RULES:
+1. SPOKEN VOICE OVER DIALOGUE ("dialogue"): The voiceover language selected is HINDI. Therefore, you MUST write the "dialogue" key strictly in proper, standard Hindi Devanagari script (e.g. "नमस्ते! आपका व्यवसाय..."). NEVER write the dialogue using English alphabets (Hinglish, e.g. "Namaste! Aapka..."), as TTS engines require Devanagari script to speak with a clear natural Hindi accent.
+2. ON-SCREEN SUBTITLE CAPTION ("caption"): The caption language selected is ${captionLang}. Write the "caption" key strictly in ${captionLang}. If it is Hindi, use proper Devanagari script.
+3. Spell out all numbers, acronyms, and symbols in spoken Hindi words (e.g. write "तीस प्रतिशत" instead of "30%", "अक्टूबर" instead of "Oct").
+`;
+      } else {
+        languageInstructions = `
+CRITICAL LANGUAGE RULES:
+1. SPOKEN VOICE OVER DIALOGUE ("dialogue"): Write the "dialogue" key strictly in ${voiceLang}.
+2. ON-SCREEN SUBTITLE CAPTION ("caption"): Write the "caption" key strictly in ${captionLang}.
+`;
+      }
+
+      return `Create a high-converting, extremely professional, and premium promotional ${ADS_STATE.platform} ad for the following brand:
+
+BRAND: ${brand}
+WEBSITE: ${url || 'N/A'}
+INDUSTRY: ${industry || 'General'}
+PRODUCT/SERVICE: ${product || 'Premium product/service'}
+${refDesc ? refDesc : ''}
+GOAL: ${ADS_STATE.goal.replace(/_/g, ' ')}
+AD STYLE: ${ADS_STATE.style}
+VOICE TONE: ${ADS_STATE.tone}
+PLATFORM: ${ADS_STATE.platform}
+VIDEO DURATION: ${durSec} seconds
+ASPECT RATIO: ${ADS_STATE.ratio}
+TARGET: Country=${country||'Global'}, Age=${age||'All'}, Gender=${gender}, Interests=${interests||'General'}
+CTA: ${cta}
+
+COPYWRITING & CREATIVE RULES:
+1. Use the AIDA (Attention, Interest, Desire, Action) framework to write the script.
+2. The hook (first 3 seconds) must be powerful, high-impact, and immediately address the viewer's core pain points or aspirations.
+3. Build intense interest by introducing the brand as the ultimate premium solution, highlighting specific business benefits and unique value propositions.
+4. Establish desire through persuasive, professional, and authoritative copy. Avoid generic marketing buzzwords; instead, focus on transformation, quality, and results.
+5. End with a crystal-clear, compelling call to action aligned with the goal.
+6. Scene descriptions must match high-end corporate/lifestyle visuals, cinematic lighting, corporate style, high-end offices, or clean professional designs.
+7. INTEGRATING PRODUCT REFERENCES: The user has uploaded product reference images. Therefore, when writing the "image_prompt" for each scene, you MUST incorporate the features of the BRAND and PRODUCT/SERVICE DESCRIPTION (e.g., including details of the specific dashboard, logo style, or app interface described in the PRODUCT/SERVICE DESCRIPTION) so that the generated Meta AI visuals match the brand's identity and product look and feel.
+8. META AI PROMPT SAFETY & POLICY COMPLIANCE: Inside the "image_prompt" and "video_prompt" fields, you MUST NEVER include trademarked brand names (like "Google", "Meta", "Facebook", "Instagram", "TikTok", "LinkedIn", "Twitter", "Snapchat", etc.), direct marketing keywords (like "ad", "ads", "advertisement", "advertising", "campaign", "sale", "discount", "free", "buy", "offer", "promo"), or the word "logo" or "text". Prompts containing these words are immediately stopped by Meta AI's safety filter. Describe them generically instead (e.g., use "sleek tech emblem" or "minimalist business symbol" instead of "logo"; use "creative presentation showcase" instead of "advertisement campaign"; use "value tier" or "complimentary access" instead of "discount/free/buy/sale"). Keep prompts purely descriptive, photorealistic, focused on cinematic visuals, and extremely concise (under 25 words each).
+
+LANGUAGE: ${voiceLang}
+CAPTION LANGUAGE: ${captionLang}
+${discount ? 'OFFER: ' + discount : ''}
+${promo ? 'PROMO CODE: ' + promo : ''}
+${contact ? 'CONTACT: ' + contact : ''}
+${whatsapp ? 'WHATSAPP: ' + whatsapp : ''}
+
+${languageInstructions}
+
+Return a JSON object with EXACTLY these keys:
+{
+  "hook": "One powerful opening hook sentence",
+  "headline": "Main ad headline",
+  "headlines": ["Headline 1", "Headline 2", "Headline 3", "Headline 4", "Headline 5"],
+  "script": "Full voiceover script for the ad (${durSec}s video). Write naturally speakable text.",
+  "ad_copy": "Short persuasive ad copy for ${ADS_STATE.platform} (2-3 sentences)",
+  "social_caption": "Engaging social media caption with emojis and hashtags",
+  "scenes": [
+    {"scene": 1, "duration_sec": 2, "description": "Scene description", "image_prompt": "Detailed Meta AI image description", "video_prompt": "Animated motion description", "caption": "On-screen text", "dialogue": "Spoken voiceover script for this scene"}
+  ],
+  "scene_breakdown": "Full scene-by-scene breakdown as readable text",
+  "music_suggestion": "Suggested background music style/mood"
+}
+
+Make it extremely creative, engaging and platform-optimized. The script should be naturally timed for ${durSec} seconds. Include multiple scenes where each scene's duration_sec is strictly set between 2 to 3 seconds depending on its dialogue length (e.g. if the video duration is ${durSec} seconds, output exactly ${Math.round(durSec / 2.5)} to ${Math.round(durSec / 2.0)} scenes, with each scene lasting exactly 2 or 3 seconds), and the sum of all scene durations exactly equals ${durSec} seconds.`;
+    }
+
+    // ── ElevenLabs TTS ────────────────────────────────────────────────
+    async function generateElevenLabsVoice(text) {
+      const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+      const voiceId = EL_VOICE_MAP[voiceKey] || EL_VOICE_MAP['male-english'];
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: { 'xi-api-key': EL_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true }
+        })
+      });
+      if (!res.ok) throw new Error(`ElevenLabs error: ${res.status}`);
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    }
+
+    // ── Sarvam AI TTS ─────────────────────────────────────────────────
+    async function generateSarvamVoice(text) {
+      if (!SARVAM_KEY) throw new Error('Sarvam API key not configured. Add SARVAM_API_KEY to your .env');
+      const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+      const speaker = SARVAM_VOICES[voiceKey] || 'meera';
+      const langMap = { 'hindi': 'hi-IN', 'hinglish': 'hi-IN', 'english': 'en-IN' };
+      const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: { 'api-subscription-key': SARVAM_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: [text], target_language_code: langMap[ADS_STATE.voiceLang] || 'hi-IN', speaker, pitch: 0, pace: 1.0, loudness: 1.5, enable_preprocessing: true })
+      });
+      if (!res.ok) throw new Error(`Sarvam error: ${res.status}`);
+      const data = await res.json();
+      const b64 = data.audios?.[0];
+      if (!b64) throw new Error('No audio from Sarvam');
+      const byteArr = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const blob = new Blob([byteArr], { type: 'audio/wav' });
+      return URL.createObjectURL(blob);
+    }
+
+    // ── Meta AI Extension — Generate Single Asset ──────────────────
+    async function generateMetaAIAsset(prompt, mediaType, filename) {
+      return new Promise((resolve, reject) => {
+        if (typeof chrome === 'undefined' || !chrome.tabs) {
+          reject(new Error('Extension not available'));
+          return;
+        }
+        chrome.tabs.query({ url: '*://www.meta.ai/*' }, tabs => {
+          if (!tabs || !tabs.length) {
+            reject(new Error('No meta.ai tab open. Please open meta.ai first.'));
+            return;
+          }
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'GENERATE_SINGLE_ASSET',
+            prompt, mediaType, filename
+          }, res => {
+            if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+            if (res?.ok) resolve(res); else reject(new Error(res?.error || 'Meta AI failed'));
+          });
+        });
+      });
+    }
+
+    // ── Generate Visuals for all scenes ──────────────────────────────
+    async function generateSceneVisuals(scenes) {
+      const grid = document.getElementById('ads-scenes-grid');
+      const section = document.getElementById('ads-scenes-section');
+      if (!grid || !section) return [];
+      section.style.display = 'block';
+      grid.innerHTML = '';
+
+      // Add placeholder cards
+      scenes.forEach((s, i) => {
+        grid.innerHTML += `
+          <div class="ads-scene-card" id="ads-scene-card-${i}">
+            <div style="text-align:center;padding:16px;">
+              <div style="font-size:24px;margin-bottom:8px;">⏳</div>
+              <div style="font-size:10px;color:var(--text3);">Scene ${i+1}</div>
+            </div>
+            <div class="ads-scene-label">Scene ${i+1}: ${(s.description || '').slice(0, 30)}</div>
+          </div>`;
+      });
+
+      const results = [];
+      for (let i = 0; i < scenes.length; i++) {
+        const s = scenes[i];
+        const card = document.getElementById(`ads-scene-card-${i}`);
+        try {
+          updateAdsProgress(2, `🖼️ Generating scene ${i+1} of ${scenes.length}...`);
+          await generateMetaAIAsset(s.image_prompt, 'image', `ads_scene_${i+1}.jpg`);
+          // Show success state
+          if (card) card.innerHTML = `<div style="text-align:center;padding:16px;"><div style="font-size:24px;margin-bottom:8px;">✅</div><div style="font-size:10px;color:var(--green);">Scene ${i+1} Generated</div></div><div class="ads-scene-label">Scene ${i+1}</div>`;
+          results.push({ scene: i+1, status: 'done' });
+        } catch (e) {
+          if (card) card.innerHTML = `<div style="text-align:center;padding:16px;font-size:10px;color:var(--red);">⚠️ ${e.message.slice(0,40)}</div><div class="ads-scene-label">Scene ${i+1} (skipped)</div>`;
+          results.push({ scene: i+1, status: 'error', error: e.message });
+        }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      return results;
+    }
+
+    async function analyzeReferenceImages() {
+      const files = (ADS_STATE.productFiles && ADS_STATE.productFiles.length)
+        ? ADS_STATE.productFiles
+        : (ADS_STATE.scriptMediaFiles || []);
+      if (!files.length) return "";
+
+      let descriptions = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        try {
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'llama-3.2-11b-vision-preview',
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Describe this product reference image in detail. Focus on key visual features, style, colors, and layout. Keep it short and concise (under 25 words).'
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: base64Data
+                      }
+                    }
+                  ]
+                }
+              ],
+              temperature: 0.5,
+              max_tokens: 150
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const desc = data.choices?.[0]?.message?.content || "";
+            if (desc) descriptions.push(`Product Reference Image ${i + 1} Visual Description: ${desc.trim()}`);
+          }
+        } catch (err) {
+          console.error("Error analyzing reference image:", err);
+        }
+      }
+      if (descriptions.length > 0) {
+        return "\nUSER UPLOADED PRODUCT REFERENCE DESCRIPTIONS (incorporate these details into the scenes):\n" + descriptions.join("\n") + "\n";
+      }
+      return "";
+    }
+
+    // ── Main Generate Flow ────────────────────────────────────────────
+    async function generateAd() {
+      const brandName = document.getElementById('ads-brand-name')?.value?.trim();
+      if (!brandName) {
+        alert('⚠️ Please enter your Brand Name to generate an ad.');
+        document.getElementById('ads-brand-name')?.focus();
+        return;
+      }
+      const productDesc = document.getElementById('ads-product-desc')?.value?.trim();
+      if (!productDesc) {
+        alert('⚠️ Please describe your product/service.');
+        document.getElementById('ads-product-desc')?.focus();
+        return;
+      }
+
+      // Hide output, show progress
+      document.getElementById('ads-output-wrap').classList.remove('visible');
+      const compiledCard = document.getElementById('ads-out-compiled-card');
+      if (compiledCard) compiledCard.style.display = 'none';
+      showAdsProgress();
+
+      try {
+        // ── STEP 1: Generate Script & Copy via Groq ─────────────────
+        updateAdsProgress(0, '🔍 Analyzing uploaded product reference images...');
+        const refDesc = await analyzeReferenceImages();
+
+        updateAdsProgress(0, '📋 Generating ad script with Groq AI...');
+        const prompt = buildAdsPrompt(refDesc);
+        let rawResp = await callGroq(prompt, 'You are an expert advertising creative director. Always respond with valid JSON only, no markdown, no explanation.');
+
+        // Extract JSON from response
+        let adData = {};
+        try {
+          const jsonMatch = rawResp.match(/\{[\s\S]*\}/);
+          adData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+        } catch (e) {
+          try { adData = JSON.parse(rawResp); } catch (err) {
+            console.error("Failed to parse Groq response as JSON:", rawResp, err);
+            adData = {};
+          }
+        }
+
+        ADS_STATE.generated = adData;
+
+        // ── STEP 2: Scene planning ───────────────────────────────────
+        updateAdsProgress(1, '🎨 Planning ad scenes...');
+        await new Promise(r => setTimeout(r, 800));
+        const scenes = adData.scenes || [];
+        if (!scenes.length) {
+          throw new Error('No scenes generated by Groq. Please try again.');
+        }
+
+        // ── STEP 3: Create background job and poll progress ───────────
+        updateAdsProgress(2, '⏳ Processing campaign settings and reference assets...');
+
+        // Map voice ID dynamically
+        let voiceId = 'onwK4e9ZLuTAKqWW03F9'; // default Male English
+        if (ADS_STATE.voiceProvider === 'elevenlabs') {
+          const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+          voiceId = EL_VOICE_MAP[voiceKey] || EL_VOICE_MAP['male-english'];
+        } else if (ADS_STATE.voiceProvider === 'sarvam') {
+          const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+          voiceId = SARVAM_VOICES[voiceKey] || 'hitesh';
+        }
+
+        // Helper: Convert File to Base64
+        const fileToBase64 = file => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+
+        // Convert reference images to base64
+        const referenceImages = [];
+        const allFiles = [...(ADS_STATE.productFiles || []), ...(ADS_STATE.assetImgFiles || []), ...(ADS_STATE.scriptMediaFiles || [])];
+        for (const file of allFiles) {
+          if (file.type.startsWith('image/')) {
+            try {
+              const b64 = await fileToBase64(file);
+              referenceImages.push(b64);
+            } catch (err) {
+              console.warn("Failed to read image file:", err);
+            }
+          }
+        }
+
+        // Convert custom BGM to base64
+        let bgmDataUrl = null;
+        if (ADS_STATE.music === 'upload' && ADS_STATE.musicFile) {
+          try {
+            bgmDataUrl = await fileToBase64(ADS_STATE.musicFile);
+          } catch (err) {
+            console.warn("Failed to read BGM file:", err);
+          }
+        }
+
+        updateAdsProgress(2, '⏳ Connection pending: Make sure your extension is active and www.meta.ai is open...');
+
+        // Post job creation
+        const createRes = await fetch('/api/extension/create-job', {
+          method: 'POST',
+          headers: hdrs(),
+          body: JSON.stringify({
+            language: ADS_STATE.voiceLang,
+            voice_id: voiceId,
+            voice_provider: ADS_STATE.voiceProvider,
+            subtitle_lang: ADS_STATE.captionLang,
+            logo_data_url: ADS_STATE.logoDataUrl || null,
+            logo_position: ADS_STATE.scriptLogoPos || 'top-left',
+            reference_images: referenceImages.length > 0 ? referenceImages : null,
+            bgm_data_url: bgmDataUrl,
+            scenes: scenes,
+            is_ad_job: true,
+            bgm_prompt: adData.music_suggestion || "Upbeat, energetic promotional background music"
+          })
+        });
+        const createData = await createRes.json();
+        if (!createData.success) throw new Error(createData.detail || 'Failed to create background job.');
+
+        const jobId = createData.job_id;
+
+        // Post message to window to let content_dashboard pick it up
+        window.postMessage({
+          type: "MR_AI_START_JOB",
+          jobId: jobId,
+          token: session.token || "",
+          backendUrl: window.location.origin
+        }, "*");
+
+        // Now poll the job status
+        let pollCount = 0;
+        let isAssemblingStarted = false;
+        while (true) {
+          await new Promise(r => setTimeout(r, 2500));
+          pollCount++;
+
+          const statusRes = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
+          const statusData = await statusRes.json();
+
+          if (statusData.status === 'error') {
+            throw new Error(statusData.error || 'Job failed in extension.');
+          }
+
+          const total = statusData.total_scenes || scenes.length;
+
+          if (statusData.status === 'waiting_extension') {
+            updateAdsProgress(2, '⏳ Connection pending: Make sure your extension is active and www.meta.ai is open...');
+          } else if (statusData.status === 'extension_running' || statusData.status === 'generating_images') {
+            const done = statusData.images_done || 0;
+            updateAdsProgress(2, `🖼️ Extension harvesting images (${done}/${total} done)...`);
+          } else if (statusData.status === 'generating_videos') {
+            const done = statusData.videos_done || 0;
+            updateAdsProgress(3, `🎥 Extension harvesting video clips (${done}/${total} done)...`);
+          } else if (statusData.status === 'ready_to_assemble') {
+            updateAdsProgress(4, '✂️ Assets harvested. Triggering video assembly on server...');
+            if (!isAssemblingStarted) {
+              isAssemblingStarted = true;
+              // Trigger assembly
+              await fetch(`/api/extension/job/${jobId}/assemble`, {
+                method: 'POST',
+                headers: hdrs(),
+                body: JSON.stringify({
+                  videos: statusData.scenes.map((_, idx) => `scene_${idx}_orig_vid.mp4`),
+                  images: statusData.scenes.map((_, idx) => `scene_${idx}_orig_img.jpg`)
+                })
+              });
+            }
+          } else if (statusData.status === 'assembling') {
+            updateAdsProgress(4, `✂️ Server is compiling final video: ${statusData.progress_msg || 'please wait...'}`);
+          } else if (statusData.status === 'done') {
+            updateAdsProgress(5, '✅ Completed!');
+            await new Promise(r => setTimeout(r, 500));
+            hideAdsProgress();
+
+            const finalVideoUrl = statusData.video_url;
+
+            // Render text outputs with local voiceover track URL
+            const voiceUrl = `/uploads/social/ext_work_${jobId.substring(0, 8)}/full_voice.mp3`;
+            renderAdsOutput(adData, voiceUrl, scenes);
+
+            // Render final video in phone preview mockup
+            const device = document.getElementById('ads-preview-device');
+            if (device) {
+              device.innerHTML = `
+                <video src="${finalVideoUrl}" controls autoplay loop style="width:100%; height:100%; object-fit:cover; border-radius:inherit;"></video>
+              `;
+            }
+
+            // Show compiled video card with download button
+            const compiledCard2 = document.getElementById('ads-out-compiled-card');
+            const compiledVideo = document.getElementById('ads-out-compiled-video');
+            if (compiledCard2 && compiledVideo) {
+              compiledCard2.style.display = 'block';
+              compiledVideo.innerHTML = `
+                <div style="margin-bottom:12px; font-size:13px; color:var(--text2);">
+                  ✨ Your AI Ad Reel has been fully assembled with high-quality AI narration and background music!
+                </div>
+                <video src="${finalVideoUrl}" controls style="width:100%; max-width:360px; border-radius:8px; border: 1px solid var(--border);"></video>
+                <div style="margin-top:12px;">
+                  <a href="${finalVideoUrl}" download="final_ad_campaign.mp4" class="ads-btn-primary" style="display:inline-flex; align-items:center; text-decoration:none; padding:10px 20px; font-size:12.5px; border-radius:8px;">
+                    <span>⬇️</span> Download Final Ad Video (Reel)
+                  </a>
+                </div>
+              `;
+            }
+            break;
+          }
+        }
+
+      } catch (e) {
+        hideAdsProgress();
+        alert('❌ Generation failed: ' + e.message);
+        console.error('Ads generation error:', e);
+      }
+    }
+
+    // ── Render Output ─────────────────────────────────────────────────
+    function renderAdsOutput(data, voiceUrl, sceneResults) {
+      // Script
+      const scriptEl = document.getElementById('ads-out-script');
+      if (scriptEl) scriptEl.textContent = data.script || 'Script generation pending...';
+
+      // Headlines
+      const headlinesEl = document.getElementById('ads-out-headlines');
+      if (headlinesEl) {
+        const headlines = data.headlines || [data.headline || 'Headline coming soon...'];
+        headlinesEl.innerHTML = headlines.map((h, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--accent);font-weight:700;margin-right:8px;">#${i+1}</span>${h}</div>`).join('');
+      }
+
+      // Ad Copy
+      const copyEl = document.getElementById('ads-out-copy');
+      if (copyEl) copyEl.textContent = data.ad_copy || 'Ad copy coming soon...';
+
+      // Social Caption
+      const captionEl = document.getElementById('ads-out-caption');
+      if (captionEl) captionEl.textContent = data.social_caption || 'Caption coming soon...';
+
+      // Hook
+      const hookEl = document.getElementById('ads-out-hook');
+      if (hookEl) hookEl.innerHTML = `<div style="font-size:16px;font-weight:700;color:var(--accent);">"${data.hook || data.headline || 'Hook coming soon...'}"</div>`;
+
+      // Voiceover
+      const voiceEl = document.getElementById('ads-out-voiceover');
+      if (voiceEl) {
+        if (voiceUrl) {
+          voiceEl.innerHTML = `
+            <div style="margin-bottom:8px;font-size:12px;color:var(--text2);">Provider: ${ADS_STATE.voiceProvider === 'elevenlabs' ? '🎙️ ElevenLabs' : '🇮🇳 Sarvam AI'} · ${ADS_STATE.voiceGender} · ${ADS_STATE.voiceLang}</div>
+            <audio controls class="ads-audio-player" src="${voiceUrl}"></audio>
+            <div style="margin-top:8px;">
+              <a href="${voiceUrl}" download="ads_voiceover.mp3" style="font-size:11px;color:var(--accent);text-decoration:none;">⬇️ Download Voiceover</a>
+            </div>`;
+        } else {
+          voiceEl.innerHTML = '<span style="color:var(--text3);font-size:12px;">⚠️ Voiceover generation failed. Check API key or try again.</span>';
+        }
+      }
+
+      // Scene Breakdown
+      const scenesEl = document.getElementById('ads-out-scenes');
+      if (scenesEl) {
+        if (data.scenes && data.scenes.length) {
+          scenesEl.textContent = data.scene_breakdown || data.scenes.map((s, i) =>
+            `Scene ${s.scene || i+1} (${s.duration_sec || 5}s)\n` +
+            `  📝 ${s.description || ''}\n` +
+            `  🖼️ Image: ${s.image_prompt || ''}\n` +
+            `  💬 Caption: "${s.caption || ''}"\n`
+          ).join('\n');
+        } else {
+          scenesEl.textContent = data.scene_breakdown || 'Scene breakdown coming soon...';
+        }
+      }
+
+      // Music suggestion badge
+      if (data.music_suggestion) {
+        const musicEl = document.getElementById('ads-out-scenes');
+        if (musicEl) {
+          const note = document.createElement('div');
+          note.style.cssText = 'margin-top:12px;padding:10px;background:rgba(139,92,246,0.1);border-radius:8px;font-size:12px;color:#a78bfa;';
+          note.textContent = '🎵 Suggested Music: ' + data.music_suggestion;
+          musicEl.parentElement?.appendChild(note);
+        }
+      }
+
+      // Show output section with animation
+      const wrap = document.getElementById('ads-output-wrap');
+      if (wrap) {
+        wrap.classList.add('visible');
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // ── Generate from Script ──────────────────────────────────────────
+    async function generateAdFromScript() {
+      const scriptText = document.getElementById('ads-script-input')?.value?.trim();
+      if (!scriptText) {
+        alert('⚠️ Please paste your ad script first.');
+        return;
+      }
+
+      closeAdsScriptModal();
+      document.getElementById('ads-output-wrap').classList.remove('visible');
+      const compiledCard = document.getElementById('ads-out-compiled-card');
+      if (compiledCard) compiledCard.style.display = 'none';
+      showAdsProgress();
+
+      try {
+        // ── STEP 1: Generate scene prompts from script via Groq ──────
+        updateAdsProgress(0, '🔍 Analyzing uploaded script reference images...');
+        const refDesc = await analyzeReferenceImages();
+
+        updateAdsProgress(0, '📋 Analyzing script with Groq AI...');
+        const scenePrompt = `You are an expert AI creative director. Given the following ad script, generate image and video prompts for each scene/section.
+
+${refDesc ? refDesc : ''}
+
+SCRIPT:
+${scriptText}
+
+LOGO POSITION: ${ADS_STATE.scriptLogoPos}
+HAS LOGO OVERLAY: ${ADS_STATE.scriptLogoFile ? 'Yes' : 'No'}
+
+Return ONLY a JSON array of scenes:
+[
+  {
+    "scene": 1,
+    "duration_sec": 2,
+    "description": "Scene description",
+    "image_prompt": "Highly detailed Meta AI image generation prompt - photorealistic, cinematic, commercial photography style",
+    "video_prompt": "Animated motion version for Meta AI video generation",
+    "dialogue": "The exact voiceover line for this scene",
+    "caption": "On-screen text overlay"
+  }
+]
+
+CRITICAL SCENE TIMING RULE:
+You MUST break down the script into multiple short segments. Each scene's "duration_sec" MUST be strictly set between 2 to 3 seconds depending on its dialogue length, and the sum of all scene durations must exactly equal the total length of the script.
+
+META AI PROMPT SAFETY & POLICY COMPLIANCE:
+Inside the "image_prompt" and "video_prompt" fields, you MUST NEVER include trademarked brand names (like "Google", "Meta", "Facebook", "Instagram", "TikTok", "LinkedIn", "Twitter", "Snapchat", etc.), direct marketing keywords (like "ad", "ads", "advertisement", "advertising", "campaign", "sale", "discount", "free", "buy", "offer", "promo"), or the word "logo" or "text". Prompts containing these words are immediately stopped by Meta AI's safety filter. Describe them generically instead (e.g., use "sleek tech emblem" or "minimalist business symbol" instead of "logo"; use "creative presentation showcase" instead of "advertisement campaign"; use "value tier" or "complimentary access" instead of "discount/free/buy/sale"). Keep prompts purely descriptive, photorealistic, focused on cinematic visuals, and extremely concise (under 25 words each).
+
+Also include a "meta" object at the end:
+{
+  "scenes": [...above array...],
+  "full_script": "The complete voiceover script",
+  "headline": "Main headline from script",
+  "hook": "Opening hook line"
+}`;
+
+        const rawResp = await callGroq(scenePrompt);
+        let parsed = {};
+        try {
+          const match = rawResp.match(/\{[\s\S]*\}/);
+          parsed = match ? JSON.parse(match[0]) : {};
+        } catch (e) {
+          try { parsed = JSON.parse(rawResp); } catch (err) {
+            console.error("Failed to parse Groq script response as JSON:", rawResp, err);
+            parsed = {};
+          }
+        }
+
+        const scenes = parsed.scenes || [];
+        if (!scenes.length) {
+          throw new Error('Could not parse scenes from Groq response. Make sure it returned valid JSON.');
+        }
+
+        // ── STEP 2: Scene planning ───────────────────────────────────
+        updateAdsProgress(1, `🎨 ${scenes.length} scenes planned from script...`);
+        await new Promise(r => setTimeout(r, 600));
+
+        // ── STEP 3: Create background job and poll progress ───────────
+        updateAdsProgress(2, '⏳ Processing campaign settings and reference assets...');
+
+        // Map voice ID dynamically
+        let voiceId = 'onwK4e9ZLuTAKqWW03F9'; // default Male English
+        if (ADS_STATE.voiceProvider === 'elevenlabs') {
+          const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+          voiceId = EL_VOICE_MAP[voiceKey] || EL_VOICE_MAP['male-english'];
+        } else if (ADS_STATE.voiceProvider === 'sarvam') {
+          const voiceKey = `${ADS_STATE.voiceGender}-${ADS_STATE.voiceLang}`;
+          voiceId = SARVAM_VOICES[voiceKey] || 'hitesh';
+        }
+
+        // Helper: Convert File to Base64
+        const fileToBase64 = file => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+
+        // Convert reference images to base64
+        const referenceImages = [];
+        const allFiles = [...(ADS_STATE.productFiles || []), ...(ADS_STATE.assetImgFiles || []), ...(ADS_STATE.scriptMediaFiles || [])];
+        for (const file of allFiles) {
+          if (file.type.startsWith('image/')) {
+            try {
+              const b64 = await fileToBase64(file);
+              referenceImages.push(b64);
+            } catch (err) {
+              console.warn("Failed to read image file:", err);
+            }
+          }
+        }
+
+        // Convert custom BGM to base64
+        let bgmDataUrl = null;
+        if (ADS_STATE.music === 'upload' && ADS_STATE.musicFile) {
+          try {
+            bgmDataUrl = await fileToBase64(ADS_STATE.musicFile);
+          } catch (err) {
+            console.warn("Failed to read BGM file:", err);
+          }
+        }
+
+        updateAdsProgress(2, '⏳ Connection pending: Make sure your extension is active and www.meta.ai is open...');
+
+        // Post job creation
+        const createRes = await fetch('/api/extension/create-job', {
+          method: 'POST',
+          headers: hdrs(),
+          body: JSON.stringify({
+            language: ADS_STATE.voiceLang,
+            voice_id: voiceId,
+            voice_provider: ADS_STATE.voiceProvider,
+            subtitle_lang: ADS_STATE.captionLang,
+            logo_data_url: ADS_STATE.logoDataUrl || null,
+            logo_position: ADS_STATE.scriptLogoPos || 'top-left',
+            reference_images: referenceImages.length > 0 ? referenceImages : null,
+            bgm_data_url: bgmDataUrl,
+            scenes: scenes,
+            is_ad_job: true,
+            bgm_prompt: "Upbeat, promotional background music"
+          })
+        });
+        const createData = await createRes.json();
+        if (!createData.success) throw new Error(createData.detail || 'Failed to create background job.');
+
+        const jobId = createData.job_id;
+
+        // Post message to window to let content_dashboard pick it up
+        window.postMessage({
+          type: "MR_AI_START_JOB",
+          jobId: jobId,
+          token: session.token || "",
+          backendUrl: window.location.origin
+        }, "*");
+
+        // Now poll the job status
+        let pollCount = 0;
+        let isAssemblingStarted = false;
+        while (true) {
+          await new Promise(r => setTimeout(r, 2500));
+          pollCount++;
+
+          const statusRes = await fetch(`/api/extension/job/${jobId}/status`, { headers: hdrs() });
+          const statusData = await statusRes.json();
+
+          if (statusData.status === 'error') {
+            throw new Error(statusData.error || 'Job failed in extension.');
+          }
+
+          const total = statusData.total_scenes || scenes.length;
+
+          if (statusData.status === 'waiting_extension') {
+            updateAdsProgress(2, '⏳ Connection pending: Make sure your extension is active and www.meta.ai is open...');
+          } else if (statusData.status === 'extension_running' || statusData.status === 'generating_images') {
+            const done = statusData.images_done || 0;
+            updateAdsProgress(2, `🖼️ Extension harvesting images (${done}/${total} done)...`);
+          } else if (statusData.status === 'generating_videos') {
+            const done = statusData.videos_done || 0;
+            updateAdsProgress(3, `🎥 Extension harvesting video clips (${done}/${total} done)...`);
+          } else if (statusData.status === 'ready_to_assemble') {
+            updateAdsProgress(4, '✂️ Assets harvested. Triggering video assembly on server...');
+            if (!isAssemblingStarted) {
+              isAssemblingStarted = true;
+              // Trigger assembly
+              await fetch(`/api/extension/job/${jobId}/assemble`, {
+                method: 'POST',
+                headers: hdrs(),
+                body: JSON.stringify({
+                  videos: statusData.scenes.map((_, idx) => `scene_${idx}_orig_vid.mp4`),
+                  images: statusData.scenes.map((_, idx) => `scene_${idx}_orig_img.jpg`)
+                })
+              });
+            }
+          } else if (statusData.status === 'assembling') {
+            updateAdsProgress(4, `✂️ Server is compiling final video: ${statusData.progress_msg || 'please wait...'}`);
+          } else if (statusData.status === 'done') {
+            updateAdsProgress(5, '✅ Completed!');
+            await new Promise(r => setTimeout(r, 500));
+            hideAdsProgress();
+
+            const finalVideoUrl = statusData.video_url;
+
+            // Render text outputs
+            const voiceScript = parsed.full_script || scriptText;
+            const adData = {
+              script: voiceScript,
+              headline: parsed.headline || 'Generated Ad',
+              headlines: [parsed.headline || 'Generated Ad', parsed.hook || ''],
+              hook: parsed.hook || '',
+              ad_copy: scriptText.slice(0, 300),
+              social_caption: scriptText.slice(0, 200) + '...',
+              scenes: scenes,
+              scene_breakdown: scenes.map((s, i) => `Scene ${i+1}: ${s.description || ''}\n  Caption: "${s.caption || ''}"\n  Dialogue: "${s.dialogue || ''}"` ).join('\n\n')
+            };
+
+            const voiceUrl = `/uploads/social/ext_work_${jobId.substring(0, 8)}/full_voice.mp3`;
+            renderAdsOutput(adData, voiceUrl, scenes);
+
+            // Render final video in phone preview mockup
+            const device = document.getElementById('ads-preview-device');
+            if (device) {
+              device.innerHTML = `
+                <video src="${finalVideoUrl}" controls autoplay loop style="width:100%; height:100%; object-fit:cover; border-radius:inherit;"></video>
+              `;
+            }
+
+            // Show compiled video card with download button
+            const compiledCard3 = document.getElementById('ads-out-compiled-card');
+            const compiledVideo = document.getElementById('ads-out-compiled-video');
+            if (compiledCard3 && compiledVideo) {
+              compiledCard3.style.display = 'block';
+              compiledVideo.innerHTML = `
+                <div style="margin-bottom:12px; font-size:13px; color:var(--text2);">
+                  ✨ Your AI Ad Reel has been fully assembled with high-quality AI narration and background music!
+                </div>
+                <video src="${finalVideoUrl}" controls style="width:100%; max-width:360px; border-radius:8px; border: 1px solid var(--border);"></video>
+                <div style="margin-top:12px;">
+                  <a href="${finalVideoUrl}" download="final_ad_campaign.mp4" class="ads-btn-primary" style="display:inline-flex; align-items:center; text-decoration:none; padding:10px 20px; font-size:12.5px; border-radius:8px;">
+                    <span>⬇️</span> Download Final Ad Video (Reel)
+                  </a>
+                </div>
+              `;
+            }
+            break;
+          }
+        }
+
+      } catch (e) {
+        hideAdsProgress();
+        alert('❌ Generation failed: ' + e.message);
+        console.error('From-script generation error:', e);
+      }
+    }
+
+    // ── Copy to clipboard ─────────────────────────────────────────────
+    function adsCopy(elId) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      const text = el.textContent || el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        // Flash feedback
+        const btn = el.previousElementSibling;
+        if (btn && btn.classList.contains('ads-copy-btn')) {
+          const orig = btn.textContent;
+          btn.textContent = '✓ Copied!';
+          btn.style.color = 'var(--green)';
+          setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
+        }
+      });
+    }
+
   </script>
 
   <!-- AI Quiz Modal -->
@@ -29656,6 +33621,13 @@
   <!-- Full-screen Voice Chat Overlay -->
   <div class="voice-overlay" id="voice-overlay" onclick="handleVoiceOverlayClick(event)">
     <div class="voice-status-text" id="voice-status">🔊 Starting...</div>
+    
+    <!-- Language Selector Pill -->
+    <div class="voice-lang-selector" onclick="event.stopPropagation()">
+      <button id="btn-lang-hi" class="lang-pill active" onclick="setVoiceChatLanguage('hi-IN')">🇮🇳 Hindi / Hinglish</button>
+      <button id="btn-lang-en" class="lang-pill" onclick="setVoiceChatLanguage('en-IN')">🌐 English</button>
+    </div>
+
     <div class="voice-visualizer" id="voice-visualizer">
       <div class="voice-bar"></div>
       <div class="voice-bar"></div>

@@ -254,9 +254,10 @@ async def generate_elevenlabs_voiceover(
     text: str, 
     work_dir: str, 
     voice_id: Optional[str] = None, 
-    language: Optional[str] = None
+    language: Optional[str] = None,
+    voice_provider: Optional[str] = "elevenlabs"
 ) -> Optional[str]:
-    """Generates high-quality voiceover using ElevenLabs with automatic gTTS fallback and silence generation."""
+    """Generates high-quality voiceover using ElevenLabs or Sarvam AI with automatic gTTS fallback and silence generation."""
     
     # 1. Clean bracketed pacing/directing tags
     cleaned_text = re.sub(r'\[[^\]]*\]', '', text)
@@ -281,7 +282,7 @@ async def generate_elevenlabs_voiceover(
     
     # 3. Try ElevenLabs
     api_key = settings.ELEVENLABS_API_KEY
-    if api_key:
+    if voice_provider == "elevenlabs" and api_key:
         vid = voice_id or "pNInz6obpgDQGcFmaJgB" # Adam voice (default pro)
         url = f"{ELEVENLABS_TTS_URL}/{vid}"
         headers = {
@@ -289,6 +290,8 @@ async def generate_elevenlabs_voiceover(
             "Content-Type": "application/json"
         }
         model_id = "eleven_flash_v2_5"
+        if language and language.lower() in ["hindi", "hinglish"]:
+            model_id = "eleven_multilingual_v2"
         data = {
             "text": cleaned_text,
             "model_id": model_id, 
@@ -308,11 +311,62 @@ async def generate_elevenlabs_voiceover(
                         f.write(res.content)
                     return audio_path
                 else:
-                    logger.error(f"ElevenLabs Error: {res.status_code} - {res.text}. Falling back to gTTS.")
+                    logger.error(f"ElevenLabs Error: {res.status_code} - {res.text}. Trying Sarvam.")
         except Exception as e:
-            logger.error(f"ElevenLabs Request Failed: {e}. Falling back to gTTS.")
+            logger.error(f"ElevenLabs Request Failed: {e}. Trying Sarvam.")
+
+    # 3.5 Try premium Sarvam AI fallback
+    if settings.SARVAM_API_KEY:
+        logger.info(f"Generating premium voiceover via Sarvam AI (provider={voice_provider})...")
+        is_female = voice_id in ["EXAVITQu4vr4xnSDxMaL", "XB0fDUnXU5powFXDhCwa", "21m00Tcm4TlvDq8ikWAM"]
+        if voice_id in ["anushka", "hitesh"]:
+            speaker = voice_id
+        else:
+            speaker = "anushka" if is_female else "hitesh"
             
-    # 4. Fallback to gTTS if ElevenLabs is not configured or failed
+        lang_code = "hi-IN"
+        if language:
+            lang_lower = language.lower()
+            if "english" in lang_lower:
+                lang_code = "en-IN"
+            elif "hinglish" in lang_lower:
+                lang_code = "hi-IN"
+            elif "hindi" in lang_lower:
+                lang_code = "hi-IN"
+
+        url = "https://api.sarvam.ai/text-to-speech"
+        headers = {
+            "api-subscription-key": settings.SARVAM_API_KEY,
+            "Content-Type": "application/json"
+        }
+        data = {
+            "inputs": [cleaned_text],
+            "target_language_code": lang_code,
+            "speaker": speaker,
+            "pitch": 0,
+            "pace": 1.0,
+            "loudness": 1.5,
+            "enable_preprocessing": True
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(url, json=data, headers=headers, timeout=60.0)
+                if res.status_code == 200:
+                    resp_data = res.json()
+                    b64 = resp_data.get("audios", [None])[0]
+                    if b64:
+                        import base64
+                        audio_path = os.path.join(work_dir, f"voice_{secrets.token_hex(4)}.mp3")
+                        with open(audio_path, "wb") as f:
+                            f.write(base64.b64decode(b64))
+                        logger.info("Successfully generated premium voiceover segment via Sarvam AI!")
+                        return audio_path
+                else:
+                    logger.error(f"Sarvam AI Error: {res.status_code} - {res.text}")
+        except Exception as se:
+            logger.error(f"Sarvam AI Request Failed: {se}")
+
+    # 4. Fallback to gTTS if ElevenLabs/Sarvam are not configured or failed
     logger.info(f"Using basic gTTS fallback (lang={gtts_lang}) for text: {cleaned_text[:50]}...")
     try:
         from gtts import gTTS

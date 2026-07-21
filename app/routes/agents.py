@@ -72,6 +72,13 @@ class SuggestPromptReq(BaseModel):
     description: str
     category: Optional[str] = ""
 
+class AgentFeedbackCreate(BaseModel):
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    feedback_type: str = "feedback"
+    rating: Optional[int] = None
+    comment: str
+
 # ── Chunking helper ────────────────────────────────────────────────────────────
 
 def _make_agent_chunks(text: str, source_name: str, owner_id: str, is_ds: bool = True, chunk_size: int = 500):
@@ -197,10 +204,9 @@ async def api_get_agent(agent_id: str, x_app_token: Optional[str] = Header(None,
     d = agent.to_dict()
     # Include sources
     srcs = db.query(AgentKnowledgeSource).filter(AgentKnowledgeSource.agent_id == agent_id).all()
-    d["sources"] = [
-        {"id": s.id, "source_type": s.source_type, "source_name": s.source_name, "chunk_count": s.chunk_count}
-        for s in srcs
-    ]
+    serialized_sources = [s.to_dict() for s in srcs]
+    d["sources"] = serialized_sources
+    d["kb_sources"] = serialized_sources
     return d
 
 @router.delete("/agents/{agent_id}", tags=["Agents & DataStores"])
@@ -909,7 +915,7 @@ async def api_agent_upload_pdf(agent_id: str, file: UploadFile = File(...), x_ap
         from app.services.vector_store import get_vector_store
         embeddings = embed_texts(texts)
         get_vector_store().add_chunks(embeddings, chunks)
-        db.add(AgentKnowledgeSource(agent_id=agent_id, source_type="pdf", source_name=fname, chunk_count=len(chunks)))
+        db.add(AgentKnowledgeSource(agent_id=agent_id, source_type="pdf", source_name=fname, chunk_count=len(chunks), raw_text=text))
         db.commit()
     return {"success": True, "total_chunks": len(chunks)}
 
@@ -989,6 +995,7 @@ async def api_delete_agent_source(agent_id: str, source_id: int, x_app_token: Op
 class AgentAskReq(BaseModel):
     question: str
     history: list = []
+    is_voice: Optional[bool] = False
 
 @router.post("/agents/{agent_id}/ask", tags=["Agents & DataStores"])
 async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_db)):
@@ -1055,7 +1062,8 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     
     identity = (
         f"You are {agent.name}. {agent.personality}\n"
-        f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi. Do not translate unless asked.\n"
+        f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
+        f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
         f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used. Example: If user says 'Namaste', you say 'Namaste, main {agent.name} hoon...'. If user says 'Hi', you say 'Hi, I am {agent.name}...'.\n"
         f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
         f"RESPONSE STYLE: Be natural, conversational and helpful. Stop being robotic. Share knowledge from context naturally if found.\n"
@@ -1081,22 +1089,57 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     # Final Override
     system += "\n\nFINAL DIRECTIVE: Always be helpful. If context is provided, use it. If not, use your general knowledge. Stop being robotic."
 
+    # For voice queries, override instructions to ensure extreme brevity (under 1-2 sentences) and force fast low-latency models
+    if req.is_voice:
+        system += "\n\nCRITICAL VOICE DIRECTIVE: Keep your answer extremely short, conversational, and limited to 1-2 sentences maximum. Do NOT use any bullet points, lists, asterisks, or markdown formatting. Speak naturally."
+        orig_provider = s_cfg.get('provider', 'gemini')
+        if orig_provider == "openai":
+            voice_provider = "openai"
+            voice_model = "gpt-4o-mini"
+            voice_api_key = s_cfg.get('api_key', '')
+        elif orig_provider == "groq":
+            voice_provider = "groq"
+            voice_model = "llama-3.1-8b-instant"
+            voice_api_key = s_cfg.get('api_key', '')
+        else:
+            voice_provider = "gemini"
+            voice_model = "gemini-3.5-flash"
+            import os
+            voice_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+    else:
+        voice_provider = s_cfg.get('provider', 'gemini')
+        voice_model = s_cfg.get('model', 'gemini-3.5-flash')
+        voice_api_key = s_cfg.get('api_key', '')
+
     # Call LLM
     from app.services.llm import llm_with_history
     try:
         answer = await llm_with_history(
             question=req.question, system=system, history=req.history[-6:],
-            provider=s_cfg.get('provider', 'gemini'),
-            model=s_cfg.get('model', 'gemini-3.5-flash'),
-            api_key=s_cfg.get('api_key', ''),
+            provider=voice_provider,
+            model=voice_model,
+            api_key=voice_api_key,
             ollama_url="http://localhost:11434",
         )
     except Exception as e:
-        if s_cfg.get('provider') != 'gemini':
-            logger.warning(f"Primary LLM provider {s_cfg.get('provider')} failed: {e}. Falling back to Gemini...")
+        orig_provider = s_cfg.get('provider', 'gemini')
+        if voice_provider == 'gemini' and orig_provider != 'gemini':
+            logger.warning(f"Voice Gemini failed: {e}. Falling back to agent's configured provider {orig_provider}...")
+            try:
+                answer = await llm_with_history(
+                    question=req.question, system=system, history=req.history[-6:],
+                    provider=orig_provider,
+                    model=s_cfg.get('model', 'gemini-3.5-flash'),
+                    api_key=s_cfg.get('api_key', ''),
+                    ollama_url="http://localhost:11434",
+                )
+            except Exception as fallback_err:
+                raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
+        elif voice_provider != 'gemini':
+            logger.warning(f"Primary LLM provider {voice_provider} failed: {e}. Falling back to Gemini...")
             try:
                 import os
-                fallback_api_key = os.getenv("GOOGLE_API_KEY", "")
+                fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
                 answer = await llm_with_history(
                     question=req.question, system=system, history=req.history[-6:],
                     provider='gemini',
@@ -1127,16 +1170,25 @@ async def api_test_voice(req: TestVoiceReq):
     import httpx
     if req.provider == "elevenlabs":
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{req.voice_id}"
-        headers = {"xi-api-key": req.api_key, "Content-Type": "application/json"}
-        payload = {"text": req.text, "model_id": "eleven_monolingual_v1"}
+        headers = {"xi-api-key": req.api_key.strip() if req.api_key else "", "Content-Type": "application/json"}
+        payload = {"text": req.text, "model_id": "eleven_multilingual_v2"}
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers)
             if not r.is_success: raise HTTPException(r.status_code, f"ElevenLabs error: {r.text}")
             return Response(content=r.content, media_type="audio/mpeg")
     elif req.provider == "sarvam":
         url = "https://api.sarvam.ai/text-to-speech"
-        headers = {"api-subscription-key": req.api_key, "Content-Type": "application/json"}
-        payload = {"inputs": [req.text], "target_language_code": "hi-IN", "speaker": req.voice_id}
+        headers = {"api-subscription-key": req.api_key.strip() if req.api_key else "", "Content-Type": "application/json"}
+        spk = req.voice_id
+        if spk == "hi-IN-Neural-A": spk = "shubh"
+        elif spk == "hi-IN-Neural-B": spk = "ritu"
+        
+        payload = {
+            "inputs": [req.text],
+            "target_language_code": "hi-IN",
+            "speaker": spk,
+            "model": "bulbul:v3"
+        }
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers)
             if not r.is_success: raise HTTPException(r.status_code, f"Sarvam error: {r.text}")
@@ -1175,7 +1227,7 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
     import httpx
     import os
     import re
-    from fastapi.responses import StreamingResponse
+    from fastapi.responses import StreamingResponse, Response
     
     # Clean markdown and formatting from the text
     cleaned_text = re.sub(r'#{1,6}\s+', '', text)
@@ -1187,8 +1239,8 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
         raise HTTPException(400, "Cleaned text is empty")
         
     if provider == "elevenlabs":
-        # Stream audio via ElevenLabs V2.5 Multilingual model (optimized for latency=2 for clear/crisp speech)
-        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128&optimize_streaming_latency=2"
+        # Stream audio via ElevenLabs Flash model (optimized for ultra low latency ~75ms)
+        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_22050_32&optimize_streaming_latency=4"
         headers = {
             "xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""),
             "Content-Type": "application/json",
@@ -1196,10 +1248,10 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
         }
         payload = {
             "text": cleaned_text,
-            "model_id": "eleven_multilingual_v2",  # Premium high-quality multilingual model
+            "model_id": "eleven_flash_v2_5",  # Premium ultra-low latency conversational model
             "voice_settings": {
-                "stability": 0.55,         # Natural human rhythm and intonation (prevents robotic voice)
-                "similarity_boost": 0.75,  # Reduces digital artifacts and noise (much clearer English/Hindi)
+                "stability": 0.45,         # Natural human rhythm and intonation (prevents robotic voice)
+                "similarity_boost": 0.85,  # Reduces digital artifacts and noise (much clearer English/Hindi)
                 "style": 0.0,              # Pure/clean output
                 "use_speaker_boost": True  # Active speaker boost
             }
@@ -1208,29 +1260,51 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
         async def audio_generator():
             try:
                 hc = get_agents_tts_http_client()
-                async with hc.stream("POST", tts_url, json=payload, headers=headers) as r:
+                async with hc.stream("POST", tts_url, json=payload, headers=headers, timeout=15.0) as r:
                     if r.status_code == 200:
-                        async for chunk in r.aiter_bytes(chunk_size=1024):
+                        async for chunk in r.aiter_bytes(chunk_size=4096):
                             yield chunk
                     else:
                         err_text = await r.aread()
                         logger.error(f"ElevenLabs TTS error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
-            except Exception as e:
-                logger.error(f"ElevenLabs streaming failed: {e}")
+            except Exception as stream_err:
+                logger.error(f"ElevenLabs streaming failed: {stream_err}")
 
         return StreamingResponse(audio_generator(), media_type="audio/mpeg")
             
     elif provider == "sarvam":
-        url = "https://api.sarvam.ai/text-to-speech"
+        # Stream audio via Sarvam AI REST streaming endpoint
+        url = "https://api.sarvam.ai/text-to-speech/stream"
         headers = {"api-subscription-key": api_key or os.getenv("SARVAM_API_KEY", ""), "Content-Type": "application/json"}
-        payload = {"inputs": [cleaned_text], "target_language_code": "hi-IN", "speaker": voice_id}
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(url, json=payload, headers=headers)
-            if not r.is_success:
-                raise HTTPException(r.status_code, f"Sarvam error: {r.text}")
-            import base64
-            audio_base64 = r.json()["audios"][0]
-            return Response(content=base64.b64decode(audio_base64), media_type="audio/wav")
+        spk = voice_id
+        if spk == "hi-IN-Neural-A": spk = "shubh"
+        elif spk == "hi-IN-Neural-B": spk = "ritu"
+        
+        # Check if the text contains Devanagari characters (Hindi)
+        is_hindi = bool(re.search(r'[\u0900-\u097F]', cleaned_text))
+        lang_code = "hi-IN" if is_hindi else "en-IN"
+        
+        payload = {
+            "text": cleaned_text,
+            "target_language_code": lang_code,
+            "speaker": spk,
+            "model": "bulbul:v3"
+        }
+        
+        async def audio_generator():
+            try:
+                hc = get_agents_tts_http_client()
+                async with hc.stream("POST", url, json=payload, headers=headers, timeout=30.0) as r:
+                    if r.status_code == 200:
+                        async for chunk in r.aiter_bytes(chunk_size=4096):
+                            yield chunk
+                    else:
+                        err_text = await r.aread()
+                        logger.error(f"Sarvam TTS stream error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
+            except Exception as stream_err:
+                logger.error(f"Sarvam streaming failed: {stream_err}")
+
+        return StreamingResponse(audio_generator(), media_type="audio/wav")
             
     else:
         raise HTTPException(400, "TTS handled locally by browser for mrai provider")
@@ -1241,6 +1315,7 @@ class AgentPublicAskReq(BaseModel):
     session_id: str
     device_id: str
     device_name: Optional[str] = "Unknown Device"
+    is_voice: Optional[bool] = False
 
 
 @router.get("/agents/{agent_id}/public-info", tags=["Agents & DataStores"])
@@ -1290,7 +1365,16 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     q_clean = clean_match_string(req.question)
 
     # 1. Commit user message to DB
-    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
+    session = None
+    if req.device_id:
+        session = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == agent_id,
+            AgentPublicSession.device_id == req.device_id
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+        
+    if not session and req.session_id:
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
+
     if not session:
         session = AgentPublicSession(
             session_id=req.session_id,
@@ -1301,6 +1385,10 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         db.add(session)
         db.commit()
         db.refresh(session)
+    else:
+        req.session_id = session.session_id
+        session.updated_at = datetime.utcnow()
+        db.commit()
 
     user_msg = AgentPublicMessage(
         session_id=req.session_id,
@@ -1320,47 +1408,67 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     sources_data = []
     is_rag = False
 
-    # 2. Lead Capture Interception State Machine
-    if not session.user_name and user_msg_count > 2:
-        name_captured = req.question.strip()
-        session.user_name = name_captured
-        db.commit()
+    def extract_clean_name(text: str) -> Optional[str]:
+        if not text: return None
+        t = text.strip()
+        q_words = {'what', 'where', 'how', 'who', 'when', 'why', 'which', 'can', 'do', 'does', 'is', 'are', 'kya', 'kahan', 'kaise', 'kab', 'kon', 'kitna', 'batao', 'bataiye', 'tell', 'price', 'cost', 'fee', 'detail', 'details', 'service', 'services', 'help', 'hi', 'hello', 'hey'}
+        words = [w.lower().strip('.,!?') for w in t.split()]
+        has_q_word = any(w in q_words for w in words)
+        has_q_mark = '?' in t
         
-        # Check if conversation is in Hindi to reply in the appropriate language
-        is_hindi = bool(re.search(r'[\u0900-\u097F]', name_captured))
-        if not is_hindi:
-            last_msg = db.query(AgentPublicMessage).filter(
-                AgentPublicMessage.session_id == req.session_id,
-                AgentPublicMessage.role == "assistant"
-            ).order_by(AgentPublicMessage.created_at.desc()).first()
-            if last_msg and re.search(r'[\u0900-\u097F]', last_msg.content):
-                is_hindi = True
-                
-        if is_hindi:
-            answer = f"आपसे मिलकर अच्छा लगा, {name_captured}! क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?"
-        else:
-            answer = f"Nice to meet you, {name_captured}! Could you also share your mobile number?"
-        is_lead_captured = True
+        patterns = [
+            r'^(?:my\s+name\s+is|myname\s+is|my\s+name|myname|i\s+am|iam|name\s+is|mera\s+naam\s+is|mera\s+naam|nam\s+hai|nam)\s+(.+?)(?:\s+hai|\s+hoon|\s+hu|\s+h)?$',
+            r'^(.+)\s+(?:hai|hoon|hu)$'
+        ]
+        for pat in patterns:
+            m = re.match(pat, t, re.IGNORECASE)
+            if m:
+                clean = re.sub(r'[\.,!?]', '', m.group(1)).strip()
+                if clean and clean.lower() not in q_words:
+                    return clean.title()
+
+        if has_q_word or has_q_mark or len(words) > 4:
+            return None
+
+        clean = re.sub(r'[\.,!?]', '', t).strip()
+        if clean and clean.lower() not in q_words:
+            return clean.title()
+        return None
+
+    def extract_clean_phone(text: str) -> Optional[str]:
+        if not text: return None
+        digits = re.sub(r'[^\d+]', '', text)
+        clean_num = re.sub(r'[^\d]', '', digits)
+        if 7 <= len(clean_num) <= 13:
+            return digits
+        return None
+
+    # 2. Lead Capture Interception State Machine
+    if not session.user_name and user_msg_count > 1:
+        extracted_name = extract_clean_name(req.question)
+        if extracted_name:
+            session.user_name = extracted_name
+            db.commit()
+            
+            is_hindi = bool(re.search(r'[\u0900-\u097F]', req.question))
+            if is_hindi:
+                answer = f"आपसे मिलकर अच्छा लगा, {extracted_name}! क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?"
+            else:
+                answer = f"Nice to meet you, {extracted_name}! Could you also share your mobile number?"
+            is_lead_captured = True
             
     elif session.user_name and not session.phone_number:
-        phone_captured = req.question.strip()
-        session.phone_number = phone_captured
-        db.commit()
-        
-        is_hindi = bool(re.search(r'[\u0900-\u097F]', phone_captured))
-        if not is_hindi:
-            last_msg = db.query(AgentPublicMessage).filter(
-                AgentPublicMessage.session_id == req.session_id,
-                AgentPublicMessage.role == "assistant"
-            ).order_by(AgentPublicMessage.created_at.desc()).first()
-            if last_msg and re.search(r'[\u0900-\u097F]', last_msg.content):
-                is_hindi = True
-                
-        if is_hindi:
-            answer = "धन्यवाद! मैंने आपकी जानकारी सुरक्षित कर ली है। आज मैं आपकी और क्या सहायता कर सकता हूँ?"
-        else:
-            answer = "Thank you! I have saved your details. How else can I help you today?"
-        is_lead_captured = True
+        extracted_phone = extract_clean_phone(req.question)
+        if extracted_phone:
+            session.phone_number = extracted_phone
+            db.commit()
+            
+            is_hindi = bool(re.search(r'[\u0900-\u097F]', req.question))
+            if is_hindi:
+                answer = "धन्यवाद! मैंने आपकी जानकारी सुरक्षित कर ली है। आज मैं आपकी और क्या सहायता कर सकता हूँ?"
+            else:
+                answer = "Thank you! I have saved your details. How else can I help you today?"
+            is_lead_captured = True
 
     # 3. Standard Chat flow (if not currently capturing lead details)
     if not is_lead_captured:
@@ -1408,7 +1516,8 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
 
             identity = (
                 f"You are {agent.name}. {agent.personality}\n"
-                f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi. Do not translate unless asked.\n"
+                f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
+                f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
                 f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
                 f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
                 f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
@@ -1432,20 +1541,55 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     f"FINAL DIRECTIVE: Always be helpful. Stop being robotic."
                 )
 
+            # For voice queries, override instructions to ensure extreme brevity (under 1-2 sentences) and force fast low-latency models
+            if req.is_voice:
+                system += "\n\nCRITICAL VOICE DIRECTIVE: Keep your answer extremely short, conversational, and limited to 1-2 sentences maximum. Do NOT use any bullet points, lists, asterisks, or markdown formatting. Speak naturally."
+                orig_provider = s_cfg.get('provider', 'gemini')
+                if orig_provider == "openai":
+                    voice_provider = "openai"
+                    voice_model = "gpt-4o-mini"
+                    voice_api_key = s_cfg.get('api_key', '')
+                elif orig_provider == "groq":
+                    voice_provider = "groq"
+                    voice_model = "llama-3.1-8b-instant"
+                    voice_api_key = s_cfg.get('api_key', '')
+                else:
+                    voice_provider = "gemini"
+                    voice_model = "gemini-3.5-flash"
+                    import os
+                    voice_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            else:
+                voice_provider = s_cfg.get('provider', 'gemini')
+                voice_model = s_cfg.get('model', 'gemini-3.5-flash')
+                voice_api_key = s_cfg.get('api_key', '')
+
             try:
                 answer = await llm_with_history(
                     question=req.question, system=system, history=history_list,
-                    provider=s_cfg.get('provider', 'gemini'),
-                    model=s_cfg.get('model', 'gemini-3.5-flash'),
-                    api_key=s_cfg.get('api_key', ''),
+                    provider=voice_provider,
+                    model=voice_model,
+                    api_key=voice_api_key,
                     ollama_url="http://localhost:11434",
                 )
             except Exception as e:
-                if s_cfg.get('provider') != 'gemini':
-                    logger.warning(f"Primary LLM provider {s_cfg.get('provider')} failed: {e}. Falling back to Gemini...")
+                orig_provider = s_cfg.get('provider', 'gemini')
+                if voice_provider == 'gemini' and orig_provider != 'gemini':
+                    logger.warning(f"Voice Gemini failed: {e}. Falling back to agent's configured provider {orig_provider}...")
+                    try:
+                        answer = await llm_with_history(
+                            question=req.question, system=system, history=history_list,
+                            provider=orig_provider,
+                            model=s_cfg.get('model', 'gemini-3.5-flash'),
+                            api_key=s_cfg.get('api_key', ''),
+                            ollama_url="http://localhost:11434",
+                        )
+                    except Exception as fallback_err:
+                        answer = f"Error generating response (Primary and Fallback failed): {fallback_err}"
+                elif voice_provider != 'gemini':
+                    logger.warning(f"Primary LLM provider {voice_provider} failed: {e}. Falling back to Gemini...")
                     try:
                         import os
-                        fallback_api_key = os.getenv("GOOGLE_API_KEY", "")
+                        fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
                         answer = await llm_with_history(
                             question=req.question, system=system, history=history_list,
                             provider='gemini',
@@ -1458,13 +1602,19 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                 else:
                     answer = f"Error generating response: {e}"
 
-        # 4. Append name prompt if Turn 2 and name not set
-        if not session.user_name and user_msg_count == 2:
+        # 4. Append name or phone prompt if not set yet
+        if not session.user_name and user_msg_count >= 2:
             is_hindi = bool(re.search(r'[\u0900-\u097F]', answer))
             if is_hindi:
                 answer += "\n\nवैसे, आपका नाम क्या है?"
             else:
                 answer += "\n\nBy the way, what is your name?"
+        elif session.user_name and not session.phone_number and user_msg_count >= 3:
+            is_hindi = bool(re.search(r'[\u0900-\u097F]', answer))
+            if is_hindi:
+                answer += "\n\nक्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?"
+            else:
+                answer += "\n\nCould you also share your mobile number?"
 
     # 5. Log assistant response to DB
     asst_msg = AgentPublicMessage(
@@ -1478,7 +1628,9 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     return {
         "answer": answer,
         "sources": [s.__dict__ if hasattr(s, '__dict__') else dict(s) for s in sources_data],
-        "is_rag": is_rag
+        "is_rag": is_rag,
+        "session_id": session.session_id,
+        "action_button": session.to_dict().get("action_button")
     }
 
 
@@ -1516,6 +1668,229 @@ async def api_get_session_history(session_id: str, x_app_token: Optional[str] = 
     return [m.to_dict() for m in messages]
 
 
+@router.get("/agents/{agent_id}/public-history", tags=["Agents & DataStores"])
+async def api_get_public_history(agent_id: str, device_id: Optional[str] = None, session_id: Optional[str] = None, db: Session = Depends(get_db)):
+    from app.core.models import AgentPublicSession, AgentPublicMessage
+    session = None
+    if device_id:
+        session = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == agent_id,
+            AgentPublicSession.device_id == device_id
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+
+    if not session and session_id:
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+
+    if not session:
+        return {"session": None, "messages": []}
+
+    messages = db.query(AgentPublicMessage).filter(
+        AgentPublicMessage.session_id == session.session_id
+    ).order_by(AgentPublicMessage.created_at.asc()).all()
+
+    return {
+        "session": session.to_dict(),
+        "messages": [m.to_dict() for m in messages]
+    }
+
+
+@router.get("/agents/{agent_id}/session-status", tags=["Agents & DataStores"])
+async def api_get_public_session_status(agent_id: str, device_id: Optional[str] = None, session_id: Optional[str] = None, db: Session = Depends(get_db)):
+    from app.core.models import AgentPublicSession
+    session = None
+    if device_id:
+        session = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == agent_id,
+            AgentPublicSession.device_id == device_id
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+
+    if not session and session_id:
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+
+    if not session:
+        return {"session": None}
+
+    return {"session": session.to_dict()}
+
+
+class AgentSessionSendActionReq(BaseModel):
+    action_type: str  # "call" | "whatsapp"
+    phone_number: str
+    message: Optional[str] = None
+
+
+@router.post("/agents/sessions/{session_id}/send-action", tags=["Agents & DataStores"])
+async def api_send_session_action(session_id: str, req: AgentSessionSendActionReq, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client = _get_client(x_app_token, db)
+    from app.core.models import AgentPublicSession, Agent, AgentPublicMessage
+    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    agent = db.query(Agent).filter(Agent.agent_id == session.agent_id, Agent.client_id == client["client_id"]).first()
+    if not agent:
+        raise HTTPException(403, "Access denied")
+
+    action_data = {
+        "action_type": req.action_type,
+        "phone_number": req.phone_number,
+        "message": req.message or ("Call Us Now" if req.action_type == "call" else "Connect on WhatsApp"),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    session.action_button_json = json.dumps(action_data)
+    session.updated_at = datetime.utcnow()
+
+    # Log action trigger message in history
+    action_label = "📞 Call Now" if req.action_type == "call" else "💬 Connect on WhatsApp"
+    msg_content = f"⚡ Action Sent: {action_label} ({req.phone_number})"
+    asst_msg = AgentPublicMessage(
+        session_id=session_id,
+        role="assistant",
+        content=msg_content
+    )
+    db.add(asst_msg)
+    db.commit()
+
+    return {"status": "success", "action_button": action_data}
+
+
+@router.delete("/agents/sessions/{session_id}/clear-action", tags=["Agents & DataStores"])
+async def api_clear_session_action(session_id: str, db: Session = Depends(get_db)):
+    from app.core.models import AgentPublicSession
+    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    session.action_button_json = None
+    db.commit()
+    return {"status": "success"}
+
+
+@router.post("/agents/sessions/{session_id}/analyze", tags=["Agents & DataStores"])
+async def api_analyze_session(session_id: str, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client = _get_client(x_app_token, db)
+    from app.core.models import AgentPublicSession, AgentPublicMessage, Agent
+    session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    agent = db.query(Agent).filter(Agent.agent_id == session.agent_id, Agent.client_id == client["client_id"]).first()
+    if not agent:
+        raise HTTPException(403, "Access denied")
+
+    # Get conversation messages
+    messages = db.query(AgentPublicMessage).filter(
+        AgentPublicMessage.session_id == session_id
+    ).order_by(AgentPublicMessage.created_at.asc()).all()
+
+    if not messages:
+        raise HTTPException(400, "No messages to analyze in this session")
+
+    # Build chat history representation for LLM prompt
+    chat_lines = []
+    for m in messages:
+        role_label = "User" if m.role == "user" else "Agent"
+        chat_lines.append(f"{role_label}: {m.content}")
+    conversation_text = "\n".join(chat_lines)
+
+    # Get agent's LLM settings
+    try: s_cfg = json.loads(agent.system_config_json or "{}")
+    except: s_cfg = {}
+
+    provider = s_cfg.get('provider', 'gemini')
+    model = s_cfg.get('model', 'gemini-3.5-flash')
+    api_key = s_cfg.get('api_key', '')
+    
+    if provider == 'gemini' and not api_key:
+        import os
+        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+    # Build analysis prompt
+    system_prompt = (
+        "You are an expert AI business analyst. "
+        "You MUST analyze the chat history between a user (Visitor/User) and an AI agent, "
+        "and return a JSON response object. Do not explain, do not add markdown code blocks like ```json."
+        "The output MUST match this exact JSON schema:\n"
+        "{\n"
+        "  \"category\": \"marketing\" or \"calling\" or \"meeting\" (categorize based on user's main objective),\n"
+        "  \"intent\": \"Brief summary of what the user wants to do / what their goal is (in Hinglish/Hindi or English as appropriate),\",\n"
+        "  \"meaning\": \"Deep explanation/meaning of what this chat signifies,\",\n"
+        "  \"next_steps\": \"Specific, action-oriented next steps for the agent or business owner.\"\n"
+        "}\n"
+        "Ensure all descriptions are helpful, detailed and in Hinglish/Hindi or English (matching the tone/language of the conversation if appropriate). "
+        "Return ONLY the raw JSON string."
+    )
+
+    question = (
+        f"Here is the chat history to analyze:\n\n"
+        f"{conversation_text}\n\n"
+        f"Please analyze this conversation and return the JSON object."
+    )
+
+    from app.services.llm import llm_with_history
+    try:
+        raw_result = await llm_with_history(
+            question=question,
+            system=system_prompt,
+            history=[],
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            ollama_url="http://localhost:11434"
+        )
+    except Exception as e:
+        logger.error(f"Analysis LLM call failed: {e}")
+        # Fallback to Gemini with env api key
+        try:
+            import os
+            fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            raw_result = await llm_with_history(
+                question=question,
+                system=system_prompt,
+                history=[],
+                provider="gemini",
+                model="gemini-3.5-flash",
+                api_key=fallback_api_key,
+                ollama_url="http://localhost:11434"
+            )
+        except Exception as fallback_err:
+            raise HTTPException(502, f"Analysis failed: {fallback_err}")
+
+    # Extract JSON robustly
+    import re
+    match = re.search(r"```json\s*(.*?)\s*```", raw_result, re.DOTALL | re.IGNORECASE)
+    if match:
+        json_content = match.group(1).strip()
+    else:
+        match_simple = re.search(r"```\s*(.*?)\s*```", raw_result, re.DOTALL)
+        if match_simple:
+            json_content = match_simple.group(1).strip()
+        else:
+            json_content = raw_result.strip()
+
+    try:
+        analyzed_data = json.loads(json_content)
+        # Validate keys
+        for key in ["category", "intent", "meaning", "next_steps"]:
+            if key not in analyzed_data:
+                analyzed_data[key] = "Not specified"
+    except Exception as e:
+        logger.error(f"Failed to parse LLM analysis: {e}. Raw content: {raw_result}")
+        # Construct fallback dictionary if JSON parsing failed
+        analyzed_data = {
+            "category": "marketing",
+            "intent": "Analysis parsing failed",
+            "meaning": raw_result,
+            "next_steps": "Please review the raw chat logs."
+        }
+
+    # Save to session
+    session.analysis_json = json.dumps(analyzed_data)
+    db.commit()
+
+    return analyzed_data
+
+
 @router.websocket("/agents/ws/transcribe")
 async def websocket_transcribe(websocket: WebSocket):
     import websockets
@@ -1532,42 +1907,65 @@ async def websocket_transcribe(websocket: WebSocket):
         await websocket.close()
         return
 
-    # Nova-2 streaming STT with language=multi & WebM auto-detection
-    dg_url = "wss://api.deepgram.com/v1/listen?model=nova-2&language=multi&interim_results=true"
+    # Nova-3 Multilingual streaming STT with auto language detection and endpointing
+    dg_url = "wss://api.deepgram.com/v1/listen?model=nova-3&language=multi&punctuate=true&smart_format=true&interim_results=true&endpointing=100"
     headers = {
         "Authorization": f"Token {dg_api_key}"
     }
 
     try:
-        async with websockets.connect(dg_url, additional_headers=headers) as dg_ws:
-            async def receive_from_client():
-                try:
-                    while True:
-                        data = await websocket.receive()
-                        if "bytes" in data:
-                            await dg_ws.send(data["bytes"])
-                        elif "text" in data:
-                            msg = json.loads(data["text"])
-                            if msg.get("type") == "stop":
-                                    break
-                except WebSocketDisconnect:
-                    pass
-                except Exception as e:
-                    logger.error(f"Error receiving from client: {e}")
-                finally:
-                    try:
-                        await dg_ws.send(b"")
-                    except:
-                        pass
+        connected = False
+        for attempt in range(3):
+            try:
+                async with websockets.connect(dg_url, additional_headers=headers, open_timeout=15.0) as dg_ws:
+                    connected = True
+                    
+                    async def receive_from_client():
+                        try:
+                            while True:
+                                data = await websocket.receive()
+                                if "bytes" in data:
+                                    await dg_ws.send(data["bytes"])
+                                elif "text" in data:
+                                    msg = json.loads(data["text"])
+                                    if msg.get("type") == "stop":
+                                        break
+                        except WebSocketDisconnect:
+                            pass
+                        except Exception as e:
+                            # Ignore normal socket closure logs
+                            e_str = str(e).lower()
+                            if "disconnect" not in e_str and "closed" not in e_str and "receive" not in e_str:
+                                logger.error(f"Error receiving from client: {e}")
+                        finally:
+                            try:
+                                await dg_ws.send(b"")
+                            except:
+                                pass
 
-            async def send_to_client():
-                try:
-                    async for message in dg_ws:
-                        await websocket.send_text(message)
-                except Exception as e:
-                    logger.error(f"Error sending to client: {e}")
+                    async def send_to_client():
+                        try:
+                            async for message in dg_ws:
+                                await websocket.send_text(message)
+                        except WebSocketDisconnect:
+                            pass
+                        except Exception as e:
+                            # Ignore normal socket closure logs
+                            e_str = str(e).lower()
+                            if "disconnect" not in e_str and "closed" not in e_str and "send" not in e_str:
+                                logger.error(f"Error sending to client: {e}")
 
-            await asyncio.gather(receive_from_client(), send_to_client())
+                    await asyncio.gather(receive_from_client(), send_to_client())
+                break
+            except Exception as e:
+                if connected:
+                    # If it failed mid-session, do not retry
+                    raise e
+                if attempt == 2:
+                    # If all retries failed, raise the connection exception
+                    raise e
+                logger.warning(f"Deepgram handshake failed (attempt {attempt + 1}/3): {e}. Retrying in 0.5s...")
+                await asyncio.sleep(0.5)
     except Exception as e:
         logger.error(f"Deepgram WebSocket error: {e}")
         try:
@@ -1579,4 +1977,38 @@ async def websocket_transcribe(websocket: WebSocket):
             await websocket.close()
         except:
             pass
+
+
+@router.post("/agents/{agent_id}/feedback", tags=["Agents & DataStores"])
+async def api_submit_agent_feedback(agent_id: str, req: AgentFeedbackCreate, db: Session = Depends(get_db)):
+    from app.core.models import Agent, AgentFeedback
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    fb = AgentFeedback(
+        agent_id=agent_id,
+        user_name=req.user_name,
+        user_email=req.user_email,
+        feedback_type=req.feedback_type,
+        rating=req.rating,
+        comment=req.comment
+    )
+    db.add(fb)
+    db.commit()
+    db.refresh(fb)
+    return {"status": "ok", "feedback": fb.to_dict()}
+
+
+@router.get("/agents/{agent_id}/feedback", tags=["Agents & DataStores"])
+async def api_get_agent_feedback(agent_id: str, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+    client = _get_client(x_app_token, db)
+    from app.core.models import Agent, AgentFeedback
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.client_id == client["client_id"]).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found or access denied")
+
+    feedbacks = db.query(AgentFeedback).filter(AgentFeedback.agent_id == agent_id).order_by(AgentFeedback.created_at.desc()).all()
+    return [fb.to_dict() for fb in feedbacks]
+
 

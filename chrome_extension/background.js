@@ -416,6 +416,7 @@ async function startJob(jobId) {
 
     state.scenes = data.scenes;
     state.subtopicName = data.subtopic_name || "";
+    state.isAdJob = data.is_ad_job || false;
     state.bgmPrompt = data.bgm_prompt || `Upbeat cinematic background music for a short educational video about ${state.subtopicName || 'learning'}`;
     state.bgmUrl = null;
     state.bgmTabId = null;
@@ -515,7 +516,9 @@ async function sendNextScene(tabId) {
     animationPrompt: scene.animation_prompt || "",
     dialogue: scene.dialogue || "",
     jobId: state.jobId,
-    subtopicName: state.subtopicName || ""
+    subtopicName: state.subtopicName || "",
+    isAdJob: state.isAdJob || false,
+    hasReferenceImage: scene.has_reference_image || false
   };
 
   for (let attempt = 0; attempt < 12; attempt++) {
@@ -817,6 +820,11 @@ async function handleSceneCompleted() {
   await saveState();
 
   if (state.currentSceneIdx >= state.scenes.length) {
+    if (state.isAdJob) {
+      notifyPopup("🎬 All ad scenes harvested! Proceeding to assembly...");
+      await allDone();
+      return;
+    }
     state.phase = "generating_bgm";
     await saveState();
     notifyPopup("🎬 All video scenes generated! Opening Epidemic Sound for BGM...");

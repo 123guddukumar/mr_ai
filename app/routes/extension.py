@@ -127,7 +127,16 @@ class CreateJobReq(BaseModel):
     ca_topic_id: Optional[str] = None
     language: Optional[str] = "English"
     voice_id: Optional[str] = None
+    voice_provider: Optional[str] = "elevenlabs"
+    subtitle_lang: Optional[str] = None
+    logo_data_url: Optional[str] = None
+    logo_position: Optional[str] = "top-left"
+    reference_images: Optional[List[str]] = None
+    bgm_data_url: Optional[str] = None
     transcript: Optional[str] = ""
+    scenes: Optional[List[dict]] = None
+    bgm_prompt: Optional[str] = None
+    is_ad_job: Optional[bool] = False
 
 class ImageDoneReq(BaseModel):
     filename: str
@@ -633,7 +642,22 @@ def parse_custom_timeline_script(script_text: str) -> list:
         })
         scene_num += 1
 
-    return scenes
+def save_base64_file(data_url: str, output_path: str) -> bool:
+    try:
+        import base64
+        if not data_url:
+            return False
+        if "," in data_url:
+            base64_data = data_url.split(",", 1)[1]
+        else:
+            base64_data = data_url
+        file_data = base64.b64decode(base64_data)
+        with open(output_path, "wb") as f:
+            f.write(file_data)
+        return True
+    except Exception as e:
+        logger.error(f"Error decoding base64 file to {output_path}: {e}")
+        return False
 
 
 # ── Create Job (called from dashboard) ───────────────────────────────────────
@@ -649,6 +673,135 @@ async def create_extension_job(
     Dashboard calls this to create a job.
     Returns job_id that user pastes into extension popup.
     """
+    if req.scenes:
+        scenes = req.scenes
+        
+        # Translate Hinglish/Hindi prompts to English first
+        from app.services.llm import translate_hinglish_prompt_to_english
+        for s in scenes:
+            if "image_prompt" in s and s["image_prompt"]:
+                s["image_prompt"] = await translate_hinglish_prompt_to_english(s["image_prompt"])
+            if "animation_prompt" in s and s["animation_prompt"]:
+                s["animation_prompt"] = await translate_hinglish_prompt_to_english(s["animation_prompt"])
+            elif "video_prompt" in s and s["video_prompt"]:
+                s["video_prompt"] = await translate_hinglish_prompt_to_english(s["video_prompt"])
+                
+        # format prompts to match generator format
+        for s in scenes:
+            if "image_prompt" in s and s["image_prompt"]:
+                prompt_val = s["image_prompt"].strip()
+                if not prompt_val.startswith("Generate a high quality"):
+                    s["image_prompt"] = f"Generate a high quality photorealistic image: {prompt_val}. Vertical 9:16 portrait format, cinematic lighting, 8k, photorealistic, masterpiece, no text."
+            if "animation_prompt" in s and s["animation_prompt"]:
+                anim_val = s["animation_prompt"].strip()
+                if not anim_val.startswith("Animate the previously"):
+                    s["animation_prompt"] = f"Animate the previously generated image. Create a smooth 5-second cinematic video animation: {anim_val}. Vertical 9:16 portrait format."
+            elif "video_prompt" in s and s["video_prompt"]:
+                anim_val = s["video_prompt"].strip()
+                if not anim_val.startswith("Animate the previously"):
+                    anim_val = f"Animate the previously generated image. Create a smooth 5-second cinematic video animation: {anim_val}. Vertical 9:16 portrait format."
+                s["animation_prompt"] = anim_val
+            
+            # Map 'scene' keys if 'scene_num' is missing
+            if "scene_num" not in s and "scene" in s:
+                s["scene_num"] = s["scene"]
+
+        target_name = "Ad Campaign"
+        video_length = sum(int(s.get("duration_sec", 5)) for s in scenes)
+        bgm_prompt = req.bgm_prompt or f"Upbeat, engaging background music matching the theme of Ad Campaign."
+        
+        job_id = "job-" + secrets.token_hex(8)
+
+        # Initialize workspace directory for files
+        base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+        work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+        os.makedirs(work_dir, exist_ok=True)
+
+        # Decode and save brand logo
+        logo_path = None
+        if req.logo_data_url:
+            logo_ext = "png"
+            if "image/jpeg" in req.logo_data_url or "image/jpg" in req.logo_data_url:
+                logo_ext = "jpg"
+            logo_dest = os.path.join(work_dir, f"brand_logo.{logo_ext}")
+            if save_base64_file(req.logo_data_url, logo_dest):
+                logo_path = logo_dest
+
+        if not logo_path and client.get("logo_url"):
+            import httpx
+            import shutil
+            client_logo_url = client.get("logo_url")
+            logo_ext = "png"
+            if ".jpg" in client_logo_url.lower() or ".jpeg" in client_logo_url.lower():
+                logo_ext = "jpg"
+            logo_dest = os.path.join(work_dir, f"brand_logo.{logo_ext}")
+            try:
+                if client_logo_url.startswith("/"):
+                    local_path = os.path.join(os.getcwd(), client_logo_url.lstrip("/"))
+                    if os.path.exists(local_path):
+                        shutil.copy2(local_path, logo_dest)
+                        logo_path = logo_dest
+                        logger.info(f"Copied client logo from local path: {local_path}")
+                elif client_logo_url.startswith("http"):
+                    with httpx.Client(follow_redirects=True) as http_client:
+                        logo_res = http_client.get(client_logo_url, timeout=10.0)
+                        if logo_res.status_code == 200:
+                            with open(logo_dest, "wb") as f:
+                                f.write(logo_res.content)
+                            logo_path = logo_dest
+                            logger.info(f"Downloaded client logo from remote URL: {client_logo_url}")
+            except Exception as logo_err:
+                logger.warning(f"Failed to copy/download client logo: {logo_err}")
+
+        # Decode and save reference images
+        if req.reference_images:
+            for idx, img_b64 in enumerate(req.reference_images):
+                if idx < len(scenes):
+                    img_dest = os.path.join(work_dir, f"scene_{idx}_orig_img.jpg")
+                    if save_base64_file(img_b64, img_dest):
+                        scenes[idx]["has_reference_image"] = True
+                        scenes[idx]["image_url"] = f"/uploads/social/ext_work_{job_id[:8]}/scene_{idx}_orig_img.jpg"
+
+        # Decode and save custom BGM
+        bgm_url_val = None
+        if req.bgm_data_url:
+            bgm_dest = os.path.join(work_dir, "custom_bgm.mp3")
+            if save_base64_file(req.bgm_data_url, bgm_dest):
+                bgm_url_val = bgm_dest
+
+        _jobs[job_id] = {
+            "job_id": job_id,
+            "client_id": client["client_id"],
+            "subtopic_id": req.subtopic_id,
+            "topic_id": req.topic_id,
+            "pyq_set_id": req.pyq_set_id,
+            "ca_topic_id": req.ca_topic_id,
+            "subtopic_name": target_name,
+            "language": req.language or "English",
+            "voice_id": req.voice_id,
+            "voice_provider": req.voice_provider or "elevenlabs",
+            "subtitle_lang": req.subtitle_lang or req.language or "English",
+            "logo_path": logo_path,
+            "logo_position": req.logo_position or "top-left",
+            "bgm_url": bgm_url_val,
+            "scenes": scenes,
+            "images_received": [],
+            "videos_received": [],
+            "bgm_prompt": bgm_prompt,
+            "status": "waiting_extension",
+            "created_at": datetime.utcnow().isoformat(),
+            "video_url": None,
+            "video_length": video_length,
+            "is_ad_job": True
+        }
+        _save_jobs(_jobs)
+        logger.info(f"Extension Ad Job created: {job_id} with {len(scenes)} scenes")
+        return {
+            "success": True,
+            "job_id": job_id,
+            "scene_count": len(scenes),
+            "scenes": scenes
+        }
     from app.core.models import SubtopicClassroom, TopicClassroom, ChapterClassroom, Subject, PaperClassroom, Exam, PYQSet, PYQQuestion, CurrentAffairTopic, CurrentAffairReel
     from app.services.llm import generate_simple_response
     import re
@@ -841,20 +994,6 @@ Return ONLY the JSON object, no markdown."""
         if is_timeline_format:
             scenes = parse_custom_timeline_script(study_material)
             bgm_prompt = scenes[0].get("bgm_prompt") if scenes else "Soft ambient background music"
-            
-            # Translate Hinglish/Hindi prompts to English
-            from app.services.llm import translate_hinglish_prompt_to_english
-            for s in scenes:
-                if "image_prompt" in s and s["image_prompt"]:
-                    s["image_prompt"] = await translate_hinglish_prompt_to_english(s["image_prompt"])
-                if "animation_prompt" in s and s["animation_prompt"]:
-                    anim_val = s["animation_prompt"]
-                    if anim_val.startswith("Animate: "):
-                        body = anim_val[9:]
-                        translated_body = await translate_hinglish_prompt_to_english(body)
-                        s["animation_prompt"] = f"Animate: {translated_body}"
-                    else:
-                        s["animation_prompt"] = await translate_hinglish_prompt_to_english(anim_val)
         else:
             raw = await generate_simple_response(prompt, "You are a professional video director. Return only valid JSON object.")
             res_data = robust_json_loads(raw)
@@ -873,6 +1012,20 @@ Return ONLY the JSON object, no markdown."""
                 
             # Ensure exactly 12
             scenes = scenes[:12]
+
+        # Translate Hinglish/Hindi prompts to English for all scenes
+        from app.services.llm import translate_hinglish_prompt_to_english
+        for s in scenes:
+            if "image_prompt" in s and s["image_prompt"]:
+                s["image_prompt"] = await translate_hinglish_prompt_to_english(s["image_prompt"])
+            if "animation_prompt" in s and s["animation_prompt"]:
+                anim_val = s["animation_prompt"]
+                if anim_val.startswith("Animate: "):
+                    body = anim_val[9:]
+                    translated_body = await translate_hinglish_prompt_to_english(body)
+                    s["animation_prompt"] = f"Animate: {translated_body}"
+                else:
+                    s["animation_prompt"] = await translate_hinglish_prompt_to_english(anim_val)
             
         # Format image and animation prompts to contain the full prompt formats used by generators
         for s in scenes:
@@ -895,6 +1048,65 @@ Return ONLY the JSON object, no markdown."""
             bgm_prompt = f"Upbeat, inspiring, educational background music matching the theme of {target_name} in {chapter_name}."
 
     job_id = "job-" + secrets.token_hex(8)
+
+    # Initialize workspace directory for files
+    base_uploads = os.path.join(os.getcwd(), "uploads", "social")
+    work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    # Decode and save brand logo
+    logo_path = None
+    if req.logo_data_url:
+        logo_ext = "png"
+        if "image/jpeg" in req.logo_data_url or "image/jpg" in req.logo_data_url:
+            logo_ext = "jpg"
+        logo_dest = os.path.join(work_dir, f"brand_logo.{logo_ext}")
+        if save_base64_file(req.logo_data_url, logo_dest):
+            logo_path = logo_dest
+
+    if not logo_path and client.get("logo_url"):
+        import httpx
+        import shutil
+        client_logo_url = client.get("logo_url")
+        logo_ext = "png"
+        if ".jpg" in client_logo_url.lower() or ".jpeg" in client_logo_url.lower():
+            logo_ext = "jpg"
+        logo_dest = os.path.join(work_dir, f"brand_logo.{logo_ext}")
+        try:
+            if client_logo_url.startswith("/"):
+                local_path = os.path.join(os.getcwd(), client_logo_url.lstrip("/"))
+                if os.path.exists(local_path):
+                    shutil.copy2(local_path, logo_dest)
+                    logo_path = logo_dest
+                    logger.info(f"Copied client logo from local path: {local_path}")
+            elif client_logo_url.startswith("http"):
+                with httpx.Client(follow_redirects=True) as http_client:
+                    logo_res = http_client.get(client_logo_url, timeout=10.0)
+                    if logo_res.status_code == 200:
+                        with open(logo_dest, "wb") as f:
+                            f.write(logo_res.content)
+                        logo_path = logo_dest
+                        logger.info(f"Downloaded client logo from remote URL: {client_logo_url}")
+        except Exception as logo_err:
+            logger.warning(f"Failed to copy/download client logo: {logo_err}")
+
+    # Decode and save reference images
+    if req.reference_images:
+        for idx, img_b64 in enumerate(req.reference_images):
+            if idx < len(scenes):
+                img_dest = os.path.join(work_dir, f"scene_{idx}_orig_img.jpg")
+                if save_base64_file(img_b64, img_dest):
+                    scenes[idx]["has_reference_image"] = True
+                    # Let the extension know it has a reference image
+                    scenes[idx]["image_url"] = f"/uploads/social/ext_work_{job_id[:8]}/scene_{idx}_orig_img.jpg"
+
+    # Decode and save custom BGM
+    bgm_url_val = None
+    if req.bgm_data_url:
+        bgm_dest = os.path.join(work_dir, "custom_bgm.mp3")
+        if save_base64_file(req.bgm_data_url, bgm_dest):
+            bgm_url_val = bgm_dest
+
     _jobs[job_id] = {
         "job_id": job_id,
         "client_id": client["client_id"],
@@ -905,6 +1117,11 @@ Return ONLY the JSON object, no markdown."""
         "subtopic_name": target_name,
         "language": lang,
         "voice_id": req.voice_id,
+        "voice_provider": req.voice_provider or "elevenlabs",
+        "subtitle_lang": req.subtitle_lang or lang or "English",
+        "logo_path": logo_path,
+        "logo_position": req.logo_position or "top-left",
+        "bgm_url": bgm_url_val,
         "scenes": scenes,
         "images_received": [],
         "videos_received": [],
@@ -912,7 +1129,8 @@ Return ONLY the JSON object, no markdown."""
         "status": "waiting_extension",
         "created_at": datetime.utcnow().isoformat(),
         "video_url": None,
-        "video_length": video_length
+        "video_length": video_length,
+        "is_ad_job": req.is_ad_job
     }
 
     _save_jobs(_jobs)
@@ -940,7 +1158,8 @@ async def get_job(job_id: str, client: dict = Depends(_require_client)):
         "scenes": job["scenes"], 
         "status": job["status"],
         "subtopic_name": job.get("subtopic_name", ""),
-        "bgm_prompt": job.get("bgm_prompt", f"Upbeat background music for {job.get('subtopic_name', 'educational video')}")
+        "bgm_prompt": job.get("bgm_prompt", f"Upbeat background music for {job.get('subtopic_name', 'educational video')}"),
+        "is_ad_job": job.get("is_ad_job", False)
     }
 
 
@@ -1173,11 +1392,18 @@ async def update_scene(job_id: str, req: UpdateSceneReq, client: dict = Depends(
     if scene_idx < 0 or scene_idx >= len(job["scenes"]):
         raise HTTPException(400, "Invalid scene number")
         
+    from app.services.llm import translate_hinglish_prompt_to_english
     scene = job["scenes"][scene_idx]
     if req.image_prompt is not None:
-        scene["image_prompt"] = req.image_prompt
+        translated_img = await translate_hinglish_prompt_to_english(req.image_prompt)
+        if translated_img and not translated_img.startswith("Generate a high quality"):
+            translated_img = f"Generate a high quality photorealistic image: {translated_img}. Vertical 9:16 portrait format, cinematic lighting, 8k, photorealistic, masterpiece, no text."
+        scene["image_prompt"] = translated_img
     if req.animation_prompt is not None:
-        scene["animation_prompt"] = req.animation_prompt
+        translated_anim = await translate_hinglish_prompt_to_english(req.animation_prompt)
+        if translated_anim and not translated_anim.startswith("Animate the previously"):
+            translated_anim = f"Animate the previously generated image. Create a smooth 5-second cinematic video animation: {translated_anim}. Vertical 9:16 portrait format."
+        scene["animation_prompt"] = translated_anim
     if req.dialogue is not None:
         scene["dialogue"] = req.dialogue
         
@@ -1379,17 +1605,29 @@ async def perform_reel_assembly(job_id: str, req: AssembleReq, client: dict):
                     try:
                         logger.info(f"Scene {i} video missing or corrupt. Animating scene image into professional cinematic video: {dest_img_path}")
                         
-                        # Clean sharp scaling, no zoompan filter to keep it perfectly clear
-                        vf = (
-                            "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
-                        )
+                        # Premium stable crop & pan animations in alternating directions
+                        scale_crop = "scale=1280:2272:force_original_aspect_ratio=increase,crop=1280:2272,setsar=1"
+                        if i % 4 == 0:
+                            # Pan right and down
+                            pan = "crop=1080:1920:'(in_w-1080)/2+t*15':'(in_h-1920)/2+t*25'"
+                        elif i % 4 == 1:
+                            # Pan left and up
+                            pan = "crop=1080:1920:'(in_w-1080)/2-t*15':'(in_h-1920)/2-t*25'"
+                        elif i % 4 == 2:
+                            # Pan right and up
+                            pan = "crop=1080:1920:'(in_w-1080)/2+t*15':'(in_h-1920)/2-t*25'"
+                        else:
+                            # Pan left and down
+                            pan = "crop=1080:1920:'(in_w-1080)/2-t*15':'(in_h-1920)/2+t*25'"
+                        
+                        vf = f"{scale_crop},{pan}"
                         
                         cmd = [
                             "ffmpeg", "-y", "-nostdin",
                             "-loop", "1", "-i", dest_img_path,
                             "-vf", vf,
                             "-c:v", "libx264", "-preset", "fast", "-crf", "20",
-                            "-t", "10.0",
+                            "-t", "15.0",
                             "-pix_fmt", "yuv420p", "-r", "30",
                             dest_vid_path
                         ]
@@ -2189,6 +2427,21 @@ def create_scene_subtitles(
             logger.error(f"Whisper subtitle transcription failed: {e}. Falling back to default scene-based subtitles.")
             chunks = []
 
+    # Detect if language is Indic or if any character in dialogue is Devanagari/Indic
+    is_indic = False
+    if language and language.lower() in ["hindi", "bengali", "marathi", "hinglish"]:
+        is_indic = True
+    else:
+        # Check if the subtitle text itself contains Devanagari characters (range U+0900 to U+097F)
+        for s in scenes:
+            dialogue = s.get("dialogue") or ""
+            if any(ord(c) >= 0x0900 and ord(c) <= 0x097F for c in dialogue):
+                is_indic = True
+                break
+
+    font_name = "Nirmala UI" if is_indic else "Impact"
+    spacing = 0 if is_indic else 1
+
     # Fallback to scene-duration based subtitles if Whisper failed or was not used
     if not chunks:
         logger.info("Generating fallback scene-duration based subtitles.")
@@ -2217,16 +2470,12 @@ def create_scene_subtitles(
             
             current_time += scene_dur
 
-    font_name = "Impact"
-    if language and language.lower() in ["hindi", "bengali", "marathi"]:
-        font_name = "Arial"
-
     # Write ASS subtitle file
     with open(sub_path, "w", encoding="utf-8") as f:
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
         # CAPCUT STYLE: Dynamic font based on language support, size 85, Primary: Yellow (&H0000FFFF), Outline: Black (&H00000000) with thickness 5, Shadow 2, Alignment 2 (Bottom center)
-        f.write(f"Style: Default,{font_name},85,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,5,2,2,30,30,350,1\n\n")
+        f.write(f"Style: Default,{font_name},85,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,{spacing},0,1,5,2,2,30,30,350,1\n\n")
         f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
         
         def format_time(s):
@@ -2272,6 +2521,11 @@ async def assemble_from_videos(
     work_dir = os.path.join(base_uploads, f"ext_work_{job_id[:8]}")
     os.makedirs(work_dir, exist_ok=True)
 
+    current_jobs = _load_jobs()
+    job = current_jobs.get(job_id) or {}
+    voice_provider = job.get("voice_provider", "elevenlabs")
+    subtitle_lang = job.get("subtitle_lang", "English")
+
     lang_map = {"Hindi": "hi", "English": "en", "Spanish": "es", "French": "fr", "Bengali": "bn", "Marathi": "mr"}
     tts_lang = lang_map.get(language, "en")
 
@@ -2293,7 +2547,7 @@ async def assemble_from_videos(
 
         if not voice_exists:
             if dialogue:
-                voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language)
+                voice_result = await generate_elevenlabs_voiceover(dialogue, work_dir, voice_id=voice_id, language=language, voice_provider=voice_provider)
                 if voice_result and os.path.exists(voice_result):
                     if os.path.exists(scene_voice_path):
                         os.remove(scene_voice_path)
@@ -2502,55 +2756,65 @@ async def assemble_from_videos(
     # 5. BGM
     update_progress("Downloading and verifying background music (BGM)...", 96.0)
     bgm_download_url = bgm_url or "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-    
-    # If it's an Epidemic Sound page, extract the direct MP3 link
-    if bgm_download_url and "epidemicsound.com" in bgm_download_url and not bgm_download_url.endswith(".mp3"):
-        extracted_url = extract_epidemic_lqmp3(bgm_download_url)
-        if extracted_url:
-            bgm_download_url = extracted_url
-            logger.info(f"Resolved Epidemic Sound BGM direct link: {bgm_download_url}")
-        else:
-            logger.warning("Could not extract Epidemic Sound direct link. Falling back to default BGM.")
-            bgm_download_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-
     bgm_path = os.path.join(work_dir, "bgm.mp3")
     bgm_downloaded = False
-    try:
-        import httpx
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        async with httpx.AsyncClient() as http_client:
-            print("\n" + "#"*80)
-            print(f"DOWNLOADING BACKGROUND MUSIC (BGM) FROM EPIDEMIC SOUND...")
-            print(f"Source URL: {bgm_download_url}")
-            print("#"*80 + "\n")
-            r = await http_client.get(bgm_download_url, headers=headers, timeout=45.0, follow_redirects=True)
-            if r.status_code == 200 and len(r.content) > 100:
-                with open(bgm_path, "wb") as f: f.write(r.content)
-                bgm_downloaded = True
-                print("\n" + "#"*80)
-                print("SUCCESSFULLY DOWNLOADED EPIDEMIC SOUND BGM AUDIO FILE!")
-                print(f"Direct Link: {bgm_download_url}")
-                print(f"File Size: {len(r.content)} bytes")
-                print("#"*80 + "\n")
-                logger.info(f"BGM DOWNLOADED: URL = {bgm_download_url}")
+
+    # Check if custom BGM already exists locally as a saved file path
+    if bgm_download_url and os.path.exists(bgm_download_url) and os.path.isfile(bgm_download_url):
+        try:
+            shutil.copy2(bgm_download_url, bgm_path)
+            bgm_downloaded = True
+            logger.info(f"Using pre-uploaded local custom BGM from: {bgm_download_url}")
+        except Exception as copy_err:
+            logger.error(f"Failed to copy local custom BGM: {copy_err}")
+
+    if not bgm_downloaded:
+        # If it's an Epidemic Sound page, extract the direct MP3 link
+        if bgm_download_url and "epidemicsound.com" in bgm_download_url and not bgm_download_url.endswith(".mp3"):
+            extracted_url = extract_epidemic_lqmp3(bgm_download_url)
+            if extracted_url:
+                bgm_download_url = extracted_url
+                logger.info(f"Resolved Epidemic Sound BGM direct link: {bgm_download_url}")
             else:
-                logger.warning(f"Failed to download BGM from {bgm_download_url} (status {r.status_code}). Trying default.")
-                r = await http_client.get("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", timeout=30.0)
+                logger.warning("Could not extract Epidemic Sound direct link. Falling back to default BGM.")
+                bgm_download_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+
+        try:
+            import httpx
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            async with httpx.AsyncClient() as http_client:
+                print("\n" + "#"*80)
+                print(f"DOWNLOADING BACKGROUND MUSIC (BGM) FROM EPIDEMIC SOUND...")
+                print(f"Source URL: {bgm_download_url}")
+                print("#"*80 + "\n")
+                r = await http_client.get(bgm_download_url, headers=headers, timeout=45.0, follow_redirects=True)
                 if r.status_code == 200 and len(r.content) > 100:
                     with open(bgm_path, "wb") as f: f.write(r.content)
                     bgm_downloaded = True
-                    print("\n" + "="*80)
-                    print("BGM DOWNLOAD FALLBACK: Using default SoundHelix BGM")
-                    print(f"Direct Audio Link: https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
-                    print("="*80 + "\n")
-                    logger.info("BGM DOWNLOADED (Default fallback): URL = https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                    print("\n" + "#"*80)
+                    print("SUCCESSFULLY DOWNLOADED EPIDEMIC SOUND BGM AUDIO FILE!")
+                    print(f"Direct Link: {bgm_download_url}")
+                    print(f"File Size: {len(r.content)} bytes")
+                    print("#"*80 + "\n")
+                    logger.info(f"BGM DOWNLOADED: URL = {bgm_download_url}")
                 else:
-                    bgm_path = None
-    except Exception as ex:
-        logger.error(f"Error handling BGM download: {ex}")
-        bgm_path = None
+                    logger.warning(f"Failed to download BGM from {bgm_download_url} (status {r.status_code}). Trying default.")
+                    r = await http_client.get("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", timeout=30.0)
+                    if r.status_code == 200 and len(r.content) > 100:
+                        with open(bgm_path, "wb") as f: f.write(r.content)
+                        bgm_downloaded = True
+                        print("\n" + "="*80)
+                        print("BGM DOWNLOAD FALLBACK: Using default SoundHelix BGM")
+                        print(f"Direct Audio Link: https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                        print("="*80 + "\n")
+                        logger.info("BGM DOWNLOADED (Default fallback): URL = https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+                    else:
+                        bgm_path = None
+        except Exception as ex:
+            logger.error(f"Error handling BGM download: {ex}")
+            bgm_path = None
 
     if bgm_downloaded and bgm_path and os.path.exists(bgm_path) and os.path.getsize(bgm_path) > 0:
         print("\n" + "="*80)
@@ -2565,8 +2829,16 @@ async def assemble_from_videos(
 
     # 6. Generate precise synchronized subtitles
     update_progress("Generating precise synchronized subtitles...", 97.0)
-    sub_path = await asyncio.to_thread(create_scene_subtitles, scenes, scene_durations, work_dir, audio_path=full_voice_path, language=language)
+    sub_path = await asyncio.to_thread(create_scene_subtitles, scenes, scene_durations, work_dir, audio_path=full_voice_path, language=subtitle_lang)
     safe_sub = sub_path.replace("\\", "/").replace(":", "\\:")
+
+    # Check for pre-saved brand logo file
+    logo_file = None
+    for ext in ["png", "jpg", "jpeg", "PNG", "JPG", "JPEG"]:
+        p = os.path.join(work_dir, f"brand_logo.{ext}")
+        if os.path.exists(p) and os.path.getsize(p) > 0:
+            logo_file = p
+            break
 
     # 7. Final assembly (Video + Concatenated Voiceover + BGM + Subtitles)
     update_progress("Merging visuals, voiceovers, BGM, and neon yellow subtitles into final reel...", 98.0)
@@ -2577,16 +2849,47 @@ async def assemble_from_videos(
     inputs = ["-i", temp_video, "-i", full_voice_path]
     if bgm_path and os.path.exists(bgm_path):
         inputs += ["-i", bgm_path]
+
+    logo_input_idx = None
+    if logo_file:
+        logo_input_idx = len(inputs) // 2  # inputs array items divided by 2
+        inputs += ["-i", logo_file]
+
+    # Subtitle burn filter
+    v_filter = f"[0:v]ass='{safe_sub}'"
+    
+    # Logo overlay filter chain: Pads logo to 160x160 with dark container and clean 50px border spacing
+    if logo_file:
+        logger.info(f"Overlaying brand logo file: {logo_file}")
+        logo_pos = job.get("logo_position", "top-left").lower()
+        overlay_coords = "50:50"
+        if "top-right" in logo_pos or "top_right" in logo_pos:
+            overlay_coords = "main_w-overlay_w-50:50"
+        elif "bottom-left" in logo_pos or "bottom_left" in logo_pos:
+            overlay_coords = "50:main_h-overlay_h-50"
+        elif "bottom-right" in logo_pos or "bottom_right" in logo_pos:
+            overlay_coords = "main_w-overlay_w-50:main_h-overlay_h-50"
+            
+        v_filter += (
+            f"[v_sub];"
+            f"[{logo_input_idx}:v]scale=130:130:force_original_aspect_ratio=decrease,"
+            f"pad=160:160:(160-iw)/2:(160-ih)/2:color=0x111111[logo_scale];"
+            f"[v_sub][logo_scale]overlay={overlay_coords}"
+        )
+    else:
+        logger.warning(f"No brand logo file found to overlay for job {job_id} in {work_dir}")
+
+    if bgm_path and os.path.exists(bgm_path):
         fc = (
-            f"[0:v]ass='{safe_sub}'[v];"
+            f"{v_filter}[v];"
             f"[1:a]volume=1.0[av];"
             f"[2:a]volume=0.05,atrim=0:{total_audio_dur:.2f},asetpts=PTS-STARTPTS[abg];"
             f"[av][abg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[a]"
         )
-        maps = ["-map", "[v]", "-map", "[a]"]
     else:
-        fc = f"[0:v]ass='{safe_sub}'[v];[1:a]volume=1.0[a]"
-        maps = ["-map", "[v]", "-map", "[a]"]
+        fc = f"{v_filter}[v];[1:a]volume=1.0[a]"
+
+    maps = ["-map", "[v]", "-map", "[a]"]
 
     final_cmd = (
         ["ffmpeg", "-y", "-nostdin"] + inputs +

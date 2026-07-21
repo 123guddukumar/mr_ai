@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     # Advanced Video Engine
     PEXELS_API_KEY: str = ""
     ELEVENLABS_API_KEY: str = ""
+    SARVAM_API_KEY: str = ""
 
     # API Key Management
     API_KEY_ADMIN_SECRET: str = "change-me-admin-secret"

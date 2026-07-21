@@ -192,6 +192,11 @@ if os.path.exists(frontend_path):
     async def ugc_api_docs_page():
         return FileResponse(os.path.join(frontend_path, "ugc-api-docs.html"))
 
+    @app.post("/api/log-error", include_in_schema=False)
+    async def client_log_error(data: dict):
+        logger.error(f"🔴 CLIENT JS ERROR: {data.get('message')} | Stack: {data.get('stack')}")
+        return {"status": "ok"}
+
     @app.get("/", include_in_schema=False)
     async def root():
         return FileResponse(os.path.join(frontend_path, "index.html"))

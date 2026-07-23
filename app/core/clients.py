@@ -83,8 +83,9 @@ def login_client(email: str, password: str, db=None) -> Optional[dict]:
             return None
         if not client.is_verified:
             return {"error": "not_verified"}
-        new_token = _generate_token()
-        client.token = new_token
+        # Reuse existing token if present to prevent multiple logins/tabs from invalidating each other
+        if not client.token:
+            client.token = _generate_token()
         client.last_login = datetime.utcnow()
         db.commit()
         db.refresh(client)

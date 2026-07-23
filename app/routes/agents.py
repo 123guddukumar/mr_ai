@@ -1286,7 +1286,7 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     action_button = None
 
     user_msgs_count = len([m for m in req.history if m.get("role") == "user"]) + 1
-    if user_msgs_count >= 2:
+    if user_msgs_count >= 2 and not req.is_voice:
         chat_lines = []
         for m in req.history:
             role = "User" if m.get("role") == "user" else "Assistant"
@@ -1913,7 +1913,7 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
             if not whatsapp_number: whatsapp_number = client_obj.mobile_number or ""
             if not call_number: call_number = client_obj.mobile_number or ""
 
-    if user_msg_count >= 2:
+    if user_msg_count >= 2 and not req.is_voice:
         db_msgs = db.query(AgentPublicMessage).filter(
             AgentPublicMessage.session_id == req.session_id
         ).order_by(AgentPublicMessage.created_at.asc()).all()

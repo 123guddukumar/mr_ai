@@ -1995,7 +1995,7 @@ function deduplicateText(text) {
 function resetSilenceTimer() {
   clearTimeout(silenceTimer);
   
-  // 1.5 seconds of silence means user has finished speaking
+  // 0.8 seconds of silence means user has finished speaking
   silenceTimer = setTimeout(() => {
     const rawCleaned = cleanSpeechText(speechTranscript);
     const finalCleaned = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawCleaned))).trim();
@@ -2014,7 +2014,7 @@ function resetSilenceTimer() {
       stopRecognition();
       sendMsg();
     }
-  }, 1500);
+  }, 800);
 }
 
 function startRecognition() {

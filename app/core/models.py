@@ -374,6 +374,7 @@ class Agent(Base):
     customization_json  = Column(Text, default="{}")
     datastores_json     = Column(Text, default="[]") 
     
+    is_root    = Column(Boolean, default=False, nullable=False)
     is_active  = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -400,6 +401,7 @@ class Agent(Base):
             "system_config":    s_cfg,
             "customization":    c_cfg,
             "datastores":       ds_ids,
+            "is_root":          self.is_root or False,
             "is_active":        self.is_active,
             "created_at":       self.created_at.isoformat() if self.created_at else "",
             "kb_source_count":  len(self.knowledge_sources),
@@ -413,6 +415,7 @@ class AgentKnowledgeSource(Base):
     source_type  = Column(String(30), nullable=False)
     source_name  = Column(String(500), nullable=False)
     chunk_count  = Column(Integer, default=0)
+    raw_text     = Column(Text, nullable=True)
     indexed_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     agent = relationship("Agent", back_populates="knowledge_sources")
@@ -423,7 +426,7 @@ class AgentKnowledgeSource(Base):
             "source_type": self.source_type,
             "source_name": self.source_name,
             "chunk_count": self.chunk_count,
-            "raw_text":    self.raw_text or "",
+            "raw_text":    getattr(self, 'raw_text', '') or "",
             "indexed_at":  self.indexed_at.isoformat() if self.indexed_at else "",
         }
 
@@ -1046,6 +1049,128 @@ class AgentPublicMessage(Base):
             "content": self.content,
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }
+
+
+# ── Root Personal Assistant Agent Models ──────────────────────────────────────────
+
+class RootMemory(Base):
+    """Personal Assistant Notes, Tasks, and Auto-saved Facts for Owner."""
+    __tablename__ = "root_memories"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    memory_id  = Column(String(64), unique=True, index=True, nullable=False)
+    client_id  = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id   = Column(String(64), nullable=True)
+    category   = Column(String(50), default="note")  # note | task | fact | preference
+    title      = Column(String(300), nullable=False)
+    content    = Column(Text, nullable=False)
+    tags_json  = Column(Text, default="[]")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        try: tags = json.loads(self.tags_json or "[]")
+        except: tags = []
+        return {
+            "memory_id": self.memory_id,
+            "client_id": self.client_id,
+            "category": self.category,
+            "title": self.title,
+            "content": self.content,
+            "tags": tags,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class RootMeeting(Base):
+    """Owner Scheduled Meetings with Automated 30-min Advance Reminder."""
+    __tablename__ = "root_meetings"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    meeting_id    = Column(String(64), unique=True, index=True, nullable=False)
+    client_id     = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id      = Column(String(64), nullable=True)
+    title         = Column(String(300), nullable=False)
+    description   = Column(Text, default="")
+    meeting_time  = Column(DateTime, nullable=False, index=True)
+    duration_mins = Column(Integer, default=30)
+    status            = Column(String(30), default="scheduled")  # scheduled | completed | cancelled
+    reminder_sent     = Column(Boolean, default=False, nullable=True)
+    notification_sent = Column(Boolean, default=False, nullable=True)
+    created_at        = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "meeting_id": self.meeting_id,
+            "client_id": self.client_id,
+            "title": self.title,
+            "description": self.description or "",
+            "meeting_time": self.meeting_time.isoformat() if self.meeting_time else "",
+            "duration_mins": self.duration_mins,
+            "status": self.status,
+            "reminder_sent": self.reminder_sent,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class RootMedia(Base):
+    """Media & Document Vault for Root Personal Assistant Agent."""
+    __tablename__ = "root_media"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    media_id    = Column(String(64), unique=True, index=True, nullable=False)
+    client_id   = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id    = Column(String(64), nullable=True)
+    media_type  = Column(String(30), nullable=False)  # image | video | document
+    name        = Column(String(300), nullable=False, index=True)
+    description = Column(Text, default="")
+    file_url    = Column(Text, nullable=False)
+    file_path   = Column(Text, nullable=True)
+    raw_text    = Column(Text, nullable=True) # Text extracted for RAG if document
+    created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "media_id": self.media_id,
+            "client_id": self.client_id,
+            "media_type": self.media_type,
+            "name": self.name,
+            "description": self.description or "",
+            "file_url": self.file_url,
+            "raw_text": self.raw_text or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+class AgentFeedback(Base):
+    """User and Visitor feedback and policy reports for AI Agents."""
+    __tablename__ = "agent_feedbacks"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    agent_id      = Column(String(64), ForeignKey("agents.agent_id", ondelete="CASCADE"), nullable=False, index=True)
+    user_name     = Column(String(200), nullable=True)
+    user_email    = Column(String(300), nullable=True)
+    feedback_type = Column(String(50), default="feedback")  # feedback | report
+    rating        = Column(Integer, nullable=True)
+    comment       = Column(Text, nullable=False)
+    device_id     = Column(String(64), nullable=True)
+    session_id    = Column(String(64), nullable=True)
+    created_at    = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "agent_id": self.agent_id,
+            "user_name": self.user_name or "",
+            "user_email": self.user_email or "",
+            "feedback_type": self.feedback_type,
+            "rating": self.rating,
+            "comment": self.comment,
+            "device_id": self.device_id or "",
+            "session_id": self.session_id or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
 
 
 

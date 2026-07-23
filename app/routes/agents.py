@@ -78,6 +78,8 @@ class AgentFeedbackCreate(BaseModel):
     feedback_type: str = "feedback"
     rating: Optional[int] = None
     comment: str
+    device_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 # ── Chunking helper ────────────────────────────────────────────────────────────
 
@@ -908,6 +910,7 @@ async def api_agent_upload_pdf(agent_id: str, file: UploadFile = File(...), x_ap
     reader = PyPDF2.PdfReader(io.BytesIO(content))
     text = ""
     for page in reader.pages: text += (page.extract_text() or "")
+    text = text.replace('\x00', '')
     
     chunks, texts = _make_agent_chunks(text, fname, agent_id, is_ds=False)
     if chunks:
@@ -933,7 +936,7 @@ async def api_agent_ingest_url(agent_id: str, req: IngestUrlReq, x_app_token: Op
             resp = await hc.get(req.url, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script","style","nav","footer","header"]): tag.decompose()
-        text = " ".join(soup.get_text(" ", strip=True).split())[:30000]
+        text = " ".join(soup.get_text(" ", strip=True).split())[:30000].replace('\x00', '')
         title = soup.title.string.strip() if soup.title else req.url
     except Exception as e: raise HTTPException(502, f"Scrape failed: {e}")
 
@@ -957,6 +960,7 @@ async def api_agent_ingest_yt(agent_id: str, req: IngestYouTubeReq, x_app_token:
     from app.services.youtube_service import get_youtube_transcript
     try:
         text, title = await get_youtube_transcript(req.url)
+        text = text.replace('\x00', '')
     except Exception as e:
         logger.error(f"Agent YT ingestion failed: {e}")
         raise HTTPException(502, f"YouTube Ingestion Error: {str(e)}")
@@ -992,6 +996,123 @@ async def api_delete_agent_source(agent_id: str, source_id: int, x_app_token: Op
 
 # ── Agent Chat (RAG) ──────────────────────────────────────────────────────────
 
+class BookMeetingReq(BaseModel):
+    name: str
+    meeting_time: datetime
+    session_id: Optional[str] = None
+
+@router.get("/agents/{agent_id}/booked-dates", tags=["Agents & DataStores"])
+async def get_booked_dates(agent_id: str, db: Session = Depends(get_db)):
+    from app.core.models import Agent, RootMeeting
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    
+    meetings = db.query(RootMeeting).filter(
+        RootMeeting.client_id == agent.client_id,
+        RootMeeting.status == "scheduled",
+        RootMeeting.meeting_time >= datetime.utcnow()
+    ).all()
+    
+    return {
+        "booked_dates": [m.meeting_time.isoformat() for m in meetings]
+    }
+
+@router.post("/agents/{agent_id}/book-meeting", tags=["Agents & DataStores"])
+async def book_agent_meeting(agent_id: str, req: BookMeetingReq, db: Session = Depends(get_db)):
+    from app.core.models import Agent, RootMeeting
+    import secrets
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+        
+    meeting_obj = RootMeeting(
+        meeting_id=secrets.token_hex(8),
+        client_id=agent.client_id,
+        owner_id=agent.client_id,
+        title=f"Meeting with {req.name}",
+        description=f"Scheduled via Agent Chat (Session: {req.session_id})",
+        meeting_time=req.meeting_time,
+        duration_mins=30,
+        status="scheduled",
+        reminder_sent=False,
+        notification_sent=False,
+        created_at=datetime.utcnow()
+    )
+    db.add(meeting_obj)
+    db.commit()
+    db.refresh(meeting_obj)
+    return {"success": True, "meeting_id": meeting_obj.meeting_id}
+
+async def analyze_chat_for_suggestions_and_actions(conversation_text: str, agent) -> dict:
+    import json, os, logging
+    from app.services.llm import llm_with_history
+    
+    logger = logging.getLogger(__name__)
+    
+    try: s_cfg = json.loads(agent.system_config_json or "{}")
+    except: s_cfg = {}
+    
+    provider = s_cfg.get('provider', 'gemini')
+    model = s_cfg.get('model', 'gemini-3.5-flash')
+    api_key = s_cfg.get('api_key', '')
+    
+    if provider == 'gemini' and not api_key:
+        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+    system_prompt = (
+        "You are an expert conversation analyzer.\n"
+        "Analyze the following chat history between a User and an AI Assistant.\n"
+        "Determine if the user intends to schedule a meeting/appointment/booking OR if they want to call/speak on the phone.\n"
+        "Also generate exactly 2 relevant, natural follow-up questions the user is likely to ask next.\n"
+        "You MUST respond ONLY with a raw JSON object matching this exact schema:\n"
+        "{\n"
+        "  \"meeting_intent\": true/false,\n"
+        "  \"call_intent\": true/false,\n"
+        "  \"suggested_questions\": [\"Question 1\", \"Question 2\"]\n"
+        "}\n"
+        "Do not explain, do not output any markdown code blocks. Just raw JSON."
+    )
+    
+    prompt = f"Here is the chat history:\n\n{conversation_text}\n\nAnalyze and return JSON."
+    
+    try:
+        raw_result = await llm_with_history(
+            question=prompt,
+            system=system_prompt,
+            history=[],
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            ollama_url="http://localhost:11434"
+        )
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}. Falling back to default Gemini.")
+        try:
+            fallback_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            raw_result = await llm_with_history(
+                question=prompt,
+                system=system_prompt,
+                history=[],
+                provider="gemini",
+                model="gemini-3.5-flash",
+                api_key=fallback_key,
+                ollama_url="http://localhost:11434"
+            )
+        except Exception as fe:
+            logger.error(f"Fallback analysis failed: {fe}")
+            return {"meeting_intent": False, "call_intent": False, "suggested_questions": []}
+
+    try:
+        import re
+        match = re.search(r"({.*})", raw_result, re.DOTALL)
+        if match:
+            return json.loads(match.group(1).strip())
+        return json.loads(raw_result.strip())
+    except Exception as e:
+        logger.error(f"Failed to parse analysis JSON: {e}. Raw response: {raw_result}")
+        return {"meeting_intent": False, "call_intent": False, "suggested_questions": []}
+
 class AgentAskReq(BaseModel):
     question: str
     history: list = []
@@ -1018,144 +1139,197 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
         return " ".join(s_clean.split())
 
     q_clean = clean_match_string(req.question)
+    matched_pair = None
     for pair in qa_pairs:
         pair_q = clean_match_string(pair.get("q", ""))
         if pair_q and (pair_q == q_clean or pair_q in q_clean or q_clean in pair_q):
-            return {
-                "answer": pair.get("a"),
-                "sources": [{"source_file": "Training Q&A Pairs", "page_number": 1}],
-                "is_rag": True
-            }
+            matched_pair = pair
+            break
 
-    # Get linked datastores
-    try: ds_ids = json.loads(agent.datastores_json or "[]")
-    except: ds_ids = []
+    answer = ""
+    sources_data = []
+    is_rag = False
 
-    from app.services.embedder import embed_query
-    from app.services.vector_store import get_vector_store
-    from app.services.llm import build_context_and_sources
-
-    query_emb = embed_query(req.question)
-    
-    # Search in agent's own knowledge base AND linked datastores
-    results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
-
-    # Filter results by relevance (similarity threshold)
-    relevant_results = [res for res in results if res[1] > 0.35] # Score threshold for RAG
-    
-    context, sources_data = build_context_and_sources(relevant_results)
-    
-    # Add Q&A pairs to context as high-priority training context
-    if qa_pairs:
-        qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
-        qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
-        context = qa_context + (context or "")
-
-    # System Instruction
-    try: s_cfg = json.loads(agent.system_config_json or "{}")
-    except: s_cfg = {}
-    
-    # Greeting logic: Improved detection
-    q_low = req.question.lower().strip()
-    greetings = ["hi", "hello", "hey", "hii", "hiihii", "namaste", "how are you", "who are you", "good morning", "good evening"]
-    is_greeting = any(g in q_low for g in greetings)
-    
-    identity = (
-        f"You are {agent.name}. {agent.personality}\n"
-        f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
-        f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
-        f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used. Example: If user says 'Namaste', you say 'Namaste, main {agent.name} hoon...'. If user says 'Hi', you say 'Hi, I am {agent.name}...'.\n"
-        f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
-        f"RESPONSE STYLE: Be natural, conversational and helpful. Stop being robotic. Share knowledge from context naturally if found.\n"
-    )
-
-    if context:
-        system = (
-            f"{identity}\n\n"
-            f"--- KNOWLEDGE BASE CONTEXT ---\n"
-            f"{context}\n"
-            f"--- END OF CONTEXT ---\n\n"
-            f"CRITICAL INSTRUCTIONS:\n"
-            f"1. Prioritize answering based on the provided context if it contains the answer.\n"
-            f"2. IMPORTANT: If the context does not contain the answer, or if the user is asking a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete answer. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
-        )
+    if matched_pair:
+        answer = matched_pair.get("a")
+        sources_data = [{"source_file": "Training Q&A Pairs", "page_number": 1}]
+        is_rag = True
     else:
-        system = (
-            f"{identity}\n\n"
-            f"NOTE: No specific information was found in the internal knowledge base for this query.\n"
-            f"INSTRUCTION: Since no direct context is available, please use your general AI knowledge to provide a helpful and accurate answer to the user's question."
+        # Get linked datastores
+        try: ds_ids = json.loads(agent.datastores_json or "[]")
+        except: ds_ids = []
+
+        from app.services.embedder import embed_query
+        from app.services.vector_store import get_vector_store
+        from app.services.llm import build_context_and_sources
+
+        query_emb = embed_query(req.question)
+        
+        # Search in agent's own knowledge base AND linked datastores
+        results = get_vector_store().search_combined(query_emb, agent_id=agent_id, datastore_ids=ds_ids, top_k=5)
+
+        # Filter results by relevance (similarity threshold)
+        relevant_results = [res for res in results if res[1] > 0.35] # Score threshold for RAG
+        
+        context, sources_data = build_context_and_sources(relevant_results)
+        is_rag = bool(context)
+        
+        # Add Q&A pairs to context as high-priority training context
+        if qa_pairs:
+            qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
+            qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
+            context = qa_context + (context or "")
+
+        # System Instruction
+        try: s_cfg = json.loads(agent.system_config_json or "{}")
+        except: s_cfg = {}
+        
+        # Greeting logic: Improved detection
+        q_low = req.question.lower().strip()
+        greetings = ["hi", "hello", "hey", "hii", "hiihii", "namaste", "how are you", "who are you", "good morning", "good evening"]
+        is_greeting = any(g in q_low for g in greetings)
+        
+        identity = (
+            f"You are {agent.name}. {agent.personality}\n"
+            f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
+            f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
+            f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
+            f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
+            f"RESPONSE STYLE: Be natural, conversational and helpful. Stop being robotic. Share knowledge from context naturally if found.\n"
         )
 
-    # Final Override
-    system += "\n\nFINAL DIRECTIVE: Always be helpful. If context is provided, use it. If not, use your general knowledge. Stop being robotic."
-
-    # For voice queries, override instructions to ensure extreme brevity (under 1-2 sentences) and force fast low-latency models
-    if req.is_voice:
-        system += "\n\nCRITICAL VOICE DIRECTIVE: Keep your answer extremely short, conversational, and limited to 1-2 sentences maximum. Do NOT use any bullet points, lists, asterisks, or markdown formatting. Speak naturally."
-        orig_provider = s_cfg.get('provider', 'gemini')
-        if orig_provider == "openai":
-            voice_provider = "openai"
-            voice_model = "gpt-4o-mini"
-            voice_api_key = s_cfg.get('api_key', '')
-        elif orig_provider == "groq":
-            voice_provider = "groq"
-            voice_model = "llama-3.1-8b-instant"
-            voice_api_key = s_cfg.get('api_key', '')
+        if context:
+            system = (
+                f"{identity}\n\n"
+                f"--- KNOWLEDGE BASE CONTEXT ---\n"
+                f"{context}\n"
+                f"--- END OF CONTEXT ---\n\n"
+                f"CRITICAL INSTRUCTIONS:\n"
+                f"1. Prioritize answering based on the provided context if it contains the answer.\n"
+                f"2. IMPORTANT: If the context does not contain the answer, or if the user is asking a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete answer. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
+            )
         else:
-            voice_provider = "gemini"
-            voice_model = "gemini-3.5-flash"
-            import os
-            voice_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-    else:
-        voice_provider = s_cfg.get('provider', 'gemini')
-        voice_model = s_cfg.get('model', 'gemini-3.5-flash')
-        voice_api_key = s_cfg.get('api_key', '')
+            system = (
+                f"{identity}\n\n"
+                f"NOTE: No specific information was found in the internal knowledge base for this query.\n"
+                f"INSTRUCTION: Since no direct context is available, please use your general AI knowledge to provide a helpful and accurate answer to the user's question."
+            )
 
-    # Call LLM
-    from app.services.llm import llm_with_history
-    try:
-        answer = await llm_with_history(
-            question=req.question, system=system, history=req.history[-6:],
-            provider=voice_provider,
-            model=voice_model,
-            api_key=voice_api_key,
-            ollama_url="http://localhost:11434",
-        )
-    except Exception as e:
-        orig_provider = s_cfg.get('provider', 'gemini')
-        if voice_provider == 'gemini' and orig_provider != 'gemini':
-            logger.warning(f"Voice Gemini failed: {e}. Falling back to agent's configured provider {orig_provider}...")
-            try:
-                answer = await llm_with_history(
-                    question=req.question, system=system, history=req.history[-6:],
-                    provider=orig_provider,
-                    model=s_cfg.get('model', 'gemini-3.5-flash'),
-                    api_key=s_cfg.get('api_key', ''),
-                    ollama_url="http://localhost:11434",
-                )
-            except Exception as fallback_err:
-                raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
-        elif voice_provider != 'gemini':
-            logger.warning(f"Primary LLM provider {voice_provider} failed: {e}. Falling back to Gemini...")
-            try:
+        # Final Override
+        system += "\n\nFINAL DIRECTIVE: Always be helpful. If context is provided, use it. If not, use your general knowledge. Stop being robotic."
+
+        # For voice queries, override instructions to ensure extreme brevity (under 1-2 sentences) and force fast low-latency models
+        if req.is_voice:
+            system += "\n\nCRITICAL VOICE DIRECTIVE: Keep your answer extremely short, conversational, and limited to 1-2 sentences maximum. Do NOT use any bullet points, lists, asterisks, or markdown formatting. Speak naturally."
+            orig_provider = s_cfg.get('provider', 'gemini')
+            if orig_provider == "openai":
+                voice_provider = "openai"
+                voice_model = "gpt-4o-mini"
+                voice_api_key = s_cfg.get('api_key', '')
+            elif orig_provider == "groq":
+                voice_provider = "groq"
+                voice_model = "llama-3.1-8b-instant"
+                voice_api_key = s_cfg.get('api_key', '')
+            else:
+                voice_provider = "gemini"
+                voice_model = "gemini-3.5-flash"
                 import os
-                fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-                answer = await llm_with_history(
-                    question=req.question, system=system, history=req.history[-6:],
-                    provider='gemini',
-                    model='gemini-3.5-flash',
-                    api_key=fallback_api_key,
-                    ollama_url="http://localhost:11434",
-                )
-            except Exception as fallback_err:
-                raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
+                voice_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
         else:
-            raise HTTPException(502, f"LLM error: {e}")
+            voice_provider = s_cfg.get('provider', 'gemini')
+            voice_model = s_cfg.get('model', 'gemini-3.5-flash')
+            voice_api_key = s_cfg.get('api_key', '')
+
+        # Call LLM
+        from app.services.llm import llm_with_history
+        try:
+            answer = await llm_with_history(
+                question=req.question, system=system, history=req.history[-6:],
+                provider=voice_provider,
+                model=voice_model,
+                api_key=voice_api_key,
+                ollama_url="http://localhost:11434",
+            )
+        except Exception as e:
+            orig_provider = s_cfg.get('provider', 'gemini')
+            if voice_provider == 'gemini' and orig_provider != 'gemini':
+                logger.warning(f"Voice Gemini failed: {e}. Falling back to agent's configured provider {orig_provider}...")
+                try:
+                    answer = await llm_with_history(
+                        question=req.question, system=system, history=req.history[-6:],
+                        provider=orig_provider,
+                        model=s_cfg.get('model', 'gemini-3.5-flash'),
+                        api_key=s_cfg.get('api_key', ''),
+                        ollama_url="http://localhost:11434",
+                    )
+                except Exception as fallback_err:
+                    raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
+            elif voice_provider != 'gemini':
+                logger.warning(f"Primary LLM provider {voice_provider} failed: {e}. Falling back to Gemini...")
+                try:
+                    import os
+                    fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+                    answer = await llm_with_history(
+                        question=req.question, system=system, history=req.history[-6:],
+                        provider='gemini',
+                        model='gemini-3.5-flash',
+                        api_key=fallback_api_key,
+                        ollama_url="http://localhost:11434",
+                    )
+                except Exception as fallback_err:
+                    raise HTTPException(502, f"LLM error (Primary and Fallback failed): {fallback_err}")
+            else:
+                raise HTTPException(502, f"LLM error: {e}")
+
+    # --- Recommendations / Dynamic Actions Analysis ---
+    suggested_questions = []
+    action_button = None
+
+    user_msgs_count = len([m for m in req.history if m.get("role") == "user"]) + 1
+    if user_msgs_count >= 2:
+        chat_lines = []
+        for m in req.history:
+            role = "User" if m.get("role") == "user" else "Assistant"
+            chat_lines.append(f"{role}: {m.get('content', '')}")
+        chat_lines.append(f"User: {req.question}")
+        chat_lines.append(f"Assistant: {answer}")
+        history_text = "\n".join(chat_lines)
+        
+        analysis = await analyze_chat_for_suggestions_and_actions(history_text, agent)
+        suggested_questions = analysis.get("suggested_questions", [])
+        
+        try: c_cfg = json.loads(agent.customization_json or "{}")
+        except: c_cfg = {}
+        whatsapp_number = c_cfg.get("whatsapp_number", "")
+        call_number = c_cfg.get("call_number", "")
+        if not whatsapp_number or not call_number:
+            from app.core.models import Client
+            client_obj = db.query(Client).filter(Client.client_id == agent.client_id).first()
+            if client_obj:
+                if not whatsapp_number: whatsapp_number = client_obj.mobile_number or ""
+                if not call_number: call_number = client_obj.mobile_number or ""
+                
+        if analysis.get("meeting_intent") and whatsapp_number:
+            action_button = {
+                "action_type": "whatsapp",
+                "phone_number": whatsapp_number,
+                "message": "Schedule a meeting with us",
+                "created_at": datetime.utcnow().isoformat()
+            }
+        elif analysis.get("call_intent") and call_number:
+            action_button = {
+                "action_type": "call",
+                "phone_number": call_number,
+                "message": "Give us a call",
+                "created_at": datetime.utcnow().isoformat()
+            }
 
     return {
         "answer": answer,
         "sources": [s.__dict__ if hasattr(s, '__dict__') else dict(s) for s in sources_data],
-        "is_rag": bool(context)
+        "is_rag": is_rag,
+        "suggested_questions": suggested_questions,
+        "action_button": action_button
     }
 
 
@@ -1310,12 +1484,44 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
         raise HTTPException(400, "TTS handled locally by browser for mrai provider")
 
 
+def auto_fill_visitor_details_from_device(db: Session, session, agent_id: str, device_id: str):
+    if not session or not device_id:
+        return
+    updated = False
+    from app.core.models import AgentPublicSession
+    if not session.user_name:
+        existing = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == agent_id,
+            AgentPublicSession.device_id == device_id,
+            AgentPublicSession.user_name != None,
+            AgentPublicSession.user_name != ''
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+        if existing:
+            session.user_name = existing.user_name
+            updated = True
+            
+    if not session.phone_number:
+        existing = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == agent_id,
+            AgentPublicSession.device_id == device_id,
+            AgentPublicSession.phone_number != None,
+            AgentPublicSession.phone_number != ''
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+        if existing:
+            session.phone_number = existing.phone_number
+            updated = True
+            
+    if updated:
+        db.commit()
+
+
 class AgentPublicAskReq(BaseModel):
     question: str
     session_id: str
     device_id: str
     device_name: Optional[str] = "Unknown Device"
     is_voice: Optional[bool] = False
+    file_context: Optional[str] = None  # Extracted text/description from uploaded file
 
 
 @router.get("/agents/{agent_id}/public-info", tags=["Agents & DataStores"])
@@ -1348,6 +1554,67 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     if not agent:
         raise HTTPException(404, "Agent not found")
 
+    # 1. Root Agent Delegation if agent is_root or category is root_assistant
+    if agent.is_root or agent.category == 'root_assistant':
+        from app.routes.root_agent import root_agent_chat, RootChatReq
+        root_req = RootChatReq(
+            message=req.question,
+            session_id=req.session_id
+        )
+        root_res = await root_agent_chat(req=root_req, x_app_token=None, db=db)
+        ans_text = root_res.get("content") or root_res.get("answer") or "Sir, main aapke order par kaam kar raha hoon."
+        return {
+            "answer": ans_text,
+            "content": ans_text,
+            "sources": [],
+            "is_rag": False,
+            "session_id": req.session_id,
+            "media": root_res.get("media")
+        }
+
+    # 2. Meeting / Note Save Intent Interception for any sub-agent
+    q_lower = req.question.lower()
+    is_meeting_word = any(w in q_lower for w in ["meeting", "metting", "appointment"])
+    is_save_action = any(w in q_lower for w in ["save", "schedule", "set", "kar do", "kr do", "store", "yise save"])
+    if is_meeting_word and is_save_action:
+        from app.routes.root_agent import _parse_meeting_details
+        from app.core.models import RootMeeting
+        from datetime import timedelta
+
+        title, meeting_dt = _parse_meeting_details(req.question)
+        meeting_obj = RootMeeting(
+            meeting_id=secrets.token_hex(8),
+            client_id=agent.client_id,
+            owner_id=agent.client_id,
+            title=title,
+            description=req.question,
+            meeting_time=meeting_dt,
+            duration_mins=30,
+            status="scheduled",
+            reminder_sent=False,
+            notification_sent=False,
+            created_at=datetime.utcnow()
+        )
+        db.add(meeting_obj)
+        db.commit()
+
+        time_formatted = meeting_dt.strftime("%d %b %Y, %I:%M %p")
+        reminder_time = (meeting_dt - timedelta(minutes=30)).strftime("%I:%M %p")
+        resp = (
+            f"🗓️ **Sir, aapka Meeting Root Assistant Database me successful Save & Schedule ho gaya hai!**\n\n"
+            f"📌 **Title**: {title}\n"
+            f"⏰ **Timing**: {time_formatted}\n"
+            f"📍 **Status**: Scheduled\n\n"
+            f"🔔 **Notification Alert**: Main meeting start hone se 30 minute pehle (`{reminder_time}`) aapko advance reminder notification bhej doonga!"
+        )
+        return {
+            "answer": resp,
+            "content": resp,
+            "sources": [],
+            "is_rag": False,
+            "session_id": req.session_id
+        }
+
     # Get configured Q&A training pairs
     try:
         custom_cfg = json.loads(agent.customization_json or "{}")
@@ -1366,18 +1633,14 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
 
     # 1. Commit user message to DB
     session = None
-    if req.device_id:
-        session = db.query(AgentPublicSession).filter(
-            AgentPublicSession.agent_id == agent_id,
-            AgentPublicSession.device_id == req.device_id
-        ).order_by(AgentPublicSession.updated_at.desc()).first()
-        
-    if not session and req.session_id:
+    if req.session_id:
         session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == req.session_id).first()
 
     if not session:
+        import uuid
+        session_id_to_use = req.session_id or f"sess_{uuid.uuid4().hex}"
         session = AgentPublicSession(
-            session_id=req.session_id,
+            session_id=session_id_to_use,
             agent_id=agent_id,
             device_id=req.device_id,
             device_name=req.device_name
@@ -1385,10 +1648,15 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         db.add(session)
         db.commit()
         db.refresh(session)
+        req.session_id = session_id_to_use
     else:
-        req.session_id = session.session_id
+        if req.device_id and session.device_id != req.device_id:
+            session.device_id = req.device_id
         session.updated_at = datetime.utcnow()
         db.commit()
+
+    # Automatically fill details from same device
+    auto_fill_visitor_details_from_device(db, session, agent_id, req.device_id)
 
     user_msg = AgentPublicMessage(
         session_id=req.session_id,
@@ -1563,9 +1831,14 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                 voice_model = s_cfg.get('model', 'gemini-3.5-flash')
                 voice_api_key = s_cfg.get('api_key', '')
 
+            # Prepend file context if provided
+            effective_question = req.question
+            if req.file_context:
+                effective_question = f"[File Content/Context]:\n{req.file_context}\n\n[User Question]: {req.question}"
+
             try:
                 answer = await llm_with_history(
-                    question=req.question, system=system, history=history_list,
+                    question=effective_question, system=system, history=history_list,
                     provider=voice_provider,
                     model=voice_model,
                     api_key=voice_api_key,
@@ -1577,7 +1850,7 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     logger.warning(f"Voice Gemini failed: {e}. Falling back to agent's configured provider {orig_provider}...")
                     try:
                         answer = await llm_with_history(
-                            question=req.question, system=system, history=history_list,
+                            question=effective_question, system=system, history=history_list,
                             provider=orig_provider,
                             model=s_cfg.get('model', 'gemini-3.5-flash'),
                             api_key=s_cfg.get('api_key', ''),
@@ -1591,7 +1864,7 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                         import os
                         fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
                         answer = await llm_with_history(
-                            question=req.question, system=system, history=history_list,
+                            question=effective_question, system=system, history=history_list,
                             provider='gemini',
                             model='gemini-3.5-flash',
                             api_key=fallback_api_key,
@@ -1603,13 +1876,13 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     answer = f"Error generating response: {e}"
 
         # 4. Append name or phone prompt if not set yet
-        if not session.user_name and user_msg_count >= 2:
+        if not session.user_name and user_msg_count >= 3 and (user_msg_count - 3) % 3 == 0:
             is_hindi = bool(re.search(r'[\u0900-\u097F]', answer))
             if is_hindi:
                 answer += "\n\nवैसे, आपका नाम क्या है?"
             else:
                 answer += "\n\nBy the way, what is your name?"
-        elif session.user_name and not session.phone_number and user_msg_count >= 3:
+        elif session.user_name and not session.phone_number and user_msg_count >= 4 and (user_msg_count - 4) % 3 == 0:
             is_hindi = bool(re.search(r'[\u0900-\u097F]', answer))
             if is_hindi:
                 answer += "\n\nक्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?"
@@ -1625,12 +1898,60 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     db.add(asst_msg)
     db.commit()
 
+    suggested_questions = []
+    action_button = None
+
+    try: c_cfg = json.loads(agent.customization_json or "{}")
+    except: c_cfg = {}
+    whatsapp_number = c_cfg.get("whatsapp_number", "")
+    call_number = c_cfg.get("call_number", "")
+    
+    if not whatsapp_number or not call_number:
+        from app.core.models import Client
+        client_obj = db.query(Client).filter(Client.client_id == agent.client_id).first()
+        if client_obj:
+            if not whatsapp_number: whatsapp_number = client_obj.mobile_number or ""
+            if not call_number: call_number = client_obj.mobile_number or ""
+
+    if user_msg_count >= 2:
+        db_msgs = db.query(AgentPublicMessage).filter(
+            AgentPublicMessage.session_id == req.session_id
+        ).order_by(AgentPublicMessage.created_at.asc()).all()
+        
+        chat_lines = []
+        for m in db_msgs:
+            chat_lines.append(f"{'User' if m.role == 'user' else 'Assistant'}: {m.content}")
+        history_text = "\n".join(chat_lines)
+        
+        analysis = await analyze_chat_for_suggestions_and_actions(history_text, agent)
+        suggested_questions = analysis.get("suggested_questions", [])
+        
+        if analysis.get("meeting_intent") and whatsapp_number:
+            action_button = {
+                "action_type": "whatsapp",
+                "phone_number": whatsapp_number,
+                "message": "Schedule a meeting with us",
+                "created_at": datetime.utcnow().isoformat()
+            }
+        elif analysis.get("call_intent") and call_number:
+            action_button = {
+                "action_type": "call",
+                "phone_number": call_number,
+                "message": "Give us a call",
+                "created_at": datetime.utcnow().isoformat()
+            }
+
+        if action_button:
+            session.action_button_json = json.dumps(action_button)
+            db.commit()
+
     return {
         "answer": answer,
         "sources": [s.__dict__ if hasattr(s, '__dict__') else dict(s) for s in sources_data],
         "is_rag": is_rag,
         "session_id": session.session_id,
-        "action_button": session.to_dict().get("action_button")
+        "action_button": action_button or (json.loads(session.action_button_json) if session.action_button_json else None),
+        "suggested_questions": suggested_questions
     }
 
 
@@ -1672,17 +1993,21 @@ async def api_get_session_history(session_id: str, x_app_token: Optional[str] = 
 async def api_get_public_history(agent_id: str, device_id: Optional[str] = None, session_id: Optional[str] = None, db: Session = Depends(get_db)):
     from app.core.models import AgentPublicSession, AgentPublicMessage
     session = None
-    if device_id:
+    if session_id:
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    elif device_id:
         session = db.query(AgentPublicSession).filter(
             AgentPublicSession.agent_id == agent_id,
             AgentPublicSession.device_id == device_id
         ).order_by(AgentPublicSession.updated_at.desc()).first()
 
-    if not session and session_id:
-        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
-
     if not session:
         return {"session": None, "messages": []}
+
+    # Automatically fill details from same device if missing
+    dev_id_to_use = device_id or session.device_id
+    if dev_id_to_use:
+        auto_fill_visitor_details_from_device(db, session, agent_id, dev_id_to_use)
 
     messages = db.query(AgentPublicMessage).filter(
         AgentPublicMessage.session_id == session.session_id
@@ -1698,17 +2023,21 @@ async def api_get_public_history(agent_id: str, device_id: Optional[str] = None,
 async def api_get_public_session_status(agent_id: str, device_id: Optional[str] = None, session_id: Optional[str] = None, db: Session = Depends(get_db)):
     from app.core.models import AgentPublicSession
     session = None
-    if device_id:
+    if session_id:
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+    elif device_id:
         session = db.query(AgentPublicSession).filter(
             AgentPublicSession.agent_id == agent_id,
             AgentPublicSession.device_id == device_id
         ).order_by(AgentPublicSession.updated_at.desc()).first()
 
-    if not session and session_id:
-        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
-
     if not session:
         return {"session": None}
+
+    # Automatically fill details from same device if missing
+    dev_id_to_use = device_id or session.device_id
+    if dev_id_to_use:
+        auto_fill_visitor_details_from_device(db, session, agent_id, dev_id_to_use)
 
     return {"session": session.to_dict()}
 
@@ -1764,6 +2093,51 @@ async def api_clear_session_action(session_id: str, db: Session = Depends(get_db
     session.action_button_json = None
     db.commit()
     return {"status": "success"}
+
+
+def repair_json(s: str) -> str:
+    """Repair incomplete/truncated JSON strings by matching and closing open quotes/brackets."""
+    s = s.strip()
+    if not s:
+        return "{}"
+    in_quote = False
+    escape = False
+    repaired = []
+    stack = []
+    
+    for char in s:
+        if escape:
+            repaired.append(char)
+            escape = False
+            continue
+        if char == '\\':
+            repaired.append(char)
+            escape = True
+            continue
+        if char == '"':
+            in_quote = not in_quote
+            repaired.append(char)
+            continue
+        
+        if not in_quote:
+            if char == '{':
+                stack.append('}')
+            elif char == '[':
+                stack.append(']')
+            elif char == '}':
+                if stack and stack[-1] == '}':
+                    stack.pop()
+            elif char == ']':
+                if stack and stack[-1] == ']':
+                    stack.pop()
+        repaired.append(char)
+        
+    if in_quote:
+        repaired.append('"')
+    while stack:
+        repaired.append(stack.pop())
+        
+    return "".join(repaired)
 
 
 @router.post("/agents/sessions/{session_id}/analyze", tags=["Agents & DataStores"])
@@ -1869,7 +2243,12 @@ async def api_analyze_session(session_id: str, x_app_token: Optional[str] = Head
             json_content = raw_result.strip()
 
     try:
-        analyzed_data = json.loads(json_content)
+        try:
+            analyzed_data = json.loads(json_content)
+        except Exception:
+            # Attempt parsing after repairing truncated JSON
+            repaired = repair_json(json_content)
+            analyzed_data = json.loads(repaired)
         # Validate keys
         for key in ["category", "intent", "meaning", "next_steps"]:
             if key not in analyzed_data:
@@ -1992,7 +2371,9 @@ async def api_submit_agent_feedback(agent_id: str, req: AgentFeedbackCreate, db:
         user_email=req.user_email,
         feedback_type=req.feedback_type,
         rating=req.rating,
-        comment=req.comment
+        comment=req.comment,
+        device_id=req.device_id,
+        session_id=req.session_id
     )
     db.add(fb)
     db.commit()
@@ -2011,4 +2392,289 @@ async def api_get_agent_feedback(agent_id: str, x_app_token: Optional[str] = Hea
     feedbacks = db.query(AgentFeedback).filter(AgentFeedback.agent_id == agent_id).order_by(AgentFeedback.created_at.desc()).all()
     return [fb.to_dict() for fb in feedbacks]
 
+
+# ── File Upload for Chat ──────────────────────────────────────────────────────
+
+MAX_CHAT_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+@router.post("/agents/{agent_id}/upload-chat-file", tags=["Agents & DataStores"])
+async def api_upload_chat_file(agent_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload a file (image/PDF/doc/video) and extract text context for AI chat."""
+    from app.core.models import Agent
+    import io, base64
+
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    # Read file bytes
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_CHAT_FILE_SIZE:
+        raise HTTPException(413, f"File too large. Maximum size is 20MB.")
+
+    filename = file.filename or "uploaded_file"
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    content_type = file.content_type or ''
+    extracted_text = ""
+    file_type = "document"
+    preview_data_url = None
+
+    # ── Image files ──
+    if ext in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp') or content_type.startswith('image/'):
+        file_type = "image"
+        # Build base64 data URL for preview
+        b64 = base64.b64encode(file_bytes).decode()
+        mime = content_type if content_type.startswith('image/') else f'image/{ext}'
+        preview_data_url = f"data:{mime};base64,{b64}"
+
+        # Try Gemini Vision to describe the image using agent's configured API key
+        try:
+            s_cfg_raw = agent.system_config_json or '{}'
+            try: s_cfg = json.loads(s_cfg_raw)
+            except: s_cfg = {}
+
+            provider = s_cfg.get('provider', 'gemini')
+            api_key = s_cfg.get('api_key', '')
+
+            if provider == 'gemini':
+                g_key = api_key or os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+                if g_key:
+                    import httpx as _httpx
+                    vision_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={g_key}"
+                    payload = {
+                        "contents": [{
+                            "parts": [
+                                {"text": "Describe this image in detail. Include all text visible in the image, objects, colors, context and any important information shown."},
+                                {"inline_data": {"mime_type": mime, "data": b64}}
+                            ]
+                        }]
+                    }
+                    async with _httpx.AsyncClient(timeout=30.0) as hc:
+                        r = await hc.post(vision_url, json=payload)
+                        if r.status_code == 200:
+                            data = r.json()
+                            extracted_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            elif provider in ('openai',):
+                if api_key:
+                    from openai import AsyncOpenAI
+                    oa = AsyncOpenAI(api_key=api_key)
+                    resp = await oa.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": [
+                            {"type": "text", "text": "Describe this image in detail, including all visible text and important context."},
+                            {"type": "image_url", "image_url": {"url": preview_data_url}}
+                        ]}],
+                        max_tokens=1024
+                    )
+                    extracted_text = resp.choices[0].message.content.strip()
+
+            if not extracted_text:
+                extracted_text = f"[Image uploaded: {filename}]"
+        except Exception as img_err:
+            logger.warning(f"Image vision failed: {img_err}")
+            extracted_text = f"[Image uploaded: {filename}]"
+
+    # ── PDF files ──
+    elif ext == 'pdf' or content_type == 'application/pdf':
+        file_type = "pdf"
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(io.BytesIO(file_bytes))
+            pages_text = []
+            for page in reader.pages[:30]:  # max 30 pages
+                t = page.extract_text() or ""
+                t = t.replace('\x00', '')
+                pages_text.append(t)
+            extracted_text = "\n\n".join(pages_text).strip()
+            if not extracted_text:
+                extracted_text = f"[PDF uploaded: {filename} — no text could be extracted]"
+        except Exception as pdf_err:
+            logger.warning(f"PDF extraction failed: {pdf_err}")
+            extracted_text = f"[PDF uploaded: {filename}]"
+
+    # ── DOCX files ──
+    elif ext in ('docx', 'doc') or 'wordprocessingml' in content_type:
+        file_type = "document"
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(file_bytes))
+            extracted_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+            if not extracted_text:
+                extracted_text = f"[Document uploaded: {filename} — no text could be extracted]"
+        except Exception as doc_err:
+            logger.warning(f"DOCX extraction failed: {doc_err}")
+            extracted_text = f"[Document uploaded: {filename}]"
+
+    # ── Plain text / CSV files ──
+    elif ext in ('txt', 'csv', 'md', 'json', 'xml') or content_type.startswith('text/'):
+        file_type = "text"
+        try:
+            extracted_text = file_bytes.decode('utf-8', errors='replace').replace('\x00', '')
+            if len(extracted_text) > 20000:
+                extracted_text = extracted_text[:20000] + "\n...[truncated]"
+        except Exception as txt_err:
+            extracted_text = f"[Text file uploaded: {filename}]"
+
+    # ── Video files ──
+    elif ext in ('mp4', 'webm', 'mov', 'avi', 'mkv') or content_type.startswith('video/'):
+        file_type = "video"
+        size_mb = round(len(file_bytes) / (1024 * 1024), 1)
+        extracted_text = f"[Video uploaded: {filename} ({size_mb} MB). The user has shared a video file. Please acknowledge it and ask what they would like to know about it.]"
+
+    else:
+        # Generic fallback
+        file_type = "file"
+        extracted_text = f"[File uploaded: {filename}]"
+
+    return {
+        "success": True,
+        "file_type": file_type,
+        "display_name": filename,
+        "extracted_text": extracted_text,
+        "preview_data_url": preview_data_url,
+        "size_bytes": len(file_bytes)
+    }
+
+
+# ── Analyze ALL sessions by device ───────────────────────────────────────────
+
+class AnalyzeDeviceReq(BaseModel):
+    device_id: str
+    agent_id: str
+
+
+@router.post("/agents/sessions/analyze-device", tags=["Agents & DataStores"])
+async def api_analyze_device_sessions(
+    req: AnalyzeDeviceReq,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    """Analyze ALL chat sessions from a specific device for holistic visitor insight."""
+    client = _get_client(x_app_token, db)
+    from app.core.models import AgentPublicSession, AgentPublicMessage, Agent
+    from app.services.llm import llm_with_history
+
+    agent = db.query(Agent).filter(
+        Agent.agent_id == req.agent_id,
+        Agent.client_id == client["client_id"]
+    ).first()
+    if not agent:
+        raise HTTPException(403, "Access denied or agent not found")
+
+    # Get all sessions for this device & agent
+    sessions = db.query(AgentPublicSession).filter(
+        AgentPublicSession.agent_id == req.agent_id,
+        AgentPublicSession.device_id == req.device_id
+    ).order_by(AgentPublicSession.created_at.asc()).all()
+
+    if not sessions:
+        raise HTTPException(404, "No sessions found for this device")
+
+    # Merge all messages from all sessions chronologically
+    all_chat_lines = []
+    total_messages = 0
+    for idx, sess in enumerate(sessions):
+        messages = db.query(AgentPublicMessage).filter(
+            AgentPublicMessage.session_id == sess.session_id
+        ).order_by(AgentPublicMessage.created_at.asc()).all()
+        if messages:
+            all_chat_lines.append(f"--- Session {idx + 1} (Started: {sess.created_at}) ---")
+            for m in messages:
+                role_label = "User" if m.role == "user" else "Agent"
+                all_chat_lines.append(f"{role_label}: {m.content}")
+            total_messages += len(messages)
+
+    if not all_chat_lines:
+        raise HTTPException(400, "No messages found across all sessions for this device")
+
+    conversation_text = "\n".join(all_chat_lines)
+
+    # Get agent's LLM config
+    try: s_cfg = json.loads(agent.system_config_json or "{}")
+    except: s_cfg = {}
+
+    provider = s_cfg.get('provider', 'gemini')
+    model = s_cfg.get('model', 'gemini-3.5-flash')
+    api_key = s_cfg.get('api_key', '')
+    if provider == 'gemini' and not api_key:
+        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+    system_prompt = (
+        "You are an expert AI business analyst and CRM specialist. "
+        "You are analyzing the COMPLETE conversation history of a single visitor across ALL their chat sessions with an AI agent. "
+        "Your job is to provide a holistic, deep analysis of this visitor and return a JSON response. "
+        "Do not explain, do not add markdown code blocks like ```json. "
+        "The output MUST match this exact JSON schema:\n"
+        "{\n"
+        "  \"category\": \"marketing\" or \"calling\" or \"meeting\" or \"support\" (main purpose),\n"
+        "  \"intent\": \"What is the visitor's overall goal across all sessions (Hinglish/Hindi or English)\",\n"
+        "  \"meaning\": \"Deep explanation — who is this visitor, what are they looking for, and why did they come back?\",\n"
+        "  \"next_steps\": \"Action-oriented steps the business should take to convert or help this visitor.\",\n"
+        "  \"key_points\": [\"Key insight 1\", \"Key insight 2\", \"Key insight 3\"] (bullet list of important things: what they asked, what they need, any personal info they shared, urgency, etc.)\n"
+        "}\n"
+        "key_points must be an array of strings (3-7 items). Ensure all descriptions are detailed and helpful. Return ONLY the raw JSON string."
+    )
+
+    question = (
+        f"Here is the complete visitor conversation history across {len(sessions)} session(s):\n\n"
+        f"{conversation_text}\n\n"
+        f"Please analyze ALL sessions holistically and return the JSON analysis."
+    )
+
+    try:
+        raw_result = await llm_with_history(
+            question=question,
+            system=system_prompt,
+            history=[],
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            ollama_url="http://localhost:11434"
+        )
+    except Exception as e:
+        logger.error(f"Device analysis LLM call failed: {e}")
+        try:
+            fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            raw_result = await llm_with_history(
+                question=question, system=system_prompt, history=[],
+                provider="gemini", model="gemini-3.5-flash", api_key=fallback_api_key,
+                ollama_url="http://localhost:11434"
+            )
+        except Exception as fe:
+            raise HTTPException(502, f"Analysis failed: {fe}")
+
+    # Parse JSON robustly
+    import re
+    match = re.search(r"```json\s*(.*?)\s*```", raw_result, re.DOTALL | re.IGNORECASE)
+    if match:
+        json_content = match.group(1).strip()
+    else:
+        match_simple = re.search(r"```\s*(.*?)\s*```", raw_result, re.DOTALL)
+        json_content = match_simple.group(1).strip() if match_simple else raw_result.strip()
+
+    try:
+        try:
+            analyzed = json.loads(json_content)
+        except Exception:
+            # Attempt parsing after repairing truncated JSON
+            repaired = repair_json(json_content)
+            analyzed = json.loads(repaired)
+        for key in ["category", "intent", "meaning", "next_steps", "key_points"]:
+            if key not in analyzed:
+                analyzed[key] = [] if key == "key_points" else "Not specified"
+        if not isinstance(analyzed.get("key_points"), list):
+            analyzed["key_points"] = [str(analyzed["key_points"])]
+    except Exception as parse_err:
+        logger.error(f"Failed to parse device analysis JSON: {parse_err}. Raw: {raw_result}")
+        analyzed = {
+            "category": "marketing",
+            "intent": "Analysis parsing failed",
+            "meaning": raw_result,
+            "next_steps": "Please review the raw chat logs.",
+            "key_points": []
+        }
+
+    analyzed["session_count"] = len(sessions)
+    analyzed["total_messages"] = total_messages
+    return analyzed
 

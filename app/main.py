@@ -16,7 +16,7 @@ from app.routes import (
     apikeys, clients, admin as admin_routes, memory as memory_routes, 
     reels as reels_routes, agents as agents_routes, social as social_routes,
     classroom as classroom_routes, extension as extension_routes,
-    ugc as ugc_routes
+    ugc as ugc_routes, root_agent as root_agent_routes, whatsapp as whatsapp_routes
 )
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
@@ -93,6 +93,8 @@ app.include_router(social_routes.router, prefix="/api", tags=["Social Hub"])
 app.include_router(classroom_routes.router, prefix="/api", tags=["Classroom"])
 app.include_router(extension_routes.router, prefix="/api", tags=["Extension"])
 app.include_router(ugc_routes.router, prefix="/api", tags=["UGC Creator"])
+app.include_router(root_agent_routes.router, prefix="/api", tags=["Root Personal Assistant"])
+app.include_router(whatsapp_routes.router, prefix="/api", tags=["WhatsApp"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────

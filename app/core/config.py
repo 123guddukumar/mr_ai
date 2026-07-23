@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     R2_ENDPOINT: str = ""
     R2_PUBLIC_URL: str = ""
 
+    # WhatsApp Integration
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_VERIFY_TOKEN: str = "mr_ai_rag_verify_token"
+    WHATSAPP_DEFAULT_AGENT_ID: str = "da3243d9babb9387"
+
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (
         "You are MR AI RAG. "

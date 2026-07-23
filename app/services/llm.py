@@ -305,6 +305,61 @@ async def generate_answer_with_config(
         raise ValueError(f"Unsupported provider: {provider}")
 
 
+async def llm_with_history(
+    question: str, system: str = "", history: list = [],
+    provider: str = "", model: str = "", api_key: str = "", ollama_url: str = ""
+) -> str:
+    """Generates LLM response with system prompt and query history."""
+    req_provider = provider or get_active_provider()
+    req_key = api_key or get_active_api_key(req_provider)
+    req_model = model if (model and model != "default") else get_active_model()
+    sys_prompt = system or settings.SYSTEM_PROMPT
+
+    # Build conversation context
+    hist_text = ""
+    if history:
+        lines = []
+        for h in history[-6:]:
+            role = "User" if h.get("role") == "user" else "Assistant"
+            lines.append(f"{role}: {h.get('content', '')}")
+        hist_text = "Previous Conversation:\n" + "\n".join(lines) + "\n\n"
+
+    full_prompt = f"{hist_text}User Question: {question}"
+
+    try:
+        if req_provider == "groq" and req_key:
+            from openai import AsyncOpenAI
+            cl = AsyncOpenAI(api_key=req_key, base_url="https://api.groq.com/openai/v1")
+            resp = await cl.chat.completions.create(
+                model=req_model or "llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": full_prompt}
+                ],
+                max_tokens=1024,
+                temperature=0.7
+            )
+            return resp.choices[0].message.content.strip()
+        elif req_provider == "gemini" or (not req_provider and settings.GEMINI_API_KEY):
+            g_key = req_key or settings.GEMINI_API_KEY or os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            g_model = req_model or settings.GEMINI_MODEL or "gemini-3.5-flash"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={g_key}"
+            payload = {
+                "system_instruction": {"parts": [{"text": sys_prompt}]},
+                "contents": [{"parts": [{"text": full_prompt}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}
+            }
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(url, json=payload)
+                r.raise_for_status()
+                data = r.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        logger.warning(f"llm_with_history error ({req_provider}): {e}. Falling back to generate_simple_response...")
+
+    return await generate_simple_response(full_prompt, system_prompt=sys_prompt)
+
+
 async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.", max_tokens: int = 4096) -> str:
     """Generates a response without RAG boilerplate, with automatic rate limit fallbacks."""
     provider = get_active_provider()
@@ -574,12 +629,18 @@ async def _call_huggingface(question: str, context: str) -> str:
         return response.json()[0]["generated_text"].strip()
 
 async def llm_with_history(
-    question: str, system: str, history: list,
-    provider: str, model: str, api_key: str, ollama_url: str = "",
+    question: str, system: str = "", history: list = None,
+    provider: str = "", model: str = "", api_key: str = "", ollama_url: str = "",
 ) -> str:
     """Helper for chatting with history, used by Memory and Agent routes."""
     import httpx
     from app.core.config import settings
+
+    if history is None: history = []
+    if not provider or provider == "default": provider = get_active_provider()
+    if not model or model == "default": model = get_active_model()
+    if not api_key: api_key = get_active_api_key(provider)
+    if not system: system = settings.SYSTEM_PROMPT
 
     if provider == "gemini":
         if api_key and (api_key.startswith("sk-") or api_key.startswith("gsk_")):

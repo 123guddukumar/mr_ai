@@ -4201,6 +4201,10 @@
                     style="height:60px; padding:5px; border-radius:12px; margin-bottom:15px" value="#ff7a00">
                   <label class="form-label">Custom Chat Link (Webhook / Custom Chat URL)</label>
                   <input type="text" class="form-input" id="ag-cust-chat-link" placeholder="e.g. https://magnifi.in/agent-chat?id=...">
+                  <label class="form-label" style="margin-top:15px">WhatsApp Number (For Direct Chat)</label>
+                  <input type="text" class="form-input" id="ag-cust-whatsapp" placeholder="e.g. 919876543210 (include country code without +)">
+                  <label class="form-label" style="margin-top:15px">Call Number (For Phone Calls)</label>
+                  <input type="text" class="form-input" id="ag-cust-call" placeholder="e.g. 919876543210 (include country code without +)">
                 </div>
 
                 <!-- 7. Knowledge Base -->
@@ -17414,6 +17418,12 @@
       if (document.getElementById('ag-cust-author')) {
         document.getElementById('ag-cust-author').value = '';
       }
+      if (document.getElementById('ag-cust-whatsapp')) {
+        document.getElementById('ag-cust-whatsapp').value = '';
+      }
+      if (document.getElementById('ag-cust-call')) {
+        document.getElementById('ag-cust-call').value = '';
+      }
       document.getElementById('ag-qa-list').innerHTML = '';
       document.getElementById('ag-kb-list').innerHTML = '';
 
@@ -17451,8 +17461,12 @@
 
     async function loadAgents() {
       try {
+        // Auto-ensure root agent exists
+        await fetch('/api/root-agent/ensure', { method: 'POST', headers: hdrs() }).catch(() => {});
         const r = await fetch('/api/agents', { headers: hdrs() });
         _agents = await r.json();
+        // Sort root agent to top
+        _agents.sort((a, b) => (b.is_root ? 1 : 0) - (a.is_root ? 1 : 0));
         renderAgentCards();
       } catch (e) { console.error('Load agents failed', e); }
     }
@@ -17464,28 +17478,40 @@
         return;
       }
       container.innerHTML = _agents.map(a => {
-        // Determine voice name for display
+        const isRoot = a.is_root || a.category === 'root_assistant';
         const vName = a.voice_config?.voice_name || 'Default';
         const vIcon = (a.voice_config?.provider === 'mrai') ? '<i data-lucide="globe" style="width:12px;height:12px"></i>' : '<i data-lucide="zap" style="width:12px;height:12px"></i>';
+        
+        const rootBadge = isRoot ? `<span style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; padding:3px 10px; border-radius:12px; font-weight:800; font-size:11px; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(245,158,11,0.4);">👑 ROOT ASSISTANT</span>` : '';
+        const cardStyle = isRoot ? 'border: 2px solid #eab308; box-shadow: 0 0 20px rgba(234,179,8,0.25); background: linear-gradient(180deg, rgba(234,179,8,0.05) 0%, rgba(15,23,42,0.8) 100%);' : '';
 
         return `
-    <div class="agent-card">
+    <div class="agent-card" style="${cardStyle}">
       <div class="ac-header">
         <div class="ac-status ${a.is_active ? 'active' : 'inactive'}">
-          <span class="ac-status-dot"></span> ${a.is_active ? 'Active' : 'Disabled'}
+          <span class="ac-status-dot"></span> ${a.is_active ? 'Active' : 'Disabled'} ${rootBadge}
         </div>
         <div class="ac-actions">
           <button class="ac-icon-btn" onclick="showAgentQR('${a.agent_id}')" title="QR Code"><i data-lucide="qr-code"></i></button>
+          ${a.customization?.whatsapp_number ? `
+            <a class="ac-icon-btn" href="https://wa.me/${a.customization.whatsapp_number.replace(/[^\d]/g, '')}" target="_blank" title="WhatsApp Chat (${a.customization.whatsapp_number})" style="color:#10b981; display:inline-flex; align-items:center; justify-content:center; padding: 2px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg>
+            </a>
+          ` : `
+            <button class="ac-icon-btn" onclick="toast('WhatsApp number not configured. Please edit agent and configure it in the Customization tab.', 'info')" title="WhatsApp Chat (Not Configured)" style="color:#64748b; display:inline-flex; align-items:center; justify-content:center; padding: 2px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg>
+            </button>
+          `}
           <button class="ac-icon-btn" onclick="openAgentHistory('${a.agent_id}')" title="Chat History"><i data-lucide="history"></i></button>
           <button class="ac-icon-btn" onclick="openAgentChat('${a.agent_id}', 'v2v')" title="Voice Chat"><i data-lucide="mic"></i></button>
           <button class="ac-icon-btn" onclick="openAgentFeedbackFromCard('${a.agent_id}')" title="Reports & Feedback" style="color:var(--accent)"><i data-lucide="flag"></i></button>
           <button class="ac-icon-btn" onclick="editAgent('${a.agent_id}')" title="Edit"><i data-lucide="edit-3"></i></button>
-          <button class="ac-icon-btn" onclick="deleteAgent('${a.agent_id}')" title="Delete" style="color:var(--red)"><i data-lucide="trash-2"></i></button>
+          ${!isRoot ? `<button class="ac-icon-btn" onclick="deleteAgent('${a.agent_id}')" title="Delete" style="color:var(--red)"><i data-lucide="trash-2"></i></button>` : ''}
         </div>
       </div>
       <div class="ac-body">
         <div class="ac-name-wrap">
-          <div class="ac-name">${escHtml(a.name)}</div>
+          <div class="ac-name" style="${isRoot ? 'color:#f59e0b; font-weight:800;' : ''}">${isRoot ? '👑 ' : ''}${escHtml(a.name)}</div>
           <div class="ac-category">${escHtml(a.category)}</div>
         </div>
         <div class="ac-desc">${escHtml(a.description || 'No description provided.')}</div>
@@ -17497,7 +17523,7 @@
         </div>
       </div>
       <div class="ac-footer">
-        <button class="ac-chat-btn" onclick="openAgentChat('${a.agent_id}')"><i data-lucide="message-square"></i> Start Chat</button>
+        <button class="ac-chat-btn" style="${isRoot ? 'background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; border:none;' : ''}" onclick="openAgentChat('${a.agent_id}')"><i data-lucide="message-square"></i> ${isRoot ? '👑 Start Executive Chat' : 'Start Chat'}</button>
       </div>
     </div>
   `}).join('');
@@ -17579,10 +17605,316 @@
 
     let _activeHistoryAgentId = null;
 
+
+
+    function showRootMeetingDetail(meetingId) {
+      const m = (window._rootMeetingsMap || {})[meetingId];
+      if (!m) return;
+      document.getElementById('ag-history-chat-area').innerHTML = `
+        <div style="padding:24px; text-align:left; max-width:600px;">
+          <h3 style="color:#f59e0b; font-size:18px; display:flex; align-items:center; gap:8px;">🗓️ Meeting Details</h3>
+          <div style="margin-top:14px; padding:18px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--text);">📌 ${escHtml(m.title)}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:10px;">⏰ <b>Scheduled Date & Time:</b> ${new Date(m.meeting_time).toLocaleString()}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:6px;">📍 <b>Status:</b> ${escHtml(m.status)}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:6px;">🔔 <b>Notification:</b> 30-min Advance Alert Active</div>
+            <div style="font-size:13px; color:var(--text); margin-top:14px; line-height:1.6; background:var(--bg2); padding:12px; border-radius:8px; border:1px solid var(--border);">📄 <b>Original Instruction / Note:</b><br>${escHtml(m.description || 'None')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showRootNoteDetail(memoryId) {
+      const n = (window._rootMemoriesMap || {})[memoryId];
+      if (!n) return;
+      document.getElementById('ag-history-chat-area').innerHTML = `
+        <div style="padding:24px; text-align:left; max-width:600px;">
+          <h3 style="color:#60a5fa; font-size:18px; display:flex; align-items:center; gap:8px;">🧠 Saved Personal Data & Note Details</h3>
+          <div style="margin-top:14px; padding:18px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3); border-radius:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--text);">📌 ${escHtml(n.title)}</div>
+            <div style="font-size:12px; color:var(--text3); margin-top:6px;">📅 Saved Date: ${n.created_at ? new Date(n.created_at).toLocaleString() : 'Saved'}</div>
+            <div style="font-size:13.5px; color:var(--text); margin-top:14px; line-height:1.6; background:var(--bg2); padding:14px; border-radius:10px; border:1px solid var(--border); white-space:pre-line;">📄 ${escHtml(n.content)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showRootMediaDetail(mediaId) {
+      const m = (window._rootMediaMap || {})[mediaId];
+      if (!m) return;
+      
+      let previewHtml = '';
+      if (m.media_type === 'image') {
+        previewHtml = `<div style="margin-top:14px; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--bg3); display:flex; justify-content:center; max-height:260px;"><img src="${m.file_url}" style="max-width:100%; max-height:260px; object-fit:contain;"></div>`;
+      } else if (m.media_type === 'video') {
+        previewHtml = `<div style="margin-top:14px; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--bg3); max-height:260px;"><video src="${m.file_url}" controls style="width:100%; max-height:260px;"></video></div>`;
+      }
+
+      document.getElementById('ag-history-chat-area').innerHTML = `
+        <div style="padding:24px; text-align:left; max-width:600px;">
+          <h3 style="color:#a855f7; font-size:18px; display:flex; align-items:center; gap:8px;">📁 Media Vault File Details</h3>
+          <div style="margin-top:14px; padding:18px; background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.3); border-radius:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--text);">📌 Name: ${escHtml(m.name)}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:10px;">📂 <b>File Type:</b> ${escHtml(m.media_type.toUpperCase())}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:6px;">📅 <b>Uploaded At:</b> ${m.created_at ? new Date(m.created_at).toLocaleString() : 'N/A'}</div>
+            <div style="font-size:13px; color:var(--text2); margin-top:6px;">🔗 <b>URL:</b> <a href="${m.file_url}" target="_blank" style="color:var(--accent); text-decoration:none; font-weight:700;">Open / Download File ➔</a></div>
+            
+            ${previewHtml}
+
+            <div style="font-size:13px; color:var(--text); margin-top:14px; line-height:1.6; background:var(--bg2); padding:12px; border-radius:8px; border:1px solid var(--border);">📄 <b>Description:</b><br>${escHtml(m.description || 'No description provided')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSessionsGroupedByVisitor(sessions, containerId, headerTitle, isRootBackBtn = false) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const backBtn = isRootBackBtn 
+        ? `<button onclick="openAgentHistory('${_activeHistoryAgentId}')" style="background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; margin-bottom:10px; display:inline-flex; align-items:center; gap:6px;">⬅️ Back to Root Overview</button>`
+        : '';
+
+      if (!sessions || sessions.length === 0) {
+        container.innerHTML = `${backBtn}<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px">No visitors have chatted with this agent yet.</div>`;
+        return;
+      }
+
+      // Group sessions by visitor identifier (device_id, fallback to session_id)
+      const visitorGroups = {};
+      sessions.forEach(s => {
+        const key = s.device_id || s.session_id || 'guest_unknown';
+        if (!visitorGroups[key]) {
+          visitorGroups[key] = {
+            user_name: s.user_name || 'Guest Visitor',
+            phone_number: s.phone_number || '',
+            device_name: s.device_name || 'Unknown Device',
+            sessions: []
+          };
+        }
+        visitorGroups[key].sessions.push(s);
+      });
+
+      const totalChatsCount = sessions.length;
+
+      const visitorsListHtml = Object.keys(visitorGroups).map((key, idx) => {
+        const group = visitorGroups[key];
+        const dateStr = group.sessions[0].created_at ? new Date(group.sessions[0].created_at).toLocaleString() : 'Unknown Date';
+        const namePart = group.user_name ? `<div style="font-weight:800; color:var(--accent); font-size:13px">👤 ${escHtml(group.user_name)}</div>` : `<div style="font-weight:800; color:var(--text); font-size:13px">👤 Guest Visitor</div>`;
+        const phonePart = group.phone_number ? `<div style="font-size:11px; color:var(--text2); margin-top:2px">📞 ${escHtml(group.phone_number)}</div>` : '';
+
+        // Generate individual chat sessions list
+        const sessionsHtml = group.sessions.map((s, sIdx) => {
+          const sDate = s.created_at ? new Date(s.created_at).toLocaleString() : 'Unknown Date';
+          return `
+            <div class="session-sub-card" onclick="event.stopPropagation(); selectVisitorChatSession('${s.session_id}', this, '${escHtml(s.phone_number || '')}')" 
+                 style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; margin-top:5px; font-size:11.5px; transition:all 0.2s; cursor:pointer;"
+                 onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span>🗓️ Chat ${group.sessions.length - sIdx} — <span style="color:var(--text2)">${sDate}</span></span>
+              <button class="ag-kb-analysis-btn" onclick="event.stopPropagation(); analyzeAndShowSession('${key}', '${_activeHistoryAgentId}')" title="View AI Chat Analysis (All Sessions)" style="border:none; background:none; cursor:pointer; font-size:14px; padding:2px;">🧠</button>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="visitor-group-card" onclick="toggleVisitorGroup('${key}')" 
+               style="background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:8px; cursor:pointer; transition:all 0.2s"
+               onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                ${namePart}
+                ${phonePart}
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button onclick="event.stopPropagation(); analyzeAndShowSession('${key}', '${_activeHistoryAgentId}')" title="Full Visitor AI Analysis" style="border:1px solid rgba(255,122,0,0.4); background:rgba(255,122,0,0.1); color:var(--accent); cursor:pointer; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px;">🧠 Analyze</button>
+                <span style="background:rgba(255,122,0,0.15); color:var(--accent); font-size:10px; font-weight:800; padding:3px 8px; border-radius:20px; border:1px solid rgba(255,122,0,0.25);">
+                  💬 ${group.sessions.length} Chats
+                </span>
+              </div>
+            </div>
+            <div style="font-size:11px; color:var(--text3); margin-top:6px; display:flex; justify-content:space-between;">
+              <span>💻 ${escHtml(group.device_name)}</span>
+              <span>Last active: ${dateStr}</span>
+            </div>
+            
+            <div id="visitor-sessions-${key}" style="display:none; margin-top:10px; padding-top:8px; border-top:1px dashed var(--border);">
+              <div style="font-size:10.5px; font-weight:700; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Select Chat Session:</div>
+              ${sessionsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        ${backBtn}
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:rgba(255,122,0,0.06); padding:10px; border-radius:10px; border:1px solid rgba(255,122,0,0.15);">
+          <span style="font-size:13px; font-weight:800; color:var(--accent);">${headerTitle}</span>
+          <span style="background:var(--accent); color:#000; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px;">Total: ${totalChatsCount} Chats</span>
+        </div>
+        <div style="font-size:11px; color:var(--text3); margin-bottom:8px;">💡 Click any visitor below to expand and view their individual chat sessions history.</div>
+        ${visitorsListHtml}
+      `;
+    }
+
+    function toggleVisitorGroup(key) {
+      const container = document.getElementById(`visitor-sessions-${key}`);
+      if (container) {
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+      }
+    }
+
+    async function selectVisitorChatSession(sessionId, el, phone) {
+      document.querySelectorAll('.session-sub-card').forEach(c => {
+        c.style.borderColor = 'var(--border)';
+        c.style.background = 'var(--bg3)';
+      });
+      if (el) {
+        el.style.borderColor = 'var(--accent)';
+        el.style.background = 'rgba(255,122,0,0.08)';
+      }
+      await viewSessionChat(sessionId, null, phone);
+    }
+
+    async function loadSubAgentSessionsInRootModal(agentId, agentName) {
+      document.getElementById('ag-history-sessions').innerHTML = `<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px"><span class="loader-spin"></span> Loading visitors for ${escHtml(agentName)}…</div>`;
+      document.getElementById('ag-history-chat-area').innerHTML = `<div style="font-size:12px; color:var(--text3); text-align:center; margin:auto">Select a visitor from ${escHtml(agentName)} to view chat log.</div>`;
+
+      try {
+        const r = await fetch(`/api/agents/${agentId}/sessions`, { headers: hdrs() });
+        const sessions = await r.json();
+        renderSessionsGroupedByVisitor(sessions, 'ag-history-sessions', `🤖 ${escHtml(agentName)}`, true);
+      } catch (e) {
+        console.error("Load sub-agent sessions error:", e);
+      }
+    }
+
     async function openAgentHistory(agentId) {
       _activeHistoryAgentId = agentId;
       openModal('agent-history');
       
+      const agentObj = _agents.find(x => x.agent_id === agentId);
+      const isRootAgent = agentObj ? (agentObj.is_root || agentObj.category === 'root_assistant' || (agentObj.name && agentObj.name.toLowerCase().includes('root'))) : false;
+
+      if (isRootAgent) {
+        document.getElementById('ag-history-sessions').innerHTML = '<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px"><span class="loader-spin"></span> Loading Root Overview…</div>';
+        document.getElementById('ag-history-chat-area').innerHTML = '<div style="font-size:12px; color:var(--text3); text-align:center; margin:auto">Root System Executive Metrics</div>';
+        
+        try {
+          const r = await fetch('/api/root-agent/overview', { headers: hdrs() });
+          const ov = await r.json();
+
+          window._rootMeetingsMap = {};
+          (ov.meetings || []).forEach(m => window._rootMeetingsMap[m.meeting_id] = m);
+
+          window._rootMemoriesMap = {};
+          (ov.memories || []).forEach(n => window._rootMemoriesMap[n.memory_id] = n);
+
+          window._rootMediaMap = {};
+          (ov.media || []).forEach(md => window._rootMediaMap[md.media_id] = md);
+
+          let meetingsHtml = (ov.meetings && ov.meetings.length) 
+            ? ov.meetings.map(m => `<div style="padding:8px 12px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); border-radius:8px; margin-top:6px; font-size:12px; cursor:pointer; transition:all 0.2s;" onclick="showRootMeetingDetail('${m.meeting_id}')" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='rgba(245,158,11,0.2)'"><b>📌 ${escHtml(m.title)}</b><br><span style="color:var(--text2); font-size:11px;">⏰ ${new Date(m.meeting_time).toLocaleString()} (${escHtml(m.status)})</span></div>`).join('')
+            : '<div style="font-size:11px; color:var(--text3); margin-top:4px;">No scheduled meetings.</div>';
+
+          let notesHtml = (ov.memories && ov.memories.length)
+            ? ov.memories.map(n => `<div style="padding:8px 12px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); border-radius:8px; margin-top:6px; font-size:12px; cursor:pointer; transition:all 0.2s;" onclick="showRootNoteDetail('${n.memory_id}')" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='rgba(59,130,246,0.2)'"><b>📄 ${escHtml(n.title)}</b><br><span style="color:var(--text2); font-size:11px;">${escHtml((n.content || '').substring(0, 80))}</span></div>`).join('')
+            : '<div style="font-size:11px; color:var(--text3); margin-top:4px;">No saved notes.</div>';
+
+          let mediaListHtml = (ov.media && ov.media.length)
+            ? ov.media.map(md => `<div style="padding:8px 12px; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.2); border-radius:8px; margin-top:6px; font-size:12px; cursor:pointer; transition:all 0.2s;" onclick="showRootMediaDetail('${md.media_id}')" onmouseover="this.style.borderColor='#a855f7'" onmouseout="this.style.borderColor='rgba(168,85,247,0.2)'"><b>📁 ${escHtml(md.name)}</b><br><span style="color:var(--text2); font-size:11px;">Type: ${escHtml(md.media_type.toUpperCase())}</span></div>`).join('')
+            : '<div style="font-size:11px; color:var(--text3); margin-top:4px;">No files uploaded yet.</div>';
+
+          let subAgentsHtml = (ov.agents_overview && ov.agents_overview.length)
+            ? ov.agents_overview.map(sa => `<div style="padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; margin-top:6px; font-size:12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:all 0.2s;" onclick="loadSubAgentSessionsInRootModal('${sa.agent_id}', '${escHtml(sa.name)}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><span>🤖 <b>${escHtml(sa.name)}</b> <span style="font-size:10px; color:var(--text3)">(${escHtml(sa.category)})</span></span> <span style="color:var(--accent); font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:4px;">👥 ${sa.total_visitors} Visitors ➔</span></div>`).join('')
+            : '<div style="font-size:11px; color:var(--text3); margin-top:4px;">No sub-agents created yet.</div>';
+
+          document.getElementById('ag-history-sessions').innerHTML = `
+            <div style="padding:4px 0; font-size:13px; font-weight:800; color:#f59e0b;">👑 Root Assistant Executive Overview</div>
+            <div style="font-size:12px; margin-top:10px; font-weight:700;">🗓️ Scheduled Meetings (${ov.total_meetings}):</div>
+            ${meetingsHtml}
+            <div style="font-size:12px; margin-top:14px; font-weight:700;">🧠 Saved Personal Data & Notes (${ov.total_notes}):</div>
+            ${notesHtml}
+            <div style="font-size:12px; margin-top:14px; font-weight:700;">📁 Uploaded Vault Files (${ov.total_media}):</div>
+            ${mediaListHtml}
+            <div style="font-size:12px; margin-top:14px; font-weight:700;">🤖 Monitored Sub-Agents (${ov.total_agents}):</div>
+            ${subAgentsHtml}
+          `;
+
+          document.getElementById('ag-history-chat-area').innerHTML = `
+            <div style="padding:24px; text-align:left; max-width:600px;">
+              <h3 style="color:#f59e0b; font-size:17px; display:flex; align-items:center; gap:8px;">👑 Root Personal Assistant System Report</h3>
+              <p style="font-size:13px; color:var(--text2); margin-top:6px;">Supreme system summary of stored data, meetings, and sub-agents metrics:</p>
+              
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;">
+                <div style="padding:14px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:12px;">
+                  <div style="font-size:20px;">🗓️</div>
+                  <div style="font-size:20px; font-weight:800; color:#f59e0b; margin-top:4px;">${ov.total_meetings}</div>
+                  <div style="font-size:12px; color:var(--text2);">Meetings Scheduled</div>
+                </div>
+                <div style="padding:14px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3); border-radius:12px;">
+                  <div style="font-size:20px;">🧠</div>
+                  <div style="font-size:20px; font-weight:800; color:#60a5fa; margin-top:4px;">${ov.total_notes}</div>
+                  <div style="font-size:12px; color:var(--text2);">Saved Notes & Facts</div>
+                </div>
+                <div style="padding:14px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:12px;">
+                  <div style="font-size:20px;">🤖</div>
+                  <div style="font-size:20px; font-weight:800; color:#34d399; margin-top:4px;">${ov.total_agents}</div>
+                  <div style="font-size:12px; color:var(--text2);">Monitored Sub-Agents</div>
+                </div>
+                <div style="padding:14px; background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.3); border-radius:12px;">
+                  <div style="font-size:20px;">🖼️</div>
+                  <div style="font-size:20px; font-weight:800; color:#c084fc; margin-top:4px;">${ov.total_media}</div>
+                  <div style="font-size:12px; color:var(--text2);">Media Vault Files</div>
+                </div>
+              </div>
+
+              <div style="margin-top:20px; padding:14px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:12px; font-size:12.5px; color:#f59e0b; line-height:1.5;">
+                💡 <b>Root Assistant Command Tip:</b> Chat me aap bol sakte hain:<br>
+                • <i>"meri meeting dikhao"</i> / <i>"kal ki meeting kab h"</i><br>
+                • <i>"kya save hai"</i> / <i>"saved data dikhao"</i><br>
+                • <i>"agents sab ka history batao"</i>
+              </div>
+            </div>
+          `;
+          return;
+        } catch (e) {
+          console.error("Load root overview error:", e);
+        }
+      } else {
+        loadRegularAgentSessions(agentId, agentObj ? agentObj.name : 'Agent');
+      }
+    }
+
+    function showRootNoteDetail(memoryId) {
+      const n = (window._rootMemoriesMap || {})[memoryId];
+      if (!n) return;
+      document.getElementById('ag-history-chat-area').innerHTML = `
+        <div style="padding:24px; text-align:left; max-width:600px;">
+          <h3 style="color:#60a5fa; font-size:18px; display:flex; align-items:center; gap:8px;">🧠 Saved Personal Data & Note Details</h3>
+          <div style="margin-top:14px; padding:18px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3); border-radius:12px;">
+            <div style="font-size:16px; font-weight:800; color:var(--text);">📌 ${escHtml(n.title)}</div>
+            <div style="font-size:12px; color:var(--text3); margin-top:6px;">📅 Saved Date: ${n.created_at ? new Date(n.created_at).toLocaleString() : 'Saved'}</div>
+            <div style="font-size:13.5px; color:var(--text); margin-top:14px; line-height:1.6; background:var(--bg2); padding:14px; border-radius:10px; border:1px solid var(--border); white-space:pre-line;">📄 ${escHtml(n.content)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadSubAgentSessionsInRootModal(agentId, agentName) {
+      document.getElementById('ag-history-sessions').innerHTML = `<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px"><span class="loader-spin"></span> Loading visitors for ${escHtml(agentName)}…</div>`;
+      document.getElementById('ag-history-chat-area').innerHTML = `<div style="font-size:12px; color:var(--text3); text-align:center; margin:auto">Select a visitor from ${escHtml(agentName)} to view chat log.</div>`;
+
+      try {
+        const r = await fetch(`/api/agents/${agentId}/sessions`, { headers: hdrs() });
+        const sessions = await r.json();
+        renderSessionsGroupedByVisitor(sessions, 'ag-history-sessions', `🤖 ${escHtml(agentName)}`, true);
+      } catch (e) {
+        console.error("Load sub-agent sessions error:", e);
+      }
+    }
+
+    async function loadRegularAgentSessions(agentId, agentName) {
       document.getElementById('ag-history-sessions').innerHTML = '<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px"><span class="loader-spin"></span> Loading sessions…</div>';
       document.getElementById('ag-history-chat-area').innerHTML = '<div style="font-size:12px; color:var(--text3); text-align:center; margin:auto">Select a visitor from the list to view their chat log.</div>';
       
@@ -17590,57 +17922,42 @@
         const r = await fetch(`/api/agents/${agentId}/sessions`, { headers: hdrs() });
         if (!r.ok) throw new Error('Failed to load sessions');
         const sessions = await r.json();
-        
-        if (!sessions || sessions.length === 0) {
-          document.getElementById('ag-history-sessions').innerHTML = '<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px">No visitor sessions logged yet.</div>';
-          return;
-        }
-        
-        document.getElementById('ag-history-sessions').innerHTML = sessions.map(s => {
-          const dateStr = s.created_at ? new Date(s.created_at).toLocaleString() : 'Unknown Date';
-          const namePart = s.user_name ? `<div style="font-weight:700; color:var(--accent); font-size:13px">${escHtml(s.user_name)}</div>` : `<div style="font-weight:700; color:var(--text); font-size:13px">Guest Visitor</div>`;
-          const phonePart = s.phone_number ? `<div style="font-size:11px; color:var(--text2); margin-top:2px">📞 ${escHtml(s.phone_number)}</div>` : '';
-          
-          return `
-            <div class="session-item-card" onclick="viewSessionChat('${s.session_id}', this, '${escHtml(s.phone_number || '')}')" 
-                 style="position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; transition:all 0.2s">
-              
-              <!-- Knowledge Icon Button -->
-              <button class="ag-kb-analysis-btn" onclick="event.stopPropagation(); analyzeAndShowSession('${s.session_id}')"
-                title="View AI Chat Analysis"
-                style="position:absolute; top:10px; right:10px; border:none; background:none; cursor:pointer; font-size:18px; padding:4px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.2s">
-                🧠
-              </button>
-
-              ${namePart}
-              ${phonePart}
-              <div style="font-size:11px; color:var(--text3); margin-top:4px; display:flex; justify-content:space-between; width: calc(100% - 25px)">
-                <span>💻 ${escHtml(s.device_name)}</span>
-                <span>${dateStr}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-        
+        renderSessionsGroupedByVisitor(sessions, 'ag-history-sessions', `🤖 ${escHtml(agentName)}`, false);
       } catch (e) {
         document.getElementById('ag-history-sessions').innerHTML = '<div style="font-size:12px; color:var(--red); text-align:center; padding:20px">Error loading visitor logs.</div>';
       }
     }
 
-    async function analyzeAndShowSession(sessionId) {
+    window.toggleAnalysisAccordion = function(header) {
+      const content = header.nextElementSibling;
+      const chevron = header.querySelector('.chevron');
+      const isOpen = content.style.display !== 'none';
+      if (isOpen) {
+        content.style.display = 'none';
+        header.style.borderBottomColor = 'transparent';
+        chevron.style.transform = 'rotate(-90deg)';
+      } else {
+        content.style.display = 'block';
+        header.style.borderBottomColor = 'var(--border)';
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    };
+
+    async function analyzeAndShowSession(deviceId, agentId) {
       openModal('agent-session-analysis');
       const container = document.getElementById('ag-session-analysis-content');
       container.innerHTML = `
         <div style="text-align: center; padding: 40px 0; color: var(--text3)">
           <span class="loader-spin" style="width:24px; height:24px; margin-bottom:10px"></span>
-          <div>Analyzing conversation history...</div>
+          <div>Analyzing all conversations for this visitor…</div>
         </div>
       `;
 
       try {
-        const r = await fetch(`/api/agents/sessions/${sessionId}/analyze`, {
+        const r = await fetch(`/api/agents/sessions/analyze-device`, {
           method: 'POST',
-          headers: hdrs()
+          headers: { ...hdrs(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device_id: deviceId, agent_id: agentId || _activeHistoryAgentId })
         });
         if (!r.ok) {
           const errData = await r.json();
@@ -17650,47 +17967,107 @@
         
         let badgeHtml = '';
         if (data.category === 'marketing') {
-          badgeHtml = '<span style="background: linear-gradient(135deg, #818cf8, #4f46e5); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(79,70,229,0.3)">📢 Marketing</span>';
+          badgeHtml = '<span style="background: linear-gradient(135deg, #818cf8, #4f46e5); color:#fff; padding:5px 12px; border-radius:30px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(79,70,229,0.3)">📢 Marketing</span>';
         } else if (data.category === 'calling') {
-          badgeHtml = '<span style="background: linear-gradient(135deg, #2dd4bf, #0d9488); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(13,148,136,0.3)">📞 Calling</span>';
+          badgeHtml = '<span style="background: linear-gradient(135deg, #2dd4bf, #0d9488); color:#fff; padding:5px 12px; border-radius:30px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(13,148,136,0.3)">📞 Calling</span>';
         } else if (data.category === 'meeting') {
-          badgeHtml = '<span style="background: linear-gradient(135deg, #fb923c, #ea580c); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(234,88,12,0.3)">🤝 Meeting</span>';
+          badgeHtml = '<span style="background: linear-gradient(135deg, #fb923c, #ea580c); color:#fff; padding:5px 12px; border-radius:30px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(234,88,12,0.3)">🤝 Meeting</span>';
+        } else if (data.category === 'support') {
+          badgeHtml = '<span style="background: linear-gradient(135deg, #34d399, #059669); color:#fff; padding:5px 12px; border-radius:30px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(5,150,105,0.3)">🛠️ Support</span>';
         } else {
-          badgeHtml = `<span style="background: linear-gradient(135deg, #94a3b8, #475569); color:#fff; padding:6px 14px; border-radius:30px; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(71,85,105,0.3)">💡 ${escHtml(data.category)}</span>`;
+          badgeHtml = `<span style="background: linear-gradient(135deg, #94a3b8, #475569); color:#fff; padding:5px 12px; border-radius:30px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(71,85,105,0.3)">💡 ${escHtml(data.category)}</span>`;
         }
 
+        // Render key points list
+        const keyPointsList = Array.isArray(data.key_points) && data.key_points.length > 0
+          ? data.key_points.map(kp => `<li style="margin-bottom:6px; color:var(--text); font-size:13px; line-height:1.5">${escHtml(kp)}</li>`).join('')
+          : '<li style="color:var(--text3); font-size:13px">No key points extracted.</li>';
+
+        // Render next steps as a numbered list
+        let nextStepsLines = [];
+        const rawNextSteps = data.next_steps || '';
+        if (rawNextSteps) {
+          if (/\d+[\.\)\-]\s+/.test(rawNextSteps)) {
+            // Split by inline digit markers like " 2. " or "\n3. "
+            nextStepsLines = rawNextSteps.split(/(?:[\s\n]+|^)(?=\d+[\.\)\-]\s+)/).map(l => l.trim()).filter(l => l);
+          } else {
+            nextStepsLines = rawNextSteps.split('\n').map(l => l.trim()).filter(l => l);
+          }
+        }
+        const nextStepsHtml = nextStepsLines.length > 0
+          ? `<ol style="margin:0; padding-left:18px; list-style:decimal;">` + 
+            nextStepsLines.map(line => {
+              const cleanLine = line.replace(/^\d+[\.\)\-]\s*/, '').replace(/^[\-\*\u2022]\s*/, '').trim();
+              return `<li style="margin-bottom:6px; color:var(--text); font-size:13px; line-height:1.5">${escHtml(cleanLine)}</li>`;
+            }).join('') + `</ol>`
+          : '<div style="color:var(--text3); font-size:13px">No next actions specified.</div>';
+
         container.innerHTML = `
-          <!-- Category Card -->
-          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 15px; display: flex; align-items: center; justify-content: space-between">
-            <span style="font-size: 13px; font-weight: 600; color: var(--text2)">Detected Category:</span>
+          <!-- Session Stats Strip -->
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:8px;">
+              <div style="background:rgba(255,122,0,0.1); border:1px solid rgba(255,122,0,0.25); border-radius:8px; padding:6px 12px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--accent);">
+                📊 ${data.session_count || 1} Session${(data.session_count || 1) > 1 ? 's' : ''}
+              </div>
+              <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; padding:6px 12px; display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:#818cf8;">
+                💬 ${data.total_messages || 0} Msg${(data.total_messages || 0) > 1 ? 's' : ''}
+              </div>
+            </div>
             ${badgeHtml}
           </div>
 
-          <!-- Intent Card -->
-          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
-            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">🎯</div>
-            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
-              <span>🎯</span> User Intent (Kya krna chahta h)
+          <!-- Key Points Accordion (Expanded by default) -->
+          <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; display: flex; flex-direction: column;">
+            <div onclick="toggleAnalysisAccordion(this)" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+              <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); display: flex; align-items: center; gap: 8px">
+                <span>🔑</span> Key Points (Highlights)
+              </div>
+              <span class="chevron" style="font-size: 10px; color: var(--text3); transition: transform 0.2s; display: inline-block;">▼</span>
             </div>
-            <div style="font-size: 13px; line-height: 1.6; color: var(--text)">${escHtml(data.intent)}</div>
+            <div style="padding: 14px 16px; display: block; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.05);">
+              <ul style="margin:0; padding-left:18px; list-style:disc;">
+                ${keyPointsList}
+              </ul>
+            </div>
           </div>
 
-          <!-- Meaning Card -->
-          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
-            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">🔍</div>
-            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
-              <span>🔍</span> Chat Meaning (Matlab kya h)
+          <!-- Next Steps Accordion (Expanded by default) -->
+          <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; display: flex; flex-direction: column;">
+            <div onclick="toggleAnalysisAccordion(this)" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+              <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); display: flex; align-items: center; gap: 8px">
+                <span>📋</span> Next Actions (Kya krna chahiye)
+              </div>
+              <span class="chevron" style="font-size: 10px; color: var(--text3); transition: transform 0.2s; display: inline-block;">▼</span>
             </div>
-            <div style="font-size: 13px; line-height: 1.6; color: var(--text)">${escHtml(data.meaning)}</div>
+            <div style="padding: 14px 16px; display: block; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.05);">
+              ${nextStepsHtml}
+            </div>
           </div>
 
-          <!-- Next Steps Card -->
-          <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden">
-            <div style="position: absolute; top: -10px; right: -10px; font-size: 60px; opacity: 0.05; pointer-events: none">📋</div>
-            <div style="font-weight: 700; font-size: 14px; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px">
-              <span>📋</span> Next Actions (Kya krna chahiye)
+          <!-- Intent Accordion (Collapsed by default) -->
+          <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; display: flex; flex-direction: column;">
+            <div onclick="toggleAnalysisAccordion(this)" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+              <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); display: flex; align-items: center; gap: 8px">
+                <span>🎯</span> User Intent (Objective)
+              </div>
+              <span class="chevron" style="font-size: 10px; color: var(--text3); transition: transform 0.2s; display: inline-block; transform: rotate(-90deg);">▼</span>
             </div>
-            <div style="font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-line">${escHtml(data.next_steps)}</div>
+            <div style="padding: 14px 16px; display: none; max-height: 180px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--text); background: rgba(0,0,0,0.05);">
+              ${escHtml(data.intent)}
+            </div>
+          </div>
+
+          <!-- Meaning Accordion (Collapsed by default) -->
+          <div style="border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; display: flex; flex-direction: column;">
+            <div onclick="toggleAnalysisAccordion(this)" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+              <div style="font-weight: 700; font-size: 13.5px; color: var(--accent); display: flex; align-items: center; gap: 8px">
+                <span>🔍</span> Chat Meaning (Significance)
+              </div>
+              <span class="chevron" style="font-size: 10px; color: var(--text3); transition: transform 0.2s; display: inline-block; transform: rotate(-90deg);">▼</span>
+            </div>
+            <div style="padding: 14px 16px; display: none; max-height: 180px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--text); background: rgba(0,0,0,0.05);">
+              ${escHtml(data.meaning)}
+            </div>
           </div>
         `;
       } catch (e) {
@@ -17858,12 +18235,17 @@
                 <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(${item.feedback_type === 'report' ? '248,113,113' : '52,211,153'}, 0.15); color:var(--${typeClass})">${typeLabel}</span>
               </div>
 
-              <div style="display:flex; justify-content:space-between; align-items:center">
-                <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
+              <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
                 ${ratingStars ? `<div style="color:var(--accent); font-size:13px; margin-left:12px; font-weight:700; white-space:nowrap">${ratingStars}</div>` : ''}
               </div>
 
-              <div style="text-align:right; font-size:10px; color:var(--text3)">${dateStr}</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:var(--text3); border-top:1px dashed var(--border); padding-top:6px; margin-top:4px;">
+                <div style="display:flex; gap:12px; flex-wrap:wrap">
+                  ${item.device_id ? `<span><b>Device:</b> ${escHtml(item.device_id)}</span>` : ''}
+                  ${item.session_id ? `<span><b>Session:</b> ${escHtml(item.session_id)}</span>` : ''}
+                </div>
+                <span>${dateStr}</span>
+              </div>
             </div>
           `;
         }).join('');
@@ -17896,6 +18278,8 @@
           color: document.getElementById('ag-cust-color').value,
           chat_link: document.getElementById('ag-cust-chat-link') ? document.getElementById('ag-cust-chat-link').value.trim() : '',
           author_image_url: document.getElementById('ag-cust-author') ? document.getElementById('ag-cust-author').value.trim() : '',
+          whatsapp_number: document.getElementById('ag-cust-whatsapp') ? document.getElementById('ag-cust-whatsapp').value.trim() : '',
+          call_number: document.getElementById('ag-cust-call') ? document.getElementById('ag-cust-call').value.trim() : '',
           qa_pairs: (() => {
             const qaPairs = [];
             const qaItems = document.querySelectorAll('#ag-qa-list .source-item');
@@ -17982,6 +18366,12 @@
       }
       if (document.getElementById('ag-cust-author')) {
         document.getElementById('ag-cust-author').value = a.customization.author_image_url || '';
+      }
+      if (document.getElementById('ag-cust-whatsapp')) {
+        document.getElementById('ag-cust-whatsapp').value = a.customization.whatsapp_number || '';
+      }
+      if (document.getElementById('ag-cust-call')) {
+        document.getElementById('ag-cust-call').value = a.customization.call_number || '';
       }
 
       // Reconstruct Q&A Pairs
@@ -18108,12 +18498,17 @@
                 <span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:rgba(${item.feedback_type === 'report' ? '248,113,113' : '52,211,153'}, 0.15); color:var(--${typeClass})">${typeLabel}</span>
               </div>
 
-              <div style="display:flex; justify-content:space-between; align-items:center">
-                <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
+              <div style="font-size:13px; color:var(--text2); line-height:1.4; white-space:pre-wrap; flex:1">${escHtml(item.comment)}</div>
                 ${ratingStars ? `<div style="color:var(--accent); font-size:13px; margin-left:12px; font-weight:700; white-space:nowrap">${ratingStars}</div>` : ''}
               </div>
 
-              <div style="text-align:right; font-size:10px; color:var(--text3)">${dateStr}</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:var(--text3); border-top:1px dashed var(--border); padding-top:6px; margin-top:4px;">
+                <div style="display:flex; gap:12px; flex-wrap:wrap">
+                  ${item.device_id ? `<span><b>Device:</b> ${escHtml(item.device_id)}</span>` : ''}
+                  ${item.session_id ? `<span><b>Session:</b> ${escHtml(item.session_id)}</span>` : ''}
+                </div>
+                <span>${dateStr}</span>
+              </div>
             </div>
           `;
         }).join('');

@@ -73,6 +73,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .input-bar{width:100%;max-width:850px;display:flex;gap:12px;align-items:flex-end;background:var(--bg2);border:2px solid var(--border);border-radius:24px;padding:12px 20px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
 #chat-input{flex:1;background:transparent;border:none;color:var(--text);font-size:15px;outline:none;resize:none;min-height:28px;max-height:180px;line-height:1.6;font-family:inherit}
 .action-btn{background:var(--accent);border:none;color:#fff;width:46px;height:46px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+.input-attach-btn{background:transparent;border:1px solid var(--border);color:var(--text2);width:38px;height:38px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;font-size:17px;padding:0}
+.input-attach-btn:hover{background:rgba(255,255,255,0.08);color:var(--accent);border-color:var(--accent)}
+#file-preview-strip{display:none;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;margin-bottom:6px;font-size:12px;color:var(--text2);width:100%;max-width:850px;box-sizing:border-box;flex-wrap:wrap}
+.file-preview-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.file-preview-icon{width:44px;height:44px;border-radius:10px;background:rgba(255,122,0,0.12);border:1px solid rgba(255,122,0,0.25);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.file-preview-name{flex:1;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.file-preview-remove{background:rgba(255,50,50,0.15);border:none;color:#ff5555;width:24px;height:24px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;padding:0}
+.file-preview-remove:hover{background:rgba(255,50,50,0.3)}
 
 /* ── Voice Mode Full Overlay ── */
 .voice-overlay{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:40px;text-align:center;animation:fade-in 0.5s ease}
@@ -532,6 +540,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   border-color: var(--accent);
   transform: translateY(-1px);
 }
+.suggestion-chip.ai-suggested {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #22c55e !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+.suggestion-chip.ai-suggested:hover {
+  background: #22c55e !important;
+  color: #fff !important;
+  border-color: #22c55e !important;
+}
+[data-theme="light"] .suggestion-chip.ai-suggested {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #15803d !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+[data-theme="light"] .suggestion-chip.ai-suggested:hover {
+  background: #15803d !important;
+  color: #fff !important;
+  border-color: #15803d !important;
+}
 [data-theme="light"] .suggestion-chip {
   background: var(--accent);
   color: #000000;
@@ -630,6 +658,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
       <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
         <i data-lucide="mic"></i> Talk
       </button>
+      <a class="landing-btn btn-chat" id="landing-whatsapp-link" href="#" target="_blank" style="display:none; background:#10b981; color:#ffffff; border:none; text-decoration:none; align-items:center; justify-content:center; gap:8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg> WhatsApp
+      </a>
     </div>
   </div>
 </div>
@@ -654,6 +685,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     </div>
   </div>
   <div class="nav-right">
+    <a class="nav-btn" id="nav-whatsapp-link" href="#" target="_blank" title="Chat on WhatsApp" style="display:none; color:#10b981; align-items:center; justify-content:center; text-decoration:none;">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg>
+    </a>
     <button class="nav-btn" onclick="clearLocalChat()" title="Clear Chat Screen"><i data-lucide="trash-2"></i></button>
     <button class="nav-btn" onclick="openFeedbackModal()" title="Report & Feedback"><i data-lucide="flag"></i></button>
     <button class="nav-btn" onclick="toggleTheme()"><i data-lucide="moon" id="theme-icon"></i></button>
@@ -686,8 +720,21 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <div class="suggestions-bar" id="suggestions-bar"></div>
     <div class="input-dock">
       <div id="action-banner-wrapper"></div>
+      <!-- File Preview Strip -->
+      <div id="file-preview-strip" style="display:none; align-items:center; gap:10px; padding:8px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:14px; margin-bottom:6px; font-size:12px; color:var(--text2); width:100%; max-width:850px; box-sizing:border-box;">
+        <div id="file-preview-icon" class="file-preview-icon">📄</div>
+        <img id="file-preview-thumb" class="file-preview-thumb" src="" alt="preview" style="display:none;">
+        <div style="flex:1; min-width:0;">
+          <div id="file-preview-name" class="file-preview-name">filename.pdf</div>
+          <div id="file-preview-status" style="font-size:11px; color:var(--text3); margin-top:2px;">Ready to send</div>
+        </div>
+        <button class="file-preview-remove" onclick="clearFileAttachment()" title="Remove file">✕</button>
+      </div>
       <div class="input-bar">
+        <!-- Hidden file input -->
+        <input type="file" id="file-upload-input" style="display:none;" accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.pdf,.txt,.csv,.md,.docx,.doc,.mp4,.webm,.mov" onchange="handleFileSelected(this)">
         <button class="input-mic-btn" id="input-mic-btn" onclick="setMode('v2v')"><i data-lucide="mic"></i></button>
+        <button class="input-attach-btn" onclick="document.getElementById('file-upload-input').click()" title="Attach file (images, PDF, docs up to 20MB)">📎</button>
         <textarea id="chat-input" rows="1" placeholder="Type here…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="action-btn" onclick="sendMsg()"><i data-lucide="send"></i></button>
       </div>
@@ -733,10 +780,10 @@ if (isPublic) {
     deviceId = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     localStorage.setItem('ag_device_id', deviceId);
   }
-  sessionId = localStorage.getItem('ag_session_id_' + AGENT_ID);
+  sessionId = sessionStorage.getItem('ag_session_id_' + AGENT_ID);
   if (!sessionId) {
     sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+    sessionStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
   }
   function getDeviceName() {
     const ua = navigator.userAgent;
@@ -865,6 +912,23 @@ async function loadAgent() {
       document.getElementById('mobile-landing-page').style.background = `radial-gradient(circle at 50% 30%, ${c}25 0%, var(--bg) 100%)`;
     }
 
+    if (d.customization && d.customization.whatsapp_number) {
+      const cleanWaNum = d.customization.whatsapp_number.replace(/[^\d]/g, '');
+      if (cleanWaNum) {
+        const waUrl = `https://wa.me/${cleanWaNum}`;
+        const navWa = document.getElementById('nav-whatsapp-link');
+        if (navWa) {
+          navWa.href = waUrl;
+          navWa.style.display = 'inline-flex';
+        }
+        const landWa = document.getElementById('landing-whatsapp-link');
+        if (landWa) {
+          landWa.href = waUrl;
+          landWa.style.display = 'inline-flex';
+        }
+      }
+    }
+
     // Trigger mobile landing page if responsive
     checkShowLandingPage();
 
@@ -915,8 +979,12 @@ function renderActionBanner(action) {
   const bannerClass = isWa ? 'ag-action-banner whatsapp' : 'ag-action-banner';
   const icon = isWa ? '💬' : '📞';
   const label = action.message || (isWa ? 'Connect on WhatsApp' : 'Call Us Now');
-  const btnText = isWa ? 'Chat on WhatsApp' : `Call ${cleanPhone}`;
+  const btnText = isWa ? 'Book Meeting' : `Call ${cleanPhone}`;
   
+  const actionBtnHtml = isWa
+    ? `<button onclick="openMeetingCalendarModal('${cleanPhone.replace('+', '')}')" class="ag-action-btn" style="border:none; cursor:pointer;">${btnText}</button>`
+    : `<a href="${targetUrl}" target="_self" class="ag-action-btn">${btnText}</a>`;
+
   container.innerHTML = `
     <div class="${bannerClass}">
       <div style="display:flex; align-items:center; gap:8px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
@@ -924,9 +992,7 @@ function renderActionBanner(action) {
         <span style="overflow:hidden; text-overflow:ellipsis">${esc(label)}</span>
       </div>
       <div style="display:flex; align-items:center; flex-shrink:0">
-        <a href="${targetUrl}" target="${isWa ? '_blank' : '_self'}" class="ag-action-btn">
-          ${btnText}
-        </a>
+        ${actionBtnHtml}
         <button class="ag-action-close" onclick="dismissActionBanner()" title="Close">&times;</button>
       </div>
     </div>
@@ -941,6 +1007,476 @@ function dismissActionBanner() {
   if (container) container.innerHTML = '';
 }
 
+// ── Interactive Calendar Modal Scheduling Logic ──
+let bookedDates = [];
+let selectedDateStr = null;
+let selectedTimeStr = null;
+let currentCalDate = new Date();
+
+async function fetchBookedDates() {
+  try {
+    const r = await fetch(`/api/agents/${AGENT_ID}/booked-dates`);
+    if (r.ok) {
+      const data = await r.json();
+      bookedDates = data.booked_dates || [];
+    }
+  } catch(e) {
+    console.error("Failed to fetch booked dates", e);
+  }
+}
+
+function closeMeetingCalendarModal() {
+  const modal = document.getElementById('meeting-calendar-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 300);
+  }
+}
+
+async function openMeetingCalendarModal(phone) {
+  let modal = document.getElementById('meeting-calendar-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'meeting-calendar-modal';
+    modal.className = 'meeting-modal-overlay';
+    
+    if (!document.getElementById('meeting-modal-styles')) {
+      const styles = document.createElement('style');
+      styles.id = 'meeting-modal-styles';
+      styles.innerHTML = `
+        .meeting-modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 100000;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          font-family: 'Outfit', 'Inter', sans-serif;
+        }
+        .meeting-modal-overlay.active {
+          opacity: 1;
+        }
+        .meeting-modal-card {
+          background: #18181b;
+          border: 1px solid #27272a;
+          border-radius: 16px;
+          width: 90%;
+          max-width: 440px;
+          padding: 24px;
+          color: #f4f4f5;
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+          transform: scale(0.95);
+          transition: transform 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .meeting-modal-overlay.active .meeting-modal-card {
+          transform: scale(1);
+        }
+        .modal-title {
+          font-size: 18px;
+          font-weight: 700;
+          margin: 0;
+        }
+        .modal-subtitle {
+          font-size: 13px;
+          color: #a1a1aa;
+          margin: 0;
+        }
+        .calendar-nav {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .calendar-nav button {
+          background: #27272a;
+          border: 1px solid #3f3f46;
+          color: white;
+          padding: 4px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 6px;
+        }
+        .calendar-day-header {
+          text-align: center;
+          font-size: 11px;
+          color: #71717a;
+          font-weight: 600;
+          padding-bottom: 4px;
+        }
+        .calendar-day-cell {
+          aspect-ratio: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          font-size: 12px;
+          cursor: pointer;
+          background: #27272a;
+          border: 1px solid transparent;
+          transition: all 0.2s ease;
+        }
+        .calendar-day-cell:hover:not(.disabled) {
+          background: #ff7a00;
+          color: white;
+        }
+        .calendar-day-cell.selected {
+          background: #ff7a00;
+          color: white;
+          font-weight: bold;
+        }
+        .calendar-day-cell.disabled {
+          color: #3f3f46;
+          background: transparent;
+          cursor: not-allowed;
+          opacity: 0.3;
+        }
+        .calendar-day-cell.booked {
+          background: rgba(239, 68, 68, 0.2);
+          border: 1px solid #ef4444;
+          color: #ef4444 !important;
+          cursor: not-allowed;
+          font-weight: bold;
+        }
+        .time-slots-container {
+          margin-top: 12px;
+        }
+        .time-slots-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          max-height: 120px;
+          overflow-y: auto;
+          padding-top: 8px;
+        }
+        .time-slot-btn {
+          padding: 8px;
+          border-radius: 8px;
+          background: #27272a;
+          border: 1px solid #3f3f46;
+          color: #f4f4f5;
+          font-size: 11px;
+          cursor: pointer;
+          text-align: center;
+          transition: all 0.2s ease;
+        }
+        .time-slot-btn:hover:not(.disabled) {
+          border-color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+        }
+        .time-slot-btn.selected {
+          background: #ff7a00;
+          color: white;
+          border-color: #ff7a00;
+        }
+        .time-slot-btn.disabled {
+          background: rgba(239, 68, 68, 0.1);
+          border-color: #ef4444;
+          color: #ef4444;
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .input-group label {
+          font-size: 12px;
+          color: #a1a1aa;
+          font-weight: 600;
+        }
+        .input-group input {
+          background: #27272a;
+          border: 1px solid #3f3f46;
+          border-radius: 8px;
+          padding: 10px;
+          color: white;
+          font-size: 13px;
+          outline: none;
+        }
+        .input-group input:focus {
+          border-color: #ff7a00;
+        }
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 8px;
+        }
+        .btn-cancel {
+          background: transparent;
+          border: 1px solid #3f3f46;
+          color: #f4f4f5;
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .btn-confirm {
+          background: #ff7a00;
+          border: none;
+          color: white;
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .btn-confirm:hover {
+          background: #e06b00;
+        }
+      `;
+      document.head.appendChild(styles);
+    }
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="meeting-modal-card">
+      <div>
+        <h3 class="modal-title">Schedule a Meeting</h3>
+        <p class="modal-subtitle"><marquee scrollamount="3">Pick a slot and finalize on WhatsApp</marquee></p>
+      </div>
+      
+      <div class="calendar-container">
+        <div class="calendar-nav">
+          <button type="button" id="btn-prev-month">&lt; Prev</button>
+          <span id="calendar-month-label" style="font-weight: 700; font-size: 14px;"></span>
+          <button type="button" id="btn-next-month">Next &gt;</button>
+        </div>
+        <div class="calendar-grid" id="calendar-days-grid"></div>
+      </div>
+      
+      <div class="time-slots-container">
+        <span style="font-size: 12px; color: #a1a1aa; font-weight: 600;">Available Time Slots</span>
+        <div class="time-slots-grid" id="calendar-time-slots">
+          <div style="font-size: 11px; color: #71717a; grid-column: 1/-1; text-align: center; padding: 10px;">Select a date to see times</div>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="meeting-user-name">Your Name</label>
+        <input type="text" id="meeting-user-name" placeholder="Enter your full name" required>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeMeetingCalendarModal()">Cancel</button>
+        <button type="button" class="btn-confirm" id="btn-confirm-meeting">Confirm & Book</button>
+      </div>
+    </div>
+  `;
+
+  // Pre-fill user name if available
+  const nameInput = document.getElementById('meeting-user-name');
+  if (nameInput) {
+    nameInput.value = window.chatUserName || '';
+  }
+
+  selectedDateStr = null;
+  selectedTimeStr = null;
+  currentCalDate = new Date();
+
+  await fetchBookedDates();
+
+  function renderCalendarDays() {
+    const monthLabel = document.getElementById('calendar-month-label');
+    const daysGrid = document.getElementById('calendar-days-grid');
+    if (!monthLabel || !daysGrid) return;
+
+    const year = currentCalDate.getFullYear();
+    const month = currentCalDate.getMonth();
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+    daysGrid.innerHTML = '';
+
+    const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    dayHeaders.forEach(dh => {
+      const hEl = document.createElement('div');
+      hEl.className = 'calendar-day-header';
+      hEl.textContent = dh;
+      daysGrid.appendChild(hEl);
+    });
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day-cell disabled';
+      daysGrid.appendChild(emptyCell);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let d = 1; d <= totalDays; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'calendar-day-cell';
+      cell.textContent = d;
+
+      const thisDate = new Date(year, month, d);
+      thisDate.setHours(0, 0, 0, 0);
+
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      if (thisDate < today) {
+        cell.classList.add('disabled');
+      } else {
+        const isDateBooked = bookedDates.some(bd => bd.split('T')[0] === dateStr);
+        if (isDateBooked) {
+          cell.classList.add('booked');
+        }
+
+        if (selectedDateStr === dateStr) {
+          cell.classList.add('selected');
+        }
+
+        cell.addEventListener('click', () => {
+          if (cell.classList.contains('booked')) {
+            alert("This date is already fully booked! Please select another date.");
+            return;
+          }
+          selectedDateStr = dateStr;
+          document.querySelectorAll('.calendar-day-cell').forEach(c => c.classList.remove('selected'));
+          cell.classList.add('selected');
+          renderTimeSlots();
+        });
+      }
+      daysGrid.appendChild(cell);
+    }
+  }
+
+  function renderTimeSlots() {
+    const slotsGrid = document.getElementById('calendar-time-slots');
+    if (!slotsGrid || !selectedDateStr) return;
+
+    slotsGrid.innerHTML = '';
+
+    const slots = [
+      "10:00 AM", "11:00 AM", "12:00 PM",
+      "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
+    ];
+
+    slots.forEach(slot => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'time-slot-btn';
+      btn.textContent = slot;
+
+      let [timePart, modifier] = slot.split(' ');
+      let [hours, minutes] = timePart.split(':');
+      if (modifier === 'PM' && hours !== '12') {
+        hours = String(parseInt(hours, 10) + 12);
+      }
+      if (modifier === 'AM' && hours === '12') {
+        hours = '00';
+      }
+      const slotTime24 = `${hours}:${minutes}`;
+
+      const isSlotBooked = bookedDates.some(bd => {
+        const [dPart, tPart] = bd.split('T');
+        if (dPart === selectedDateStr) {
+          return tPart.substring(0, 5) === slotTime24;
+        }
+        return false;
+      });
+
+      if (isSlotBooked) {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+      }
+
+      if (selectedTimeStr === slot) {
+        btn.classList.add('selected');
+      }
+
+      btn.addEventListener('click', () => {
+        selectedTimeStr = slot;
+        document.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+
+      slotsGrid.appendChild(btn);
+    });
+  }
+
+  document.getElementById('btn-prev-month').onclick = () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+    renderCalendarDays();
+  };
+  document.getElementById('btn-next-month').onclick = () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+    renderCalendarDays();
+  };
+
+  document.getElementById('btn-confirm-meeting').onclick = async () => {
+    const nameVal = (document.getElementById('meeting-user-name').value || '').trim();
+
+    if (!selectedDateStr) {
+      alert("Please select a date.");
+      return;
+    }
+    if (!selectedTimeStr) {
+      alert("Please select a time slot.");
+      return;
+    }
+    if (!nameVal) {
+      alert("Please enter your name.");
+      return;
+    }
+
+    let [timePart, modifier] = selectedTimeStr.split(' ');
+    let [hours, minutes] = timePart.split(':');
+    if (modifier === 'PM' && hours !== '12') {
+      hours = String(parseInt(hours, 10) + 12);
+    }
+    if (modifier === 'AM' && hours === '12') {
+      hours = '00';
+    }
+    const meetingTimeISO = `${selectedDateStr}T${hours}:${minutes}:00`;
+
+    try {
+      await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: nameVal,
+          meeting_time: meetingTimeISO,
+          session_id: sessionId
+        })
+      });
+    } catch(e) {
+      console.error("Booking error", e);
+    }
+
+    const dateFormatted = new Date(selectedDateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const waMessage = `Hello, I would like to schedule a meeting.\n\n👤 Name: ${nameVal}\n📅 Date: ${dateFormatted}\n⏰ Time: ${selectedTimeStr}`;
+    const waUrl = `https://wa.me/${phone.replace('+', '')}?text=${encodeURIComponent(waMessage)}`;
+    window.open(waUrl, '_blank');
+    closeMeetingCalendarModal();
+  };
+
+  modal.style.display = 'flex';
+  setTimeout(() => modal.classList.add('active'), 10);
+  renderCalendarDays();
+}
+
 async function checkSessionAction() {
   if (!AGENT_ID || !deviceId || !isPublic) return;
   try {
@@ -951,7 +1487,7 @@ async function checkSessionAction() {
       if (data.session) {
         if (data.session.session_id) {
           sessionId = data.session.session_id;
-          localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+          sessionStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
         }
         renderActionBanner(data.session.action_button);
       }
@@ -968,7 +1504,7 @@ async function loadPublicHistory() {
     const data = await r.json();
     if (data.session && data.session.session_id) {
       sessionId = data.session.session_id;
-      localStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+      sessionStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
     }
     if (data.messages && data.messages.length > 0) {
       const hero = document.getElementById('hero');
@@ -994,19 +1530,120 @@ function clearLocalChat() {
   msgArea.querySelectorAll('.msg-wrap').forEach(el => el.remove());
   const hero = document.getElementById('hero');
   if (hero) hero.style.display = 'block';
+  
+  // Generate a new sessionId to start a fresh session in the database
+  sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  sessionStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
+
   dismissActionBanner();
-  toast('🧹 Chat screen cleared', 'success');
+  toast('🧹 Chat screen cleared & new session started', 'success');
+}
+
+// ── File Attachment State ──
+let _pendingFile = null; // { file, extracted_text, file_type, display_name, preview_data_url }
+
+function handleFileSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const MB = 1024 * 1024;
+  if (file.size > 20 * MB) {
+    toast('❌ File too large — maximum 20MB allowed', 'err');
+    input.value = '';
+    return;
+  }
+  _pendingFile = { file, extracted_text: null, file_type: 'pending', display_name: file.name };
+  showFilePreview(file);
+  input.value = '';
+}
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) return '🖼️';
+  if (ext === 'pdf') return '📑';
+  if (['docx','doc'].includes(ext)) return '📝';
+  if (['csv','xlsx'].includes(ext)) return '📊';
+  if (['mp4','webm','mov','avi'].includes(ext)) return '🎬';
+  if (['txt','md'].includes(ext)) return '📃';
+  return '📎';
+}
+
+function showFilePreview(file) {
+  const strip = document.getElementById('file-preview-strip');
+  const nameEl = document.getElementById('file-preview-name');
+  const statusEl = document.getElementById('file-preview-status');
+  const iconEl = document.getElementById('file-preview-icon');
+  const thumbEl = document.getElementById('file-preview-thumb');
+  nameEl.textContent = file.name;
+  statusEl.textContent = 'Ready to send';
+  iconEl.textContent = getFileIcon(file.name);
+  iconEl.style.display = 'flex';
+  thumbEl.style.display = 'none';
+  // Show image thumbnail if image
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      thumbEl.src = e.target.result;
+      thumbEl.style.display = 'block';
+      iconEl.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+  strip.style.display = 'flex';
+}
+
+function clearFileAttachment() {
+  _pendingFile = null;
+  const strip = document.getElementById('file-preview-strip');
+  if (strip) strip.style.display = 'none';
+  const thumbEl = document.getElementById('file-preview-thumb');
+  if (thumbEl) { thumbEl.src = ''; thumbEl.style.display = 'none'; }
+}
+
+async function uploadPendingFile() {
+  if (!_pendingFile || !_pendingFile.file) return null;
+  const statusEl = document.getElementById('file-preview-status');
+  if (statusEl) statusEl.textContent = 'Uploading…';
+  const formData = new FormData();
+  formData.append('file', _pendingFile.file, _pendingFile.display_name);
+  try {
+    const r = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/upload-chat-file`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    const data = await r.json();
+    if (statusEl) statusEl.textContent = '✅ Uploaded';
+    return data.extracted_text || null;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `❌ ${e.message}`;
+    toast(`❌ File upload failed: ${e.message}`, 'err');
+    return null;
+  }
 }
 
 async function sendMsg() {
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text || isTyping) return;
+  if ((!text && !_pendingFile) || isTyping) return;
   inp.value = ''; autoResize(inp); isTyping = true;
+  // Upload file if pending
+  let fileContext = null;
+  let displayText = text;
+  if (_pendingFile) {
+    fileContext = await uploadPendingFile();
+    const fname = _pendingFile.display_name;
+    displayText = text ? `📎 ${fname}\n\n${text}` : `📎 ${fname}`;
+    clearFileAttachment();
+  }
+
   document.getElementById('hero').style.display = 'none';
-  appendMessage('user', text);
+  appendMessage('user', displayText);
   const typing = appendTyping();
-  
+
   if (chatMode === 'v2v') {
     startResponseTimer();
   }
@@ -1018,11 +1655,12 @@ async function sendMsg() {
   try {
     const url = isPublic ? `/api/agents/${AGENT_ID}/public-ask` : `/api/agents/${AGENT_ID}/ask`;
     const bodyObj = isPublic ? {
-      question: text,
+      question: text || (fileContext ? 'I uploaded a file, please analyze it.' : ''),
       session_id: sessionId,
       device_id: deviceId,
       device_name: deviceName,
-      is_voice: chatMode === 'v2v'
+      is_voice: chatMode === 'v2v',
+      file_context: fileContext || undefined
     } : {
       question: text,
       history: history.slice(-6),
@@ -1032,11 +1670,22 @@ async function sendMsg() {
     const d = await r.json();
     stopResponseTimer();
     removeTyping(typing);
+
+    if (d.suggested_questions && d.suggested_questions.length > 0) {
+      currentSuggestions = (d.suggested_questions || []).map(q => ({ text: q, isAi: true }));
+      updateSuggestionsUI();
+    }
+    if (d.action_button) {
+      renderActionBanner(d.action_button);
+    }
+
     const ans = d.answer || 'No response.';
     const enNamePrompt = "\n\nBy the way, what is your name?";
     const hiNamePromptActual = "\n\nवैसे, आपका नाम क्या है?";
     const enPhoneMarker = "! Could you also share your mobile number?";
     const hiPhoneMarker = "! क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?";
+    const enPhonePrompt = "\n\nCould you also share your mobile number?";
+    const hiPhonePrompt = "\n\nक्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?";
 
     if (ans.includes(enNamePrompt)) {
       const parts = ans.split(enNamePrompt);
@@ -1062,6 +1711,20 @@ async function sendMsg() {
     } else if (ans.includes(hiPhoneMarker)) {
       const parts = ans.split(hiPhoneMarker);
       appendMessage('assistant', parts[0] + "!", d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else if (ans.includes(enPhonePrompt)) {
+      const parts = ans.split(enPhonePrompt);
+      appendMessage('assistant', parts[0], d.sources || []);
+      setTimeout(() => {
+        appendMessage('assistant', "Could you also share your mobile number?");
+      }, 600);
+      if(chatMode === 'v2v') speakText(ans);
+    } else if (ans.includes(hiPhonePrompt)) {
+      const parts = ans.split(hiPhonePrompt);
+      appendMessage('assistant', parts[0], d.sources || []);
       setTimeout(() => {
         appendMessage('assistant', "क्या आप अपना मोबाइल नंबर भी शेयर कर सकते हैं?");
       }, 600);
@@ -1661,7 +2324,7 @@ function renderSuggestions(qaPairs) {
   if (!bar) return;
   
   // Take first 5 suggestions
-  currentSuggestions = (qaPairs || []).slice(0, 5).map(p => p.q);
+  currentSuggestions = (qaPairs || []).slice(0, 5).map(p => ({ text: p.q, isAi: false }));
   if (!currentSuggestions.length) {
     bar.style.display = 'none';
     return;
@@ -1679,18 +2342,19 @@ function updateSuggestionsUI() {
     return;
   }
 
-  bar.innerHTML = currentSuggestions.map((q, idx) => `
-    <div class="suggestion-chip" onclick="clickSuggestion('${esc(q)}', ${idx})">${esc(q)}</div>
-  `).join('');
+  bar.innerHTML = currentSuggestions.map((item, idx) => {
+    const qText = typeof item === 'object' ? item.text : item;
+    const isAi = typeof item === 'object' ? item.isAi : false;
+    const chipClass = isAi ? 'suggestion-chip ai-suggested' : 'suggestion-chip';
+    return `<div class="${chipClass}" onclick="clickSuggestion('${esc(qText)}', ${idx})">${esc(qText)}</div>`;
+  }).join('');
   bar.style.display = 'flex';
 }
 
 function clickSuggestion(questionText, idx) {
-  // Remove it from the list
   currentSuggestions.splice(idx, 1);
   updateSuggestionsUI();
 
-  // Send it
   const inp = document.getElementById('chat-input');
   if (inp) {
     inp.value = questionText;
@@ -1784,7 +2448,9 @@ async function submitFeedback() {
     user_email: email || null,
     feedback_type: currentFeedbackType,
     rating: currentFeedbackType === 'feedback' ? (currentFeedbackRating || null) : null,
-    comment: comment
+    comment: comment,
+    device_id: typeof deviceId !== 'undefined' ? deviceId : null,
+    session_id: typeof sessionId !== 'undefined' ? sessionId : null
   };
 
   btn.disabled = true;

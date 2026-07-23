@@ -234,7 +234,9 @@ To integrate QR code scanning:
 
 When external visitors scan the QR code or chat with your agent, a session is automatically created, capturing visitor info (Device Name, User Name, Phone Number).
 
-> 💡 **Session Persistence**: Sessions are mapped per `(agent_id, device_id)`. When a visitor chats today and returns 2 days later on the same device, their chat history remains in a single continuous session.
+> 💡 **Session & Visitor Multi-Session Tracking**: While visitor info is identified by their `device_id` (enabling you to group multiple sessions by visitor), each conversation is tracked under a unique `session_id`. Clicking the **Trash/Clear Chat** icon in the chat screen automatically spawns a **new session ID** for that visitor, allowing you to count and view separate chat histories for the same user.
+> 
+> 👤 **Automatic Name & Phone Persistence**: Once a visitor shares their name or mobile number in *any* chat session, these details are permanently saved under their `device_id`. Any subsequent sessions created on the same device will automatically inherit and pre-populate these details. The visitor will not be prompted to share them again.
 
 ### 1. Get Agent Visitor Sessions
 Get a list of all logged visitor sessions for a specific agent.
@@ -268,6 +270,10 @@ Get a list of all logged visitor sessions for a specific agent.
     }
   ]
   ```
+
+> ⚙️ **Dashboard Frontend Processing**:
+> To render the upgraded nested view, group these sessions by visitor identifier (e.g. `device_id` or `phone_number`). Calculate the total sessions count per visitor (e.g., `👤 Guest Visitor [💬 3 Chats]`) and render interactive dropdowns allowing the owner to select and load individual session chat logs using `/api/agents/sessions/{session_id}/history`.
+
 
 ---
 
@@ -384,7 +390,11 @@ Clear/dismiss an active action button from a visitor's session.
 ---
 
 ### 7. AI Conversation Analysis
-Analyze a visitor's session history to automatically categorize the lead and extract intent, summary meaning, and recommended next steps using the agent's configured LLM api key and settings.
+
+You can analyze visitor conversation histories using the agent's own configured LLM settings. This is available at two levels: **Session-level** and **Visitor (Device)-level**.
+
+#### A. Single Session Analysis
+Analyze a visitor's history in a single specific session.
 * **HTTP Method:** `POST`
 * **Endpoint:** `/api/agents/sessions/{session_id}/analyze`
 * **Response Example (`200 OK`):**
@@ -397,6 +407,34 @@ Analyze a visitor's session history to automatically categorize the lead and ext
   }
   ```
   *(Note: The result is automatically cached in the `agent_public_sessions` table under the `analysis_json` column, so subsequent fetches return instantly.)*
+
+#### B. Holistic Visitor Analysis (Device-Level)
+Merge all chat sessions from a specific device (representing a single visitor's entire return history) and perform a comprehensive holistic analysis with key bullet insights.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/agents/sessions/analyze-device`
+* **Request Body (`application/json`):**
+  ```json
+  {
+    "device_id": "dev-f38b25d06b",
+    "agent_id": "da3243d9babb9387"
+  }
+  ```
+* **Response Example (`200 OK`):**
+  ```json
+  {
+    "category": "support",
+    "intent": "Visitor is enquiring about UPAVP housing schemes registration dates and pricing details.",
+    "meaning": "Hot prospect who has returned across 3 separate sessions to check eligibility criteria and pricing.",
+    "next_steps": "Contact visitor to help with UPAVP application process directly.",
+    "key_points": [
+      "Customer is looking for 2BHK/3BHK flats.",
+      "Has visited the UPAVP site physically once.",
+      "Wants to know if senior citizen discounts are applicable."
+    ],
+    "session_count": 3,
+    "total_messages": 18
+  }
+  ```
 
 ---
 
@@ -440,12 +478,13 @@ Chat endpoint used by public users scanning QR codes. It maps messages to a spec
 * **Request Body (`application/json`):**
   ```json
   {
-    "question": "I want to arrange a meeting",
+    "question": "Please extract information from this document.",
     "session_id": "sess-5ee28080ec",
     "device_id": "dev-f38b25d06b",
     "device_name": "Chrome/Windows",
     "user_name": "Aditya Sharma",
-    "phone_number": "9876543210"
+    "phone_number": "9876543210",
+    "file_context": "Extracted text or summary from a user uploaded file here..." // Optional
   }
   ```
 * **Response Example (`200 OK`):**
@@ -458,6 +497,28 @@ Chat endpoint used by public users scanning QR codes. It maps messages to a spec
     "action_button": null
   }
   ```
+
+---
+
+### 3. Upload Chat File (Images, PDFs, Videos, Documents)
+Upload files directly inside the chat interface (ChatGPT/Gemini style) to be sent as context to the AI model. Max file size is **20MB**.
+* **HTTP Method:** `POST`
+* **Endpoint:** `/api/agents/{agent_id}/upload-chat-file`
+* **Content-Type:** `multipart/form-data`
+* **Request Form:**
+  - `file`: `[Binary File: jpg, png, gif, webp, pdf, docx, txt, csv, mp4, etc.]`
+* **Response Example (`200 OK`):**
+  ```json
+  {
+    "success": true,
+    "file_type": "pdf",                                    // "image" | "pdf" | "document" | "text" | "video" | "file"
+    "display_name": "resume.pdf",
+    "extracted_text": "Extracted contents of the PDF...",   // For images, descriptions from Vision AI (Gemini Vision) are returned here
+    "preview_data_url": null,                              // Base64 data URL for images (for chat UI display)
+    "size_bytes": 1048576
+  }
+  ```
+  *(Note: To send this file in the conversation, first call this endpoint to obtain `extracted_text`, then pass it in the `file_context` parameter of the `public-ask` API.)*
 
 ---
 
@@ -531,7 +592,9 @@ Submit user feedback (with ratings) or a report (complaint/issue) regarding an a
     "user_email": "john@example.com",   // Optional (String)
     "feedback_type": "feedback",        // Required: "feedback" | "report"
     "rating": 5,                        // Optional: 1-5 (Integer, only for "feedback" type)
-    "comment": "This agent answered all my questions perfectly!" // Required (Text)
+    "comment": "This agent answered all my questions perfectly!", // Required (Text)
+    "device_id": "dev-f38b25d06b",      // Optional (String, tracking device of the visitor)
+    "session_id": "sess-5ee28080ec"     // Optional (String, session of the visitor)
   }
   ```
 * **Response Example (`200 OK`):**
@@ -546,6 +609,8 @@ Submit user feedback (with ratings) or a report (complaint/issue) regarding an a
       "feedback_type": "feedback",
       "rating": 5,
       "comment": "This agent answered all my questions perfectly!",
+      "device_id": "dev-f38b25d06b",
+      "session_id": "sess-5ee28080ec",
       "created_at": "2026-07-20T11:25:00"
     }
   }
@@ -567,6 +632,8 @@ Fetch all reports and feedback submitted for a specific agent.
       "feedback_type": "feedback",
       "rating": 5,
       "comment": "This agent answered all my questions perfectly!",
+      "device_id": "dev-f38b25d06b",
+      "session_id": "sess-5ee28080ec",
       "created_at": "2026-07-20T11:25:00"
     }
   ]

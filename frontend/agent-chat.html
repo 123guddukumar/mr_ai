@@ -931,6 +931,8 @@ async function loadAgent() {
       if (uploadBtn) uploadBtn.style.display = 'inline-flex';
     }
 
+    // WhatsApp features disabled as per request
+    /*
     if (d.customization && d.customization.whatsapp_number) {
       const cleanWaNum = d.customization.whatsapp_number.replace(/[^\d]/g, '');
       if (cleanWaNum) {
@@ -947,6 +949,7 @@ async function loadAgent() {
         }
       }
     }
+    */
 
     // Trigger mobile landing page if responsive
     checkShowLandingPage();

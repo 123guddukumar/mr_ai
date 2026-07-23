@@ -912,6 +912,8 @@ async function loadAgent() {
       document.getElementById('mobile-landing-page').style.background = `radial-gradient(circle at 50% 30%, ${c}25 0%, var(--bg) 100%)`;
     }
 
+    // WhatsApp features disabled as per request
+    /*
     if (d.customization && d.customization.whatsapp_number) {
       const cleanWaNum = d.customization.whatsapp_number.replace(/[^\d]/g, '');
       if (cleanWaNum) {
@@ -928,6 +930,7 @@ async function loadAgent() {
         }
       }
     }
+    */
 
     // Trigger mobile landing page if responsive
     checkShowLandingPage();

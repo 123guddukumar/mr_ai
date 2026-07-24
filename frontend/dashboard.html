@@ -1054,7 +1054,7 @@
     /* Agent Cards */
     .agent-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(385px, 1fr));
       gap: 20px;
       margin-top: 10px;
     }
@@ -17505,6 +17505,7 @@
           <button class="ac-icon-btn" onclick="openAgentHistory('${a.agent_id}')" title="Chat History"><i data-lucide="history"></i></button>
           <button class="ac-icon-btn" onclick="openAgentChat('${a.agent_id}', 'v2v')" title="Voice Chat"><i data-lucide="mic"></i></button>
           <button class="ac-icon-btn" onclick="openAgentFeedbackFromCard('${a.agent_id}')" title="Reports & Feedback" style="color:var(--accent)"><i data-lucide="flag"></i></button>
+          ${isRoot ? `<button class="ac-icon-btn" onclick="openDashboardDailyPlanner(event)" title="Daily Planner 📅" style="color:#f59e0b;"><i data-lucide="calendar"></i></button>` : ''}
           <button class="ac-icon-btn" onclick="editAgent('${a.agent_id}')" title="Edit"><i data-lucide="edit-3"></i></button>
           ${!isRoot ? `<button class="ac-icon-btn" onclick="deleteAgent('${a.agent_id}')" title="Delete" style="color:var(--red)"><i data-lucide="trash-2"></i></button>` : ''}
         </div>
@@ -17522,8 +17523,13 @@
           </div>
         </div>
       </div>
-      <div class="ac-footer">
-        <button class="ac-chat-btn" style="${isRoot ? 'background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; border:none;' : ''}" onclick="openAgentChat('${a.agent_id}')"><i data-lucide="message-square"></i> ${isRoot ? '👑 Start Executive Chat' : 'Start Chat'}</button>
+      <div class="ac-footer" style="display:flex; gap:10px;">
+        <button class="ac-chat-btn" style="${isRoot ? 'background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; border:none; flex:1.5;' : ''}" onclick="openAgentChat('${a.agent_id}')"><i data-lucide="message-square"></i> ${isRoot ? '👑 Executive Chat' : 'Start Chat'}</button>
+        ${isRoot ? `
+          <button class="ac-chat-btn" style="background:rgba(245,158,11,0.1); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700;" onclick="openDashboardDailyPlanner(event)">
+            <i data-lucide="calendar"></i> Planner
+          </button>
+        ` : ''}
       </div>
     </div>
   `}).join('');
@@ -33951,6 +33957,317 @@ Also include a "meta" object at the end:
       });
     }
 
+    // ── Dashboard Daily Planner logic ──────────────────────────────────────
+    let _dbPlanFilter = 'all';
+    let _dbSelectedPlanCat = 'work';
+    let _dbPlanConflictCheckTimer = null;
+
+    function openDashboardDailyPlanner(event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      
+      const modal = document.getElementById('dashboard-planner-modal');
+      if (modal) {
+        modal.classList.add('open');
+      }
+      
+      // Load plans
+      loadDashboardTodayPlans();
+      loadDashboardAllPlans(_dbPlanFilter);
+    }
+
+    function closeDashboardPlanner() {
+      const modal = document.getElementById('dashboard-planner-modal');
+      if (modal) {
+        modal.classList.remove('open');
+      }
+    }
+
+    async function loadDashboardTodayPlans() {
+      const container = document.getElementById('db-today-plans-list');
+      if (!container) return;
+      container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Loading...</div>';
+      
+      try {
+        const r = await fetch('/api/root-agent/plans/today', { headers: hdrs() });
+        if (!r.ok) throw new Error();
+        const plans = await r.json();
+        
+        if (!plans || plans.length === 0) {
+          container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">🌟 No plans today — add one!</div>';
+          return;
+        }
+        
+        container.innerHTML = plans.map(p => {
+          const cat = getPlanCatInfo(p.category);
+          const isCompleted = p.status === 'completed';
+          const timeStr = formatTime12h(p.plan_time);
+          return `
+            <div class="db-plan-card ${isCompleted ? 'completed' : ''}" style="cursor:pointer;" onclick="markDashboardPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
+              <div class="db-plan-card-top">
+                <div style="flex:1;">
+                  <div style="margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span class="db-cat-badge ${getDbCatBadgeCls(p.category)}">${cat.icon} ${cat.label}</span>
+                    <span style="font-size:10px; color:var(--text3);">${timeStr}</span>
+                  </div>
+                  <div class="db-plan-card-title">${escHtml(p.title)}</div>
+                </div>
+                <div class="db-plan-complete-btn ${isCompleted ? 'done' : ''}">
+                  ${isCompleted ? '✓' : ''}
+                </div>
+              </div>
+              ${isCompleted ? '<div style="font-size:10px;color:#4ade80;margin-top:4px;font-weight:700;">✅ Done</div>' : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Could not load today\'s plans</div>';
+      }
+    }
+
+    async function loadDashboardAllPlans(filter) {
+      const container = document.getElementById('db-all-plans-list');
+      if (!container) return;
+      container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Loading...</div>';
+      
+      try {
+        const url = filter && filter !== 'all' ? `/api/root-agent/plans?filter=${filter}` : '/api/root-agent/plans';
+        const r = await fetch(url, { headers: hdrs() });
+        if (!r.ok) throw new Error();
+        const plans = await r.json();
+        
+        if (!plans || plans.length === 0) {
+          container.innerHTML = `
+            <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">
+              📋 No plans found
+            </div>`;
+          return;
+        }
+        
+        container.innerHTML = plans.map(p => {
+          const cat = getPlanCatInfo(p.category);
+          const isCompleted = p.status === 'completed';
+          const timeStr = formatTime12h(p.plan_time);
+          const dateStr = formatDateLabel(p.plan_date);
+          const isMeeting = p.from_meeting;
+          return `
+            <div class="db-plan-card ${isCompleted ? 'completed' : ''}">
+              <div class="db-plan-card-top">
+                <div style="flex:1;">
+                  <div style="margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span class="db-cat-badge ${getDbCatBadgeCls(p.category)}">${cat.icon} ${cat.label}</span>
+                    ${isMeeting ? '<span class="db-cat-badge db-cat-meeting">📞 Meeting</span>' : ''}
+                  </div>
+                  <div class="db-plan-card-title">${escHtml(p.title)}</div>
+                </div>
+                <button class="db-plan-complete-btn ${isCompleted ? 'done' : ''}" onclick="markDashboardPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Click to undo' : 'Mark as complete'}">
+                  ${isCompleted ? '✓' : ''}
+                </button>
+              </div>
+              ${p.description ? `<div class="db-plan-card-desc" style="margin-top:6px;">${escHtml(p.description)}</div>` : ''}
+              <div class="db-plan-card-footer">
+                <div>📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}</div>
+                <div style="color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')}; font-weight:700; text-transform:uppercase;">
+                  ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Could not load plans</div>';
+      }
+    }
+
+    async function markDashboardPlanComplete(planId, el) {
+      try {
+        const r = await fetch(`/api/root-agent/plans/${planId}/complete`, { method: 'PATCH', headers: hdrs() });
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        
+        loadDashboardTodayPlans();
+        loadDashboardAllPlans(_dbPlanFilter);
+        toast(data.plan.is_completed ? '✅ Plan marked as completed!' : '↩️ Plan marked as pending', '');
+      } catch (e) {
+        toast('⚠️ Could not update plan', 'err');
+      }
+    }
+
+    function setDashboardPlanFilter(filter, btn) {
+      _dbPlanFilter = filter;
+      document.querySelectorAll('.db-pf-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      loadDashboardAllPlans(filter);
+    }
+
+    // Add Plan form logic
+    function openDashboardAddPlan() {
+      const modal = document.getElementById('dashboard-add-plan-modal');
+      if (!modal) return;
+      
+      const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      const todayStr = nowIST.toISOString().slice(0, 10);
+      const timeStr = nowIST.toTimeString().slice(0, 5);
+      
+      const dateInput = document.getElementById('db-plan-date-input');
+      const timeInput = document.getElementById('db-plan-time-input');
+      if (dateInput) {
+        dateInput.value = todayStr;
+        dateInput.min = todayStr;
+      }
+      if (timeInput) timeInput.value = timeStr;
+      
+      const titleInput = document.getElementById('db-plan-title-input');
+      const descInput = document.getElementById('db-plan-desc-input');
+      if (titleInput) titleInput.value = '';
+      if (descInput) descInput.value = '';
+      
+      selectDashboardPlanCat(document.querySelector('.db-cat-btn[data-cat="work"]'), 'work');
+      hideDashboardConflictWarn();
+      
+      modal.classList.add('open');
+      
+      if (dateInput) dateInput.onchange = () => checkDashboardConflictForModal();
+      if (timeInput) timeInput.onchange = () => checkDashboardConflictForModal();
+    }
+
+    function closeDashboardAddPlan() {
+      const modal = document.getElementById('dashboard-add-plan-modal');
+      if (modal) modal.classList.remove('open');
+      hideDashboardConflictWarn();
+    }
+
+    function selectDashboardPlanCat(btn, cat) {
+      _dbSelectedPlanCat = cat;
+      document.querySelectorAll('.db-cat-btn').forEach(b => b.classList.remove('selected'));
+      if (btn) btn.classList.add('selected');
+    }
+
+    function hideDashboardConflictWarn() {
+      const warn = document.getElementById('db-plan-conflict-warn');
+      if (warn) warn.style.display = 'none';
+    }
+
+    async function checkDashboardConflictForModal() {
+      const dateVal = document.getElementById('db-plan-date-input')?.value;
+      const timeVal = document.getElementById('db-plan-time-input')?.value;
+      if (!dateVal || !timeVal) return;
+      
+      clearTimeout(_dbPlanConflictCheckTimer);
+      _dbPlanConflictCheckTimer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/api/root-agent/plans/check-conflict?plan_date=${dateVal}&plan_time=${timeVal}`, { headers: hdrs() });
+          if (!r.ok) return;
+          const data = await r.json();
+          if (data.has_conflict) {
+            const conflictTitle = data.conflicts[0]?.title || 'Another plan';
+            const conflictTime = data.conflicts[0]?.plan_time ? formatTime12h(data.conflicts[0].plan_time) : '';
+            showDashboardConflictWarn(`⚠️ "${conflictTitle}" is already scheduled at ${conflictTime}. Choose a different time or proceed anyway.`);
+          } else {
+            hideDashboardConflictWarn();
+          }
+        } catch(e) {}
+      }, 600);
+    }
+
+    function showDashboardConflictWarn(msg) {
+      const warn = document.getElementById('db-plan-conflict-warn');
+      const msgEl = document.getElementById('db-plan-conflict-msg');
+      if (warn) warn.style.display = 'block';
+      if (msgEl) msgEl.textContent = msg;
+    }
+
+    async function submitDashboardNewPlan() {
+      const title = document.getElementById('db-plan-title-input')?.value?.trim();
+      const desc = document.getElementById('db-plan-desc-input')?.value?.trim();
+      const dateVal = document.getElementById('db-plan-date-input')?.value;
+      const timeVal = document.getElementById('db-plan-time-input')?.value;
+      const submitBtn = document.getElementById('db-plan-submit-btn');
+      
+      if (!title) { toast('⚠️ Please enter a plan title', 'err'); return; }
+      if (!dateVal) { toast('⚠️ Please select a date', 'err'); return; }
+      if (!timeVal) { toast('⚠️ Please select a time', 'err'); return; }
+      
+      const planDt = new Date(`${dateVal}T${timeVal}`);
+      const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 5 * 60 * 1000); // 5min buffer
+      if (planDt < nowIST) {
+        toast('⚠️ Cannot create plan for a past date/time', 'err');
+        return;
+      }
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Creating…';
+      
+      try {
+        const payload = {
+          title,
+          description: desc || '',
+          category: _dbSelectedPlanCat,
+          plan_date: dateVal,
+          plan_time: timeVal
+        };
+        const r = await fetch('/api/root-agent/plans', {
+          method: 'POST',
+          headers: hdrs(),
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || 'Failed to create plan');
+        
+        closeDashboardAddPlan();
+        toast('📅 Plan created successfully!', '');
+        loadDashboardTodayPlans();
+        loadDashboardAllPlans(_dbPlanFilter);
+      } catch(e) {
+        toast('⚠️ ' + e.message, 'err');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Plan';
+      }
+    }
+
+    // Helper functions
+    const PLAN_CATS = {
+      work: { label: 'Work', icon: '💼', cls: 'cat-work' },
+      personal: { label: 'Personal', icon: '🌸', cls: 'cat-personal' },
+      health: { label: 'Health', icon: '🍏', cls: 'cat-health' },
+      meeting: { label: 'Meeting', icon: '📞', cls: 'cat-meeting' },
+      other: { label: 'Other', icon: '✨', cls: 'cat-other' }
+    };
+
+    function getPlanCatInfo(cat) {
+      return PLAN_CATS[cat] || PLAN_CATS.other;
+    }
+
+    function getDbCatBadgeCls(cat) {
+      const info = getPlanCatInfo(cat);
+      return 'db-cat-' + (cat || 'other');
+    }
+
+    function formatTime12h(timeStr) {
+      if (!timeStr) return '';
+      try {
+        const [h, m] = timeStr.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+      } catch(e) { return timeStr; }
+    }
+
+    function formatDateLabel(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr + 'T00:00:00');
+        const todayStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const tomorrowStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 86400000).toISOString().slice(0, 10);
+        if (dateStr === todayStr) return 'Today';
+        if (dateStr === tomorrowStr) return 'Tomorrow';
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      } catch(e) { return dateStr; }
+    }
+
   </script>
 
   <!-- AI Quiz Modal -->
@@ -34180,6 +34497,241 @@ Also include a "meta" object at the end:
       
       <div id="veditor-scene-select-options" style="display:flex; flex-direction:column; gap:8px; max-height:240px; overflow-y:auto; padding-right:4px;">
         <!-- Dynamic options -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       DAILY PLANNER MODAL & STYLING FOR DASHBOARD
+       ═══════════════════════════════════════════ -->
+  <style>
+    /* Daily Planner Custom Styling */
+    .db-pf-btn {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .db-pf-btn:hover {
+      background: var(--border);
+      color: var(--text1);
+    }
+    .db-pf-btn.active {
+      background: rgba(245,158,11,0.12) !important;
+      border-color: rgba(245,158,11,0.35) !important;
+      color: #f59e0b !important;
+    }
+    .db-cat-btn {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      transition: all 0.2s;
+      outline: none;
+    }
+    .db-cat-btn:hover {
+      background: var(--border);
+    }
+    .db-cat-btn.selected {
+      background: rgba(245,158,11,0.15) !important;
+      border-color: #f59e0b !important;
+      color: #f59e0b !important;
+    }
+    .db-plan-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      transition: all 0.2s;
+    }
+    .db-plan-card:hover {
+      border-color: rgba(245,158,11,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .db-plan-card.completed {
+      opacity: 0.6;
+      background: rgba(255,255,255,0.01);
+    }
+    .db-plan-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .db-plan-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text1);
+      line-height: 1.4;
+    }
+    .db-plan-card.completed .db-plan-card-title {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
+    .db-plan-complete-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 11px;
+      color: #22c55e;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .db-plan-complete-btn:hover {
+      border-color: #22c55e;
+      background: rgba(34,197,94,0.1);
+    }
+    .db-plan-complete-btn.done {
+      border-color: #22c55e;
+      background: #22c55e;
+      color: #fff;
+    }
+    .db-plan-card-desc {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.4;
+      background: rgba(0,0,0,0.15);
+      padding: 6px 8px;
+      border-radius: 6px;
+    }
+    .db-plan-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      padding-top: 6px;
+    }
+    .db-cat-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .db-cat-work     { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+    .db-cat-personal { background: rgba(236,72,153,0.12); color: #f472b6; border: 1px solid rgba(236,72,153,0.2); }
+    .db-cat-health   { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+    .db-cat-meeting  { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+    .db-cat-other    { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+  </style>
+
+  <div class="modal-overlay" id="dashboard-planner-modal" style="z-index: 2000;">
+    <div class="modal" style="width: 750px; max-width: 95vw; padding: 24px; display: flex; flex-direction: column;">
+      <!-- Modal Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <h3 style="margin:0; font-size:18px; font-weight:800; background:linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; gap:8px;">
+          📅 Daily Planner
+        </h3>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="btn btn-primary" onclick="openDashboardAddPlan()" style="padding: 6px 12px; font-size: 13px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="plus" style="width:14px; height:14px;"></i> Add Plan
+          </button>
+          <button onclick="closeDashboardPlanner()" style="background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer;">✕</button>
+        </div>
+      </div>
+
+      <!-- Modal Body split layout -->
+      <div class="planner-modal-body" style="display:flex; gap:20px; height: 450px; overflow:hidden;">
+        <!-- Left side: Today's Tasks (Scrollable list of today's items) -->
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; background:rgba(245,158,11,0.02); border:1px solid rgba(245,158,11,0.1); border-radius:12px; padding:12px;">
+          <div style="font-size:11px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px;">⚡ Today's Tasks</div>
+          <div id="db-today-plans-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+        <!-- Right side: Filters and All plans -->
+        <div style="flex:1.2; display:flex; flex-direction:column; overflow:hidden;">
+          <!-- Filters -->
+          <div style="display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px;">
+            <button class="db-pf-btn active" onclick="setDashboardPlanFilter('all', this)">All</button>
+            <button class="db-pf-btn" onclick="setDashboardPlanFilter('pending', this)">⏳ Pending</button>
+            <button class="db-pf-btn" onclick="setDashboardPlanFilter('upcoming', this)">🔵 Upcoming</button>
+            <button class="db-pf-btn" onclick="setDashboardPlanFilter('completed', this)">✅ Done</button>
+          </div>
+          <!-- Scrollable Plan List -->
+          <div id="db-all-plans-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dashboard-add-plan-modal" style="z-index: 2100;">
+    <div class="modal" style="width: 420px; padding: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+        <h4 style="margin:0; font-size:16px; font-weight:800; color:var(--text1);">📅 Add Daily Plan</h4>
+        <button onclick="closeDashboardAddPlan()" style="background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      
+      <!-- Title -->
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Plan Title *</label>
+        <input type="text" id="db-plan-title-input" class="form-input" placeholder="e.g. Team Standup, Exercise…" maxlength="200" style="width:100%;">
+      </div>
+
+      <!-- Description -->
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Description</label>
+        <textarea id="db-plan-desc-input" class="form-input" style="height:60px; resize:none; width:100%;" placeholder="Brief details about this plan…"></textarea>
+      </div>
+
+      <!-- Date & Time -->
+      <div style="display:flex; gap:12px; margin-bottom: 12px;">
+        <div style="flex:1;">
+          <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Date *</label>
+          <input type="date" id="db-plan-date-input" class="form-input" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Time *</label>
+          <input type="time" id="db-plan-time-input" class="form-input" style="width:100%;">
+        </div>
+      </div>
+
+      <!-- Category Buttons -->
+      <div style="margin-bottom: 16px;">
+        <label class="form-label" style="display:block; margin-bottom:6px; font-size:12px; color:var(--text2);">Category</label>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;" id="db-plan-cats">
+          <button type="button" class="db-cat-btn selected" data-cat="work" onclick="selectDashboardPlanCat(this, 'work')" style="padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">💼 Work</button>
+          <button type="button" class="db-cat-btn" data-cat="personal" onclick="selectDashboardPlanCat(this, 'personal')" style="padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">🌸 Personal</button>
+          <button type="button" class="db-cat-btn" data-cat="health" onclick="selectDashboardPlanCat(this, 'health')" style="padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">🍏 Health</button>
+          <button type="button" class="db-cat-btn" data-cat="meeting" onclick="selectDashboardPlanCat(this, 'meeting')" style="padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">📞 Meeting</button>
+          <button type="button" class="db-cat-btn" data-cat="other" onclick="selectDashboardPlanCat(this, 'other')" style="padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">✨ Other</button>
+        </div>
+      </div>
+
+      <!-- Conflict Warning -->
+      <div id="db-plan-conflict-warn" style="display:none; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); color:#f59e0b; padding:8px 12px; border-radius:8px; font-size:11px; margin-bottom:12px;">
+        <span id="db-plan-conflict-msg"></span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn btn-secondary" onclick="closeDashboardAddPlan()" style="padding: 6px 12px; font-size: 13px;">Cancel</button>
+        <button class="btn btn-primary" id="db-plan-submit-btn" onclick="submitDashboardNewPlan()" style="padding: 6px 16px; font-size: 13px;">Create Plan</button>
       </div>
     </div>
   </div>

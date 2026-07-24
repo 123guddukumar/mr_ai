@@ -2,7 +2,7 @@
 MR AI RAG v2 - Root Personal Assistant Agent Routes 👑
 Handles Root Agent creation, Owner authentication, Personal Memory notes,
 Meeting scheduling with 30-min reminders, Agent audit history (top 5 users pagination),
-and Media Vault (images, videos, documents).
+Media Vault (images, videos, documents), and Daily Planner.
 """
 
 import os
@@ -10,16 +10,17 @@ import json
 import logging
 import secrets
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as date_type
 from typing import Optional, List, Dict
-from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form, Request, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from app.core.database import get_db
 from app.core.models import (
     Agent, AgentPublicSession, AgentPublicMessage, Client, Notification,
-    RootMemory, RootMeeting, RootMedia
+    RootMemory, RootMeeting, RootMedia, RootDailyPlan
 )
 from app.core.clients import validate_client_token
 from app.services.llm import generate_answer, set_runtime_provider, get_active_api_key
@@ -741,4 +742,315 @@ async def get_root_system_overview(
         "media": [m.to_dict() for m in media_items],
         "total_agents": len(sub_agents),
         "agents_overview": agents_overview
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DAILY PLANNER ENDPOINTS — Only for Root Personal Assistant Agent 👑
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CreatePlanReq(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    category: Optional[str] = "work"   # work | personal | health | meeting | other
+    plan_date: str   # YYYY-MM-DD
+    plan_time: str   # HH:MM
+
+class MeetingToPlanReq(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    plan_date: str   # YYYY-MM-DD
+    plan_time: str   # HH:MM
+    source_agent_id: Optional[str] = None
+
+
+def _compute_plan_status(plan_date: str, plan_time: str, is_completed: bool) -> str:
+    """Compute plan status based on date/time vs now."""
+    if is_completed:
+        return "completed"
+    try:
+        plan_dt = datetime.strptime(f"{plan_date} {plan_time}", "%Y-%m-%d %H:%M")
+        now = datetime.utcnow() + timedelta(hours=5, minutes=30)  # IST offset
+        if plan_dt < now:
+            return "completed"  # Auto-complete if past
+        today_str = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d")
+        if plan_date == today_str:
+            return "pending"
+        return "upcoming"
+    except Exception:
+        return "pending"
+
+
+@router.get("/root-agent/plans/today")
+async def get_today_plans(
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Get all plans for today for the sliding carousel."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+    today_str = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d")
+
+    plans = db.query(RootDailyPlan).filter(
+        RootDailyPlan.client_id == client_id,
+        RootDailyPlan.plan_date == today_str
+    ).order_by(RootDailyPlan.plan_time.asc()).all()
+
+    result = []
+    for p in plans:
+        d = p.to_dict()
+        d["status"] = _compute_plan_status(p.plan_date, p.plan_time, p.is_completed)
+        result.append(d)
+    return result
+
+
+@router.get("/root-agent/plans")
+async def list_daily_plans(
+    filter: Optional[str] = Query(None),   # pending | completed | upcoming | all
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """List all daily plans sorted by nearest date-time."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    query = db.query(RootDailyPlan).filter(RootDailyPlan.client_id == client_id)
+    plans = query.all()
+
+    result = []
+    for p in plans:
+        d = p.to_dict()
+        computed_status = _compute_plan_status(p.plan_date, p.plan_time, p.is_completed)
+        d["status"] = computed_status
+        result.append(d)
+
+    # Filter
+    if filter and filter != "all":
+        result = [p for p in result if p["status"] == filter]
+
+    # Sort by nearest date-time
+    def sort_key(p):
+        try:
+            return datetime.strptime(f"{p['plan_date']} {p['plan_time']}", "%Y-%m-%d %H:%M")
+        except Exception:
+            return datetime.max
+
+    result.sort(key=sort_key)
+    return result
+
+
+@router.post("/root-agent/plans")
+async def create_daily_plan(
+    req: CreatePlanReq,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Create a new daily plan."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    # Validate date is not in past
+    try:
+        plan_dt = datetime.strptime(f"{req.plan_date} {req.plan_time}", "%Y-%m-%d %H:%M")
+        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        if plan_dt < now_ist - timedelta(minutes=5):
+            raise HTTPException(status_code=400, detail="Cannot create plan for a past date/time.")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date or time format. Use YYYY-MM-DD and HH:MM.")
+
+    plan = RootDailyPlan(
+        plan_id=secrets.token_hex(8),
+        client_id=client_id,
+        owner_id=client_id,
+        title=req.title.strip(),
+        description=req.description or "",
+        category=req.category or "work",
+        plan_date=req.plan_date,
+        plan_time=req.plan_time,
+        status="pending",
+        is_completed=False,
+        from_meeting=False,
+        created_at=datetime.utcnow()
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+
+    d = plan.to_dict()
+    d["status"] = _compute_plan_status(plan.plan_date, plan.plan_time, plan.is_completed)
+    return {"success": True, "plan": d}
+
+
+@router.patch("/root-agent/plans/{plan_id}/complete")
+async def complete_daily_plan(
+    plan_id: str,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Mark a plan as completed (toggle)."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    plan = db.query(RootDailyPlan).filter(
+        RootDailyPlan.plan_id == plan_id,
+        RootDailyPlan.client_id == client_id
+    ).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    plan.is_completed = not plan.is_completed
+    plan.completed_at = datetime.utcnow() if plan.is_completed else None
+    plan.status = "completed" if plan.is_completed else _compute_plan_status(plan.plan_date, plan.plan_time, False)
+    db.commit()
+    db.refresh(plan)
+
+    d = plan.to_dict()
+    d["status"] = plan.status
+    return {"success": True, "plan": d}
+
+
+@router.post("/root-agent/plans/auto-complete")
+async def auto_complete_past_plans(
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Auto-complete all plans whose date-time has passed."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    today_str = now_ist.strftime("%Y-%m-%d")
+    current_time_str = now_ist.strftime("%H:%M")
+
+    plans = db.query(RootDailyPlan).filter(
+        RootDailyPlan.client_id == client_id,
+        RootDailyPlan.is_completed == False
+    ).all()
+
+    updated_count = 0
+    for p in plans:
+        try:
+            plan_dt = datetime.strptime(f"{p.plan_date} {p.plan_time}", "%Y-%m-%d %H:%M")
+            if plan_dt < now_ist:
+                p.is_completed = True
+                p.status = "completed"
+                p.completed_at = datetime.utcnow()
+                updated_count += 1
+        except Exception:
+            pass
+
+    db.commit()
+    return {"auto_completed": updated_count}
+
+
+@router.get("/root-agent/plans/check-conflict")
+async def check_plan_conflict(
+    plan_date: str = Query(...),
+    plan_time: str = Query(...),
+    exclude_plan_id: Optional[str] = Query(None),
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Check if there's already a plan at the given date and time (within 30-min window)."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    try:
+        target_dt = datetime.strptime(f"{plan_date} {plan_time}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date or time format.")
+
+    # Check for plans within ±30 min window on same date
+    plans_on_date = db.query(RootDailyPlan).filter(
+        RootDailyPlan.client_id == client_id,
+        RootDailyPlan.plan_date == plan_date,
+        RootDailyPlan.is_completed == False
+    ).all()
+
+    conflicts = []
+    for p in plans_on_date:
+        if exclude_plan_id and p.plan_id == exclude_plan_id:
+            continue
+        try:
+            p_dt = datetime.strptime(f"{p.plan_date} {p.plan_time}", "%Y-%m-%d %H:%M")
+            diff = abs((p_dt - target_dt).total_seconds() / 60)
+            if diff < 30:  # Within 30 minutes
+                conflicts.append({
+                    "plan_id": p.plan_id,
+                    "title": p.title,
+                    "plan_time": p.plan_time,
+                    "category": p.category,
+                    "diff_minutes": round(diff)
+                })
+        except Exception:
+            pass
+
+    return {
+        "has_conflict": len(conflicts) > 0,
+        "conflicts": conflicts
+    }
+
+
+@router.post("/root-agent/plans/from-meeting")
+async def add_plan_from_meeting(
+    req: MeetingToPlanReq,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Called by sub-agent when a meeting is scheduled in chat.
+    Saves to Root Planner with category='meeting' and checks conflicts.
+    """
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    # Check conflict first
+    conflict_resp = {"has_conflict": False, "conflicts": []}
+    try:
+        target_dt = datetime.strptime(f"{req.plan_date} {req.plan_time}", "%Y-%m-%d %H:%M")
+        plans_on_date = db.query(RootDailyPlan).filter(
+            RootDailyPlan.client_id == client_id,
+            RootDailyPlan.plan_date == req.plan_date,
+            RootDailyPlan.is_completed == False
+        ).all()
+        for p in plans_on_date:
+            p_dt = datetime.strptime(f"{p.plan_date} {p.plan_time}", "%Y-%m-%d %H:%M")
+            diff = abs((p_dt - target_dt).total_seconds() / 60)
+            if diff < 30:
+                conflict_resp["has_conflict"] = True
+                conflict_resp["conflicts"].append({
+                    "plan_id": p.plan_id,
+                    "title": p.title,
+                    "plan_time": p.plan_time,
+                    "category": p.category,
+                    "diff_minutes": round(diff)
+                })
+    except Exception:
+        pass
+
+    # Create the plan regardless (caller decides to show warning)
+    plan = RootDailyPlan(
+        plan_id=secrets.token_hex(8),
+        client_id=client_id,
+        owner_id=client_id,
+        title=req.title.strip(),
+        description=req.description or "",
+        category="meeting",
+        plan_date=req.plan_date,
+        plan_time=req.plan_time,
+        status="pending",
+        is_completed=False,
+        from_meeting=True,
+        created_at=datetime.utcnow()
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+
+    d = plan.to_dict()
+    d["status"] = _compute_plan_status(plan.plan_date, plan.plan_time, plan.is_completed)
+    return {
+        "success": True,
+        "plan": d,
+        "conflict": conflict_resp
     }

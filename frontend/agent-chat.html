@@ -633,7 +633,536 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   color: #000000 !important;
   box-shadow: 0 4px 15px rgba(255, 122, 0, 0.4) !important;
 }
+
+/* ═══════════════════════════════════════════════════════
+   DAILY PLANNER — Root Agent Only
+   ═══════════════════════════════════════════════════════ */
+
+/* Planner Panel */
+#planner-section {
+  display: none;
+  flex-direction: column;
+  width: 340px;
+  min-width: 300px;
+  max-width: 340px;
+  height: 100%;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  animation: plannerSlideIn 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes plannerSlideIn {
+  from { opacity:0; transform: translateX(40px); }
+  to   { opacity:1; transform: translateX(0); }
+}
+#planner-section.visible { display: flex; }
+
+/* Planner Header */
+.planner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg2);
+}
+.planner-title {
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.planner-title-icon { font-size: 16px; }
+.planner-date-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Today's Slider */
+.planner-slider-wrap {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: rgba(245,158,11,0.04);
+}
+.planner-slider-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.today-slider {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  scroll-behavior: smooth;
+}
+.today-slider::-webkit-scrollbar { display: none; }
+.slider-card {
+  min-width: 140px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.slider-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); border-color: #f59e0b; }
+.slider-card.completed-card { opacity: 0.5; filter: grayscale(0.7); }
+.slider-card-cat {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.slider-card-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.slider-card-title {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.slider-empty {
+  text-align: center;
+  color: var(--text3);
+  font-size: 12px;
+  padding: 12px 0;
+  width: 100%;
+}
+
+/* Filter Tabs */
+.planner-filters {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.planner-filters::-webkit-scrollbar { display: none; }
+.pf-btn {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.pf-btn.active {
+  background: #f59e0b;
+  color: #000;
+  border-color: #f59e0b;
+  box-shadow: 0 3px 10px rgba(245,158,11,0.3);
+}
+.pf-btn:hover:not(.active) { border-color: #f59e0b; color: #f59e0b; }
+
+/* Plan List */
+.plan-list-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-list-wrap::-webkit-scrollbar { width: 3px; }
+.plan-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.plan-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+  overflow: hidden;
+  animation: planCardIn 0.3s ease;
+}
+@keyframes planCardIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); border-color: rgba(245,158,11,0.4); }
+.plan-card.completed {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  background: var(--bg2);
+}
+.plan-card.completed .plan-card-title { text-decoration: line-through; color: var(--text3); }
+.plan-card.from-meeting-card { border-color: rgba(96,165,250,0.3); }
+.plan-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.plan-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.plan-cat-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.plan-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.plan-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.plan-card-desc {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.5;
+  margin-bottom: 6px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.plan-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.plan-card-dt {
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.plan-meeting-badge {
+  font-size: 9px;
+  background: rgba(96,165,250,0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-weight: 700;
+}
+.plan-complete-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.plan-complete-btn:hover { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+.plan-complete-btn.done { border-color: #22c55e; background: #22c55e; color: #fff; }
+
+/* Category Colors */
+.cat-work    { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.cat-personal{ background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.25); }
+.cat-health  { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.cat-meeting { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+.cat-other   { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+
+.dot-pending  { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
+.dot-upcoming { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
+.dot-completed{ background: #6b7280; }
+
+/* FAB Button */
+#add-plan-fab {
+  display: none;
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(245,158,11,0.45), 0 0 0 0 rgba(245,158,11,0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  z-index: 500;
+  animation: fabPulse 3s infinite;
+}
+#add-plan-fab.fab-visible { display: flex; }
+@keyframes fabPulse {
+  0%,100% { box-shadow: 0 8px 25px rgba(245,158,11,0.45), 0 0 0 0 rgba(245,158,11,0.4); }
+  50%      { box-shadow: 0 8px 25px rgba(245,158,11,0.45), 0 0 0 10px rgba(245,158,11,0); }
+}
+#add-plan-fab:hover { transform: scale(1.12) rotate(5deg); box-shadow: 0 12px 35px rgba(245,158,11,0.6); }
+
+/* Plan Modal Overlay */
+#add-plan-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+#add-plan-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.plan-modal-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  transform: translateY(24px) scale(0.97);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+#add-plan-modal.open .plan-modal-box {
+  transform: translateY(0) scale(1);
+}
+.plan-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.plan-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.plan-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 16px;
+  font-weight: 700;
+}
+.plan-modal-close:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.plan-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.plan-form-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.plan-form-input {
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s;
+  width: 100%;
+}
+.plan-form-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.12);
+}
+.plan-form-input::placeholder { color: var(--text3); }
+select.plan-form-input { cursor: pointer; }
+.plan-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.plan-cat-btn {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.plan-cat-btn .cat-icon { font-size: 16px; }
+.plan-cat-btn.selected-cat { border-color: #f59e0b; background: rgba(245,158,11,0.12); color: #f59e0b; }
+.plan-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.plan-conflict-warn {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #f87171;
+  font-weight: 600;
+  display: none;
+  gap: 6px;
+  align-items: flex-start;
+  animation: conflictShake 0.4s ease;
+}
+@keyframes conflictShake {
+  0%,100% { transform: translateX(0); }
+  20%,60%  { transform: translateX(-4px); }
+  40%,80%  { transform: translateX(4px); }
+}
+.plan-conflict-warn.show { display: flex; }
+.plan-submit-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
+}
+.plan-submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(245,158,11,0.4); }
+.plan-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Plan list empty state */
+.plan-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text3);
+}
+.plan-empty-icon { font-size: 40px; margin-bottom: 10px; }
+.plan-empty-text { font-size: 13px; font-weight: 600; }
+.plan-empty-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* Conflict warning inside chat */
+.chat-conflict-warn {
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-left: 4px solid #ef4444;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #f87171;
+  font-weight: 600;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* Planner toggle btn in navbar */
+#planner-toggle-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.35);
+  color: #f59e0b;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 16px;
+}
+#planner-toggle-btn.show { display: flex; }
+#planner-toggle-btn:hover { background: rgba(245,158,11,0.2); box-shadow: 0 3px 12px rgba(245,158,11,0.25); }
+#planner-toggle-btn.active-toggle { background: #f59e0b; color: #000; }
+
+@media (max-width: 900px) {
+  #planner-section { position: fixed; right: 0; top: 0; bottom: 0; z-index: 800; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1); box-shadow: -10px 0 40px rgba(0,0,0,0.3); }
+  #planner-section.visible { transform: translateX(0); display: flex; }
+}
 </style>
+
 </head>
 <body id="body">
 
@@ -690,10 +1219,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     </a>
     <button class="nav-btn" onclick="clearLocalChat()" title="Clear Chat Screen"><i data-lucide="trash-2"></i></button>
     <button class="nav-btn" onclick="openFeedbackModal()" title="Report & Feedback"><i data-lucide="flag"></i></button>
+    <button id="planner-toggle-btn" class="nav-btn" onclick="togglePlannerPanel()" title="Daily Planner 📅">📅</button>
     <button class="nav-btn" onclick="toggleTheme()"><i data-lucide="moon" id="theme-icon"></i></button>
   </div>
 </nav>
 
+<!-- Main Layout Wrapper: Chat + Planner Panel -->
+<div id="main-layout-wrap" style="display:flex;flex:1;overflow:hidden;height:calc(100vh - 57px);">
 <div class="chat-container">
   <!-- Voice Overlay -->
   <div class="voice-overlay" id="vo-overlay">
@@ -752,7 +1284,106 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   </div>
 </div>
 
-<div class="toast-wall" id="toasts"></div>
+<!-- ═══════════════════════════════════════════
+     DAILY PLANNER PANEL (Root Agent Only) 📅
+     ═══════════════════════════════════════════ -->
+<aside id="planner-section">
+  <!-- Header -->
+  <div class="planner-header">
+    <div>
+      <div class="planner-title"><span class="planner-title-icon">📅</span> Daily Planner</div>
+      <div class="planner-date-label" id="planner-today-label">Today</div>
+    </div>
+    <button onclick="openAddPlanModal()" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;font-size:11px;font-weight:800;padding:6px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;" title="Add New Plan">+ Add Plan</button>
+  </div>
+
+  <!-- Today's Sliding Plans -->
+  <div class="planner-slider-wrap">
+    <div class="planner-slider-label">⚡ Today's Plans</div>
+    <div class="today-slider" id="today-slider">
+      <div class="slider-empty">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="planner-filters">
+    <button class="pf-btn active" onclick="setPlanFilter('all', this)" id="pf-all">All</button>
+    <button class="pf-btn" onclick="setPlanFilter('pending', this)" id="pf-pending">⏳ Pending</button>
+    <button class="pf-btn" onclick="setPlanFilter('upcoming', this)" id="pf-upcoming">🔵 Upcoming</button>
+    <button class="pf-btn" onclick="setPlanFilter('completed', this)" id="pf-completed">✅ Done</button>
+  </div>
+
+  <!-- Plan List -->
+  <div class="plan-list-wrap" id="plan-list">
+    <div class="plan-empty">
+      <div class="plan-empty-icon">📋</div>
+      <div class="plan-empty-text">No plans yet</div>
+      <div class="plan-empty-sub">Click "+ Add Plan" to create your first plan!</div>
+    </div>
+  </div>
+</aside>
+
+</div><!-- end #main-layout-wrap -->
+
+<!-- FAB Button (Add Plan) -->
+<button id="add-plan-fab" class="fab-visible" onclick="openAddPlanModal()" title="Add Daily Plan" style="display:none">
+  📅
+</button>
+
+<!-- Add Plan Modal -->
+<div id="add-plan-modal">
+  <div class="plan-modal-box">
+    <div class="plan-modal-header">
+      <div class="plan-modal-title">📅 Add Daily Plan</div>
+      <button class="plan-modal-close" onclick="closeAddPlanModal()">✕</button>
+    </div>
+
+    <!-- Plan Title -->
+    <div class="plan-form-group">
+      <label class="plan-form-label">Plan Title *</label>
+      <input type="text" id="plan-title-input" class="plan-form-input" placeholder="e.g. Team Standup, Morning Workout…" maxlength="200">
+    </div>
+
+    <!-- Plan Description -->
+    <div class="plan-form-group">
+      <label class="plan-form-label">Description</label>
+      <textarea id="plan-desc-input" class="plan-form-input" style="height:70px;resize:none" placeholder="Brief details about this plan…"></textarea>
+    </div>
+
+    <!-- Category -->
+    <div class="plan-form-group">
+      <label class="plan-form-label">Category</label>
+      <div class="plan-cat-grid">
+        <button class="plan-cat-btn selected-cat" data-cat="work" onclick="selectPlanCat(this, 'work')"><span class="cat-icon">💼</span>Work</button>
+        <button class="plan-cat-btn" data-cat="personal" onclick="selectPlanCat(this, 'personal')"><span class="cat-icon">🏠</span>Personal</button>
+        <button class="plan-cat-btn" data-cat="health" onclick="selectPlanCat(this, 'health')"><span class="cat-icon">💪</span>Health</button>
+        <button class="plan-cat-btn" data-cat="meeting" onclick="selectPlanCat(this, 'meeting')"><span class="cat-icon">📞</span>Meeting</button>
+        <button class="plan-cat-btn" data-cat="other" onclick="selectPlanCat(this, 'other')"><span class="cat-icon">✨</span>Other</button>
+      </div>
+    </div>
+
+    <!-- Date & Time -->
+    <div class="plan-row-2">
+      <div class="plan-form-group">
+        <label class="plan-form-label">Date *</label>
+        <input type="date" id="plan-date-input" class="plan-form-input">
+      </div>
+      <div class="plan-form-group">
+        <label class="plan-form-label">Time *</label>
+        <input type="time" id="plan-time-input" class="plan-form-input">
+      </div>
+    </div>
+
+    <!-- Conflict Warning -->
+    <div class="plan-conflict-warn" id="plan-conflict-warn">
+      <span>⚠️</span>
+      <span id="plan-conflict-msg">There's already a plan at this time slot!</span>
+    </div>
+
+    <!-- Submit -->
+    <button class="plan-submit-btn" id="plan-submit-btn" onclick="submitNewPlan()">📅 Create Plan</button>
+  </div>
+</div>
 
 <script>
 let session = {};
@@ -967,6 +1598,13 @@ async function loadAgent() {
     setMode(chatMode);
     lucide.createIcons();
 
+    // Initialize Daily Planner if this is the Root Agent
+    if (typeof loadPlannerIfRoot === 'function') {
+      setTimeout(() => loadPlannerIfRoot(), 300);
+    }
+    // Fire event for any listeners
+    document.dispatchEvent(new Event('_agentLoaded'));
+
     // Start background polling for creator action buttons
     setInterval(checkSessionAction, 4000);
   } catch(e) {
@@ -1090,6 +1728,8 @@ async function openMeetingCalendarModal(phone) {
           border-radius: 16px;
           width: 90%;
           max-width: 440px;
+          max-height: 90vh;
+          overflow-y: auto;
           padding: 24px;
           color: #f4f4f5;
           box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
@@ -1360,8 +2000,8 @@ async function openMeetingCalendarModal(phone) {
       if (thisDate < today) {
         cell.classList.add('disabled');
       } else {
-        const isDateBooked = bookedDates.some(bd => bd.split('T')[0] === dateStr);
-        if (isDateBooked) {
+        const dateBookingsCount = bookedDates.filter(bd => bd.split('T')[0] === dateStr).length;
+        if (dateBookingsCount >= 7) {
           cell.classList.add('booked');
         }
 
@@ -1473,25 +2113,33 @@ async function openMeetingCalendarModal(phone) {
     }
     const meetingTimeISO = `${selectedDateStr}T${hours}:${minutes}:00`;
 
+    let success = false;
     try {
-      await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
+      const res = await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: nameVal,
           meeting_time: meetingTimeISO,
-          session_id: sessionId
+          session_id: sessionId,
+          device_id: deviceId || ''
         })
       });
+      if (res.ok) {
+        success = true;
+      }
     } catch(e) {
       console.error("Booking error", e);
     }
 
     const dateFormatted = new Date(selectedDateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    const waMessage = `Hello, I would like to schedule a meeting.\n\n👤 Name: ${nameVal}\n📅 Date: ${dateFormatted}\n⏰ Time: ${selectedTimeStr}`;
-    const waUrl = `https://wa.me/${phone.replace('+', '')}?text=${encodeURIComponent(waMessage)}`;
-    window.open(waUrl, '_blank');
-    closeMeetingCalendarModal();
+    
+    if (success) {
+      closeMeetingCalendarModal();
+      appendMessage('assistant', `🎉 **Congratulations!** Your meeting schedule slot is booked successfully for **${dateFormatted}** at **${selectedTimeStr}**.`);
+    } else {
+      alert("⚠️ Booking failed. Please try again.");
+    }
   };
 
   modal.style.display = 'flex';
@@ -1883,6 +2531,12 @@ async function sendMsg() {
       appendMessage('assistant', ans, d.sources || []);
       if(chatMode === 'v2v') speakText(ans);
     }
+
+    // Meeting conflict detection for sub-agent chats
+    if (typeof checkAndAddMeetingToPlanner === 'function') {
+      checkAndAddMeetingToPlanner(ans);
+    }
+
   } catch(e) { stopResponseTimer(); removeTyping(typing); toast('❌ Send failed', 'err'); } finally { isTyping = false; }
 }
 
@@ -2786,9 +3440,470 @@ loadAgent();
   </div>
 </div>
 
+<div class="toast-wall" id="toasts"></div>
+
 <script>
 // Re-trigger lucide icons since we added new elements to the DOM
 if (typeof lucide !== 'undefined') lucide.createIcons();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     DAILY PLANNER JAVASCRIPT — Root Agent Only 📅
+     ═══════════════════════════════════════════════════════ -->
+<script>
+// ── Planner State ──────────────────────────────────────────────────────
+let _plannerActive = false;
+let _planFilter = 'all';
+let _selectedPlanCat = 'work';
+let _planConflictCheckTimer = null;
+let _autoCompleteInterval = null;
+
+// Category config
+const PLAN_CATS = {
+  work:     { label: 'Work',     icon: '💼', cls: 'cat-work' },
+  personal: { label: 'Personal', icon: '🏠', cls: 'cat-personal' },
+  health:   { label: 'Health',   icon: '💪', cls: 'cat-health' },
+  meeting:  { label: 'Meeting',  icon: '📞', cls: 'cat-meeting' },
+  other:    { label: 'Other',    icon: '✨', cls: 'cat-other' }
+};
+
+function getPlanCatInfo(cat) {
+  return PLAN_CATS[cat] || PLAN_CATS.other;
+}
+
+// ── Initialize Planner (called after root agent loads) ─────────────────
+function loadPlannerIfRoot() {
+  const isRootAgent = (_agentData && (_agentData.is_root || _agentData.category === 'root_assistant'));
+  if (!isRootAgent) return;
+
+  // Show planner toggle button
+  const toggleBtn = document.getElementById('planner-toggle-btn');
+  if (toggleBtn) toggleBtn.classList.add('show');
+
+  // Auto-open planner
+  showPlannerPanel();
+
+  // Update today label
+  const todayLabel = document.getElementById('planner-today-label');
+  if (todayLabel) {
+    const now = new Date();
+    todayLabel.textContent = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // Load data
+  loadTodaySlider();
+  loadAllPlans(_planFilter);
+
+  // Auto-complete check every 60 seconds
+  _autoCompleteInterval = setInterval(() => {
+    autoCompletePastPlans();
+    loadTodaySlider();
+    loadAllPlans(_planFilter);
+  }, 60000);
+
+  // Auto-complete on load
+  autoCompletePastPlans();
+}
+
+function showPlannerPanel() {
+  const panel = document.getElementById('planner-section');
+  const fab = document.getElementById('add-plan-fab');
+  const toggleBtn = document.getElementById('planner-toggle-btn');
+  if (panel) { panel.classList.add('visible'); }
+  if (fab) { fab.classList.add('fab-visible'); fab.style.display = 'flex'; }
+  if (toggleBtn) toggleBtn.classList.add('active-toggle');
+  _plannerActive = true;
+}
+
+function hidePlannerPanel() {
+  const panel = document.getElementById('planner-section');
+  const fab = document.getElementById('add-plan-fab');
+  const toggleBtn = document.getElementById('planner-toggle-btn');
+  if (panel) panel.classList.remove('visible');
+  if (fab) { fab.style.display = 'none'; }
+  if (toggleBtn) toggleBtn.classList.remove('active-toggle');
+  _plannerActive = false;
+}
+
+function togglePlannerPanel() {
+  if (_plannerActive) hidePlannerPanel();
+  else showPlannerPanel();
+}
+
+// ── Auto-complete past plans ───────────────────────────────────────────
+async function autoCompletePastPlans() {
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    await fetch('/api/root-agent/plans/auto-complete', { method: 'POST', headers: h });
+  } catch(e) {}
+}
+
+// ── Today Slider ───────────────────────────────────────────────────────
+async function loadTodaySlider() {
+  const slider = document.getElementById('today-slider');
+  if (!slider) return;
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    const r = await fetch('/api/root-agent/plans/today', { headers: h });
+    if (!r.ok) throw new Error();
+    const plans = await r.json();
+    renderTodaySlider(plans);
+  } catch(e) {
+    slider.innerHTML = '<div class="slider-empty">Could not load today\'s plans</div>';
+  }
+}
+
+function renderTodaySlider(plans) {
+  const slider = document.getElementById('today-slider');
+  if (!slider) return;
+  if (!plans || plans.length === 0) {
+    slider.innerHTML = '<div class="slider-empty">🌟 No plans today — add one!</div>';
+    return;
+  }
+  slider.innerHTML = plans.map(p => {
+    const cat = getPlanCatInfo(p.category);
+    const isCompleted = p.status === 'completed';
+    const timeStr = formatTime12h(p.plan_time);
+    return `
+    <div class="slider-card ${isCompleted ? 'completed-card' : ''}" onclick="markPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
+      <div class="slider-card-cat ${cat.cls}">${cat.icon} ${cat.label}</div>
+      <div class="slider-card-time">${timeStr}</div>
+      <div class="slider-card-title">${esc(p.title)}</div>
+      ${isCompleted ? '<div style="font-size:10px;color:#4ade80;margin-top:4px;font-weight:700;">✅ Done</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── All Plans List ─────────────────────────────────────────────────────
+async function loadAllPlans(filter) {
+  const listEl = document.getElementById('plan-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="plan-empty"><div class="plan-empty-icon">⏳</div><div class="plan-empty-text">Loading plans…</div></div>';
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    const url = filter && filter !== 'all' ? `/api/root-agent/plans?filter=${filter}` : '/api/root-agent/plans';
+    const r = await fetch(url, { headers: h });
+    if (!r.ok) throw new Error();
+    const plans = await r.json();
+    renderPlanList(plans);
+  } catch(e) {
+    listEl.innerHTML = '<div class="plan-empty"><div class="plan-empty-icon">⚠️</div><div class="plan-empty-text">Could not load plans</div></div>';
+  }
+}
+
+function renderPlanList(plans) {
+  const listEl = document.getElementById('plan-list');
+  if (!listEl) return;
+  if (!plans || plans.length === 0) {
+    listEl.innerHTML = `
+    <div class="plan-empty">
+      <div class="plan-empty-icon">📋</div>
+      <div class="plan-empty-text">No plans found</div>
+      <div class="plan-empty-sub">Click "+ Add Plan" to create a new plan</div>
+    </div>`;
+    return;
+  }
+  listEl.innerHTML = plans.map(p => {
+    const cat = getPlanCatInfo(p.category);
+    const isCompleted = p.status === 'completed';
+    const statusDotCls = isCompleted ? 'dot-completed' : (p.status === 'upcoming' ? 'dot-upcoming' : 'dot-pending');
+    const timeStr = formatTime12h(p.plan_time);
+    const dateStr = formatDateLabel(p.plan_date);
+    const isMeeting = p.from_meeting;
+    return `
+    <div class="plan-card ${isCompleted ? 'completed' : ''} ${isMeeting ? 'from-meeting-card' : ''}" id="plan-card-${p.plan_id}">
+      <div class="plan-card-top">
+        <div>
+          <div class="plan-card-meta">
+            <span class="plan-status-dot ${statusDotCls}"></span>
+            <span class="plan-cat-badge ${cat.cls}">${cat.icon} ${cat.label}</span>
+            ${isMeeting ? '<span class="plan-meeting-badge">📞 Meeting</span>' : ''}
+          </div>
+          <div class="plan-card-title">${esc(p.title)}</div>
+        </div>
+        <button class="plan-complete-btn ${isCompleted ? 'done' : ''}" onclick="markPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Click to undo' : 'Mark as complete'}" id="complete-btn-${p.plan_id}">
+          ${isCompleted ? '✓' : ''}
+        </button>
+      </div>
+      ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
+      <div class="plan-card-footer">
+        <div class="plan-card-dt">
+          📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}
+        </div>
+        <div style="font-size:10px;color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')};font-weight:700;text-transform:uppercase;letter-spacing:0.4px">
+          ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Mark Plan Complete ─────────────────────────────────────────────────
+async function markPlanComplete(planId, el) {
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    const r = await fetch(`/api/root-agent/plans/${planId}/complete`, { method: 'PATCH', headers: h });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    // Refresh both slider and list
+    loadTodaySlider();
+    loadAllPlans(_planFilter);
+    toast(data.plan.is_completed ? '✅ Plan marked as completed!' : '↩️ Plan marked as pending', '');
+  } catch(e) {
+    toast('⚠️ Could not update plan', 'err');
+  }
+}
+
+// ── Filter Plans ───────────────────────────────────────────────────────
+function setPlanFilter(filter, btn) {
+  _planFilter = filter;
+  // Update active tab
+  document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadAllPlans(filter);
+}
+
+// ── Add Plan Modal ─────────────────────────────────────────────────────
+function openAddPlanModal() {
+  const modal = document.getElementById('add-plan-modal');
+  if (!modal) return;
+
+  // Set today's date as default
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const todayStr = nowIST.toISOString().slice(0, 10);
+  const timeStr = nowIST.toTimeString().slice(0, 5);
+
+  const dateInput = document.getElementById('plan-date-input');
+  const timeInput = document.getElementById('plan-time-input');
+  if (dateInput) {
+    dateInput.value = todayStr;
+    dateInput.min = todayStr; // No past dates
+  }
+  if (timeInput) timeInput.value = timeStr;
+
+  // Clear form
+  const titleInput = document.getElementById('plan-title-input');
+  const descInput = document.getElementById('plan-desc-input');
+  if (titleInput) titleInput.value = '';
+  if (descInput) descInput.value = '';
+  selectPlanCat(document.querySelector('.plan-cat-btn[data-cat="work"]'), 'work');
+  hideConflictWarn();
+
+  modal.classList.add('open');
+
+  // Attach conflict check on date/time change
+  if (dateInput) dateInput.onchange = () => checkConflictForModal();
+  if (timeInput) timeInput.onchange = () => checkConflictForModal();
+}
+
+function closeAddPlanModal() {
+  const modal = document.getElementById('add-plan-modal');
+  if (modal) modal.classList.remove('open');
+  hideConflictWarn();
+}
+
+function selectPlanCat(btn, cat) {
+  _selectedPlanCat = cat;
+  document.querySelectorAll('.plan-cat-btn').forEach(b => b.classList.remove('selected-cat'));
+  if (btn) btn.classList.add('selected-cat');
+}
+
+function hideConflictWarn() {
+  const warn = document.getElementById('plan-conflict-warn');
+  if (warn) warn.classList.remove('show');
+}
+
+async function checkConflictForModal() {
+  const dateVal = document.getElementById('plan-date-input')?.value;
+  const timeVal = document.getElementById('plan-time-input')?.value;
+  if (!dateVal || !timeVal) return;
+
+  clearTimeout(_planConflictCheckTimer);
+  _planConflictCheckTimer = setTimeout(async () => {
+    try {
+      const h = { 'Content-Type': 'application/json' };
+      if (session && session.token) h['X-App-Token'] = session.token;
+      const r = await fetch(`/api/root-agent/plans/check-conflict?plan_date=${dateVal}&plan_time=${timeVal}`, { headers: h });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.has_conflict) {
+        const conflictTitle = data.conflicts[0]?.title || 'Another plan';
+        const conflictTime = data.conflicts[0]?.plan_time ? formatTime12h(data.conflicts[0].plan_time) : '';
+        showConflictWarn(`⚠️ "${conflictTitle}" is already scheduled at ${conflictTime}. Choose a different time or proceed anyway.`);
+      } else {
+        hideConflictWarn();
+      }
+    } catch(e) {}
+  }, 600);
+}
+
+function showConflictWarn(msg) {
+  const warn = document.getElementById('plan-conflict-warn');
+  const msgEl = document.getElementById('plan-conflict-msg');
+  if (warn) { warn.classList.add('show'); }
+  if (msgEl) msgEl.textContent = msg;
+}
+
+async function submitNewPlan() {
+  const title = document.getElementById('plan-title-input')?.value?.trim();
+  const desc = document.getElementById('plan-desc-input')?.value?.trim();
+  const dateVal = document.getElementById('plan-date-input')?.value;
+  const timeVal = document.getElementById('plan-time-input')?.value;
+  const submitBtn = document.getElementById('plan-submit-btn');
+
+  if (!title) { toast('⚠️ Please enter a plan title', 'err'); return; }
+  if (!dateVal) { toast('⚠️ Please select a date', 'err'); return; }
+  if (!timeVal) { toast('⚠️ Please select a time', 'err'); return; }
+
+  // Validate not past
+  const planDt = new Date(`${dateVal}T${timeVal}`);
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 5 * 60 * 1000); // 5min buffer
+  if (planDt < nowIST) {
+    toast('⚠️ Cannot create plan for a past date/time', 'err');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '⏳ Creating…';
+
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    const payload = {
+      title,
+      description: desc || '',
+      category: _selectedPlanCat,
+      plan_date: dateVal,
+      plan_time: timeVal
+    };
+    const r = await fetch('/api/root-agent/plans', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to create plan');
+
+    closeAddPlanModal();
+    toast('📅 Plan created successfully!', '');
+    loadTodaySlider();
+    loadAllPlans(_planFilter);
+  } catch(e) {
+    toast('⚠️ ' + e.message, 'err');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '📅 Create Plan';
+  }
+}
+
+// ── Utility Functions ──────────────────────────────────────────────────
+function formatTime12h(timeStr) {
+  if (!timeStr) return '';
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  } catch(e) { return timeStr; }
+}
+
+function formatDateLabel(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr + 'T00:00:00');
+    const todayStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const tomorrowStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 86400000).toISOString().slice(0, 10);
+    if (dateStr === todayStr) return 'Today';
+    if (dateStr === tomorrowStr) return 'Tomorrow';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  } catch(e) { return dateStr; }
+}
+
+// ── Meeting Conflict Detection (Sub-Agent Chats) ───────────────────────
+// Called after assistant reply when a meeting is being scheduled
+async function checkAndAddMeetingToPlanner(chatMsgText) {
+  const isRootAgent = (_agentData && (_agentData.is_root || _agentData.category === 'root_assistant'));
+  if (isRootAgent) return; // Only for sub-agents
+
+  const meetingKeywords = ['meeting', 'scheduled', 'appointment', 'fixed', 'booked', 'set kiya', 'book kiya'];
+  const hasMeetingCtx = meetingKeywords.some(kw => chatMsgText.toLowerCase().includes(kw));
+  if (!hasMeetingCtx) return;
+
+  // Extract date and time from message using regex
+  let detectedDate = null;
+  let detectedTime = null;
+
+  // Date pattern: YYYY-MM-DD or dd/mm/yyyy or "tomorrow", "today"
+  const dateMatch = chatMsgText.match(/(\d{4}-\d{2}-\d{2})/);
+  if (dateMatch) detectedDate = dateMatch[1];
+
+  // Time pattern: HH:MM or H:MM am/pm
+  const timeMatch = chatMsgText.match(/(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?/);
+  if (timeMatch) {
+    let hr = parseInt(timeMatch[1]);
+    const mn = parseInt(timeMatch[2]);
+    const ampm = (timeMatch[3] || '').toLowerCase();
+    if (ampm === 'pm' && hr < 12) hr += 12;
+    if (ampm === 'am' && hr === 12) hr = 0;
+    detectedTime = `${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+  }
+
+  if (!detectedDate || !detectedTime) return;
+
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+
+    // Check conflict first
+    const conflictR = await fetch(`/api/root-agent/plans/check-conflict?plan_date=${detectedDate}&plan_time=${detectedTime}`, { headers: h });
+    if (conflictR.ok) {
+      const conflictData = await conflictR.json();
+      if (conflictData.has_conflict) {
+        const c = conflictData.conflicts[0];
+        // Show conflict warning in chat
+        const warnDiv = document.createElement('div');
+        warnDiv.className = 'chat-conflict-warn';
+        warnDiv.innerHTML = `⚠️ <strong>Root Planner Conflict:</strong> You already have "<em>${esc(c.title)}</em>" at ${formatTime12h(c.plan_time)} on this date. Consider changing the meeting time or update your planner.`;
+        const msgArea = document.getElementById('msg-area');
+        if (msgArea) msgArea.appendChild(warnDiv);
+        // Scroll to bottom
+        msgArea.scrollTop = msgArea.scrollHeight;
+      }
+    }
+
+    // Add meeting to planner
+    const titleMatch = chatMsgText.match(/meeting[^.!?\n]*with\s+([A-Za-z\s]+)/i);
+    const planTitle = titleMatch ? `Meeting with ${titleMatch[1].trim()}` : 'Meeting (via Chat)';
+
+    await fetch('/api/root-agent/plans/from-meeting', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({
+        title: planTitle,
+        description: chatMsgText.slice(0, 200),
+        plan_date: detectedDate,
+        plan_time: detectedTime
+      })
+    });
+  } catch(e) {
+    console.warn('Meeting-to-planner sync failed:', e);
+  }
+}
+
+// Patch into the existing loadAgent function to init planner
+const _origLoadAgent = typeof loadAgent === 'function' ? loadAgent : null;
+
+// Hook: after loadAgent runs, initialize planner
+document.addEventListener('_agentLoaded', () => { loadPlannerIfRoot(); });
+
+// Close modal on backdrop click
+document.getElementById('add-plan-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeAddPlanModal();
+});
 </script>
 </body>
 </html>

@@ -164,7 +164,22 @@ def init_db():
         "ALTER TABLE root_media ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "CREATE TABLE IF NOT EXISTS agent_feedbacks (id SERIAL PRIMARY KEY, agent_id VARCHAR(64), user_name VARCHAR(200), user_email VARCHAR(300), feedback_type VARCHAR(50) DEFAULT 'feedback', rating INTEGER, comment TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         "ALTER TABLE agent_feedbacks ADD COLUMN IF NOT EXISTS device_id VARCHAR(64)",
-        "ALTER TABLE agent_feedbacks ADD COLUMN IF NOT EXISTS session_id VARCHAR(64)"
+        "ALTER TABLE agent_feedbacks ADD COLUMN IF NOT EXISTS session_id VARCHAR(64)",
+        # ── Root Daily Planner ──────────────────────────────────────────────────
+        "CREATE TABLE IF NOT EXISTS root_daily_plans (id SERIAL PRIMARY KEY, plan_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), owner_id VARCHAR(64), title VARCHAR(300) NOT NULL, description TEXT DEFAULT '', category VARCHAR(50) DEFAULT 'work', plan_date VARCHAR(20) NOT NULL, plan_time VARCHAR(10) NOT NULL, status VARCHAR(30) DEFAULT 'pending', is_completed BOOLEAN DEFAULT FALSE, completed_at TIMESTAMP, from_meeting BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS plan_id VARCHAR(64)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS client_id VARCHAR(64)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS title VARCHAR(300)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'work'",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS plan_date VARCHAR(20)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS plan_time VARCHAR(10)",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'pending'",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS from_meeting BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
     ]
     
     try:

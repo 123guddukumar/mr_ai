@@ -1000,10 +1000,11 @@ class BookMeetingReq(BaseModel):
     name: str
     meeting_time: datetime
     session_id: Optional[str] = None
+    device_id: Optional[str] = None
 
 @router.get("/agents/{agent_id}/booked-dates", tags=["Agents & DataStores"])
 async def get_booked_dates(agent_id: str, db: Session = Depends(get_db)):
-    from app.core.models import Agent, RootMeeting
+    from app.core.models import Agent, RootMeeting, RootDailyPlan
     agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -1014,24 +1015,134 @@ async def get_booked_dates(agent_id: str, db: Session = Depends(get_db)):
         RootMeeting.meeting_time >= datetime.utcnow()
     ).all()
     
+    booked = [m.meeting_time.isoformat() for m in meetings]
+
+    # Fetch pending plans from RootDailyPlan to block those slots too
+    plans = db.query(RootDailyPlan).filter(
+        RootDailyPlan.client_id == agent.client_id,
+        RootDailyPlan.is_completed == False
+    ).all()
+
+    for p in plans:
+        try:
+            dt = datetime.strptime(f"{p.plan_date} {p.plan_time}", "%Y-%m-%d %H:%M")
+            booked.append(dt.isoformat())
+        except Exception:
+            pass
+
     return {
-        "booked_dates": [m.meeting_time.isoformat() for m in meetings]
+        "booked_dates": list(set(booked))
     }
+
+async def analyze_meeting_details(conversation_text: str, agent) -> dict:
+    import json, os, logging
+    from app.services.llm import llm_with_history
+    
+    logger = logging.getLogger(__name__)
+    
+    try: s_cfg = json.loads(agent.system_config_json or "{}")
+    except: s_cfg = {}
+    
+    provider = s_cfg.get('provider', 'gemini')
+    model = s_cfg.get('model', 'gemini-3.5-flash')
+    api_key = s_cfg.get('api_key', '')
+    
+    if provider == 'gemini' and not api_key:
+        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+    system_prompt = (
+        "You are an AI assistant analyzing a chat history between a user and an agent.\n"
+        "Your task is to generate a concise and relevant title and description for a meeting scheduled during this chat.\n"
+        "The title should be brief (e.g., 'Project Consultation' or 'Support Discussion').\n"
+        "The description should summarize what the user discussed or wants to achieve.\n"
+        "You MUST respond ONLY with a raw JSON object matching this exact schema:\n"
+        "{\n"
+        "  \"title\": \"Generated Title\",\n"
+        "  \"description\": \"Generated summary/description\"\n"
+        "}\n"
+        "Do not explain, do not output any markdown code blocks. Just raw JSON."
+    )
+    
+    prompt = f"Here is the chat history:\n\n{conversation_text}\n\nAnalyze and return JSON."
+    
+    try:
+        raw_result = await llm_with_history(
+            question=prompt,
+            system=system_prompt,
+            history=[],
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            ollama_url="http://localhost:11434"
+        )
+    except Exception as e:
+        logger.error(f"Meeting details analysis failed: {e}. Falling back to default Gemini.")
+        try:
+            fallback_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            raw_result = await llm_with_history(
+                question=prompt,
+                system=system_prompt,
+                history=[],
+                provider="gemini",
+                model="gemini-3.5-flash",
+                api_key=fallback_key,
+                ollama_url="http://localhost:11434"
+            )
+        except Exception as fe:
+            logger.error(f"Fallback meeting analysis failed: {fe}")
+            return {"title": "Scheduled Meeting", "description": "Scheduled via Agent Chat"}
+
+    try:
+        import re
+        match = re.search(r"({.*})", raw_result, re.DOTALL)
+        if match:
+            data = json.loads(match.group(1).strip())
+            if 'title' not in data: data['title'] = "Scheduled Meeting"
+            if 'description' not in data: data['description'] = "Scheduled via Agent Chat"
+            return data
+    except Exception as parse_err:
+        logger.error(f"JSON parse error for meeting details: {parse_err}")
+        
+    return {"title": "Scheduled Meeting", "description": "Scheduled via Agent Chat"}
 
 @router.post("/agents/{agent_id}/book-meeting", tags=["Agents & DataStores"])
 async def book_agent_meeting(agent_id: str, req: BookMeetingReq, db: Session = Depends(get_db)):
-    from app.core.models import Agent, RootMeeting
+    from app.core.models import Agent, RootMeeting, RootDailyPlan, AgentPublicMessage
     import secrets
+    import logging
+    logger = logging.getLogger(__name__)
+
     agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
     if not agent:
         raise HTTPException(404, "Agent not found")
+
+    meeting_title = f"Meeting with {req.name}"
+    meeting_desc = f"Scheduled via Agent Chat (Session: {req.session_id})"
+
+    if req.session_id:
+        chat_msgs = db.query(AgentPublicMessage).filter(
+            AgentPublicMessage.session_id == req.session_id
+        ).order_by(AgentPublicMessage.created_at.asc()).all()
         
+        if chat_msgs:
+            conversation_text = ""
+            for m in chat_msgs:
+                role_lbl = "User" if m.role == "user" else "Assistant"
+                conversation_text += f"{role_lbl}: {m.content}\n"
+            
+            try:
+                ai_details = await analyze_meeting_details(conversation_text, agent)
+                meeting_title = ai_details.get("title", meeting_title)
+                meeting_desc = ai_details.get("description", meeting_desc)
+            except Exception as ae:
+                logger.error(f"Failed to analyze meeting details via AI: {ae}")
+
     meeting_obj = RootMeeting(
         meeting_id=secrets.token_hex(8),
         client_id=agent.client_id,
         owner_id=agent.client_id,
-        title=f"Meeting with {req.name}",
-        description=f"Scheduled via Agent Chat (Session: {req.session_id})",
+        title=meeting_title,
+        description=meeting_desc,
         meeting_time=req.meeting_time,
         duration_mins=30,
         status="scheduled",
@@ -1040,6 +1151,52 @@ async def book_agent_meeting(agent_id: str, req: BookMeetingReq, db: Session = D
         created_at=datetime.utcnow()
     )
     db.add(meeting_obj)
+
+    # 1. Create a Daily Plan in RootDailyPlan
+    plan_date_str = req.meeting_time.strftime("%Y-%m-%d")
+    plan_time_str = req.meeting_time.strftime("%H:%M")
+    
+    desc_parts = [f"Attendee: {req.name}"]
+    if meeting_desc:
+        desc_parts.append(f"Description: {meeting_desc}")
+    if req.device_id:
+        desc_parts.append(f"Device ID: {req.device_id}")
+    if req.session_id:
+        desc_parts.append(f"Session ID: {req.session_id}")
+    desc_str = "\n".join(desc_parts)
+
+    plan = RootDailyPlan(
+        plan_id=secrets.token_hex(8),
+        client_id=agent.client_id,
+        owner_id=agent.client_id,
+        title=meeting_title,
+        description=desc_str,
+        category="meeting",
+        plan_date=plan_date_str,
+        plan_time=plan_time_str,
+        status="upcoming",
+        is_completed=False,
+        from_meeting=True,
+        created_at=datetime.utcnow()
+    )
+    db.add(plan)
+
+    # 2. Append User and Assistant messages to public session chat log
+    if req.session_id:
+        user_msg = AgentPublicMessage(
+            session_id=req.session_id,
+            role="user",
+            content=f"Please book a meeting for {req.name} at {req.meeting_time.strftime('%Y-%m-%d %I:%M %p')}."
+        )
+        db.add(user_msg)
+        
+        asst_msg = AgentPublicMessage(
+            session_id=req.session_id,
+            role="assistant",
+            content=f"🎉 **Congratulations!** Your meeting schedule slot is booked successfully for **{req.meeting_time.strftime('%Y-%m-%d')}** at **{req.meeting_time.strftime('%I:%M %p')}**."
+        )
+        db.add(asst_msg)
+
     db.commit()
     db.refresh(meeting_obj)
     return {"success": True, "meeting_id": meeting_obj.meeting_id}
@@ -1542,7 +1699,9 @@ async def api_get_agent_public_info(agent_id: str, db: Session = Depends(get_db)
         "description": agent.description or "",
         "starting_message": agent.starting_message or "Hello! How can I help you today?",
         "customization": c_cfg,
-        "voice_config": v_cfg
+        "voice_config": v_cfg,
+        "is_root": agent.is_root or False,
+        "category": agent.category or ""
     }
 
 

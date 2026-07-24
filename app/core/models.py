@@ -1141,6 +1141,42 @@ class RootMedia(Base):
         }
 
 
+class RootDailyPlan(Base):
+    """Daily Planner Plans for Root Personal Assistant Agent."""
+    __tablename__ = "root_daily_plans"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    plan_id      = Column(String(64), unique=True, index=True, nullable=False)
+    client_id    = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id     = Column(String(64), nullable=True)
+    title        = Column(String(300), nullable=False)
+    description  = Column(Text, default="")
+    category     = Column(String(50), default="work")  # work | personal | health | meeting | other
+    plan_date    = Column(String(20), nullable=False)   # YYYY-MM-DD
+    plan_time    = Column(String(10), nullable=False)   # HH:MM (24h)
+    status       = Column(String(30), default="pending")  # pending | completed | upcoming
+    is_completed = Column(Boolean, default=False, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    from_meeting = Column(Boolean, default=False, nullable=False)  # True if added via sub-agent meeting
+    created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "plan_id": self.plan_id,
+            "client_id": self.client_id,
+            "title": self.title,
+            "description": self.description or "",
+            "category": self.category,
+            "plan_date": self.plan_date,
+            "plan_time": self.plan_time,
+            "status": self.status,
+            "is_completed": self.is_completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "from_meeting": self.from_meeting,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
 class AgentFeedback(Base):
     """User and Visitor feedback and policy reports for AI Agents."""
     __tablename__ = "agent_feedbacks"

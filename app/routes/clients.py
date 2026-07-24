@@ -363,7 +363,8 @@ async def api_google_login(req: GoogleLoginRequest, db: Session = Depends(get_db
     # Upsert client
     client = db.query(Client).filter(Client.email == email.lower()).first()
     if client:
-        client.token = _generate_token()
+        if not client.token:
+            client.token = _generate_token()
         client.last_login = datetime.utcnow()
         client.login_method = "google"
         if avatar:
@@ -446,7 +447,8 @@ async def api_qr_login(req: QRLoginRequest, db: Session = Depends(get_db)):
 
     # Mark used + update login
     qt.used = True
-    client.token = _generate_token()
+    if not client.token:
+        client.token = _generate_token()
     client.last_login = datetime.utcnow()
     client.login_method = "qr"
     db.commit()

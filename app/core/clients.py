@@ -123,7 +123,8 @@ def update_password(email: str, new_password: str, db=None) -> bool:
         if not client:
             return False
         client.password_hash = _hash_password(new_password)
-        client.token = _generate_token()  # Invalidate old sessions
+        if not client.token:
+            client.token = _generate_token()
         db.commit()
         return True
     finally:

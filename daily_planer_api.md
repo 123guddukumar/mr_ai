@@ -43,9 +43,12 @@ Aaj ke din ke saare schedule plans fetch karne ke liye (sliding carousel ya toda
 
 ### 2. List All Plans (With Filtering)
 User ke total list of plans ko status filter aur date-time sorting ke sath retrieve karne ke liye.
+> [!NOTE]
+> Agar `filter` query parameter `all` hai ya omit kiya gaya hai, to response me **completed plans ko exclude** kar diya jata hai taaki main list clutter-free rahe. Completed plans ko dekhne ke liye explicitly `filter=completed` pass karna hoga.
+
 - **Endpoint**: `GET /api/root-agent/plans`
 - **Query Parameters**:
-  - `filter` (Optional): `all` | `pending` | `upcoming` | `completed`
+  - `filter` (Optional): `all` (returns pending & upcoming only) | `pending` | `upcoming` | `completed` (Done tab)
 - **Response Example**:
   ```json
   [
@@ -67,13 +70,18 @@ User ke total list of plans ko status filter aur date-time sorting ke sath retri
 
 ### 3. Create Daily Plan
 Naya plan create karne ke liye.
+> [!IMPORTANT]
+> **Backend Time Validation Logic**: 
+> - Input dates ko server ke local timezone (`datetime.now()`) ke according check kiya jata hai taaki machine timezone mismatches na ho.
+> - Form bharne me lagne wale delay aur clock deviations ko avoid karne ke liye **12-hour buffer** (`now_local - timedelta(hours=12)`) lagaya gaya hai. Isse users current day ke kisi bhi past time ke liye task schedule kar sakte hain, par kal ya usse purane din ke tasks block hote hain.
+
 - **Endpoint**: `POST /api/root-agent/plans`
 - **Request Body (JSON)**:
   ```json
   {
     "title": "GYM Cardio Session",
     "description": "Burn 400 calories today.",
-    "category": "health",
+    "category": "health", // work | personal | health | meeting | reminder | other
     "plan_date": "2026-07-25",
     "plan_time": "07:00"
   }

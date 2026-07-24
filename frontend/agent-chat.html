@@ -826,7 +826,51 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   background: var(--bg2);
 }
 .plan-card.completed .plan-card-title { text-decoration: line-through; color: var(--text3); }
-.plan-card.from-meeting-card { border-color: rgba(96,165,250,0.3); }
+.plan-card.reminder-card {
+  background: rgba(34,197,94,0.08) !important;
+  border-color: rgba(34,197,94,0.3) !important;
+}
+.plan-card.reminder-card.completed {
+  opacity: 0.5;
+  background: rgba(34,197,94,0.02) !important;
+}
+.slider-card.reminder-card {
+  background: rgba(34,197,94,0.08) !important;
+  border-color: rgba(34,197,94,0.3) !important;
+}
+.slider-card.reminder-card.completed-card {
+  opacity: 0.5;
+  background: rgba(34,197,94,0.02) !important;
+}
+/* Manual Meeting: Orange Background, Orange Border */
+.plan-card.meeting-card {
+  background: rgba(249, 115, 22, 0.08) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+.plan-card.meeting-card.completed {
+  opacity: 0.5;
+  background: rgba(249, 115, 22, 0.02) !important;
+}
+
+/* Chat-booked Meeting: Orange Background, Green Border */
+.plan-card.meeting-card.from-meeting-card {
+  background: rgba(249, 115, 22, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+}
+
+/* Slider Card Meeting classes */
+.slider-card.meeting-card {
+  background: rgba(249, 115, 22, 0.08) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+.slider-card.meeting-card.from-meeting-card {
+  background: rgba(249, 115, 22, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+}
+.slider-card.meeting-card.completed-card {
+  opacity: 0.5;
+  background: rgba(249, 115, 22, 0.02) !important;
+}
 .plan-card-top {
   display: flex;
   align-items: flex-start;
@@ -1338,9 +1382,31 @@ select.plan-form-input { cursor: pointer; }
       <button class="plan-modal-close" onclick="closeAddPlanModal()">✕</button>
     </div>
 
+    <!-- Type Selector Tabs -->
+    <div style="display:flex; gap:10px; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <button id="type-plan-btn" class="btn btn-primary" onclick="setAddType('plan')" style="flex:1; padding:8px; font-size:12px; font-weight:700; background:var(--accent); border:1px solid var(--accent); color:white; border-radius:8px; cursor:pointer; outline:none;">📅 Standard Plan</button>
+      <button id="type-reminder-btn" class="btn btn-secondary" onclick="setAddType('reminder')" style="flex:1; padding:8px; font-size:12px; font-weight:700; background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:8px; cursor:pointer; outline:none;">🔔 Active Reminder</button>
+      <button id="type-meeting-btn" class="btn btn-secondary" onclick="setAddType('meeting')" style="flex:1; padding:8px; font-size:12px; font-weight:700; background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:8px; cursor:pointer; outline:none;">📞 Add Meeting</button>
+    </div>
+
+    <!-- Meeting Specific Fields -->
+    <div id="plan-meeting-fields" style="display:none; flex-direction:column; gap:12px; margin-bottom:12px;">
+      <div class="plan-form-group">
+        <label class="plan-form-label">With Whom (Name) *</label>
+        <input type="text" id="plan-meeting-name" class="plan-form-input" placeholder="e.g. Amit Kumar, Client..." maxlength="100">
+      </div>
+      <div class="plan-form-group">
+        <label class="plan-form-label">Where *</label>
+        <select id="plan-meeting-location" class="plan-form-input" style="background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer; width:100%;">
+          <option value="Online">🌐 Online Meeting</option>
+          <option value="Office">🏢 Office Meeting</option>
+        </select>
+      </div>
+    </div>
+
     <!-- Plan Title -->
     <div class="plan-form-group">
-      <label class="plan-form-label">Plan Title *</label>
+      <label class="plan-form-label" id="plan-title-label">Plan Title *</label>
       <input type="text" id="plan-title-input" class="plan-form-input" placeholder="e.g. Team Standup, Morning Workout…" maxlength="200">
     </div>
 
@@ -1351,20 +1417,19 @@ select.plan-form-input { cursor: pointer; }
     </div>
 
     <!-- Category -->
-    <div class="plan-form-group">
+    <div class="plan-form-group" id="plan-cat-group">
       <label class="plan-form-label">Category</label>
       <div class="plan-cat-grid">
         <button class="plan-cat-btn selected-cat" data-cat="work" onclick="selectPlanCat(this, 'work')"><span class="cat-icon">💼</span>Work</button>
         <button class="plan-cat-btn" data-cat="personal" onclick="selectPlanCat(this, 'personal')"><span class="cat-icon">🏠</span>Personal</button>
         <button class="plan-cat-btn" data-cat="health" onclick="selectPlanCat(this, 'health')"><span class="cat-icon">💪</span>Health</button>
-        <button class="plan-cat-btn" data-cat="meeting" onclick="selectPlanCat(this, 'meeting')"><span class="cat-icon">📞</span>Meeting</button>
         <button class="plan-cat-btn" data-cat="other" onclick="selectPlanCat(this, 'other')"><span class="cat-icon">✨</span>Other</button>
       </div>
     </div>
 
     <!-- Date & Time -->
     <div class="plan-row-2">
-      <div class="plan-form-group">
+      <div class="plan-form-group" id="plan-date-group">
         <label class="plan-form-label">Date *</label>
         <input type="date" id="plan-date-input" class="plan-form-input">
       </div>
@@ -3464,6 +3529,7 @@ const PLAN_CATS = {
   personal: { label: 'Personal', icon: '🏠', cls: 'cat-personal' },
   health:   { label: 'Health',   icon: '💪', cls: 'cat-health' },
   meeting:  { label: 'Meeting',  icon: '📞', cls: 'cat-meeting' },
+  reminder: { label: 'Reminder', icon: '🔔', cls: 'cat-reminder' },
   other:    { label: 'Other',    icon: '✨', cls: 'cat-other' }
 };
 
@@ -3499,10 +3565,15 @@ function loadPlannerIfRoot() {
     autoCompletePastPlans();
     loadTodaySlider();
     loadAllPlans(_planFilter);
+    checkRemindersLoop();
   }, 60000);
 
   // Auto-complete on load
   autoCompletePastPlans();
+  
+  // Active reminders loop every 10 seconds
+  setInterval(checkRemindersLoop, 10000);
+  setTimeout(checkRemindersLoop, 1000);
 }
 
 function showPlannerPanel() {
@@ -3539,6 +3610,9 @@ async function autoCompletePastPlans() {
   } catch(e) {}
 }
 
+let _todayPlansCache = [];
+let _allPlansCache = [];
+
 // ── Today Slider ───────────────────────────────────────────────────────
 async function loadTodaySlider() {
   const slider = document.getElementById('today-slider');
@@ -3549,6 +3623,7 @@ async function loadTodaySlider() {
     const r = await fetch('/api/root-agent/plans/today', { headers: h });
     if (!r.ok) throw new Error();
     const plans = await r.json();
+    _todayPlansCache = plans;
     renderTodaySlider(plans);
   } catch(e) {
     slider.innerHTML = '<div class="slider-empty">Could not load today\'s plans</div>';
@@ -3558,20 +3633,33 @@ async function loadTodaySlider() {
 function renderTodaySlider(plans) {
   const slider = document.getElementById('today-slider');
   if (!slider) return;
-  if (!plans || plans.length === 0) {
-    slider.innerHTML = '<div class="slider-empty">🌟 No plans today — add one!</div>';
+  
+  const activePlans = plans.filter(p => p.status !== 'completed');
+  if (!activePlans || activePlans.length === 0) {
+    slider.innerHTML = '<div class="slider-empty">🌟 No pending plans today — add one!</div>';
     return;
   }
-  slider.innerHTML = plans.map(p => {
+  
+  slider.innerHTML = activePlans.map(p => {
     const cat = getPlanCatInfo(p.category);
     const isCompleted = p.status === 'completed';
     const timeStr = formatTime12h(p.plan_time);
+    const isReminder = p.category === 'reminder';
+    const isMeeting = p.category === 'meeting';
+    const isChatMeeting = p.from_meeting;
     return `
-    <div class="slider-card ${isCompleted ? 'completed-card' : ''}" onclick="markPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
+    <div class="slider-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed-card' : ''}" onclick="if(event.target.tagName !== 'BUTTON') markPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
       <div class="slider-card-cat ${cat.cls}">${cat.icon} ${cat.label}</div>
       <div class="slider-card-time">${timeStr}</div>
       <div class="slider-card-title">${esc(p.title)}</div>
       ${isCompleted ? '<div style="font-size:10px;color:#4ade80;margin-top:4px;font-weight:700;">✅ Done</div>' : ''}
+      ${isMeeting || isChatMeeting ? `
+        <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+          <button type="button" onclick="event.stopPropagation(); openMeetingDetailsPopup('${p.plan_id}')" style="background:rgba(255, 122, 0, 0.15); border:1px solid rgba(255, 122, 0, 0.3); color:var(--accent); padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer;">
+            👁️ View
+          </button>
+        </div>
+      ` : ''}
     </div>`;
   }).join('');
 }
@@ -3588,6 +3676,7 @@ async function loadAllPlans(filter) {
     const r = await fetch(url, { headers: h });
     if (!r.ok) throw new Error();
     const plans = await r.json();
+    _allPlansCache = plans;
     renderPlanList(plans);
   } catch(e) {
     listEl.innerHTML = '<div class="plan-empty"><div class="plan-empty-icon">⚠️</div><div class="plan-empty-text">Could not load plans</div></div>';
@@ -3612,9 +3701,11 @@ function renderPlanList(plans) {
     const statusDotCls = isCompleted ? 'dot-completed' : (p.status === 'upcoming' ? 'dot-upcoming' : 'dot-pending');
     const timeStr = formatTime12h(p.plan_time);
     const dateStr = formatDateLabel(p.plan_date);
-    const isMeeting = p.from_meeting;
+    const isMeeting = p.category === 'meeting';
+    const isChatMeeting = p.from_meeting;
+    const isReminder = p.category === 'reminder';
     return `
-    <div class="plan-card ${isCompleted ? 'completed' : ''} ${isMeeting ? 'from-meeting-card' : ''}" id="plan-card-${p.plan_id}">
+    <div class="plan-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed' : ''}" id="plan-card-${p.plan_id}">
       <div class="plan-card-top">
         <div>
           <div class="plan-card-meta">
@@ -3629,12 +3720,19 @@ function renderPlanList(plans) {
         </button>
       </div>
       ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
-      <div class="plan-card-footer">
+      <div class="plan-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
         <div class="plan-card-dt">
           📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}
         </div>
-        <div style="font-size:10px;color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')};font-weight:700;text-transform:uppercase;letter-spacing:0.4px">
-          ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${isMeeting || isChatMeeting ? `
+            <button type="button" onclick="openMeetingDetailsPopup('${p.plan_id}')" style="background:rgba(255, 122, 0, 0.15); border:1px solid rgba(255, 122, 0, 0.3); color:var(--accent); padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+              👁️ View Details
+            </button>
+          ` : ''}
+          <div style="font-size:10px;color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')};font-weight:700;text-transform:uppercase;letter-spacing:0.4px">
+            ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
+          </div>
         </div>
       </div>
     </div>`;
@@ -3668,14 +3766,36 @@ function setPlanFilter(filter, btn) {
 }
 
 // ── Add Plan Modal ─────────────────────────────────────────────────────
+function updateTimeInputMin() {
+  const dateInput = document.getElementById('plan-date-input');
+  const timeInput = document.getElementById('plan-time-input');
+  if (!dateInput || !timeInput) return;
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+  
+  if (dateInput.value === todayStr) {
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    timeInput.min = `${hh}:${mm}`;
+  } else {
+    timeInput.min = '';
+  }
+}
+
 function openAddPlanModal() {
   const modal = document.getElementById('add-plan-modal');
   if (!modal) return;
 
-  // Set today's date as default
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const todayStr = nowIST.toISOString().slice(0, 10);
-  const timeStr = nowIST.toTimeString().slice(0, 5);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+  const timeStr = now.toTimeString().slice(0, 5);
 
   const dateInput = document.getElementById('plan-date-input');
   const timeInput = document.getElementById('plan-time-input');
@@ -3688,15 +3808,23 @@ function openAddPlanModal() {
   // Clear form
   const titleInput = document.getElementById('plan-title-input');
   const descInput = document.getElementById('plan-desc-input');
+  const meetName = document.getElementById('plan-meeting-name');
+  const meetLoc = document.getElementById('plan-meeting-location');
   if (titleInput) titleInput.value = '';
   if (descInput) descInput.value = '';
+  if (meetName) meetName.value = '';
+  if (meetLoc) meetLoc.value = 'Online';
   selectPlanCat(document.querySelector('.plan-cat-btn[data-cat="work"]'), 'work');
   hideConflictWarn();
 
+  setAddType('plan');
   modal.classList.add('open');
 
-  // Attach conflict check on date/time change
-  if (dateInput) dateInput.onchange = () => checkConflictForModal();
+  // Attach conflict check and time min limit on date/time change
+  if (dateInput) dateInput.onchange = () => {
+    updateTimeInputMin();
+    checkConflictForModal();
+  };
   if (timeInput) timeInput.onchange = () => checkConflictForModal();
 }
 
@@ -3704,6 +3832,90 @@ function closeAddPlanModal() {
   const modal = document.getElementById('add-plan-modal');
   if (modal) modal.classList.remove('open');
   hideConflictWarn();
+}
+
+let _addType = 'plan';
+function setAddType(type) {
+  _addType = type;
+  const planBtn = document.getElementById('type-plan-btn');
+  const remBtn = document.getElementById('type-reminder-btn');
+  const meetBtn = document.getElementById('type-meeting-btn');
+  
+  const dateGroup = document.getElementById('plan-date-group');
+  const catGroup = document.getElementById('plan-cat-group');
+  const titleLabel = document.getElementById('plan-title-label');
+  const titleInput = document.getElementById('plan-title-input');
+  const submitBtn = document.getElementById('plan-submit-btn');
+  const meetingFields = document.getElementById('plan-meeting-fields');
+
+  // Reset colors
+  [planBtn, remBtn, meetBtn].forEach(b => {
+    if (b) {
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text2)';
+      b.style.borderColor = 'var(--border)';
+    }
+  });
+
+  if (type === 'plan') {
+    if (planBtn) {
+      planBtn.style.background = 'var(--accent)';
+      planBtn.style.color = 'white';
+      planBtn.style.borderColor = 'var(--accent)';
+    }
+    if (dateGroup) dateGroup.style.display = 'block';
+    if (catGroup) catGroup.style.display = 'block';
+    if (meetingFields) meetingFields.style.display = 'none';
+    if (titleLabel) titleLabel.textContent = 'Plan Title *';
+    if (titleInput) {
+      titleInput.placeholder = 'e.g. Team Standup, Morning Workout…';
+      titleInput.style.display = 'block';
+    }
+    if (titleLabel) titleLabel.style.display = 'block';
+    if (submitBtn) submitBtn.textContent = 'Create Plan';
+    updateTimeInputMin();
+  } else if (type === 'reminder') {
+    if (remBtn) {
+      remBtn.style.background = '#22c55e';
+      remBtn.style.color = 'white';
+      remBtn.style.borderColor = '#22c55e';
+    }
+    if (dateGroup) {
+      dateGroup.style.display = 'none';
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      const dateInput = document.getElementById('plan-date-input');
+      if (dateInput) dateInput.value = todayStr;
+    }
+    if (catGroup) catGroup.style.display = 'none';
+    if (meetingFields) meetingFields.style.display = 'none';
+    if (titleLabel) {
+      titleLabel.textContent = 'Reminder Note *';
+      titleLabel.style.display = 'block';
+    }
+    if (titleInput) {
+      titleInput.placeholder = 'e.g. Take medicine, Call client…';
+      titleInput.style.display = 'block';
+    }
+    if (submitBtn) submitBtn.textContent = 'Set Reminder';
+    updateTimeInputMin();
+  } else if (type === 'meeting') {
+    if (meetBtn) {
+      meetBtn.style.background = '#f97316';
+      meetBtn.style.color = 'white';
+      meetBtn.style.borderColor = '#f97316';
+    }
+    if (dateGroup) dateGroup.style.display = 'block';
+    if (catGroup) catGroup.style.display = 'none';
+    if (meetingFields) meetingFields.style.display = 'flex';
+    if (titleLabel) titleLabel.textContent = 'Meeting Agenda / Title';
+    if (titleInput) titleInput.placeholder = 'e.g. Discuss Q3 deliverables (Optional)';
+    if (submitBtn) submitBtn.textContent = 'Add Meeting';
+    updateTimeInputMin();
+  }
 }
 
 function selectPlanCat(btn, cat) {
@@ -3749,20 +3961,40 @@ function showConflictWarn(msg) {
 }
 
 async function submitNewPlan() {
-  const title = document.getElementById('plan-title-input')?.value?.trim();
-  const desc = document.getElementById('plan-desc-input')?.value?.trim();
-  const dateVal = document.getElementById('plan-date-input')?.value;
   const timeVal = document.getElementById('plan-time-input')?.value;
   const submitBtn = document.getElementById('plan-submit-btn');
+
+  let dateVal = document.getElementById('plan-date-input')?.value;
+  let categoryVal = _selectedPlanCat;
+  let title = document.getElementById('plan-title-input')?.value?.trim();
+  let desc = document.getElementById('plan-desc-input')?.value?.trim() || '';
+
+  if (_addType === 'reminder') {
+    const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    dateVal = nowIST.toISOString().slice(0, 10);
+    categoryVal = 'reminder';
+  } else if (_addType === 'meeting') {
+    categoryVal = 'meeting';
+    const meetName = document.getElementById('plan-meeting-name')?.value?.trim();
+    const meetLoc = document.getElementById('plan-meeting-location')?.value;
+    
+    if (!meetName) { toast('⚠️ Please enter who the meeting is with', 'err'); return; }
+    
+    if (!title) {
+      title = `Meeting with ${meetName}`;
+    }
+    desc = `With: ${meetName}\nWhere: ${meetLoc}${desc ? '\nNotes: ' + desc : ''}`;
+  }
 
   if (!title) { toast('⚠️ Please enter a plan title', 'err'); return; }
   if (!dateVal) { toast('⚠️ Please select a date', 'err'); return; }
   if (!timeVal) { toast('⚠️ Please select a time', 'err'); return; }
 
-  // Validate not past
+  // Past date/time validation using actual local system Date comparison (timezone agnostic)
   const planDt = new Date(`${dateVal}T${timeVal}`);
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 5 * 60 * 1000); // 5min buffer
-  if (planDt < nowIST) {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - 5); // 5 minutes buffer
+  if (planDt < now) {
     toast('⚠️ Cannot create plan for a past date/time', 'err');
     return;
   }
@@ -3775,8 +4007,8 @@ async function submitNewPlan() {
     if (session && session.token) h['X-App-Token'] = session.token;
     const payload = {
       title,
-      description: desc || '',
-      category: _selectedPlanCat,
+      description: desc,
+      category: categoryVal,
       plan_date: dateVal,
       plan_time: timeVal
     };
@@ -3789,14 +4021,162 @@ async function submitNewPlan() {
     if (!r.ok) throw new Error(data.detail || 'Failed to create plan');
 
     closeAddPlanModal();
-    toast('📅 Plan created successfully!', '');
+    toast(_addType === 'reminder' ? '🔔 Reminder set successfully!' : (_addType === 'meeting' ? '📞 Meeting added successfully!' : '📅 Plan created successfully!'), '');
     loadTodaySlider();
     loadAllPlans(_planFilter);
   } catch(e) {
     toast('⚠️ ' + e.message, 'err');
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '📅 Create Plan';
+    submitBtn.innerHTML = _addType === 'reminder' ? 'Set Reminder' : (_addType === 'meeting' ? 'Add Meeting' : '📅 Create Plan');
+  }
+}
+
+// ── Active Reminders Snooze Checker ─────────────────────────────────────
+let _snoozedAlerts = {};
+
+async function checkRemindersLoop() {
+  try {
+    const h = { 'Content-Type': 'application/json' };
+    if (session && session.token) h['X-App-Token'] = session.token;
+    const r = await fetch('/api/root-agent/plans/today', { headers: h });
+    if (!r.ok) return;
+    const plans = await r.json();
+    
+    const reminders = plans.filter(p => p.category === 'reminder' && p.status === 'pending');
+    
+    const now = new Date();
+    // UTC to IST (+5:30) Conversion
+    const nowISTTime = now.getTime() + (5.5 * 60 * 60 * 1000);
+    const istDate = new Date(nowISTTime);
+    const currentHour = istDate.getUTCHours();
+    const currentMin = istDate.getUTCMinutes();
+    const currentMinutesOfDay = (currentHour * 60) + currentMin;
+
+    reminders.forEach(rem => {
+      const [rh, rm] = rem.plan_time.split(':').map(Number);
+      const reminderMinutesOfDay = (rh * 60) + rm;
+
+      // Check window: 10 mins before up to reminder time
+      const diff = reminderMinutesOfDay - currentMinutesOfDay;
+      
+      if (diff <= 10 && diff >= -10) {
+        const lastAlerted = _snoozedAlerts[rem.plan_id] || 0;
+        const timeSinceLastAlert = (Date.now() - lastAlerted) / 60000; // in minutes
+        
+        if (timeSinceLastAlert >= 3) {
+          triggerReminderAlert(rem);
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Reminder check failed", e);
+  }
+}
+
+function triggerReminderAlert(rem) {
+  _snoozedAlerts[rem.plan_id] = Date.now();
+  
+  let alertEl = document.getElementById('reminder-alert-' + rem.plan_id);
+  if (alertEl) return;
+  
+  alertEl = document.createElement('div');
+  alertEl.id = 'reminder-alert-' + rem.plan_id;
+  alertEl.style = `
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    background: linear-gradient(135deg, #15803d, #166534);
+    border: 2px solid #22c55e;
+    border-radius: 16px;
+    padding: 20px;
+    width: 320px;
+    color: white;
+    z-index: 999999;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: reminderSlideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+    font-family: 'Outfit', 'Inter', sans-serif;
+  `;
+  
+  if (!document.getElementById('reminder-animation-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'reminder-animation-styles';
+    styles.innerHTML = `
+      @keyframes reminderSlideUp {
+        from { transform: translateY(50px) scale(0.9); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(styles);
+  }
+
+  const time12 = formatTime12h(rem.plan_time);
+  
+  // Safe HTML string helper
+  const escHtml = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  alertEl.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div style="font-weight:800; font-size:14px; display:flex; align-items:center; gap:6px;">
+        🔔 ACTIVE REMINDER
+      </div>
+      <span style="font-size:11px; background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:6px; font-weight:700;">${time12}</span>
+    </div>
+    <div style="font-size:13px; font-weight:600; line-height:1.4;">${escHtml(rem.title)}</div>
+    ${rem.description ? `<div style="font-size:11px; opacity:0.85; max-height: 80px; overflow-y: auto;">${escHtml(rem.description)}</div>` : ''}
+    <div style="font-size:10px; color:#bbf7d0; font-weight:700; margin-top:2px;">🚨 Will repeat every 3 minutes until completed.</div>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button onclick="dismissReminder('${rem.plan_id}', true)" style="flex:1; background:#22c55e; border:none; color:white; padding:6px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">✅ Mark Done</button>
+      <button onclick="dismissReminder('${rem.plan_id}', false)" style="flex:1; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white; padding:6px 12px; border-radius:8px; font-size:11px; cursor:pointer;">⏳ Snooze (3m)</button>
+    </div>
+  `;
+  document.body.appendChild(alertEl);
+  
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+    
+    setTimeout(() => {
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      osc2.start();
+      osc2.stop(audioCtx.currentTime + 0.3);
+    }, 180);
+  } catch(e) {}
+}
+
+async function dismissReminder(planId, markCompleted) {
+  const alertEl = document.getElementById('reminder-alert-' + planId);
+  if (alertEl) alertEl.remove();
+  
+  if (markCompleted) {
+    try {
+      const h = { 'Content-Type': 'application/json' };
+      if (session && session.token) h['X-App-Token'] = session.token;
+      await fetch(`/api/root-agent/plans/${planId}/complete`, { method: 'PATCH', headers: h });
+      toast("✅ Reminder completed!", "");
+      loadTodaySlider();
+      loadAllPlans(_planFilter);
+    } catch(e) {}
+  } else {
+    _snoozedAlerts[planId] = Date.now();
+    toast("⏳ Snoozed for 3 minutes", "");
   }
 }
 
@@ -3900,10 +4280,100 @@ const _origLoadAgent = typeof loadAgent === 'function' ? loadAgent : null;
 // Hook: after loadAgent runs, initialize planner
 document.addEventListener('_agentLoaded', () => { loadPlannerIfRoot(); });
 
+function openMeetingDetailsPopup(planId) {
+  const plan = _todayPlansCache.find(p => p.plan_id === planId) || _allPlansCache.find(p => p.plan_id === planId);
+  if (!plan) return;
+  showMeetingDetailsModal(plan);
+}
+
+function showMeetingDetailsModal(plan) {
+  const modal = document.getElementById('meeting-details-modal');
+  if (!modal) return;
+  
+  document.getElementById('meet-det-title').textContent = plan.title || 'Meeting';
+  document.getElementById('meet-det-date').textContent = formatDateLabel(plan.plan_date) + ' (' + plan.plan_date + ')';
+  document.getElementById('meet-det-time').textContent = formatTime12h(plan.plan_time);
+  document.getElementById('meet-det-desc').textContent = plan.description || 'No additional details provided.';
+  
+  const metaGroup = document.getElementById('meet-det-meta-group');
+  metaGroup.innerHTML = '';
+  
+  if (plan.from_meeting) {
+    const chatBadge = document.createElement('div');
+    chatBadge.style = "color:#4ade80; font-weight:700; margin-bottom:4px; font-size:10.5px;";
+    chatBadge.textContent = "🤖 Booked automatically via AI sub-agent chat.";
+    metaGroup.appendChild(chatBadge);
+  } else {
+    const manualBadge = document.createElement('div');
+    manualBadge.style = "color:#ff7a00; font-weight:700; margin-bottom:4px; font-size:10.5px;";
+    manualBadge.textContent = "✍️ Scheduled manually by the root agent.";
+    metaGroup.appendChild(manualBadge);
+  }
+  
+  modal.classList.add('open');
+}
+
+function closeMeetingDetailsModal() {
+  const modal = document.getElementById('meeting-details-modal');
+  if (modal) modal.classList.remove('open');
+}
+
 // Close modal on backdrop click
 document.getElementById('add-plan-modal')?.addEventListener('click', function(e) {
   if (e.target === this) closeAddPlanModal();
 });
+document.getElementById('meeting-details-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeMeetingDetailsModal();
+});
 </script>
+
+  <!-- Meeting Details Popup Modal -->
+  <div class="modal-overlay" id="meeting-details-modal" style="z-index: 3000;">
+    <div class="modal" style="width: 420px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 20px; background: #ffffff !important; box-shadow: 0 20px 50px rgba(0,0,0,0.15); position: relative; animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      
+      <!-- Close button -->
+      <button onclick="closeMeetingDetailsModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #64748b; font-size: 20px; cursor: pointer; transition: color 0.2s;">✕</button>
+      
+      <!-- Header -->
+      <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+          📞 Meeting Details
+        </h3>
+      </div>
+      
+      <!-- Body -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 4px;">Title / Agenda</div>
+          <div id="meet-det-title" style="font-size: 15px; font-weight: 700; color: #0f172a;"></div>
+        </div>
+        
+        <div style="display: flex; gap: 20px;">
+          <div style="flex: 1;">
+            <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 4px;">Date</div>
+            <div id="meet-det-date" style="font-size: 13.5px; font-weight: 600; color: #334155;"></div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 4px;">Time</div>
+            <div id="meet-det-time" style="font-size: 13.5px; font-weight: 600; color: #334155;"></div>
+          </div>
+        </div>
+        
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 4px;">Description & Notes</div>
+          <div id="meet-det-desc" style="font-size: 13.5px; color: #334155; line-height: 1.5; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; min-height: 80px; max-height: none; overflow: visible;"></div>
+        </div>
+        
+        <div id="meet-det-meta-group" style="font-size: 11px; color: #64748b; display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed #e2e8f0; padding-top: 12px;">
+        </div>
+      </div>
+      
+      <!-- Footer Actions -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="closeMeetingDetailsModal()" style="padding: 8px 16px; font-size: 13px; border-radius: 8px; border: 1px solid #cbd5e1; color: #334155; background: #ffffff;">Close</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

@@ -827,6 +827,8 @@ async def list_daily_plans(
     # Filter
     if filter and filter != "all":
         result = [p for p in result if p["status"] == filter]
+    else:
+        result = [p for p in result if p["status"] != "completed"]
 
     # Sort by nearest date-time
     def sort_key(p):
@@ -852,8 +854,9 @@ async def create_daily_plan(
     # Validate date is not in past
     try:
         plan_dt = datetime.strptime(f"{req.plan_date} {req.plan_time}", "%Y-%m-%d %H:%M")
-        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
-        if plan_dt < now_ist - timedelta(minutes=5):
+        now_local = datetime.now()
+        # Generous 12-hour buffer to handle system clock drift, timezone variations, and user delay
+        if plan_dt < now_local - timedelta(hours=12):
             raise HTTPException(status_code=400, detail="Cannot create plan for a past date/time.")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date or time format. Use YYYY-MM-DD and HH:MM.")

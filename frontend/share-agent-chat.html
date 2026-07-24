@@ -1454,25 +1454,33 @@ async function openMeetingCalendarModal(phone) {
     }
     const meetingTimeISO = `${selectedDateStr}T${hours}:${minutes}:00`;
 
+    let success = false;
     try {
-      await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
+      const res = await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: nameVal,
           meeting_time: meetingTimeISO,
-          session_id: sessionId
+          session_id: sessionId,
+          device_id: deviceId || ''
         })
       });
+      if (res.ok) {
+        success = true;
+      }
     } catch(e) {
       console.error("Booking error", e);
     }
 
     const dateFormatted = new Date(selectedDateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    const waMessage = `Hello, I would like to schedule a meeting.\n\n👤 Name: ${nameVal}\n📅 Date: ${dateFormatted}\n⏰ Time: ${selectedTimeStr}`;
-    const waUrl = `https://wa.me/${phone.replace('+', '')}?text=${encodeURIComponent(waMessage)}`;
-    window.open(waUrl, '_blank');
-    closeMeetingCalendarModal();
+    
+    if (success) {
+      closeMeetingCalendarModal();
+      appendMessage('assistant', `🎉 **Congratulations!** Your meeting schedule slot is booked successfully for **${dateFormatted}** at **${selectedTimeStr}**.`);
+    } else {
+      alert("⚠️ Booking failed. Please try again.");
+    }
   };
 
   modal.style.display = 'flex';

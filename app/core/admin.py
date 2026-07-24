@@ -278,8 +278,9 @@ def admin_login_as_client(client_id: str, db=None) -> Optional[dict]:
         c = db.query(Client).filter(Client.client_id == client_id).first()
         if not c:
             return None
-        # Generate fresh token
-        c.token = "clt-" + secrets.token_hex(24)
+        # Reuse existing token if present
+        if not c.token:
+            c.token = "clt-" + secrets.token_hex(24)
         c.last_login = datetime.utcnow()
         db.commit()
         db.refresh(c)

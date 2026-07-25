@@ -750,7 +750,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 // Example: "https://your-backend-api.com" (No trailing slash)
 // Leave empty "" if running on the same server/domain.
 // ==========================================
-const BACKEND_URL = "https://your-backend-api.com";
+const BACKEND_URL = "https://vectorize.diintech.com";
 
 let session = {};
 let isPublic = true; // Always guest/public mode for the shared chat link so Lead Capture triggers
@@ -856,6 +856,34 @@ async function loadAgent() {
     }
     const d = await r.json();
     _agentData = d;
+
+    // Auto-redirection to Custom Chat Link if domain matches/needs redirecting
+    if (d.customization && d.customization.chat_link) {
+      let customLink = d.customization.chat_link.trim();
+      if (customLink) {
+        if (!/^https?:\/\//i.test(customLink)) {
+          customLink = 'https://' + customLink;
+        }
+        try {
+          const customUrlObj = new URL(customLink);
+          const currentUrlObj = new URL(window.location.href);
+          
+          if (currentUrlObj.hostname !== 'localhost' && currentUrlObj.hostname !== '127.0.0.1' && currentUrlObj.hostname !== customUrlObj.hostname) {
+            console.log(`Redirecting to custom chat domain: ${customUrlObj.hostname}`);
+            // Merge existing search params (id, session_id, device_id, etc.)
+            for (const [key, value] of currentUrlObj.searchParams.entries()) {
+              if (!customUrlObj.searchParams.has(key)) {
+                customUrlObj.searchParams.set(key, value);
+              }
+            }
+            window.location.replace(customUrlObj.toString());
+            return;
+          }
+        } catch (err) {
+          console.error("Invalid custom chat link:", err);
+        }
+      }
+    }
 
     document.getElementById('ag-title').textContent = d.name || 'AI Assistant';
     document.getElementById('hero-title').textContent = d.name || 'Welcome';
@@ -1535,6 +1563,8 @@ async function loadPublicHistory() {
   } catch (e) {
     console.warn("Could not load past chat history:", e);
   }
+}
+
 function clearLocalChat() {
   const msgArea = document.getElementById('msg-area');
   if (!msgArea) return;

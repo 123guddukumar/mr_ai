@@ -5934,6 +5934,10 @@
                     <span id="ugcr-detail-id" style="font-family:monospace; color:var(--accent); font-size:10px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
                   </div>
                   <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:var(--text3); font-weight:600;">Send Mode</span>
+                    <span id="ugcr-detail-send-mode" style="font-size:11px; font-weight:700;"></span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:var(--text3); font-weight:600;">Received</span>
                     <span id="ugcr-detail-date" style="font-size:11px;"></span>
                   </div>
@@ -9660,6 +9664,45 @@
       <div class="modal-actions" style="flex-direction: column; gap: 10px;">
         <button class="modal-btn primary" onclick="downloadQR()" style="width: 100%">💾 Download QR Code</button>
         <button class="modal-btn secondary" onclick="closeModal('qr')" style="width: 100%">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DOMAIN MASKING MODAL ── -->
+  <div class="modal-overlay" id="modal-domain-masking">
+    <div class="modal" style="max-width: 480px; background: var(--bg2); border: 1px solid var(--border); border-radius: 24px; padding: 30px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
+      <div class="modal-title" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; font-size: 20px;">Domain Masking / Custom URL</div>
+      <div class="modal-sub" style="color: var(--text2); font-size: 13px; margin-top: 4px; margin-bottom: 20px;">Customize the URL path and generate a matching QR Code for your AI Agent.</div>
+
+      <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+        <label class="form-label" style="font-size: 13px; font-weight: 600; color: var(--text2);">Configure Custom URL Slug</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="text" id="dm-slug-input" class="form-input" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 14px; outline: none; transition: all 0.2s;" placeholder="e.g. support-bot" oninput="updateDomainMaskingPreview()">
+        </div>
+        <p style="font-size: 11px; color: var(--text3); margin-top: 2px;">Use only lowercase letters, numbers, and hyphens (e.g. <code>my-agent-1</code>).</p>
+      </div>
+
+      <!-- Live Preview -->
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Live Masked URL Preview</div>
+        <div id="dm-preview-url" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; word-break: break-all; color: var(--text); padding: 8px; background: var(--bg3); border-radius: 8px;">https://vectorize.diintech.com/</div>
+      </div>
+
+      <!-- QR Code Section -->
+      <div id="dm-qr-section" style="display: none; text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 10px; text-transform: uppercase;">Generated QR Code</div>
+        <div id="dm-qr-container" style="margin: 0 auto 12px; padding: 15px; background: #fff; border-radius: 16px; display: inline-block; position: relative; border: 4px solid var(--accent); line-height: 0;">
+          <img id="dm-qr-img" src="" style="display: block; width: 180px; height: 180px;">
+        </div>
+        <div>
+          <button class="modal-btn primary" onclick="downloadMaskedQR()" style="padding: 6px 14px; font-size: 12px; height: auto;">💾 Download QR</button>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 15px; margin-top: 10px;">
+        <button class="modal-btn secondary" onclick="closeModal('domain-masking')" style="background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 12px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;">Cancel</button>
+        <button class="modal-btn secondary" id="dm-copy-btn" onclick="copyMaskedURL()" style="background: rgba(255, 122, 0, 0.1); border: 1px solid rgba(255, 122, 0, 0.25); color: var(--accent); border-radius: 12px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;">📋 Copy Link</button>
+        <button class="modal-btn primary" id="dm-save-btn" onclick="saveAgentDomainMasking()" style="background: var(--accent); border: none; color: #fff; border-radius: 12px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(255,122,0,0.25); transition: all 0.2s;">Save Slug</button>
       </div>
     </div>
   </div>
@@ -17492,6 +17535,7 @@
           <span class="ac-status-dot"></span> ${a.is_active ? 'Active' : 'Disabled'} ${rootBadge}
         </div>
         <div class="ac-actions">
+          <button class="ac-icon-btn" onclick="openDomainMaskingModal('${a.agent_id}')" title="Domain Masking / Custom URL"><i data-lucide="globe"></i></button>
           <button class="ac-icon-btn" onclick="showAgentQR('${a.agent_id}')" title="QR Code"><i data-lucide="qr-code"></i></button>
           ${a.customization?.whatsapp_number ? `
             <a class="ac-icon-btn" href="https://wa.me/${a.customization.whatsapp_number.replace(/[^\d]/g, '')}" target="_blank" title="WhatsApp Chat (${a.customization.whatsapp_number})" style="color:#10b981; display:inline-flex; align-items:center; justify-content:center; padding: 2px;">
@@ -17551,6 +17595,130 @@
         }
         return base + 'agent-chat?id=' + id;
       }
+    }
+
+    let _currentDomainMaskingAgentId = null;
+
+    function openDomainMaskingModal(agentId) {
+      const a = _agents.find(x => x.agent_id === agentId);
+      if (!a) return;
+      _currentDomainMaskingAgentId = agentId;
+      
+      const slugInput = document.getElementById('dm-slug-input');
+      slugInput.value = a.custom_slug || '';
+      
+      updateDomainMaskingPreview();
+      openModal('domain-masking');
+    }
+
+    function updateDomainMaskingPreview() {
+      const slugInput = document.getElementById('dm-slug-input');
+      let slug = slugInput.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      slugInput.value = slug; // sanitize in real-time
+      
+      const previewEl = document.getElementById('dm-preview-url');
+      const qrSection = document.getElementById('dm-qr-section');
+      const qrImg = document.getElementById('dm-qr-img');
+      
+      const baseUrl = window.location.origin;
+      const maskedUrl = slug ? `${baseUrl}/${slug}` : `${baseUrl}/[your-custom-slug]`;
+      previewEl.textContent = maskedUrl;
+      
+      if (slug && _currentDomainMaskingAgentId) {
+        const a = _agents.find(x => x.agent_id === _currentDomainMaskingAgentId);
+        let color = '000000';
+        if (a && a.customization && a.customization.color) {
+          color = a.customization.color.replace('#', '');
+        }
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(maskedUrl)}&color=${color}`;
+        qrSection.style.display = 'block';
+      } else {
+        qrSection.style.display = 'none';
+        qrImg.src = '';
+      }
+    }
+
+    async function saveAgentDomainMasking() {
+      if (!_currentDomainMaskingAgentId) return;
+      const slugInput = document.getElementById('dm-slug-input');
+      const slug = slugInput.value.trim();
+      
+      const btn = document.getElementById('dm-save-btn');
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      
+      try {
+        const res = await fetch(`/api/agents/${_currentDomainMaskingAgentId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-Token': localStorage.getItem('token') || ''
+          },
+          body: JSON.stringify({ custom_slug: slug || null })
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Failed to update custom slug');
+        }
+        
+        const updated = await res.json();
+        // Update local agent representation
+        const idx = _agents.findIndex(x => x.agent_id === _currentDomainMaskingAgentId);
+        if (idx !== -1) {
+          _agents[idx] = updated;
+        }
+        
+        toast('Custom URL saved successfully!', 'success');
+        updateDomainMaskingPreview();
+        closeModal('domain-masking');
+        renderAgentCards();
+      } catch (e) {
+        toast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+
+    function copyMaskedURL() {
+      const previewEl = document.getElementById('dm-preview-url');
+      const url = previewEl.textContent;
+      if (url.includes('[your-custom-slug]')) {
+        toast('Please enter a custom slug first!', 'info');
+        return;
+      }
+      navigator.clipboard.writeText(url).then(() => {
+        toast('Masked link copied to clipboard!', 'success');
+      }).catch(err => {
+        toast('Failed to copy link: ' + err, 'error');
+      });
+    }
+
+    function downloadMaskedQR() {
+      const qrImg = document.getElementById('dm-qr-img');
+      if (!qrImg || !qrImg.src) return;
+      
+      const slugInput = document.getElementById('dm-slug-input');
+      const slug = slugInput.value.trim() || 'agent';
+      
+      fetch(qrImg.src)
+        .then(response => response.blob())
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = `qr-code-${slug}.png`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        })
+        .catch(() => {
+          window.open(qrImg.src, '_blank');
+        });
     }
 
     function showAgentQR(id) {
@@ -29934,7 +30102,7 @@
       const tbody = document.getElementById("ugc-jobs-tbody");
       if (!tbody) return;
       try {
-        const res = await fetch("/api/ugc/jobs?is_api=false", {
+        const res = await fetch("/api/ugc/jobs?is_api=false&dashboard=true", {
           headers: { "X-App-Token": session.token }
         });
         const data = await res.json();
@@ -30189,7 +30357,7 @@
 
       ugcStatusInterval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/ugc/status/${jobId}`, {
+          const res = await fetch(`/api/ugc/status/${jobId}?dashboard=true`, {
             headers: { "X-App-Token": session.token }
           });
           const data = await res.json();
@@ -30261,7 +30429,7 @@
       // Clear previews initially
       document.getElementById("ugc-results-previews").style.display = "none";
 
-      fetch(`/api/ugc/status/${jobId}`, {
+      fetch(`/api/ugc/status/${jobId}?dashboard=true`, {
         headers: { "X-App-Token": session.token }
       })
         .then(res => res.json())
@@ -30550,7 +30718,7 @@
 
       // Populate settings in editor from the active job metadata
       if (activeResultJobId) {
-        fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": session.token } })
+        fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": session.token } })
           .then(r => r.json())
           .then(job => {
             if (job && job.metadata_json) {
@@ -31195,7 +31363,7 @@
         .then(data => {
           if (data.success) {
             const rerendPoll = setInterval(() => {
-              fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": token } })
+              fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": token } })
                 .then(r => r.json())
                 .then(jd => {
                   const prog = jd.progress || 0;
@@ -31229,7 +31397,7 @@
 
                     // Refresh edit history in workspace details
                     if (selectedRequestJobId) {
-                      fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": token } })
+                      fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": token } })
                         .then(r => r.json())
                         .then(freshJob => { if (freshJob && freshJob.job_id) showRequestJobDetails(freshJob); })
                         .catch(() => {});
@@ -31313,7 +31481,7 @@
             if (statusEl) statusEl.textContent = "⏳ Re-rendering... Refreshing status...";
             // Poll status until done
             const rerendPoll = setInterval(() => {
-              fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": token } })
+              fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": token } })
                 .then(r => r.json())
                 .then(jd => {
                   if (jd.status === "completed") {
@@ -31536,7 +31704,7 @@
             return;
           }
           try {
-            const statusRes = await fetch(`/api/ugc/status/${activeResultJobId}`, {
+            const statusRes = await fetch(`/api/ugc/status/${activeResultJobId}?dashboard=true`, {
               headers: { "X-App-Token": session.token }
             });
             const statusData = await statusRes.json();
@@ -31883,7 +32051,7 @@
       .then(data => {
         showToast(`${type} status updated! Re-rendering video...`, "success");
         // Refresh details
-        fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": token } })
+        fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": token } })
           .then(res => res.json())
           .then(freshJob => { 
             if (freshJob && freshJob.job_id) {
@@ -31936,7 +32104,7 @@
         }
         
         // Refresh details and auto trigger fast rerender
-        const freshRes = await fetch(`/api/ugc/job/${activeResultJobId}`, { headers: { "X-App-Token": session.token } });
+        const freshRes = await fetch(`/api/ugc/job/${activeResultJobId}?dashboard=true`, { headers: { "X-App-Token": session.token } });
         const freshJob = await freshRes.json();
         if (freshJob && freshJob.job_id) {
           showRequestJobDetails(freshJob);
@@ -32139,7 +32307,7 @@
       if (!tbody) return;
 
       try {
-        const res = await fetch("/api/ugc/jobs?is_api=true", {
+        const res = await fetch("/api/ugc/jobs?is_api=true&dashboard=true", {
           headers: { "X-App-Token": session.token }
         });
         const data = await res.json();
@@ -32315,13 +32483,20 @@
         }
 
         const shortId = job.job_id.substring(0, 14) + "…";
+        const sendMode = meta.send_mode || "auto";
+        const sendModeBadge = sendMode === "manual"
+          ? `<span style="font-size:9px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:2px 6px; border-radius:4px; font-weight:700; margin-left:6px; vertical-align:middle; text-transform:uppercase;">Manual</span>`
+          : `<span style="font-size:9px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); padding:2px 6px; border-radius:4px; font-weight:700; margin-left:6px; vertical-align:middle; text-transform:uppercase;">Auto</span>`;
 
         return `
       <tr style="${trStyle}" onclick="selectRequestJob('${job.job_id}')" onmouseenter="this.style.background='rgba(255,255,255,0.025)'" onmouseleave="this.style.background='${isApproved ? 'rgba(52,211,153,0.03)' : isRejected ? 'rgba(248,113,113,0.03)' : 'transparent'}'">
         <td style="text-align:center; font-weight:800; color:var(--text3); font-size:11px; padding:12px 8px;">${idx + 1}</td>
         <td style="text-align:center; padding:8px 8px;">${thumbHtml}</td>
         <td style="padding:12px 16px;">
-          <div style="font-weight:700; color:#fff; font-size:12px; margin-bottom:3px;">API Request</div>
+          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
+            <span style="font-weight:700; color:#fff; font-size:12px;">API Request</span>
+            ${sendModeBadge}
+          </div>
           <div style="font-size:10px; color:var(--accent); font-family:monospace; background:rgba(255,122,0,0.06); padding:2px 6px; border-radius:4px; display:inline-block;" title="${job.job_id}">${shortId}</div>
         </td>
         <td style="padding:12px 16px; max-width:160px;">
@@ -32338,8 +32513,8 @@
                 🎬 Open
               </button>
             ` : `
-              <button class="btn btn-secondary" style="padding:5px 9px; font-size:10px; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; cursor:pointer; border-radius:6px;" onclick="approveRequestJob('${job.job_id}', event)" title="Approve this request">
-                ✅ Approve
+              <button class="btn btn-secondary" style="padding:5px 9px; font-size:10px; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; cursor:pointer; border-radius:6px;" onclick="approveRequestJob('${job.job_id}', event)" title="${sendMode === 'manual' ? 'Approve and Send Video' : 'Approve this request'}">
+                ${sendMode === 'manual' ? '✉️ Send' : '✅ Approve'}
               </button>
               <button class="btn btn-secondary" style="padding:5px 9px; font-size:10px; color:#f87171; border-color:rgba(248,113,113,0.3); font-weight:700; cursor:pointer; border-radius:6px;" onclick="rejectRequestJob('${job.job_id}', event)" title="Reject this request">
                 ❌ Reject
@@ -32401,7 +32576,7 @@
       }
 
       // Fetch fresh job detail for edited_versions and latest status
-      fetch(`/api/ugc/job/${jobId}`, { headers: { "X-App-Token": session.token } })
+      fetch(`/api/ugc/job/${jobId}?dashboard=true`, { headers: { "X-App-Token": session.token } })
         .then(r => r.json())
         .then(freshJob => {
           if (freshJob && freshJob.job_id) {
@@ -32422,6 +32597,17 @@
       // ── Header info ──
       document.getElementById("ugcr-detail-title").textContent = job.filename;
       document.getElementById("ugcr-detail-id").textContent = job.job_id;
+      
+      const sendModeVal = meta.send_mode || "auto";
+      const sendModeEl = document.getElementById("ugcr-detail-send-mode");
+      if (sendModeEl) {
+        if (sendModeVal === "manual") {
+          sendModeEl.innerHTML = `<span style="background:rgba(59,130,246,0.15); color:#60a5fa; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px;">🔵 Manual</span>`;
+        } else {
+          sendModeEl.innerHTML = `<span style="background:rgba(16,185,129,0.15); color:#34d399; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px;">🟢 Auto</span>`;
+        }
+      }
+
       document.getElementById("ugcr-detail-date").textContent = job.created_at
         ? new Date(job.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'})
         : "—";
@@ -32611,8 +32797,8 @@
             <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(52,211,153,0.06); border:1px solid rgba(52,211,153,0.2); border-radius:10px; width:100%;">
               <span style="font-size:20px;">✅</span>
               <div>
-                <div style="font-size:12px; font-weight:700; color:#34d399;">This request is Approved</div>
-                <div style="font-size:10px; color:var(--text3); margin-top:2px;">You can now edit and finalize the video.</div>
+                <div style="font-size:12px; font-weight:700; color:#34d399;">Video Approved / Sent</div>
+                <div style="font-size:10px; color:var(--text3); margin-top:2px;">This video has been approved and sent to client.</div>
               </div>
             </div>
             <button class="btn btn-secondary" style="font-size:11px; padding:8px 12px; color:#f87171; border-color:rgba(248,113,113,0.3); font-weight:700; white-space:nowrap; border-radius:8px; flex-shrink:0;" onclick="rejectRequestJob('${job.job_id}', event)">❌ Reject</button>
@@ -32623,14 +32809,14 @@
               <span style="font-size:20px;">❌</span>
               <div>
                 <div style="font-size:12px; font-weight:700; color:#f87171;">This request is Rejected</div>
-                <div style="font-size:10px; color:var(--text3); margin-top:2px;">You can re-approve it anytime.</div>
+                <div style="font-size:10px; color:var(--text3); margin-top:2px;">You can re-approve / send it anytime.</div>
               </div>
             </div>
-            <button class="btn btn-secondary" style="font-size:11px; padding:8px 12px; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; white-space:nowrap; border-radius:8px; flex-shrink:0;" onclick="approveRequestJob('${job.job_id}', event)">✅ Approve</button>
+            <button class="btn btn-secondary" style="font-size:11px; padding:8px 12px; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; white-space:nowrap; border-radius:8px; flex-shrink:0;" onclick="approveRequestJob('${job.job_id}', event)">${sendModeVal === 'manual' ? '✉️ Send Video' : '✅ Approve'}</button>
           `;
         } else {
           approvalActions.innerHTML = `
-            <button class="btn btn-secondary" style="flex:1; font-size:12px; padding:9px 0; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; border-radius:8px; justify-content:center;" onclick="approveRequestJob('${job.job_id}', event)">✅ Approve Request</button>
+            <button class="btn btn-secondary" style="flex:1; font-size:12px; padding:9px 0; color:#34d399; border-color:rgba(52,211,153,0.3); font-weight:700; border-radius:8px; justify-content:center;" onclick="approveRequestJob('${job.job_id}', event)">${sendModeVal === 'manual' ? '✉️ Send Video' : '✅ Approve Request'}</button>
             <button class="btn btn-secondary" style="flex:1; font-size:12px; padding:9px 0; color:#f87171; border-color:rgba(248,113,113,0.3); font-weight:700; border-radius:8px; justify-content:center;" onclick="rejectRequestJob('${job.job_id}', event)">❌ Reject Request</button>
           `;
         }

@@ -43,6 +43,7 @@ class CreateAgentReq(BaseModel):
     system_config: Optional[dict] = {}
     customization: Optional[dict] = {}
     datastores: Optional[List[str]] = []
+    custom_slug: Optional[str] = None
 
 class UpdateAgentReq(BaseModel):
     name: Optional[str] = None
@@ -55,6 +56,7 @@ class UpdateAgentReq(BaseModel):
     customization: Optional[dict] = None
     datastores: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    custom_slug: Optional[str] = None
 
 class IngestUrlReq(BaseModel):
     url: str
@@ -152,11 +154,46 @@ async def api_delete_datastore(ds_id: str, x_app_token: Optional[str] = Header(N
 
 # ── Agent Routes ─────────────────────────────────────────────────────────────
 
+def validate_custom_slug(slug: Optional[str], agent_id: Optional[str], db: Session) -> Optional[str]:
+    if not slug:
+        return None
+    slug = slug.strip().lower()
+    if not slug:
+        return None
+    
+    import re
+    if not re.match(r"^[a-z0-9-]+$", slug):
+        raise HTTPException(400, "Custom URL must contain only lowercase letters, numbers, and hyphens.")
+        
+    reserved_keywords = {
+        "login", "user", "dashboard", "help", "admin", "super-admin", "memory", 
+        "memory-chat", "agent-chat", "memory-chat-public", "reels", "api-docs", 
+        "aws-deploy-guide", "developer-guide", "api-document", "ugc-api-docs",
+        "assets", "static", "uploads", "api", "docs", "redoc", "redirect"
+    }
+    if slug in reserved_keywords:
+        raise HTTPException(400, "This URL path is reserved and cannot be used.")
+        
+    from app.core.models import Agent
+    query = db.query(Agent).filter(Agent.custom_slug == slug)
+    if agent_id:
+        query = query.filter(Agent.agent_id != agent_id)
+    existing = query.first()
+    if existing:
+        raise HTTPException(400, "This custom URL is already in use by another agent.")
+        
+    return slug
+
 @router.post("/agents", tags=["Agents & DataStores"])
 async def api_create_agent(req: CreateAgentReq, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
     client = _get_client(x_app_token, db)
     # Extract all fields for creation
     params = req.dict()
+    
+    # Validate custom slug
+    if 'custom_slug' in params and params['custom_slug']:
+        params['custom_slug'] = validate_custom_slug(params['custom_slug'], None, db)
+        
     # Map complex fields to JSON strings
     if 'voice_config' in params: params['voice_config_json'] = json.dumps(params.pop('voice_config'))
     if 'system_config' in params: params['system_config_json'] = json.dumps(params.pop('system_config'))
@@ -182,6 +219,10 @@ async def api_list_agents(x_app_token: Optional[str] = Header(None, alias="X-App
 async def api_update_agent(agent_id: str, req: UpdateAgentReq, x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
     client = _get_client(x_app_token, db)
     updates = req.dict(exclude_unset=True)
+    
+    # Validate custom slug if provided
+    if 'custom_slug' in updates:
+        updates['custom_slug'] = validate_custom_slug(updates['custom_slug'], agent_id, db)
     
     # Convert dict fields to JSON strings for core logic
     if 'voice_config' in updates: updates['voice_config_json'] = json.dumps(updates.pop('voice_config'))

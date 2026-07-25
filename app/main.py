@@ -203,6 +203,31 @@ if os.path.exists(frontend_path):
     async def root():
         return FileResponse(os.path.join(frontend_path, "index.html"))
 
+    @app.get("/{slug}", include_in_schema=False)
+    async def redirect_custom_slug(slug: str):
+        from app.core.database import get_session_local
+        from app.core.models import Agent
+        from fastapi.responses import RedirectResponse
+        
+        reserved_keywords = {
+            "login", "user", "dashboard", "help", "admin", "super-admin", "memory", 
+            "memory-chat", "agent-chat", "memory-chat-public", "reels", "api-docs", 
+            "aws-deploy-guide", "developer-guide", "api-document", "ugc-api-docs",
+            "assets", "static", "uploads", "api", "docs", "redoc", "redirect"
+        }
+        if slug in reserved_keywords or "." in slug:
+            return FileResponse(os.path.join(frontend_path, "index.html"))
+            
+        db = get_session_local()()
+        try:
+            agent = db.query(Agent).filter(Agent.custom_slug == slug, Agent.is_active == True).first()
+            if agent:
+                return RedirectResponse(url=f"/agent-chat?id={agent.agent_id}")
+        finally:
+            db.close()
+            
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
         index = os.path.join(frontend_path, "index.html")

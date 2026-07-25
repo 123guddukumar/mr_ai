@@ -23,7 +23,7 @@
     "https://meta.ai/*",
     "https://www.epidemicsound.com/*",
     "https://epidemicsound.com/*",
-    "https://test.3rdai.co/*",
+    "https://https://vectorize.diintech.com/*",
     "<all_urls>"
   ],
   "background": {
@@ -39,36 +39,70 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://labs.google/*"],
-      "js": ["content_flow.js"],
+      "matches": [
+        "https://labs.google/*"
+      ],
+      "js": [
+        "content_flow.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.meta.ai/*", "https://meta.ai/*"],
-      "js": ["content_meta.js"],
+      "matches": [
+        "https://www.meta.ai/*",
+        "https://meta.ai/*"
+      ],
+      "js": [
+        "content_meta.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.epidemicsound.com/*", "https://epidemicsound.com/*"],
-      "js": ["hook_clipboard.js"],
+      "matches": [
+        "https://www.epidemicsound.com/*",
+        "https://epidemicsound.com/*"
+      ],
+      "js": [
+        "hook_clipboard.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://www.epidemicsound.com/*", "https://epidemicsound.com/*"],
-      "js": ["content_epidemic.js"],
+      "matches": [
+        "https://www.epidemicsound.com/*",
+        "https://epidemicsound.com/*"
+      ],
+      "js": [
+        "content_epidemic.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*", "http://localhost:*/*", "http://127.0.0.1:*/*", "https://test.3rdai.co/*", "file://*/*"],
-      "js": ["content_dashboard.js"],
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*",
+        "https://https://vectorize.diintech.com/*",
+        "file://*/*"
+      ],
+      "js": [
+        "content_dashboard.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icon16.png", "icon48.png", "icon128.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icon16.png",
+        "icon48.png",
+        "icon128.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

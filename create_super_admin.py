@@ -40,7 +40,7 @@ def main():
         
         if result:
             print(f"\n✅ Success! Super Admin '{username}' created.")
-            print(f"🔗 Login at: https://test.3rdai.co/admin-login")
+            print(f"🔗 Login at: https://vectorize.diintech.com/admin-login")
         else:
             print(f"\n❌ Error: Admin with username '{username}' already exists.")
             

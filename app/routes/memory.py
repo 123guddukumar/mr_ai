@@ -608,7 +608,7 @@ async def memory_embed_info(
         if mem.client_id != client["client_id"]:
             raise HTTPException(403, "Not your memory")
 
-    base_url = os.getenv("BASE_URL", "https://test.3rdai.co")
+    base_url = os.getenv("BASE_URL", "https://vectorize.diintech.com")
     # direct=1 skips login so it goes straight to chat
     chat_url  = f"{base_url}/memory-chat-public?id={memory_id}&direct=1"
     embed_url = f"{base_url}/embed/{memory_id}"

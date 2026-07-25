@@ -3,7 +3,7 @@
 // Load saved config on open
 chrome.storage.local.get(['token', 'backendUrl'], (data) => {
   if (data.token) document.getElementById('token').value = data.token;
-  document.getElementById('backend-url').value = data.backendUrl || 'https://test.3rdai.co';
+  document.getElementById('backend-url').value = data.backendUrl || 'https://https://vectorize.diintech.com';
 });
 
 // Listen for logs from background
@@ -17,7 +17,7 @@ setInterval(pollState, 1500);
 // ── Save Config ───────────────────────────────────────────────────────────────
 function saveConfig() {
   const token = document.getElementById('token').value.trim();
-  const backendUrl = document.getElementById('backend-url').value.trim() || 'https://test.3rdai.co';
+  const backendUrl = document.getElementById('backend-url').value.trim() || 'https://https://vectorize.diintech.com';
   if (!token) { addLog('Please enter your App Token', 'error'); return; }
 
   chrome.runtime.sendMessage({ type: 'SAVE_CONFIG', token, backendUrl });
@@ -35,7 +35,7 @@ function resetJob() {
   document.getElementById('s-images').textContent = '0';
   document.getElementById('s-videos').textContent = '0';
   document.getElementById('phase-label').textContent = 'Waiting for job...';
-  ['p1','p2','p3','p4'].forEach(id => document.getElementById(id).className = 'phase-step');
+  ['p1', 'p2', 'p3', 'p4'].forEach(id => document.getElementById(id).className = 'phase-step');
 }
 
 // ── Poll State ────────────────────────────────────────────────────────────────

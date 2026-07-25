@@ -120,7 +120,7 @@ all chat page when say or enter hii/hi or what is your name/who are you then spe
 
 
 bro i wwant to add when create memory bot using this then why not ask all check img 
-POST https://test.3rdai.co/api/memory
+POST https://https://vectorize.diintech.com/api/memory
 
 Field	Type	Required	Description
 name	string	Required	Chatbot memory name

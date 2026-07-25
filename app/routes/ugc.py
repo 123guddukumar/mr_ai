@@ -52,6 +52,7 @@ class UgcProcessRequest(BaseModel):
     viral: bool = Field(default=True)
     logo: bool = Field(default=False)
     subtitle_style: Optional[str] = Field(default="default", description="Subtitle styling style name: 'default', 'important_large', 'neon_bounce', 'minimal_white', 'bold_yellow', 'split_top_bottom', 'two_line_slide_right_left', 'two_line_slide_left_right', 'two_line_slide_top_bottom', 'two_line_zoom_in'")
+    send_mode: Optional[str] = Field(default="auto", description="'auto' or 'manual'")
 
 
 class BrollUploadIndex(BaseModel):
@@ -67,6 +68,7 @@ class BrollUploadIndex(BaseModel):
 async def upload_ugc_video(
     file: UploadFile = File(...),
     source: Optional[str] = None,
+    send_mode: Optional[str] = "auto",
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
@@ -120,7 +122,7 @@ async def upload_ugc_video(
     try:
         import json
         is_api_val = (source != "dashboard")
-        job_metadata = {"is_api": is_api_val}
+        job_metadata = {"is_api": is_api_val, "send_mode": send_mode or "auto"}
         job = UgcJob(
             job_id=job_id,
             client_id=client["client_id"],
@@ -176,6 +178,8 @@ async def process_ugc_video(
     # Preserve existing metadata (like meta_brolls) and merge request parameters
     existing_meta = json_dumps_parse(job.metadata_json) if job.metadata_json else {}
     existing_meta.update(req.dict())
+    if "send_mode" not in existing_meta or not existing_meta["send_mode"]:
+        existing_meta["send_mode"] = "auto"
     job.metadata_json = json_dumps(existing_meta)
     
     db.commit()
@@ -441,6 +445,7 @@ Output format (raw JSON, no markdown):
 @router.get("/ugc/job/{job_id}", tags=["UGC Creator"])
 async def get_ugc_job_status(
     job_id: str,
+    dashboard: bool = False,
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
@@ -456,7 +461,7 @@ async def get_ugc_job_status(
     if not job:
         raise HTTPException(404, "UGC Job not found.")
 
-    result = job.to_dict()
+    result = job.to_dict(dashboard=dashboard)
 
     # Scan for edited version files (result_edited_1.mp4, result_edited_2.mp4, etc.)
     work_dir = os.path.join(str(settings.BASE_DIR), "static", "ugc", job_id)
@@ -486,6 +491,7 @@ async def get_ugc_job_status(
 @router.get("/ugc/jobs", tags=["UGC Creator"])
 async def list_ugc_jobs(
     is_api: Optional[bool] = None,
+    dashboard: bool = False,
     client: dict = Depends(_require_client),
     db: Session = Depends(get_db),
 ):
@@ -497,7 +503,7 @@ async def list_ugc_jobs(
     if is_api is not None:
         jobs = [j for j in jobs if j.settings.get("is_api", False) == is_api]
 
-    return [j.to_dict() for j in jobs]
+    return [j.to_dict(dashboard=dashboard) for j in jobs]
 
 
 # ── Subtitle Editor Schemas ───────────────────────────────────────────────────
@@ -1049,6 +1055,7 @@ class UgcSettingsUpdateRequest(BaseModel):
     use_watermark: Optional[bool] = None
     use_logo: Optional[bool] = None
     use_running_tap: Optional[bool] = None
+    send_mode: Optional[str] = None
 
 
 @router.post("/ugc/assets/{job_id}/upload", tags=["UGC Creator"])
@@ -1138,6 +1145,8 @@ async def update_ugc_settings(
         meta["use_logo"] = req.use_logo
     if req.use_running_tap is not None:
         meta["use_running_tap"] = req.use_running_tap
+    if req.send_mode is not None:
+        meta["send_mode"] = req.send_mode
         
     job.metadata_json = json.dumps(meta)
     db.commit()

@@ -1559,6 +1559,34 @@ async function loadAgent() {
     const d = await r.json();
     _agentData = d;
 
+    // Auto-redirection to Custom Chat Link if domain matches/needs redirecting
+    if (d.customization && d.customization.chat_link) {
+      let customLink = d.customization.chat_link.trim();
+      if (customLink) {
+        if (!/^https?:\/\//i.test(customLink)) {
+          customLink = 'https://' + customLink;
+        }
+        try {
+          const customUrlObj = new URL(customLink);
+          const currentUrlObj = new URL(window.location.href);
+          
+          if (currentUrlObj.hostname !== 'localhost' && currentUrlObj.hostname !== '127.0.0.1' && currentUrlObj.hostname !== customUrlObj.hostname) {
+            console.log(`Redirecting to custom chat domain: ${customUrlObj.hostname}`);
+            // Merge existing search params (id, session_id, device_id, etc.)
+            for (const [key, value] of currentUrlObj.searchParams.entries()) {
+              if (!customUrlObj.searchParams.has(key)) {
+                customUrlObj.searchParams.set(key, value);
+              }
+            }
+            window.location.replace(customUrlObj.toString());
+            return;
+          }
+        } catch (err) {
+          console.error("Invalid custom chat link:", err);
+        }
+      }
+    }
+
     const isRoot = d.is_root || d.category === 'root_assistant';
     const rootBadgeHtml = isRoot ? ' <span style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; font-size:11px; margin-left:6px; display:inline-flex; align-items:center; gap:4px; vertical-align:middle; box-shadow:0 2px 6px rgba(245,158,11,0.4);">👑 ROOT ASSISTANT</span>' : '';
 

@@ -8,7 +8,7 @@ let state = {
   phase: "idle",
   currentSceneIdx: 0,
   token: null,
-  backendUrl: "https://test.3rdai.co",
+  backendUrl: "https://vectorize.diintech.com",
   metaTabId: null,
   singleAsset: null,   // { assetId, mediaType, prompt, tabId, dashboardTabId }
   bgmTabId: null,
@@ -55,10 +55,10 @@ function startFastPoll() {
   if (fastPollTimeout) {
     clearTimeout(fastPollTimeout);
   }
-  
+
   // Inform the popup that the extension is active and polling
   notifyPopup("🔌 Active and polling for jobs...", "info");
-  
+
   async function tick() {
     if (state.phase === "idle" && state.token) {
       try {
@@ -78,13 +78,13 @@ function startFastPoll() {
         log(`Fast-poll error: ${e.message}`);
       }
     }
-    
+
     // Continue polling if still idle
     if (state.phase === "idle") {
       fastPollTimeout = setTimeout(tick, 3000);
     }
   }
-  
+
   tick();
 }
 
@@ -118,7 +118,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!cfg.token) return;
 
   state.token = cfg.token;
-  state.backendUrl = cfg.backendUrl || "https://test.3rdai.co";
+  state.backendUrl = cfg.backendUrl || "https://https://vectorize.diintech.com";
 
   // Sync phase from storage
   if (cfg.sw_state && cfg.sw_state.phase) {
@@ -325,7 +325,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "SINGLE_ASSET_REPLACED_CONFIRMED") {
     log("Received SINGLE_ASSET_REPLACED_CONFIRMED from page.");
     if (state.singleAsset && state.singleAsset.tabId && (!state.singleAsset.assetId || !state.singleAsset.assetId.startsWith("ugc-broll-"))) {
-      chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
+      chrome.tabs.remove(state.singleAsset.tabId).catch(() => { });
     }
     state.singleAsset = null;
     saveState();
@@ -338,7 +338,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const tabToRemove = state.bgmTabId;
     state.bgmTabId = null;
     if (tabToRemove) {
-      chrome.tabs.remove(tabToRemove).catch(() => {});
+      chrome.tabs.remove(tabToRemove).catch(() => { });
     }
     saveState().then(() => allDone());
     sendResponse({ ok: true });
@@ -360,7 +360,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
       }
       if (state.singleAsset.tabId && (!state.singleAsset.assetId || !state.singleAsset.assetId.startsWith("ugc-broll-"))) {
-        chrome.tabs.remove(state.singleAsset.tabId).catch(() => {});
+        chrome.tabs.remove(state.singleAsset.tabId).catch(() => { });
       }
       state.singleAsset = null;
       saveState();
@@ -724,7 +724,7 @@ async function finishSingleAsset(filename) {
         log(`Failed to send MR_AI_SINGLE_ASSET_DOWNLOADED to dashboard tab: ${err.message}`);
       });
     }
-    
+
     // Broadcast to any other dashboard tab as a robust fallback
     if (sa.uploadedUrl) {
       chrome.tabs.query({}, (tabs) => {
@@ -737,16 +737,16 @@ async function finishSingleAsset(filename) {
                 mediaType: sa.mediaType,
                 url: sa.uploadedUrl,
                 thumb: sa.uploadedThumb || sa.uploadedUrl
-              }).catch(() => {});
+              }).catch(() => { });
             }
           }
         }
       });
     }
-    
+
     // Close tab if applicable (only if not a UGC B-roll)
     if (sa.tabId && (!sa.assetId || !sa.assetId.startsWith("ugc-broll-"))) {
-      chrome.tabs.remove(sa.tabId).catch(() => {});
+      chrome.tabs.remove(sa.tabId).catch(() => { });
     }
     state.singleAsset = null;
     await saveState();
@@ -779,9 +779,9 @@ async function finishSingleAsset(filename) {
         mediaType,
         url: data.url || "",
         thumb: data.thumb || data.url || ""
-      }).catch(() => {});
+      }).catch(() => { });
     }
-    
+
     // Broadcast to any other dashboard tab as a robust fallback
     chrome.tabs.query({}, (tabs) => {
       if (tabs) {
@@ -793,7 +793,7 @@ async function finishSingleAsset(filename) {
               mediaType,
               url: data.url || "",
               thumb: data.thumb || data.url || ""
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       }
@@ -859,7 +859,7 @@ async function allDone() {
   if (tabToRemove) {
     log(`Scheduling closure of Meta AI tab ${tabToRemove} in 15 seconds...`);
     setTimeout(() => {
-      chrome.tabs.remove(tabToRemove).catch(() => {});
+      chrome.tabs.remove(tabToRemove).catch(() => { });
       log(`Closed Meta AI tab ${tabToRemove} successfully.`);
     }, 15000);
   }
@@ -926,7 +926,7 @@ async function openEpidemicSound() {
       notifyPopup(`⏳ Waiting for Epidemic Sound tab... (${attempt + 1}/8)`);
       await sleep(3000);
     }
-    
+
     throw new Error("Could not contact content script after 8 attempts");
   } catch (e) {
     notifyPopup("⚠️ Epidemic Sound failed, skipping to assembly with default BGM", "error");
@@ -1006,7 +1006,7 @@ async function reportError(msg) {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-App-Token": state.token },
     body: JSON.stringify({ error: msg })
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function notifyPopup(message, type = "info") {
@@ -1014,7 +1014,7 @@ function notifyPopup(message, type = "info") {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.runtime.sendMessage) {
       const p = chrome.runtime.sendMessage({ type: "LOG", message, logType: type });
       if (p && typeof p.catch === 'function') {
-        p.catch(() => {});
+        p.catch(() => { });
       }
     }
   } catch (e) {
@@ -1113,7 +1113,7 @@ function waitForDownloadComplete(downloadId) {
       }
     }
     chrome.downloads.onChanged.addListener(listener);
-    
+
     // Safety check in case it completed immediately
     chrome.downloads.search({ id: downloadId }, (results) => {
       if (results && results[0]) {
@@ -1158,8 +1158,8 @@ async function waitForActiveDownloadsToComplete(jobId, maxWaitMs = 60000) {
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   // If the filename is already formatted by our extension, let it through unchanged!
   const isAlreadyRenamed = item.filename && (
-    item.filename.startsWith("meta-vid") || 
-    item.filename.startsWith("meta-img") || 
+    item.filename.startsWith("meta-vid") ||
+    item.filename.startsWith("meta-img") ||
     item.filename.startsWith("flow-image") ||
     item.filename.startsWith("single-gen-")
   );
@@ -1222,14 +1222,14 @@ chrome.downloads.onChanged.addListener((delta) => {
 
 function checkAndMatchDownload(item) {
   if (!item.filename) return;
-  
+
   const baseFilename = getBaseFilename(item.filename);
   for (const filename of Object.keys(pendingNativeDownloads)) {
     const cleanFn = filename.replace(".mp4", "").replace(".jpg", "");
     if (baseFilename === filename || item.filename.endsWith(filename) || baseFilename.includes(cleanFn)) {
       const pending = pendingNativeDownloads[filename];
       pending.downloadId = item.id;
-      
+
       if (item.state === "complete") {
         log(`Native download completed: ${filename}`);
         // If this is a single-asset generation, call the dedicated handler

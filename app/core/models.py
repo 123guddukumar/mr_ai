@@ -376,6 +376,7 @@ class Agent(Base):
     
     is_root    = Column(Boolean, default=False, nullable=False)
     is_active  = Column(Boolean, default=True, nullable=False)
+    custom_slug = Column(String(200), unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     knowledge_sources = relationship("AgentKnowledgeSource", back_populates="agent", cascade="all, delete-orphan")
@@ -403,6 +404,7 @@ class Agent(Base):
             "datastores":       ds_ids,
             "is_root":          self.is_root or False,
             "is_active":        self.is_active,
+            "custom_slug":      self.custom_slug or "",
             "created_at":       self.created_at.isoformat() if self.created_at else "",
             "kb_source_count":  len(self.knowledge_sources),
         }
@@ -970,19 +972,35 @@ class UgcJob(Base):
         except Exception:
             return {}
 
-    def to_dict(self):
+    def to_dict(self, dashboard: bool = False):
+        settings_dict = self.settings
+        res_status = self.status
+        res_progress = self.progress
+        res_video = self.result_video_path or ""
+        res_thumb = self.result_thumbnail_path or ""
+        res_viral = self.viral_video_path or ""
+        
+        # If manual send mode and not approved and not dashboard, hide video output files
+        if settings_dict.get("send_mode") == "manual" and not settings_dict.get("approved") and not dashboard:
+            if res_status == "completed":
+                res_status = "pending_approval"
+                res_progress = 99
+            res_video = ""
+            res_thumb = ""
+            res_viral = ""
+
         return {
             "job_id": self.job_id,
             "filename": self.filename,
-            "status": self.status,
-            "progress": self.progress,
+            "status": res_status,
+            "progress": res_progress,
             "error_message": self.error_message or "",
             "original_video_path": self.original_video_path,
-            "result_video_url": self.result_video_path or "",
-            "result_thumbnail_url": self.result_thumbnail_path or "",
-            "viral_video_url": self.viral_video_path or "",
+            "result_video_url": res_video,
+            "result_thumbnail_url": res_thumb,
+            "viral_video_url": res_viral,
             "transcript": self.transcript,
-            "settings": self.settings,
+            "settings": settings_dict,
             "metadata_json": self.metadata_json or "{}",
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }

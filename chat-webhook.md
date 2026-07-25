@@ -236,6 +236,6 @@ Ensure you do the following configuration updates in **`share-agent-chat.html`**
    ```javascript
    const BACKEND_URL = "https://your-backend-api.com";
    ```
-3. Replace `"https://your-backend-api.com"` with your actual live FastAPI backend server URL (e.g., `https://test.3rdai.co` or similar). Do NOT add a trailing slash `/`.
+3. Replace `"https://your-backend-api.com"` with your actual live FastAPI backend server URL (e.g., `https://https://vectorize.diintech.com` or similar). Do NOT add a trailing slash `/`.
 4. Upload `share-agent-chat.html` to Vercel/hosting.
 5. In your custom iframe src urls, make sure to add `?id=YOUR_AGENT_ID` (for example, `?id=da3243d9babb9387`) to open the exact agent widget page!

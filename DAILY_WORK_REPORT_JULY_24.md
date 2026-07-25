@@ -5,7 +5,7 @@
 ---
 
 ## 🚀 Overview
-Today's work centered on refining the Daily Planner features, fixing timezone-related past-date validation issues on the client and server sides, implementing a structured "Add Meeting" feature, and delivering a clean, high-contrast modal popup to display full meeting descriptions.
+Today's work centered on refining the Daily Planner features, fixing timezone-related past-date validation issues on the client and server sides, implementing a structured "Add Meeting" feature, delivering a clean, high-contrast modal popup to display full meeting descriptions, and configuring an automated custom chat link redirection system.
 
 ---
 
@@ -41,6 +41,12 @@ Today's work centered on refining the Daily Planner features, fixing timezone-re
 ### 🔘 6. 🔑 Permanent Client Tokens Persistence
 * **Token Stability**: Modified admin login (`admin_login_as_client`), password updates (`update_password`), Google login (`api_google_login`), and QR login (`api_qr_login`) controllers to check and reuse existing tokens instead of regenerating them, preserving permanent client integration credentials.
 
+### 🔀 7. 🔗 Custom Chat Domain Auto-Redirection
+* **Auto-Routing Check**: Added automatic redirection check scripts inside `agent-chat.html` and `share-agent-chat.html`.
+* **Redirection Flow**: When a user opens a chat page on the default domain (e.g. `https://vectorize.diintech.com`), the page fetches the agent customization config. If a custom chat URL (e.g. `https://magnifai.com/agent-chat`) is set, it executes a `window.location.replace()` to immediately redirect the browser to the custom domain.
+* **Query Parameter Merging**: All query parameters (such as `id`, `session_id`, `device_id`) are preserved and merged onto the custom URL dynamically during redirection.
+* **Bypass on Localhost**: Redirection is intentionally bypassed when running on `localhost` or `127.0.0.1` to maintain a smooth developer debugging experience.
+
 ---
 
 ## 🎨 File Modifications & Architecture
@@ -48,9 +54,9 @@ Today's work centered on refining the Daily Planner features, fixing timezone-re
 | File Path | Description of Changes | Impact |
 | :--- | :--- | :--- |
 | [`app/routes/root_agent.py`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/root_agent.py) | Modified date-time parsing to use `datetime.now()` with a 12-hour buffer. Updated plans GET query to exclude completed plans from the default view. | Resolves false past-date errors and separates completed tasks. |
-| [`frontend/agent-chat.html`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/agent-chat.html) | Added Add Meeting options, timezone/picker overrides, orange/green border card rendering, details view buttons, and white details modal. | Enhances Root Agent planner interactions and resolves scheduler past-time warnings. |
+| [`frontend/agent-chat.html`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/agent-chat.html) | Added Add Meeting options, timezone/picker overrides, orange/green border card rendering, details view buttons, white details modal, and custom domain redirect logic. | Enhances Root Agent planner interactions, resolves scheduler past-time warnings, and manages domain routing. |
 | [`frontend/dashboard.html`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/dashboard.html) | Integrated matching Add Meeting options, time picker locks, orange/green styles, details view buttons, and white details modal. | Synchronizes Root Dashboard planner with Agent Chat view. |
-| [`frontend/share-agent-chat.html`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/share-agent-chat.html) | Updated booked slots handler to show a success message in chat without redirecting to WhatsApp. | Simplifies meeting scheduling flow. |
+| [`frontend/share-agent-chat.html`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/frontend/share-agent-chat.html) | Updated booked slots handler to show a success message in chat without redirecting to WhatsApp. Added custom domain redirection logic. | Simplifies meeting scheduling flow and manages domain routing. |
 | [`app/core/admin.py`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/admin.py) <br> [`app/core/clients.py`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/core/clients.py) <br> [`app/routes/clients.py`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/app/routes/clients.py) | Modified client auth flows to check for and reuse existing tokens. | Preserves permanent client credentials. |
 | [`daily_planer_api.md`](file:///c:/Users/LENOVO/Downloads/mr_ai_rag_v2/mr_ai_rag_v2/daily_planer_api.md) | Documented backend validation updates, filter changes, and meeting fields. | Keeps API specifications aligned. |
 
@@ -61,4 +67,4 @@ Today's work centered on refining the Daily Planner features, fixing timezone-re
 * **API Validation Tests**: Confirmed that scheduling within today's window successfully returns `200 OK` while yesterday's dates are blocked with `400 Bad Request`.
 
 ---
-**Status:** 🟢 Complete! Past-date validation warning issues, timezone-shifting bugs, meeting classifications, Done filters, and white-theme details popups are fully implemented and optimized!
+**Status:** 🟢 Complete! Past-date validation warning issues, timezone-shifting bugs, meeting classifications, Done filters, details popups, and automated custom domain redirects are fully implemented and optimized!

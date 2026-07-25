@@ -4123,6 +4123,7 @@
                         <option value="mrai">MRAI (Free)</option>
                         <option value="elevenlabs">ElevenLabs</option>
                         <option value="sarvam">Sarvam AI</option>
+                        <option value="smallestai">Smallest AI</option>
                       </select>
                     </div>
                     <div>
@@ -4134,7 +4135,7 @@
                   </div>
                   <div id="ag-voice-key-wrap" style="display:none; margin-top:15px; margin-bottom:15px">
                     <label class="form-label">Voice API Key (Required for Premium)</label>
-                    <input type="password" class="form-input" id="ag-voice-key" placeholder="Paste ElevenLabs/Sarvam Key">
+                    <input type="password" class="form-input" id="ag-voice-key" placeholder="Paste ElevenLabs/Sarvam/Smallest Key">
                   </div>
                   <button class="btn btn-secondary" style="width:100%; border-style:dashed; padding:15px"
                     onclick="testAgentVoice()">🔊 Test Audio Configuration</button>
@@ -9529,6 +9530,7 @@
                     <option value="mrai">MRAI (Free)</option>
                     <option value="elevenlabs">ElevenLabs</option>
                     <option value="sarvam">Sarvam AI</option>
+                    <option value="smallestai">Smallest AI</option>
                   </select>
                 </div>
                 <div>
@@ -9538,7 +9540,7 @@
               </div>
               <div id="ag-voice-key-wrap" style="display:none; margin-top:15px">
                 <label class="form-label">Voice API Key (Required for Premium)</label>
-                <input type="password" class="form-input" id="ag-voice-key" placeholder="Paste ElevenLabs/Sarvam Key">
+                <input type="password" class="form-input" id="ag-voice-key" placeholder="Paste ElevenLabs/Sarvam/Smallest Key">
               </div>
               <button class="btn btn-secondary" style="width:100%; border-style:dashed; padding:15px; margin-top:15px"
                 onclick="testAgentVoice()">🔊 Test Audio Configuration</button>
@@ -17345,6 +17347,18 @@
       sarvam: [
         { id: 'hi-IN-Neural-A', name: 'Hindi Male' },
         { id: 'hi-IN-Neural-B', name: 'Hindi Female' }
+      ],
+      smallestai: [
+        { id: 'meher', name: 'Meher (Female - Indian Accent & Bilingual)' },
+        { id: 'aviraj', name: 'Aviraj (Male - Indian Accent & Bilingual)' },
+        { id: 'rhea', name: 'Rhea (Female - Indian Accent)' },
+        { id: 'vyom', name: 'Vyom (Male - Indian Accent)' },
+        { id: 'zariya', name: 'Zariya (Female - Indian Accent)' },
+        { id: 'zoravar', name: 'Zoravar (Male - Indian Accent)' },
+        { id: 'kareena', name: 'Kareena (Female - Indian Accent)' },
+        { id: 'reyansh', name: 'Reyansh (Male - Indian Accent)' },
+        { id: 'mishka', name: 'Mishka (Female - Indian Accent)' },
+        { id: 'ahan', name: 'Ahan (Male - Indian Accent)' }
       ]
     };
 
@@ -17386,7 +17400,7 @@
       // Show/Hide API Key field for voice
       const keyWrap = document.getElementById('ag-voice-key-wrap');
       if (keyWrap) {
-        const isPremium = (provider === 'elevenlabs' || provider === 'sarvam');
+        const isPremium = (provider === 'elevenlabs' || provider === 'sarvam' || provider === 'smallestai');
         keyWrap.style.display = isPremium ? 'block' : 'none';
         console.log('Voice API Key box display:', keyWrap.style.display);
       }

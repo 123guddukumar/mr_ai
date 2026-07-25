@@ -1567,7 +1567,26 @@ async def api_test_voice(req: TestVoiceReq):
             import base64
             audio_base64 = r.json()["audios"][0]
             return Response(content=base64.b64decode(audio_base64), media_type="audio/wav")
+    elif req.provider == "smallestai":
+        url = "https://api.smallest.ai/waves/v1/tts"
+        headers = {
+            "Authorization": f"Bearer {req.api_key.strip()}" if req.api_key else "",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "text": req.text,
+            "voice_id": req.voice_id or "meher",
+            "model": "lightning_v3.1_pro",
+            "sample_rate": 24000,
+            "output_format": "wav"
+        }
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, headers=headers)
+            if not r.is_success: raise HTTPException(r.status_code, f"Smallest AI error: {r.text}")
+            return Response(content=r.content, media_type="audio/wav")
+    else:
         raise HTTPException(400, "Unsupported provider for server-side test")
+
 
 
 _agents_tts_http_client = None
@@ -1675,6 +1694,35 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
                         logger.error(f"Sarvam TTS stream error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
             except Exception as stream_err:
                 logger.error(f"Sarvam streaming failed: {stream_err}")
+
+        return StreamingResponse(audio_generator(), media_type="audio/wav")
+            
+    elif provider == "smallestai":
+        url = "https://api.smallest.ai/waves/v1/tts"
+        headers = {
+            "Authorization": f"Bearer {api_key.strip()}" if api_key else f"Bearer {os.getenv('SMALLEST_API_KEY', '')}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "text": cleaned_text,
+            "voice_id": voice_id or "meher",
+            "model": "lightning_v3.1_pro",
+            "sample_rate": 24000,
+            "output_format": "wav"
+        }
+        
+        async def audio_generator():
+            try:
+                hc = get_agents_tts_http_client()
+                async with hc.stream("POST", url, json=payload, headers=headers, timeout=20.0) as r:
+                    if r.status_code == 200:
+                        async for chunk in r.aiter_bytes(chunk_size=4096):
+                            yield chunk
+                    else:
+                        err_text = await r.aread()
+                        logger.error(f"Smallest AI TTS stream error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
+            except Exception as stream_err:
+                logger.error(f"Smallest AI streaming failed: {stream_err}")
 
         return StreamingResponse(audio_generator(), media_type="audio/wav")
             

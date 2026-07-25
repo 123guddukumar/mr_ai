@@ -536,7 +536,7 @@ function openVSD(){
 }
 
 function updateTTSMiniLabel(){
-  const labels = {mrai:'MRAI Model', elevenlabs:'ElevenLabs', sarvam:'Sarvam AI'};
+  const labels = {mrai:'MRAI Model', elevenlabs:'ElevenLabs', sarvam:'Sarvam AI', smallestai:'Smallest AI'};
   const el = document.getElementById('tts-label-mini');
   if(el) el.textContent = 'TTS: '+(labels[currentTTS]||currentTTS);
 }
@@ -735,6 +735,7 @@ async function speakText(text){
   if(currentTTS==='mrai')       return speakMRAI(text);
   if(currentTTS==='elevenlabs') return speakEL(text);
   if(currentTTS==='sarvam')     return speakSV(text);
+  if(currentTTS==='smallestai') return speakSA(text);
 }
 
 function speakMRAI(text, lang){
@@ -822,6 +823,31 @@ function speakSV(text){
       currentAudio.onerror=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
       currentAudio.play();
     }catch(e){ document.getElementById('speaking-badge')?.classList.remove('visible'); toast('Sarvam: '+e.message,'error'); res(); }
+  });
+}
+
+async function speakSA(text){
+  const key=localStorage.getItem('mrairag_sa_key')||'';
+  const vid=localStorage.getItem('mrairag_sa_voice')||'meher';
+  if(!key){ toast('Enter Smallest AI key in Voice Settings','error'); return Promise.resolve(); }
+  return new Promise(async res=>{
+    try{
+      document.getElementById('speaking-badge')?.classList.add('visible');
+      const r=await fetch('https://api.smallest.ai/waves/v1/tts',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          text, voice_id:vid, model:'lightning_v3.1_pro',
+          sample_rate:24000, output_format:'wav'
+        })
+      });
+      if(!r.ok){ const t=await r.text(); throw new Error(`Smallest AI ${r.status}: ${t.slice(0,100)}`); }
+      const url=URL.createObjectURL(await r.blob());
+      currentAudio=new Audio(url);
+      currentAudio.onended=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); URL.revokeObjectURL(url); res(); };
+      currentAudio.onerror=()=>{ document.getElementById('speaking-badge')?.classList.remove('visible'); res(); };
+      currentAudio.play();
+    }catch(e){ document.getElementById('speaking-badge')?.classList.remove('visible'); toast('Smallest AI: '+e.message,'error'); res(); }
   });
 }
 

@@ -330,35 +330,37 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 }
 
 /* ── Premium Landing Page ── */
+/* ── Premium Landing Page ── */
 .landing-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 50% 30%, rgba(255, 122, 0, 0.15) 0%, var(--bg) 80%);
+  background: radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.15) 0%, #060713 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   padding: 20px;
+  overflow-y: auto;
 }
 .landing-content {
   width: 100%;
-  max-width: 400px;
-  background: rgba(30, 34, 53, 0.45);
-  border: 1px solid var(--accent);
-  border-radius: 28px;
-  padding: 35px 24px;
+  max-width: 420px;
+  background: rgba(10, 11, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 32px;
+  padding: 40px 24px;
   text-align: center;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: fade-in-landing 0.5s ease forwards;
+  animation: fade-in-landing 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes fade-in-landing {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .landing-top-body {
   width: 100%;
@@ -366,109 +368,167 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   flex-direction: column;
   align-items: center;
 }
+.landing-avatar-outer-wrap {
+  position: relative;
+  margin-bottom: 28px;
+}
 .landing-avatar-container {
-  width: 110px;
-  height: 110px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  margin: 0 auto 28px auto;
-  border: 3px solid var(--accent);
-  background: var(--bg3);
-  overflow: hidden;
+  padding: 4px;
+  background: linear-gradient(135deg, #f472b6, #8b5cf6, #3b82f6);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 35px rgba(255, 122, 0, 0.35);
+  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.4);
 }
 .landing-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
+  background: var(--bg3);
 }
 #landing-avatar-init {
-  font-size: 48px;
+  font-size: 64px;
 }
-.landing-name {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--text);
-  margin-bottom: 12px;
-  letter-spacing: -0.5px;
-}
-.landing-desc {
-  font-size: 15px;
-  color: var(--text2);
-  line-height: 1.6;
-  margin-bottom: 28px;
-  max-width: 320px;
-}
-.landing-bubble-wrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  max-width: 350px;
-  margin-bottom: 20px;
-}
-.landing-bubble {
-  /* background: rgba(255, 255, 255, 0.04); */
-  /* border: 1px solid rgba(255, 255, 255, 0.08); */
-  border-radius: 20px;
-  padding: 16px 22px;
-  font-size: 14.5px;
-  color: var(--text);
-  width: 100%;
-  line-height: 1.5;
-  text-align: left;
-  position: relative;
-  /* box-shadow: 0 4px 20px rgba(0,0,0,0.15); */
-}
-.landing-bubble::after {
-  content: '';
+.landing-avatar-bot-badge {
   position: absolute;
-  bottom: -8px;
-  left: 30px;
-  border-width: 8px 8px 0 0;
-  border-style: solid;
-  border-color: rgba(255, 255, 255, 0.04) transparent transparent transparent;
-}
-.landing-buttons {
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  gap: 16px;
-  margin-top: 15px;
-}
-.landing-btn {
-  flex: 1;
-  height: 52px;
-  border-radius: 16px;
-  font-size: 15px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 25%);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  border: 3px solid #0a0b1a;
+}
+.landing-welcome-text {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 16px;
+  margin-bottom: 6px;
+}
+.landing-name-wrap {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+.landing-name-gradient {
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.landing-desc {
+  font-size: 14px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 320px;
+}
+.landing-cards-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.landing-card-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-sizing: border-box;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
 }
-.landing-btn.btn-chat {
-  background: var(--bg3);
-  color: var(--text);
-  border: 1px solid var(--border);
+.landing-card-btn.card-chat {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+  border: none;
 }
-.landing-btn.btn-chat:hover {
-  background: var(--border);
+.landing-card-btn.card-chat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.5);
+}
+.landing-card-btn.card-talk {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+.landing-card-btn.card-talk:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
-.landing-btn.btn-talk {
-  background: var(--accent);
-  color: #000000;
-  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.3);
+.card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  flex-shrink: 0;
 }
-.landing-btn.btn-talk:hover {
-  background: var(--accent2);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(255, 122, 0, 0.45);
+.landing-card-btn.card-chat .card-icon-wrap {
+  background: rgba(255, 255, 255, 0.15);
+}
+.landing-card-btn.card-talk .card-icon-wrap {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+.card-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.card-sub {
+  font-size: 12px;
+}
+.landing-card-btn.card-chat .card-sub {
+  color: rgba(255, 255, 255, 0.8);
+}
+.landing-card-btn.card-talk .card-sub {
+  color: #64748b;
+}
+.card-arrow-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.landing-card-btn.card-chat .card-arrow-wrap {
+  background: #ffffff;
+  color: #4f46e5;
+}
+.landing-card-btn.card-talk .card-arrow-wrap {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+}
+.landing-card-btn:hover .card-arrow-wrap {
+  transform: translateX(3px);
 }
 
 .input-mic-btn {
@@ -641,25 +701,57 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 <div id="mobile-landing-page" class="landing-overlay" style="display:none">
   <div class="landing-content">
     <div class="landing-top-body">
-      <div class="landing-avatar-container">
-        <img id="landing-avatar" src="" class="landing-avatar-img" style="display:none">
-        <span id="landing-avatar-init">🤖</span>
+      <div class="landing-avatar-outer-wrap">
+        <div class="landing-avatar-container">
+          <img id="landing-avatar" src="" class="landing-avatar-img" style="display:none">
+          <span id="landing-avatar-init">🤖</span>
+        </div>
+        <div class="landing-avatar-bot-badge">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7H3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><path d="M9 13h.01"/><path d="M15 13h.01"/><path d="M9 17h6"/></svg>
+        </div>
       </div>
-      <h1 class="landing-name" id="landing-name">Agent Name</h1>
+      <div class="landing-welcome-text">Hello !</div>
+      <h1 class="landing-name-wrap">I am <span class="landing-name-gradient" id="landing-name">Agent Name</span></h1>
       <p class="landing-desc" id="landing-desc">Agent Description</p>
-      <div class="landing-bubble-wrap">
-        <div class="landing-bubble" id="landing-start-msg">Hello! How can I help you today?</div>
-      </div>
+      <div id="landing-start-msg" style="display:none"></div>
     </div>
-    <div class="landing-buttons">
-      <button class="landing-btn btn-chat" onclick="startChatFromLanding('text')">
-        <i data-lucide="message-square"></i> Chat
-      </button>
-      <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
-        <i data-lucide="mic"></i> Talk
-      </button>
-      <a class="landing-btn btn-chat" id="landing-whatsapp-link" href="#" target="_blank" style="display:none; background:#10b981; color:#ffffff; border:none; text-decoration:none; align-items:center; justify-content:center; gap:8px;">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg> WhatsApp
+    <div class="landing-cards-stack">
+      <div class="landing-card-btn card-chat" onclick="startChatFromLanding('text')">
+        <div class="card-icon-wrap">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="card-text-wrap">
+          <div class="card-title">Chat</div>
+          <div class="card-sub">Start a conversation</div>
+        </div>
+        <div class="card-arrow-wrap">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <div class="landing-card-btn card-talk" onclick="startChatFromLanding('v2v')">
+        <div class="card-icon-wrap">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </div>
+        <div class="card-text-wrap">
+          <div class="card-title">Talk</div>
+          <div class="card-sub">Talk to me</div>
+        </div>
+        <div class="card-arrow-wrap">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+      <!-- WhatsApp Button (if active) -->
+      <a class="landing-card-btn card-talk" id="landing-whatsapp-link" href="#" target="_blank" style="display:none; background:#10b981; border:none; text-decoration:none;">
+        <div class="card-icon-wrap" style="background:rgba(255,255,255,0.15); color:#ffffff;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg>
+        </div>
+        <div class="card-text-wrap">
+          <div class="card-title">WhatsApp</div>
+          <div class="card-sub">Chat on WhatsApp</div>
+        </div>
+        <div class="card-arrow-wrap">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
       </a>
     </div>
   </div>

@@ -101,16 +101,28 @@ async def ingest_url(req: IngestURLRequest, _key: dict = Depends(require_api_key
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch URL: {str(e)}")
 
-    content_type = response.headers.get("content-type", "")
-    if "text/html" not in content_type and "text/plain" not in content_type:
+    content_type = response.headers.get("content-type", "").lower()
+    is_pdf = "application/pdf" in content_type or url.lower().split('?')[0].endswith(".pdf")
+
+    if is_pdf:
+        import PyPDF2, io
+        try:
+            reader = PyPDF2.PdfReader(io.BytesIO(response.content))
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "")
+            text = text.replace('\x00', '')
+            title = url.split('/')[-1] or "PDF Document"
+        except Exception as pdf_err:
+            raise HTTPException(status_code=502, detail=f"Failed to parse PDF from URL: {pdf_err}")
+    elif "text/html" in content_type or "text/plain" in content_type or "application/xhtml+xml" in content_type:
+        html = response.text
+        title, text = extract_text_from_html(html)
+    else:
         raise HTTPException(
             status_code=415,
-            detail=f"URL does not return HTML content (got: {content_type})"
+            detail=f"URL does not return HTML or PDF content (got: {content_type})"
         )
-
-    # ── Extract Text ──────────────────────────────────────────────────────────
-    html = response.text
-    title, text = extract_text_from_html(html)
 
     if len(text) < 100:
         raise HTTPException(

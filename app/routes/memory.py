@@ -300,11 +300,24 @@ async def memory_ingest_url(
         from bs4 import BeautifulSoup
         async with httpx.AsyncClient(timeout=30) as hc:
             resp = await hc.get(req.url, headers={"User-Agent": "Mozilla/5.0"})
-        soup = BeautifulSoup(resp.text, "html.parser")
-        for tag in soup(["script","style","nav","footer","header"]):
-            tag.decompose()
-        text = " ".join(soup.get_text(" ", strip=True).split())[:30000]
-        title = soup.title.string.strip() if soup.title else req.url
+        
+        content_type = resp.headers.get("Content-Type", "").lower()
+        is_pdf = "application/pdf" in content_type or req.url.lower().split('?')[0].endswith(".pdf")
+        
+        if is_pdf:
+            import PyPDF2, io
+            reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "")
+            text = text.replace('\x00', '')[:30000]
+            title = req.url.split('/')[-1] or "PDF Document"
+        else:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script","style","nav","footer","header"]):
+                tag.decompose()
+            text = " ".join(soup.get_text(" ", strip=True).split())[:30000]
+            title = soup.title.string.strip() if soup.title else req.url
     except Exception as e:
         raise HTTPException(502, f"Failed to scrape URL: {e}")
 

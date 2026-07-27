@@ -393,13 +393,24 @@ async def api_ds_ingest_url(ds_id: str, req: IngestUrlReq, x_app_token: Optional
                 resp = await hc.get(curr_url, headers={"User-Agent": "Mozilla/5.0"})
                 if resp.status_code != 200: continue
                 
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for tag in soup(["script","style","nav","footer","header"]): tag.decompose()
+                content_type = resp.headers.get("Content-Type", "").lower()
+                is_pdf = "application/pdf" in content_type or curr_url.lower().split('?')[0].endswith(".pdf")
                 
-                page_text = " ".join(soup.get_text(" ", strip=True).split())
+                if is_pdf:
+                    import PyPDF2, io
+                    reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
+                    page_text = ""
+                    for page in reader.pages:
+                        page_text += (page.extract_text() or "")
+                    page_text = page_text.replace('\x00', '')
+                else:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    for tag in soup(["script","style","nav","footer","header"]): tag.decompose()
+                    page_text = " ".join(soup.get_text(" ", strip=True).split())
+                
                 all_text += f"\n--- Source: {curr_url} ---\n{page_text}\n"
                 
-                if depth < max_depth:
+                if not is_pdf and depth < max_depth:
                     for a in soup.find_all("a", href=True):
                         full_url = urljoin(curr_url, a["href"]).split("#")[0]
                         if urlparse(full_url).netloc == domain and full_url not in visited:
@@ -975,10 +986,23 @@ async def api_agent_ingest_url(agent_id: str, req: IngestUrlReq, x_app_token: Op
         from bs4 import BeautifulSoup
         async with httpx.AsyncClient(timeout=30) as hc:
             resp = await hc.get(req.url, headers={"User-Agent": "Mozilla/5.0"})
-        soup = BeautifulSoup(resp.text, "html.parser")
-        for tag in soup(["script","style","nav","footer","header"]): tag.decompose()
-        text = " ".join(soup.get_text(" ", strip=True).split())[:30000].replace('\x00', '')
-        title = soup.title.string.strip() if soup.title else req.url
+        
+        content_type = resp.headers.get("Content-Type", "").lower()
+        is_pdf = "application/pdf" in content_type or req.url.lower().split('?')[0].endswith(".pdf")
+        
+        if is_pdf:
+            import PyPDF2, io
+            reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "")
+            text = text.replace('\x00', '')[:30000]
+            title = req.url.split('/')[-1] or "PDF Document"
+        else:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script","style","nav","footer","header"]): tag.decompose()
+            text = " ".join(soup.get_text(" ", strip=True).split())[:30000].replace('\x00', '')
+            title = soup.title.string.strip() if soup.title else req.url
     except Exception as e: raise HTTPException(502, f"Scrape failed: {e}")
 
     chunks, texts = _make_agent_chunks(text, title, agent_id, is_ds=False)

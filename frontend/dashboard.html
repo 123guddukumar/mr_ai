@@ -4206,6 +4206,16 @@
                   <input type="text" class="form-input" id="ag-cust-whatsapp" placeholder="e.g. 919876543210 (include country code without +)">
                   <label class="form-label" style="margin-top:15px">Call Number (For Phone Calls)</label>
                   <input type="text" class="form-input" id="ag-cust-call" placeholder="e.g. 919876543210 (include country code without +)">
+                  <label class="form-label" style="margin-top:15px">Landing Page Template</label>
+                  <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px">
+                    <select class="form-input" id="ag-cust-template" onchange="toggleTemplatePreviewButton()" style="flex:1; margin-bottom:0">
+                      <option value="">Default (Standard Landing Page)</option>
+                      <option value="template1">Template 1 (Rajesh Goyal - Photography Style)</option>
+                      <option value="template2">Template 2 (Nitin Nagar - Organic/Product Style)</option>
+                      <option value="template3">Template 3 (Lakshmi Raj Singh - Leader/Political Style)</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary" id="ag-cust-template-preview-btn" onclick="previewSelectedTemplate()" style="display:none; flex-shrink:0; height: 42px; padding:0 15px">👁️ Preview</button>
+                  </div>
                 </div>
 
                 <!-- 7. Knowledge Base -->
@@ -9587,6 +9597,13 @@
               <label class="form-label">Theme Color (for QR & Chat)</label>
               <input type="color" class="form-input" id="ag-cust-color"
                 style="height:60px; padding:5px; border-radius:12px" value="#ff7a00">
+              <label class="form-label" style="margin-top:15px">Landing Page Template</label>
+              <select class="form-input" id="ag-cust-template-plural" style="margin-bottom:15px">
+                <option value="">Default (Standard Landing Page)</option>
+                <option value="template1">Template 1 (Rajesh Goyal - Photography Style)</option>
+                <option value="template2">Template 2 (Nitin Nagar - Organic/Product Style)</option>
+                <option value="template3">Template 3 (Lakshmi Raj Singh - Leader/Political Style)</option>
+              </select>
             </div>
             <div class="tab-pane" id="tab-kb">
               <label class="form-label">Extra Knowledge (Agent-specific)</label>
@@ -9642,6 +9659,19 @@
 
       <div class="modal-actions" style="margin-top:20px">
         <button class="modal-btn secondary" onclick="closeModal('agent-feedback')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TEMPLATE PREVIEW MODAL ── -->
+  <div class="modal-overlay" id="modal-template-preview" style="z-index: 99999;">
+    <div class="modal" style="max-width: 480px; width: 95%; height: 90vh; padding:0; display:flex; flex-direction:column; overflow:hidden; background: var(--bg);">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 20px; border-bottom: 1px solid var(--border); flex-shrink:0;">
+        <div class="modal-title" style="margin:0; font-size:16px;">Template Live Preview</div>
+        <button class="modal-close" onclick="closeModal('template-preview')">&times;</button>
+      </div>
+      <div id="template-preview-frame-container" style="flex:1; width:100%; overflow-y:auto; position:relative; background:var(--bg2);">
+        <!-- Dynamic preview content will be rendered inside here -->
       </div>
     </div>
   </div>
@@ -12280,6 +12310,798 @@
     function closeModal(id) {
       const el = document.getElementById('modal-' + id);
       if (el) el.classList.remove('open');
+    }
+
+    function toggleTemplatePreviewButton() {
+      const val = document.getElementById('ag-cust-template').value;
+      const btn = document.getElementById('ag-cust-template-preview-btn');
+      if (btn) {
+        btn.style.display = val ? 'inline-flex' : 'none';
+      }
+    }
+
+    function previewSelectedTemplate() {
+      const template = document.getElementById('ag-cust-template').value;
+      if (!template) return;
+
+      const name = document.getElementById('ag-name').value.trim() || 'Agent Name';
+      const desc = document.getElementById('ag-desc').value.trim() || 'Agent Description';
+      const logo = document.getElementById('ag-cust-logo').value.trim();
+      const author = document.getElementById('ag-cust-author').value.trim();
+      const color = document.getElementById('ag-cust-color').value;
+
+      const container = document.getElementById('template-preview-frame-container');
+      if (!container) return;
+
+      let previewHtml = '';
+
+      const styleHtml = `
+        <style>
+          .preview-phone-shell {
+            width: 300px;
+            height: 533px;
+            background: #000;
+            border: 10px solid #222;
+            border-radius: 30px;
+            margin: 20px auto;
+            position: relative;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+          .preview-screen {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+          }
+          
+          /* Template 1 Preview — Rajesh Goyal Photography / Professional Style
+             FULL-SCREEN photo background | RIGHT-ALIGNED text overlay | BOTTOM stacked pill buttons */
+          .preview-t1 {
+            color: #f8fafc;
+            font-family: sans-serif;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0;
+            box-sizing: border-box;
+            position: relative;
+          }
+          /* Split top: no flex layout split, position static to let t1-left cover full container */
+          .preview-t1 .t1-top {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            position: static;
+          }
+          /* LEFT: photo fills entire background of container, no border, no border-radius */
+          .preview-t1 .t1-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+          }
+          .preview-t1 .t1-left::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.15) 0%, rgba(16, 0, 0, 0.6) 50%, rgba(16, 0, 0, 0.85) 100%);
+            z-index: 2;
+          }
+          .preview-t1 .t1-author-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+          }
+          .preview-t1 .t1-avatar-fallback {
+            width: 100%;
+            height: 100%;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            opacity: 0.2;
+          }
+          /* RIGHT: logo top-right overlay on image, text right-aligned sitting directly on image */
+          .preview-t1 .t1-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            text-align: right;
+            padding: 30px 20px 14px 20px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 3;
+          }
+          .preview-t1 .t1-logo-wrap {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+          }
+          .preview-t1 .t1-logo {
+            height: 24px;
+            max-width: 55px;
+            object-fit: contain;
+          }
+          .preview-t1 .t1-logo-text {
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #f8fafc;
+          }
+          .preview-t1 .t1-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+          }
+          .preview-t1 .t1-greeting {
+            font-size: 13px;
+            color: #fbbf24;
+            font-family: Georgia, serif;
+            font-style: italic;
+            display: block;
+            margin-bottom: 1px;
+          }
+          .preview-t1 .t1-im {
+            font-size: 7px;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #94a3b8;
+            display: block;
+            margin-bottom: 2px;
+          }
+          .preview-t1 .t1-name {
+            font-size: 20px;
+            font-weight: 900;
+            line-height: 0.95;
+            text-transform: uppercase;
+            color: #ffffff;
+            margin: 0 0 4px 0;
+            letter-spacing: -1px;
+            word-break: break-word;
+          }
+          .preview-t1 .t1-separator {
+            color: #fbbf24;
+            font-size: 12px;
+            display: block;
+            margin: 2px 0 4px 0;
+          }
+          .preview-t1 .t1-role {
+            font-size: 8px;
+            color: #cbd5e1;
+            margin: 0;
+            line-height: 1.4;
+          }
+          /* BOTTOM: transparent gradient background over image background */
+          .preview-t1 .t1-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 6px 8px 12px 8px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.15) 100%);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 3;
+          }
+          .preview-t1 .t1-btn {
+            width: 100%;
+            padding: 6px 10px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+          }
+          .preview-t1 .t1-btn-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .preview-t1 .t1-btn-icon-circle {
+            background: #ffffff;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+          }
+          .preview-t1 .t1-btn-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #ffffff;
+          }
+          .preview-t1 .t1-arrow {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.75);
+          }
+
+          /* Template 2 Preview — Nitin Nagar Organic/Product Style
+             TOP: Logo+Name+Tagline | Badge circle | PHOTO full-width with "With Name" overlay
+             CARD: Bot icon | dashed divider | Greeting + Name + line + desc
+             BUTTONS: Green Chat | Amber Talk | FOOTER: Powered By */
+          .preview-t2 {
+            background: #f0ede4;
+            color: #1e293b;
+            font-family: sans-serif;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          .preview-t2 .t2-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 12px 6px 12px;
+            flex-shrink: 0;
+            background: transparent;
+          }
+          .preview-t2 .t2-brand-area { flex: 1; }
+          .preview-t2 .t2-logo {
+            height: 18px;
+            max-width: 50px;
+            object-fit: contain;
+            display: block;
+            margin-bottom: 2px;
+          }
+          .preview-t2 .t2-brand-name-big {
+            font-size: 13px;
+            font-weight: 900;
+            color: #1a1a1a;
+            margin: 0 0 2px 0;
+            line-height: 1;
+          }
+          .preview-t2 .t2-tagline-row {
+            font-size: 7px;
+            color: #374151;
+            font-weight: 500;
+          }
+          .preview-t2 .t2-badge-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 1.5px dashed #92400e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 5px;
+            font-weight: 700;
+            color: #92400e;
+            text-align: center;
+            line-height: 1.3;
+            padding: 2px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+          }
+          /* PHOTO: full-width with overlay */
+          .preview-t2 .t2-photo-section {
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+          }
+          .preview-t2 .t2-author-img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+          }
+          .preview-t2 .t2-avatar-fallback {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            opacity: 0.25;
+            background: rgba(13,92,58,0.04);
+          }
+          .preview-t2 .t2-with-overlay {
+            position: absolute;
+            bottom: 7px;
+            left: 8px;
+            background: rgba(240,237,228,0.88);
+            border-radius: 5px;
+            padding: 4px 7px;
+            border-left: 2px solid #16a34a;
+          }
+          .preview-t2 .t2-with-italic {
+            font-size: 7px;
+            font-style: italic;
+            color: #374151;
+            display: block;
+          }
+          .preview-t2 .t2-with-name {
+            font-size: 9px;
+            font-weight: 800;
+            color: #1a1a1a;
+            display: block;
+          }
+          .preview-t2 .t2-with-role {
+            font-size: 6px;
+            color: #6b7280;
+            display: block;
+          }
+          /* BOTTOM content */
+          .preview-t2 .t2-bottom {
+            padding: 7px 10px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            flex: 1;
+            background: #f0ede4;
+          }
+          /* WHITE CARD */
+          .preview-t2 .t2-card {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+          }
+          .preview-t2 .t2-bot-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(145deg, #ecfdf5 0%, #bbf7d0 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 1px solid #86efac;
+            flex-shrink: 0;
+          }
+          .preview-t2 .t2-card-divider {
+            width: 1px;
+            height: 36px;
+            border-left: 1px dashed rgba(13,92,58,0.25);
+            flex-shrink: 0;
+          }
+          .preview-t2 .t2-card-right { flex: 1; }
+          .preview-t2 .t2-card-greet {
+            font-size: 7px;
+            color: #6b7280;
+            display: block;
+            margin-bottom: 1px;
+          }
+          .preview-t2 .t2-card-name {
+            font-size: 10px;
+            font-weight: 800;
+            color: #064e3b;
+            margin: 0 0 3px 0;
+          }
+          .preview-t2 .t2-card-line {
+            height: 1.5px;
+            background: #16a34a;
+            width: 20px;
+            margin-bottom: 3px;
+            border-radius: 1px;
+          }
+          .preview-t2 .t2-card-desc {
+            font-size: 7px;
+            color: #4b5563;
+            line-height: 1.3;
+          }
+          /* BUTTONS row */
+          .preview-t2 .t2-buttons {
+            display: flex;
+            gap: 6px;
+          }
+          .preview-t2 .t2-btn {
+            flex: 1;
+            padding: 7px;
+            border-radius: 7px;
+            border: none;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+          }
+          .preview-t2 .t2-btn.btn-chat { background: #065f46; color: #ffffff; }
+          .preview-t2 .t2-btn.btn-talk { background: #d97706; color: #ffffff; }
+          /* FOOTER */
+          .preview-t2 .t2-footer {
+            font-size: 7px;
+            color: #6b7280;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+          }
+          .preview-t2 .t2-footer-brand { font-weight: 700; color: #065f46; }
+
+
+          /* Template 3 Preview styles — Lakshmi Raj Singh Political Leader */
+
+          /* Full-width photo | Logo top-right corner | Hello I am divider | Name | Badge | AI Assistant | Side-by-side buttons */
+          .preview-t3 {
+            background: #faf5f0;
+            color: #1a0f08;
+            font-family: sans-serif;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-sizing: border-box;
+            padding: 0;
+          }
+          /* PHOTO SECTION: full width, edge to edge, no border, no border-radius */
+          .preview-t3 .t3-photo-section {
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+            width: 100%;
+          }
+          .preview-t3 .t3-author-img {
+            width: 100%;
+            height: 290px;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+          }
+          .preview-t3 .t3-avatar-fallback {
+            width: 100%;
+            height: 290px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            opacity: 0.2;
+            background: #f0e8df;
+          }
+          /* Logo absolutely positioned top-right INSIDE the photo */
+          .preview-t3 .t3-logo-overlay {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+          }
+          .preview-t3 .t3-logo {
+            height: 36px;
+            max-width: 48px;
+            object-fit: contain;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25));
+          }
+          .preview-t3 .t3-logo-text {
+            font-size: 9px;
+            font-weight: 900;
+            color: #ea580c;
+            text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+            letter-spacing: 1px;
+          }
+          /* TEXT SECTION below photo */
+          .preview-t3 .t3-text-section {
+            margin-top: -50px;
+            padding: 50px 12px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(to bottom, rgba(250, 245, 240, 0) 0%, rgba(250, 245, 240, 0.5) 15px, rgba(250, 245, 240, 1) 40px, #faf5f0 100%);
+            position: relative;
+            z-index: 2;
+            flex: 1;
+          }
+          /* — Hello I am — divider */
+          .preview-t3 .t3-hello-divider {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            margin: 10px 0 6px 0;
+          }
+          .preview-t3 .t3-hello-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d97706, transparent);
+            opacity: 0.6;
+          }
+          .preview-t3 .t3-hello-text {
+            font-size: 8px;
+            font-weight: 500;
+            color: #78350f;
+            white-space: nowrap;
+          }
+          .preview-t3 .t3-name {
+            font-size: 18px;
+            font-weight: 900;
+            color: #ea580c;
+            margin: 0 0 6px 0;
+            line-height: 1.05;
+          }
+          .preview-t3 .t3-badge-container {
+            margin-bottom: 6px;
+          }
+          .preview-t3 .t3-role {
+            display: inline-block;
+            background: rgba(234, 88, 12, 0.1);
+            color: #ea580c;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 700;
+            border: 1px solid rgba(234, 88, 12, 0.2);
+            line-height: 1.4;
+            max-width: 100%;
+            box-sizing: border-box;
+          }
+          .preview-t3 .t3-assistant-title {
+            font-size: 12px;
+            font-weight: 900;
+            color: #1a0f08;
+            margin: 0 0 12px 0;
+            padding-bottom: 3px;
+            border-bottom: 2px solid #ea580c;
+          }
+          /* Side-by-side buttons */
+          .preview-t3 .t3-buttons {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+          }
+          .preview-t3 .t3-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 8px;
+            border-radius: 8px;
+            border: 1.5px solid transparent;
+            box-sizing: border-box;
+          }
+          .preview-t3 .t3-btn.btn-chat {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            box-shadow: 0 3px 10px rgba(234,88,12,0.28);
+          }
+          .preview-t3 .t3-btn.btn-talk {
+            background: #ffffff;
+            border-color: rgba(234,88,12,0.2);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+          }
+          .preview-t3 .t3-btn-left {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          }
+          .preview-t3 .t3-btn-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+          }
+          .preview-t3 .t3-btn.btn-chat .t3-btn-icon {
+            background: rgba(255,255,255,0.28);
+          }
+          .preview-t3 .t3-btn.btn-talk .t3-btn-icon {
+            background: rgba(234,88,12,0.1);
+          }
+          .preview-t3 .t3-btn-text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+          }
+          .preview-t3 .t3-btn.btn-chat .t3-btn-text strong {
+            font-size: 7px;
+            font-weight: 700;
+            color: #ffffff;
+            display: block;
+          }
+          .preview-t3 .t3-btn.btn-chat .t3-btn-text span {
+            font-size: 6px;
+            color: rgba(255,255,255,0.8);
+          }
+          .preview-t3 .t3-btn.btn-talk .t3-btn-text strong {
+            font-size: 7px;
+            font-weight: 700;
+            color: #ea580c;
+            display: block;
+          }
+          .preview-t3 .t3-btn.btn-talk .t3-btn-text span {
+            font-size: 6px;
+            color: rgba(234,88,12,0.7);
+          }
+          .preview-t3 .t3-btn .t3-arrow {
+            font-size: 10px;
+            font-weight: 700;
+          }
+          .preview-t3 .t3-btn.btn-chat .t3-arrow { color: rgba(255,255,255,0.75); }
+          .preview-t3 .t3-btn.btn-talk .t3-arrow { color: rgba(234,88,12,0.6); }
+        </style>
+      `;
+
+      if (template === 'template1') {
+        const logoHtml = logo ? `<img class="t1-logo" src="${logo}">` : `<div class="t1-logo-text">${name.substring(0, 4).toUpperCase()}</div>`;
+        const imageHtml = author ? `<img class="t1-author-img" src="${author}">` : `<div class="t1-avatar-fallback">📸</div>`;
+        previewHtml = `
+          ${styleHtml}
+          <div class="preview-phone-shell">
+            <div class="preview-screen">
+              <div class="preview-t1">
+                <!-- SPLIT TOP: left=full-height photo, right=text -->
+                <div class="t1-top">
+                  <div class="t1-left">${imageHtml}</div>
+                  <div class="t1-right">
+                    <div class="t1-logo-wrap">${logoHtml}</div>
+                    <div class="t1-content">
+                      <span class="t1-greeting">Hello!</span>
+                      <span class="t1-im">I'm</span>
+                      <h1 class="t1-name">${name}</h1>
+                      <span class="t1-separator">&bull;</span>
+                      <p class="t1-role">${desc}</p>
+                    </div>
+                  </div>
+                </div>
+                <!-- BOTTOM: 2 stacked pill buttons -->
+                <div class="t1-buttons">
+                  <button type="button" class="t1-btn" style="background:linear-gradient(135deg, ${color}bb 0%, ${color} 100%)">
+                    <span class="t1-btn-left">
+                      <span class="t1-btn-icon-circle" style="color:${color}">&#x1F4AC;</span>
+                      <span class="t1-btn-label">Chat with AI Assistant</span>
+                    </span>
+                    <span class="t1-arrow">&rsaquo;</span>
+                  </button>
+                  <button type="button" class="t1-btn" style="background:linear-gradient(135deg, ${color}bb 0%, ${color} 100%)">
+                    <span class="t1-btn-left">
+                      <span class="t1-btn-icon-circle" style="color:${color}">&#x1F3A7;</span>
+                      <span class="t1-btn-label">Talk with AI Assistant</span>
+                    </span>
+                    <span class="t1-arrow">&rsaquo;</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (template === 'template2') {
+        const logoHtml = logo ? `<img class="t2-logo" src="${logo}">` : '';
+        const imageHtml = author ? `<img class="t2-author-img" src="${author}">` : `<div class="t2-avatar-fallback">🌱</div>`;
+        previewHtml = `
+          ${styleHtml}
+          <div class="preview-phone-shell">
+            <div class="preview-screen">
+              <div class="preview-t2">
+                <!-- TOP BAR: Logo + Brand + Badge -->
+                <div class="t2-top-bar">
+                  <div class="t2-brand-area">
+                    ${logoHtml}
+                    <div class="t2-brand-name-big">${name}</div>
+                    <div class="t2-tagline-row">🍃 Pure. Ayurvedic. Trusted.</div>
+                  </div>
+                  <div class="t2-badge-circle">
+                    <span>A2 GIR</span><span>🐄</span><span>Pure &</span><span>Authentic</span>
+                  </div>
+                </div>
+                <!-- PHOTO: full-width with With Name overlay -->
+                <div class="t2-photo-section">
+                  ${imageHtml}
+                  <div class="t2-with-overlay">
+                    <span class="t2-with-italic">With</span>
+                    <span class="t2-with-name">${name}</span>
+                    <span class="t2-with-role">Founder</span>
+                  </div>
+                </div>
+                <!-- BOTTOM: Card + Buttons + Footer -->
+                <div class="t2-bottom">
+                  <div class="t2-card">
+                    <div class="t2-bot-icon">🤖</div>
+                    <div class="t2-card-divider"></div>
+                    <div class="t2-card-right">
+                      <span class="t2-card-greet">Hello! I am</span>
+                      <div class="t2-card-name" style="color:${color}">${name}</div>
+                      <div class="t2-card-line" style="background:${color}"></div>
+                      <div class="t2-card-desc">${desc}</div>
+                    </div>
+                  </div>
+                  <div class="t2-buttons">
+                    <button type="button" class="t2-btn btn-chat" style="background:${color}">💬 Chat</button>
+                    <button type="button" class="t2-btn btn-talk">🎧 Talk</button>
+                  </div>
+                  <div class="t2-footer">
+                    🛡️ Powered By <span class="t2-footer-brand" style="color:${color}">MagnifAI</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (template === 'template3') {
+        const logoHtml = logo ? `<img class="t3-logo" src="${logo}">` : `<div class="t3-logo-text">${name.substring(0,4).toUpperCase()}</div>`;
+        const imageHtml = author ? `<img class="t3-author-img" src="${author}">` : `<div class="t3-avatar-fallback">🏛️</div>`;
+        previewHtml = `
+          ${styleHtml}
+          <div class="preview-phone-shell">
+            <div class="preview-screen">
+              <div class="preview-t3">
+                <!-- FULL-WIDTH PHOTO SECTION, no border, no card, edge-to-edge -->
+                <div class="t3-photo-section">
+                  ${imageHtml}
+                  <div class="t3-logo-overlay">${logoHtml}</div>
+                </div>
+                <!-- TEXT SECTION below photo on warm beige bg -->
+                <div class="t3-text-section">
+                  <div class="t3-hello-divider">
+                    <div class="t3-hello-line"></div>
+                    <span class="t3-hello-text">Hello I am</span>
+                    <div class="t3-hello-line"></div>
+                  </div>
+                  <h1 class="t3-name" style="color:${color}">${name}</h1>
+                  <div class="t3-badge-container">
+                    <span class="t3-role" style="color:${color}; background:${color}18; border-color:${color}30">&bull; ${desc} &bull;</span>
+                  </div>
+                  <h2 class="t3-assistant-title" style="border-bottom-color:${color}">AI Assistant</h2>
+                  <div class="t3-buttons">
+                    <button type="button" class="t3-btn btn-chat" style="background:linear-gradient(135deg, ${color}cc 0%, ${color} 100%); box-shadow: 0 4px 12px ${color}40">
+                      <span class="t3-btn-left">
+                        <span class="t3-btn-icon">💬</span>
+                        <span class="t3-btn-text">
+                          <strong>Chat with AI</strong>
+                          <span>Ask anything</span>
+                        </span>
+                      </span>
+                      <span class="t3-arrow">&rsaquo;</span>
+                    </button>
+                    <button type="button" class="t3-btn btn-talk" style="border-color:${color}30">
+                      <span class="t3-btn-left">
+                        <span class="t3-btn-icon" style="background:${color}15">🎧</span>
+                        <span class="t3-btn-text">
+                          <strong style="color:${color}">Voice Assistant</strong>
+                          <span style="color:${color}bb">Talk to AI</span>
+                        </span>
+                      </span>
+                      <span class="t3-arrow" style="color:${color}88">&rsaquo;</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        `;
+      }
+
+      container.innerHTML = previewHtml;
+      openModal('template-preview');
     }
 
     // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -17481,6 +18303,10 @@
       if (document.getElementById('ag-cust-call')) {
         document.getElementById('ag-cust-call').value = '';
       }
+      if (document.getElementById('ag-cust-template')) {
+        document.getElementById('ag-cust-template').value = '';
+        toggleTemplatePreviewButton();
+      }
       document.getElementById('ag-qa-list').innerHTML = '';
       document.getElementById('ag-kb-list').innerHTML = '';
 
@@ -18468,6 +19294,7 @@
           author_image_url: document.getElementById('ag-cust-author') ? document.getElementById('ag-cust-author').value.trim() : '',
           whatsapp_number: document.getElementById('ag-cust-whatsapp') ? document.getElementById('ag-cust-whatsapp').value.trim() : '',
           call_number: document.getElementById('ag-cust-call') ? document.getElementById('ag-cust-call').value.trim() : '',
+          template: document.getElementById('ag-cust-template') ? document.getElementById('ag-cust-template').value : '',
           qa_pairs: (() => {
             const qaPairs = [];
             const qaItems = document.querySelectorAll('#ag-qa-list .source-item');
@@ -18560,6 +19387,10 @@
       }
       if (document.getElementById('ag-cust-call')) {
         document.getElementById('ag-cust-call').value = a.customization.call_number || '';
+      }
+      if (document.getElementById('ag-cust-template')) {
+        document.getElementById('ag-cust-template').value = a.customization.template || '';
+        toggleTemplatePreviewButton();
       }
 
       // Reconstruct Q&A Pairs

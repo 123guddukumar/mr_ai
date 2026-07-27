@@ -5343,20 +5343,28 @@ async def elevenlabs_tts_proxy_get(
     # Use output_format and optimize_streaming_latency=4 for max speed
     tts_url = url + "?output_format=mp3_22050_32&optimize_streaming_latency=4"
 
-    async def audio_generator():
-        try:
-            hc = get_tts_http_client()
-            async with hc.stream("POST", tts_url, json=payload, headers=headers) as r:
-                if r.status_code == 200:
-                    async for chunk in r.aiter_bytes(chunk_size=1024):
-                        yield chunk
-                else:
-                    err_text = await r.aread()
-                    logger.error(f"ElevenLabs TTS error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
-        except Exception as e:
-            logger.error(f"ElevenLabs streaming failed: {e}")
+    try:
+        hc = get_tts_http_client()
+        req_obj = hc.build_request("POST", tts_url, json=payload, headers=headers)
+        r = await hc.send(req_obj, stream=True)
+        if r.status_code != 200:
+            err_text = await r.aread()
+            await r.aclose()
+            raise HTTPException(r.status_code, f"ElevenLabs TTS error: {err_text.decode('utf-8', errors='ignore')}")
+        
+        async def audio_generator():
+            try:
+                async for chunk in r.aiter_bytes(chunk_size=1024):
+                    yield chunk
+            finally:
+                await r.aclose()
+        return StreamingResponse(audio_generator(), media_type="audio/mpeg")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ElevenLabs streaming failed: {e}")
+        raise HTTPException(500, f"ElevenLabs connection failed: {e}")
 
-    return StreamingResponse(audio_generator(), media_type="audio/mpeg")
 
 
 @router.post("/classroom/reels/upload-local", tags=["Classroom"])

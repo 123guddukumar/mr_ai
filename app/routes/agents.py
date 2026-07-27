@@ -1564,9 +1564,11 @@ class TestVoiceReq(BaseModel):
 @router.post("/agents/test-voice", tags=["Agents & DataStores"])
 async def api_test_voice(req: TestVoiceReq):
     import httpx
+    from app.core.config import settings
     if req.provider == "elevenlabs":
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{req.voice_id}"
-        headers = {"xi-api-key": req.api_key.strip() if req.api_key else "", "Content-Type": "application/json"}
+        api_key_val = req.api_key.strip() if req.api_key else os.getenv("ELEVENLABS_API_KEY", "") or settings.ELEVENLABS_API_KEY
+        headers = {"xi-api-key": api_key_val, "Content-Type": "application/json"}
         payload = {"text": req.text, "model_id": "eleven_multilingual_v2"}
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers)
@@ -1574,7 +1576,8 @@ async def api_test_voice(req: TestVoiceReq):
             return Response(content=r.content, media_type="audio/mpeg")
     elif req.provider == "sarvam":
         url = "https://api.sarvam.ai/text-to-speech"
-        headers = {"api-subscription-key": req.api_key.strip() if req.api_key else "", "Content-Type": "application/json"}
+        api_key_val = req.api_key.strip() if req.api_key else os.getenv("SARVAM_API_KEY", "") or settings.SARVAM_API_KEY
+        headers = {"api-subscription-key": api_key_val, "Content-Type": "application/json"}
         spk = req.voice_id
         if spk == "hi-IN-Neural-A": spk = "shubh"
         elif spk == "hi-IN-Neural-B": spk = "ritu"
@@ -1593,8 +1596,9 @@ async def api_test_voice(req: TestVoiceReq):
             return Response(content=base64.b64decode(audio_base64), media_type="audio/wav")
     elif req.provider == "smallestai":
         url = "https://api.smallest.ai/waves/v1/tts"
+        api_key_val = req.api_key.strip() if req.api_key else os.getenv("SMALLEST_API_KEY", "") or settings.SMALLEST_API_KEY
         headers = {
-            "Authorization": f"Bearer {req.api_key.strip()}" if req.api_key else "",
+            "Authorization": f"Bearer {api_key_val}",
             "Content-Type": "application/json"
         }
         payload = {
@@ -1653,11 +1657,15 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
     if not cleaned_text:
         raise HTTPException(400, "Cleaned text is empty")
         
+    from app.core.config import settings
     if provider == "elevenlabs":
         # Stream audio via ElevenLabs Flash model (optimized for ultra low latency ~75ms)
         tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_22050_32&optimize_streaming_latency=4"
+        api_key_val = api_key or os.getenv("ELEVENLABS_API_KEY", "") or settings.ELEVENLABS_API_KEY
+        if not api_key_val:
+            raise HTTPException(400, "ElevenLabs API key is missing. Set ELEVENLABS_API_KEY or configure voice settings.")
         headers = {
-            "xi-api-key": api_key or os.getenv("ELEVENLABS_API_KEY", ""),
+            "xi-api-key": api_key_val,
             "Content-Type": "application/json",
             "Accept": "audio/mpeg"
         }
@@ -1671,26 +1679,35 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
                 "use_speaker_boost": True  # Active speaker boost
             }
         }
-        
-        async def audio_generator():
-            try:
-                hc = get_agents_tts_http_client()
-                async with hc.stream("POST", tts_url, json=payload, headers=headers, timeout=15.0) as r:
-                    if r.status_code == 200:
-                        async for chunk in r.aiter_bytes(chunk_size=4096):
-                            yield chunk
-                    else:
-                        err_text = await r.aread()
-                        logger.error(f"ElevenLabs TTS error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
-            except Exception as stream_err:
-                logger.error(f"ElevenLabs streaming failed: {stream_err}")
-
-        return StreamingResponse(audio_generator(), media_type="audio/mpeg")
+        try:
+            hc = get_agents_tts_http_client()
+            req_obj = hc.build_request("POST", tts_url, json=payload, headers=headers)
+            r = await hc.send(req_obj, stream=True, timeout=15.0)
+            if r.status_code != 200:
+                err_text = await r.aread()
+                await r.aclose()
+                raise HTTPException(r.status_code, f"ElevenLabs TTS error: {err_text.decode('utf-8', errors='ignore')}")
+            
+            async def audio_generator():
+                try:
+                    async for chunk in r.aiter_bytes(chunk_size=4096):
+                        yield chunk
+                finally:
+                    await r.aclose()
+            return StreamingResponse(audio_generator(), media_type="audio/mpeg")
+        except HTTPException:
+            raise
+        except Exception as err:
+            logger.error(f"ElevenLabs streaming failed: {err}")
+            raise HTTPException(500, f"ElevenLabs connection failed: {err}")
             
     elif provider == "sarvam":
         # Stream audio via Sarvam AI REST streaming endpoint
         url = "https://api.sarvam.ai/text-to-speech/stream"
-        headers = {"api-subscription-key": api_key or os.getenv("SARVAM_API_KEY", ""), "Content-Type": "application/json"}
+        api_key_val = api_key or os.getenv("SARVAM_API_KEY", "") or settings.SARVAM_API_KEY
+        if not api_key_val:
+            raise HTTPException(400, "Sarvam API key is missing. Set SARVAM_API_KEY or configure voice settings.")
+        headers = {"api-subscription-key": api_key_val, "Content-Type": "application/json"}
         spk = voice_id
         if spk == "hi-IN-Neural-A": spk = "shubh"
         elif spk == "hi-IN-Neural-B": spk = "ritu"
@@ -1705,26 +1722,35 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             "speaker": spk,
             "model": "bulbul:v3"
         }
-        
-        async def audio_generator():
-            try:
-                hc = get_agents_tts_http_client()
-                async with hc.stream("POST", url, json=payload, headers=headers, timeout=30.0) as r:
-                    if r.status_code == 200:
-                        async for chunk in r.aiter_bytes(chunk_size=4096):
-                            yield chunk
-                    else:
-                        err_text = await r.aread()
-                        logger.error(f"Sarvam TTS stream error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
-            except Exception as stream_err:
-                logger.error(f"Sarvam streaming failed: {stream_err}")
-
-        return StreamingResponse(audio_generator(), media_type="audio/wav")
+        try:
+            hc = get_agents_tts_http_client()
+            req_obj = hc.build_request("POST", url, json=payload, headers=headers)
+            r = await hc.send(req_obj, stream=True, timeout=30.0)
+            if r.status_code != 200:
+                err_text = await r.aread()
+                await r.aclose()
+                raise HTTPException(r.status_code, f"Sarvam TTS error: {err_text.decode('utf-8', errors='ignore')}")
+            
+            async def audio_generator():
+                try:
+                    async for chunk in r.aiter_bytes(chunk_size=4096):
+                        yield chunk
+                finally:
+                    await r.aclose()
+            return StreamingResponse(audio_generator(), media_type="audio/wav")
+        except HTTPException:
+            raise
+        except Exception as err:
+            logger.error(f"Sarvam streaming failed: {err}")
+            raise HTTPException(500, f"Sarvam connection failed: {err}")
             
     elif provider == "smallestai":
         url = "https://api.smallest.ai/waves/v1/tts"
+        api_key_val = api_key or os.getenv("SMALLEST_API_KEY", "") or settings.SMALLEST_API_KEY
+        if not api_key_val:
+            raise HTTPException(400, "Smallest AI API key is missing. Set SMALLEST_API_KEY or configure voice settings.")
         headers = {
-            "Authorization": f"Bearer {api_key.strip()}" if api_key else f"Bearer {os.getenv('SMALLEST_API_KEY', '')}",
+            "Authorization": f"Bearer {api_key_val.strip()}",
             "Content-Type": "application/json"
         }
         payload = {
@@ -1734,21 +1760,27 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             "sample_rate": 24000,
             "output_format": "wav"
         }
-        
-        async def audio_generator():
-            try:
-                hc = get_agents_tts_http_client()
-                async with hc.stream("POST", url, json=payload, headers=headers, timeout=20.0) as r:
-                    if r.status_code == 200:
-                        async for chunk in r.aiter_bytes(chunk_size=4096):
-                            yield chunk
-                    else:
-                        err_text = await r.aread()
-                        logger.error(f"Smallest AI TTS stream error {r.status_code}: {err_text.decode('utf-8', errors='ignore')}")
-            except Exception as stream_err:
-                logger.error(f"Smallest AI streaming failed: {stream_err}")
-
-        return StreamingResponse(audio_generator(), media_type="audio/wav")
+        try:
+            hc = get_agents_tts_http_client()
+            req_obj = hc.build_request("POST", url, json=payload, headers=headers)
+            r = await hc.send(req_obj, stream=True, timeout=20.0)
+            if r.status_code != 200:
+                err_text = await r.aread()
+                await r.aclose()
+                raise HTTPException(r.status_code, f"Smallest AI TTS error: {err_text.decode('utf-8', errors='ignore')}")
+            
+            async def audio_generator():
+                try:
+                    async for chunk in r.aiter_bytes(chunk_size=4096):
+                        yield chunk
+                finally:
+                    await r.aclose()
+            return StreamingResponse(audio_generator(), media_type="audio/wav")
+        except HTTPException:
+            raise
+        except Exception as err:
+            logger.error(f"Smallest AI streaming failed: {err}")
+            raise HTTPException(500, f"Smallest AI connection failed: {err}")
             
     else:
         raise HTTPException(400, "TTS handled locally by browser for mrai provider")

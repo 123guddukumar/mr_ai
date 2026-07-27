@@ -5,6 +5,10 @@ All system settings loaded from environment variables with sensible defaults.
 
 from pydantic_settings import BaseSettings
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load all env variables into system environment on startup
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -68,6 +72,7 @@ class Settings(BaseSettings):
     PEXELS_API_KEY: str = ""
     ELEVENLABS_API_KEY: str = ""
     SARVAM_API_KEY: str = ""
+    SMALLEST_API_KEY: str = ""
 
     # API Key Management
     API_KEY_ADMIN_SECRET: str = "change-me-admin-secret"

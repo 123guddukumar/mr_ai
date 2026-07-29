@@ -1758,21 +1758,11 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             }
         }
         try:
-            hc = get_agents_tts_http_client()
-            req_obj = hc.build_request("POST", tts_url, json=payload, headers=headers)
-            r = await hc.send(req_obj, stream=True, timeout=15.0)
-            if r.status_code != 200:
-                err_text = await r.aread()
-                await r.aclose()
-                raise HTTPException(r.status_code, f"ElevenLabs TTS error: {err_text.decode('utf-8', errors='ignore')}")
-            
-            async def audio_generator():
-                try:
-                    async for chunk in r.aiter_bytes(chunk_size=4096):
-                        yield chunk
-                finally:
-                    await r.aclose()
-            return StreamingResponse(audio_generator(), media_type="audio/mpeg")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(tts_url, json=payload, headers=headers)
+                if r.status_code != 200:
+                    raise HTTPException(r.status_code, f"ElevenLabs TTS error: {r.text}")
+                return Response(content=r.content, media_type="audio/mpeg")
         except HTTPException:
             raise
         except Exception as err:
@@ -1801,21 +1791,11 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             "model": "bulbul:v3"
         }
         try:
-            hc = get_agents_tts_http_client()
-            req_obj = hc.build_request("POST", url, json=payload, headers=headers)
-            r = await hc.send(req_obj, stream=True, timeout=30.0)
-            if r.status_code != 200:
-                err_text = await r.aread()
-                await r.aclose()
-                raise HTTPException(r.status_code, f"Sarvam TTS error: {err_text.decode('utf-8', errors='ignore')}")
-            
-            async def audio_generator():
-                try:
-                    async for chunk in r.aiter_bytes(chunk_size=4096):
-                        yield chunk
-                finally:
-                    await r.aclose()
-            return StreamingResponse(audio_generator(), media_type="audio/wav")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(url, json=payload, headers=headers)
+                if r.status_code != 200:
+                    raise HTTPException(r.status_code, f"Sarvam TTS error: {r.text}")
+                return Response(content=r.content, media_type="audio/wav")
         except HTTPException:
             raise
         except Exception as err:
@@ -1839,21 +1819,11 @@ async def api_agent_speak(agent_id: str, text: str, db: Session = Depends(get_db
             "output_format": "wav"
         }
         try:
-            hc = get_agents_tts_http_client()
-            req_obj = hc.build_request("POST", url, json=payload, headers=headers)
-            r = await hc.send(req_obj, stream=True, timeout=20.0)
-            if r.status_code != 200:
-                err_text = await r.aread()
-                await r.aclose()
-                raise HTTPException(r.status_code, f"Smallest AI TTS error: {err_text.decode('utf-8', errors='ignore')}")
-            
-            async def audio_generator():
-                try:
-                    async for chunk in r.aiter_bytes(chunk_size=4096):
-                        yield chunk
-                finally:
-                    await r.aclose()
-            return StreamingResponse(audio_generator(), media_type="audio/wav")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(url, json=payload, headers=headers)
+                if r.status_code != 200:
+                    raise HTTPException(r.status_code, f"Smallest AI TTS error: {r.text}")
+                return Response(content=r.content, media_type="audio/wav")
         except HTTPException:
             raise
         except Exception as err:

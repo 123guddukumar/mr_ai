@@ -1373,9 +1373,62 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     is_rag = False
 
     if matched_pair:
-        answer = matched_pair.get("a")
+        raw_answer = matched_pair.get("a")
         sources_data = [{"source_file": "Training Q&A Pairs", "page_number": 1}]
         is_rag = True
+        
+        # Check if we need to translate/reformulate based on response_lang
+        try: s_cfg = json.loads(agent.system_config_json or "{}")
+        except: s_cfg = {}
+        response_lang = s_cfg.get("response_language", "default")
+        
+        import re
+        is_user_hindi = bool(re.search(r'[\u0900-\u097F]', req.question))
+        is_answer_hindi = bool(re.search(r'[\u0900-\u097F]', raw_answer))
+        
+        needs_translation = False
+        target_lang = None
+        
+        if response_lang == "hindi":
+            needs_translation = not is_answer_hindi
+            target_lang = "Hindi (using Devanagari script हिंदी लिपि only)"
+        elif response_lang == "english":
+            try:
+                raw_answer.encode('ascii')
+                is_answer_english = True
+            except UnicodeEncodeError:
+                is_answer_english = False
+            needs_translation = not is_answer_english
+            target_lang = "English"
+        elif response_lang == "hinglish":
+            needs_translation = True
+            target_lang = "Hinglish (Hindi language written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main help karta hoon')"
+        elif response_lang == "default":
+            if is_user_hindi and not is_answer_hindi:
+                needs_translation = True
+                target_lang = "Hindi (using Devanagari script हिंदी लिपि only)"
+            elif not is_user_hindi and is_answer_hindi:
+                needs_translation = True
+                target_lang = "English"
+                
+        if needs_translation:
+            try:
+                from app.services.llm import generate_simple_response
+                translation_prompt = (
+                    f"You are a professional translator. Translate the following text into {target_lang}.\n"
+                    f"Maintain the exact meaning, structure, facts, formatting, and markdown links (do NOT change or translate URLs in links, e.g. [text](url) -> keep url same).\n"
+                    f"Text to translate:\n{raw_answer}"
+                )
+                translated_answer = await generate_simple_response(
+                    prompt=translation_prompt,
+                    system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
+                )
+                answer = translated_answer.strip()
+            except Exception as e:
+                logger.error(f"Failed to translate matched Q&A pair: {e}")
+                answer = raw_answer
+        else:
+            answer = raw_answer
     else:
         # Get linked datastores
         try: ds_ids = json.loads(agent.datastores_json or "[]")
@@ -1411,11 +1464,29 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
         greetings = ["hi", "hello", "hey", "hii", "hiihii", "namaste", "how are you", "who are you", "good morning", "good evening"]
         is_greeting = any(g in q_low for g in greetings)
         
+        response_lang = s_cfg.get("response_language", "default")
+        if response_lang == "hindi":
+            lang_rule = "LANGUAGE RULE: You MUST always respond in Hindi (हिंदी) only, using the Devanagari script (हिंदी लिपि). Regardless of what language the user writes in (even if they ask in English), you MUST reply in Hindi using Devanagari script. Do NOT use Romanized Hinglish (Latin alphabet) for your responses."
+            context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in Hindi (Devanagari script) only."
+            greeting_rule = "GREETING RULE: Always reply to greetings in Hindi (Devanagari script) only."
+        elif response_lang == "english":
+            lang_rule = "LANGUAGE RULE: You MUST always respond in English only. Regardless of what language the user writes in (even if they ask in Hindi), you MUST reply in English."
+            context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in English only."
+            greeting_rule = "GREETING RULE: Always reply to greetings in English only."
+        elif response_lang == "hinglish":
+            lang_rule = "LANGUAGE RULE: You MUST always respond in Hinglish only (Hindi language written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main aapki kya madad kar sakta hoon?'). Regardless of what language the user writes in, you MUST reply in Hinglish. Do NOT use Hindi Devanagari script."
+            context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate/transliterate it and respond in Hinglish only."
+            greeting_rule = "GREETING RULE: Always reply to greetings in Hinglish only."
+        else:
+            lang_rule = "LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked."
+            context_lang_rule = "CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi."
+            greeting_rule = "GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used."
+
         identity = (
             f"You are {agent.name}. {agent.personality}\n"
-            f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
-            f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
-            f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
+            f"{lang_rule}\n"
+            f"{context_lang_rule}\n"
+            f"{greeting_rule}\n"
             f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
             f"RESPONSE STYLE: Be natural, conversational and helpful. Stop being robotic. Share knowledge from context naturally if found.\n"
         )
@@ -1545,6 +1616,13 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
                 "message": "Give us a call",
                 "created_at": datetime.utcnow().isoformat()
             }
+
+    if not suggested_questions:
+        try:
+            qa_pairs = json.loads(agent.customization_json or "{}").get("qa_pairs", [])
+            suggested_questions = [p.get("q") for p in qa_pairs if p.get("q")][:5]
+        except:
+            suggested_questions = []
 
     return {
         "answer": answer,
@@ -2053,9 +2131,62 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                 break
 
         if matched_a:
-            answer = matched_a
+            raw_answer = matched_a
             sources_data = [{"source_file": "Training Q&A Pairs", "page_number": 1}]
             is_rag = True
+            
+            # Check if we need to translate/reformulate based on response_lang
+            try: s_cfg = json.loads(agent.system_config_json or "{}")
+            except: s_cfg = {}
+            response_lang = s_cfg.get("response_language", "default")
+            
+            import re
+            is_user_hindi = bool(re.search(r'[\u0900-\u097F]', req.question))
+            is_answer_hindi = bool(re.search(r'[\u0900-\u097F]', raw_answer))
+            
+            needs_translation = False
+            target_lang = None
+            
+            if response_lang == "hindi":
+                needs_translation = not is_answer_hindi
+                target_lang = "Hindi (using Devanagari script हिंदी लिपि only)"
+            elif response_lang == "english":
+                try:
+                    raw_answer.encode('ascii')
+                    is_answer_english = True
+                except UnicodeEncodeError:
+                    is_answer_english = False
+                needs_translation = not is_answer_english
+                target_lang = "English"
+            elif response_lang == "hinglish":
+                needs_translation = True
+                target_lang = "Hinglish (Hindi language written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main help karta hoon')"
+            elif response_lang == "default":
+                if is_user_hindi and not is_answer_hindi:
+                    needs_translation = True
+                    target_lang = "Hindi (using Devanagari script हिंदी लिपि only)"
+                elif not is_user_hindi and is_answer_hindi:
+                    needs_translation = True
+                    target_lang = "English"
+                    
+            if needs_translation:
+                try:
+                    from app.services.llm import generate_simple_response
+                    translation_prompt = (
+                        f"You are a professional translator. Translate the following text into {target_lang}.\n"
+                        f"Maintain the exact meaning, structure, facts, formatting, and markdown links (do NOT change or translate URLs in links, e.g. [text](url) -> keep url same).\n"
+                        f"Text to translate:\n{raw_answer}"
+                    )
+                    translated_answer = await generate_simple_response(
+                        prompt=translation_prompt,
+                        system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
+                    )
+                    answer = translated_answer.strip()
+                except Exception as e:
+                    logger.error(f"Failed to translate matched Q&A pair: {e}")
+                    answer = raw_answer
+            else:
+                answer = raw_answer
         else:
             # Standard chat RAG logic
             db_history_msgs = db.query(AgentPublicMessage).filter(
@@ -2086,11 +2217,29 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
             try: s_cfg = json.loads(agent.system_config_json or "{}")
             except: s_cfg = {}
 
+            response_lang = s_cfg.get("response_language", "default")
+            if response_lang == "hindi":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in Hindi (हिंदी) only, using the Devanagari script (हिंदी लिपि). Regardless of what language the user writes in (even if they ask in English), you MUST reply in Hindi using Devanagari script. Do NOT use Romanized Hinglish (Latin alphabet) for your responses."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in Hindi (Devanagari script) only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in Hindi (Devanagari script) only."
+            elif response_lang == "english":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in English only. Regardless of what language the user writes in (even if they ask in Hindi), you MUST reply in English."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in English only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in English only."
+            elif response_lang == "hinglish":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in Hinglish only (Hindi language written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main aapki kya madad kar sakta hoon?'). Regardless of what language the user writes in, you MUST reply in Hinglish. Do NOT use Hindi Devanagari script."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate/transliterate it and respond in Hinglish only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in Hinglish only."
+            else:
+                lang_rule = "LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi."
+                greeting_rule = "GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used."
+
             identity = (
                 f"You are {agent.name}. {agent.personality}\n"
-                f"LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script (हिंदी लिपि) only. Do NOT use Romanized Hinglish (Latin alphabet) for Hindi responses. Do not translate unless asked.\n"
-                f"CONTEXT LANGUAGE RULE: The context files might be in a different language (e.g. Hindi) than the user's question (e.g. English). You MUST always translate the context information and respond in the same language as the user's question. If the user asks in English, you MUST answer in English, even if the knowledge base context is in Hindi.\n"
-                f"GREETING RULE: Reply to greetings (Hi, Hello, Namaste) in the SAME language the user used.\n"
+                f"{lang_rule}\n"
+                f"{context_lang_rule}\n"
+                f"{greeting_rule}\n"
                 f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
                 f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
             )
@@ -2248,6 +2397,13 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         if action_button:
             session.action_button_json = json.dumps(action_button)
             db.commit()
+
+    if not suggested_questions:
+        try:
+            qa_pairs = c_cfg.get("qa_pairs", [])
+            suggested_questions = [p.get("q") for p in qa_pairs if p.get("q")][:5]
+        except:
+            suggested_questions = []
 
     return {
         "answer": answer,

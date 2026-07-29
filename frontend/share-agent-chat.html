@@ -38,7 +38,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .ag-logo-circle{width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ag-logo-img{width:100%;height:100%;object-fit:cover}
 .ag-name-box{display:flex;flex-direction:column;min-width:0}
-.ag-name{font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-name{font-size:15px;font-weight:800;color:var(--text);white-space:normal;line-height:1.2;overflow:hidden;text-overflow:ellipsis}
 .ag-status{font-size:10px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:4px}
 .ag-status::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
 
@@ -505,6 +505,86 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   #mobile-landing-page:not(.has-template) {
     display: none !important;
   }
+}
+
+/* Custom Template Styles */
+.landing-overlay.custom-theme {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.custom-template-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 20px 20px 40px 20px;
+}
+@media (min-width: 768px) {
+  .custom-template-container {
+    background-size: cover;
+  }
+}
+.custom-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+.custom-buttons-wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  gap: 16px;
+  box-sizing: border-box;
+}
+.custom-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  color: #fff;
+}
+.custom-btn:hover {
+  transform: translateY(-2px);
+}
+.custom-btn.chat-btn {
+  background: var(--accent, #ff7a00);
+}
+.custom-btn.chat-btn:hover {
+  box-shadow: 0 12px 28px rgba(255, 122, 0, 0.45);
+}
+.custom-btn.talk-btn {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.custom-btn.talk-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 /* ── Landing Templates Premium Design System ── */
@@ -1537,7 +1617,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
       <div class="t3-badge-container">
         <span class="t3-role" id="t3-role-lbl">• Description •</span>
       </div>
-      <h2 class="t3-assistant-title">AI Assistant</h2>
+      <h2 class="t3-assistant-title"></h2>
       <div class="t3-buttons">
         <button class="t3-btn btn-chat" onclick="startChatFromLanding('text')">
           <span class="t3-btn-left">
@@ -1560,6 +1640,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
           <span class="t3-arrow">›</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Custom Template: User uploaded background image with two buttons -->
+  <div id="landing-template-custom" class="custom-template-container" style="display:none">
+    <div class="custom-overlay"></div>
+    <div id="custom-buttons-wrap" class="custom-buttons-wrap">
+      <button class="custom-btn chat-btn" onclick="startChatFromLanding('text')">
+        <span>💬</span> Chat with AI
+      </button>
+      <button class="custom-btn talk-btn" onclick="startChatFromLanding('v2v')">
+        <span>🎧</span> Talk with AI
+      </button>
     </div>
   </div>
 </div>
@@ -1622,7 +1715,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
   <div class="chat-window" id="chat-win">
     <div class="messages-area" id="msg-area">
-      <div class="welcome-hero" id="hero">
+      <div class="welcome-hero" id="hero" style="display:none;">
         <div class="hero-orb">✨</div>
         <h1 id="hero-title">Welcome</h1>
         <p id="hero-desc">How can I assist you today?</p>
@@ -1678,6 +1771,31 @@ try {
 } catch(e) {}
 
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function formatMessageText(text) {
+  let html = esc(text);
+  
+  // Format bold markdown (**bold**)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  
+  // Format markdown links [label](url)
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (match, label, url) => {
+    const cleanUrl = url.replace(/&amp;/g, '&');
+    return `<a href="${cleanUrl}" target="_blank" style="color:var(--accent); text-decoration:underline; font-weight:600;">${label}</a>`;
+  });
+  
+  // Format raw URLs (not inside an <a> or <img> tag) - cross-browser safe, no lookbehinds
+  html = html.replace(/(<a\s[^>]+>.*?<\/a>|<img\s[^>]+>)|(https?:\/\/[^\s<]+)/gi, (match, tag, url) => {
+    if (tag) return tag; // Keep existing tags untouched
+    const cleanUrl = url.replace(/&amp;/g, '&');
+    return `<a href="${cleanUrl}" target="_blank" style="color:var(--accent); text-decoration:underline; font-weight:600;">${url}</a>`;
+  });
+  
+  // Format newlines
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
 const params = new URLSearchParams(window.location.search);
 const AGENT_ID = params.get('id');
 if(!AGENT_ID) window.location.href = isPublic ? '/login' : '/dashboard';
@@ -1797,12 +1915,14 @@ async function loadAgent() {
       }
     }
 
-    document.getElementById('ag-title').textContent = d.name || 'AI Assistant';
-    document.getElementById('hero-title').textContent = d.name || 'Welcome';
+    const nameWithBreaks = esc(d.name || 'AI Assistant').replace(/\s*\/n\s*/gi, '<br>').replace(/\n/g, '<br>');
+
+    document.getElementById('ag-title').innerHTML = nameWithBreaks;
+    document.getElementById('hero-title').innerHTML = nameWithBreaks;
     document.getElementById('hero-desc').textContent = d.description || 'Ready to help.';
     
     // Set Page Title
-    document.title = (d.name || 'Agent') + ' Chat — VectorizeAI';
+    document.title = (d.name || 'Agent').replace(/\s*\/n\s*/gi, ' ').replace(/\n/g, ' ') + ' Chat — VectorizeAI';
 
     // Populate landing page content based on selected template
     const template = (d.customization && d.customization.template) || '';
@@ -1813,10 +1933,11 @@ async function loadAgent() {
     if (document.getElementById('landing-template-1')) document.getElementById('landing-template-1').style.display = 'none';
     if (document.getElementById('landing-template-2')) document.getElementById('landing-template-2').style.display = 'none';
     if (document.getElementById('landing-template-3')) document.getElementById('landing-template-3').style.display = 'none';
+    if (document.getElementById('landing-template-custom')) document.getElementById('landing-template-custom').style.display = 'none';
     
     // Remove theme classes
     if (lp) {
-      lp.classList.remove('has-template', 't1-theme', 't2-theme', 't3-theme');
+      lp.classList.remove('has-template', 't1-theme', 't2-theme', 't3-theme', 'custom-theme');
     }
     
     const avatarUrl = (d.customization && (d.customization.author_image_url || d.customization.logo_url)) || '';
@@ -1830,7 +1951,7 @@ async function loadAgent() {
 
       // Populate text fields
       const t1Name = document.querySelector('#landing-template-1 #t1-name-lbl');
-      if (t1Name) t1Name.textContent = d.name || 'AI Assistant';
+      if (t1Name) t1Name.innerHTML = nameWithBreaks;
       const t1Role = document.querySelector('#landing-template-1 #t1-role-lbl');
       if (t1Role) t1Role.textContent = d.description || d.category || 'Ready to help.';
 
@@ -1853,7 +1974,11 @@ async function loadAgent() {
         if (logoText) logoText.style.display = 'none';
       } else {
         if (logoImg) logoImg.style.display = 'none';
-        if (logoText) { logoText.textContent = d.name ? d.name.substring(0, 4).toUpperCase() : 'AI'; logoText.style.display = 'block'; }
+        if (logoText) { 
+          const cleanLogoName = (d.name || 'AI').split(/[\/\\]n/i)[0].trim();
+          logoText.textContent = cleanLogoName.substring(0, 4).toUpperCase(); 
+          logoText.style.display = 'block'; 
+        }
       }
 
       // Apply agent theme color: darker shade for button bg, icon color matches theme
@@ -1875,13 +2000,13 @@ async function loadAgent() {
 
       // Populate text fields
       const t2BrandName = document.querySelector('#landing-template-2 #t2-brand-name');
-      if (t2BrandName) t2BrandName.textContent = d.name || 'AI Assistant';
+      if (t2BrandName) t2BrandName.innerHTML = nameWithBreaks;
       const t2WithName = document.querySelector('#landing-template-2 #t2-with-name-lbl');
-      if (t2WithName) t2WithName.textContent = d.name || 'AI Assistant';
+      if (t2WithName) t2WithName.innerHTML = nameWithBreaks;
       const t2WithRole = document.querySelector('#landing-template-2 #t2-with-role-lbl');
       if (t2WithRole) t2WithRole.textContent = d.category || 'Founder';
       const t2CardName = document.querySelector('#landing-template-2 #t2-card-name-lbl');
-      if (t2CardName) t2CardName.textContent = d.name || 'AI Assistant';
+      if (t2CardName) t2CardName.innerHTML = nameWithBreaks;
       const t2CardDesc = document.querySelector('#landing-template-2 #t2-card-desc-lbl');
       if (t2CardDesc) t2CardDesc.textContent = d.description || 'I can help you with all your queries about our natural solutions, products, benefits & orders.';
 
@@ -1923,7 +2048,7 @@ async function loadAgent() {
 
       // Populate text fields
       const t3Name = document.querySelector('#landing-template-3 #t3-name-lbl');
-      if (t3Name) t3Name.textContent = d.name || 'AI Assistant';
+      if (t3Name) t3Name.innerHTML = nameWithBreaks;
       const t3Role = document.querySelector('#landing-template-3 #t3-role-lbl');
       if (t3Role) t3Role.textContent = '• ' + (d.description || d.category || 'AI Assistant') + ' •';
 
@@ -1946,7 +2071,11 @@ async function loadAgent() {
         if (logoText) logoText.style.display = 'none';
       } else {
         if (logoImg) logoImg.style.display = 'none';
-        if (logoText) { logoText.textContent = d.name ? d.name.substring(0, 4).toUpperCase() : 'AI'; logoText.style.display = 'block'; }
+        if (logoText) { 
+          const cleanLogoName = (d.name || 'AI').split(/[\/\\]n/i)[0].trim();
+          logoText.textContent = cleanLogoName.substring(0, 4).toUpperCase(); 
+          logoText.style.display = 'block'; 
+        }
       }
 
       // Apply theme color: name, role badge, AI Assistant underline, chat button, talk button border/text
@@ -1978,10 +2107,41 @@ async function loadAgent() {
         el.style.color = themeColor + '88';
       });
       
+    } else if (template === 'custom') {
+      if (lp) lp.classList.add('has-template', 'custom-theme');
+      const tContainer = document.getElementById('landing-template-custom');
+      if (tContainer) {
+        tContainer.style.display = 'flex';
+        const customBgUrl = (d.customization && d.customization.custom_bg_url) || '';
+        if (customBgUrl) {
+          tContainer.style.backgroundImage = `url('${customBgUrl}')`;
+        } else {
+          tContainer.style.backgroundImage = 'none';
+          tContainer.style.backgroundColor = 'var(--bg2)';
+        }
+        
+        const customBtnLayout = (d.customization && d.customization.custom_btn_layout) || 'row';
+        const btnWrap = document.getElementById('custom-buttons-wrap');
+        if (btnWrap) {
+          if (customBtnLayout === 'stacked') {
+            btnWrap.style.flexDirection = 'column';
+            btnWrap.style.alignItems = 'stretch';
+          } else {
+            btnWrap.style.flexDirection = 'row';
+            btnWrap.style.alignItems = 'center';
+          }
+        }
+        
+        const chatBtn = tContainer.querySelector('.chat-btn');
+        if (chatBtn) {
+          chatBtn.style.background = themeColor;
+          chatBtn.style.boxShadow = `0 6px 18px ${themeColor}44`;
+        }
+      }
     } else {
       // Default Template
       if (document.getElementById('landing-template-default')) document.getElementById('landing-template-default').style.display = 'block';
-      document.getElementById('landing-name').textContent = d.name || 'AI Assistant';
+      document.getElementById('landing-name').innerHTML = nameWithBreaks;
       document.getElementById('landing-desc').textContent = d.description || 'Ready to help.';
       document.getElementById('landing-start-msg').textContent = d.starting_message || 'Hello! How can I help you today?';
       
@@ -2052,10 +2212,16 @@ async function loadAgent() {
     }
     */
 
+    const hasPastHistory = await loadPublicHistory();
+
+    if (hasPastHistory) {
+      landingClosed = true;
+    } else {
+      const h = document.getElementById('hero');
+      if (h) h.style.display = 'block';
+    }
     // Trigger mobile landing page if responsive
     checkShowLandingPage();
-
-    const hasPastHistory = await loadPublicHistory();
 
     if(!hasPastHistory && d.starting_message) {
       setTimeout(() => {
@@ -2878,7 +3044,7 @@ function appendMessage(role, text, srcs) {
   const icon = role === 'user' ? '<i data-lucide="user"></i>' : '<i data-lucide="bot"></i>';
   
   // Set bubble-box with full flex to take full width of container
-  div.innerHTML = `<div class="msg-icon ${role}">${icon}</div><div class="bubble-box" style="flex:1; min-width:0"><div class="bubble">${esc(text)}</div>${sHtml}</div>`;
+  div.innerHTML = `<div class="msg-icon ${role}">${icon}</div><div class="bubble-box" style="flex:1; min-width:0"><div class="bubble">${formatMessageText(text)}</div>${sHtml}</div>`;
   area.appendChild(div);
   
   // Truncate long assistant replies (greater than 5-6 lines) and add Read More link

@@ -4199,13 +4199,20 @@
         // Trigger mobile landing page if responsive
         checkShowLandingPage();
 
+        // On mobile, defer starting message until user clicks Chat/Talk from landing page
+        const isMobileNow = window.matchMedia('(max-width: 767px)').matches;
         if (!hasPastHistory && d.starting_message) {
-          setTimeout(() => {
-            const h = document.getElementById('hero');
-            if (h) h.style.display = 'none';
-            appendMessage('assistant', d.starting_message);
-            if (chatMode === 'v2v') speakText(d.starting_message);
-          }, 700);
+          if (isMobileNow) {
+            // Store for later — will be shown in startChatFromLanding()
+            window._pendingStartingMessage = d.starting_message;
+          } else {
+            setTimeout(() => {
+              const h = document.getElementById('hero');
+              if (h) h.style.display = 'none';
+              appendMessage('assistant', d.starting_message);
+              if (chatMode === 'v2v') speakText(d.starting_message);
+            }, 700);
+          }
         }
         setMode(chatMode);
         lucide.createIcons();
@@ -5902,11 +5909,30 @@
     function startChatFromLanding(mode) {
       landingClosed = true;
       const lp = document.getElementById('mobile-landing-page');
-      if (lp) lp.style.display = 'none';
+      if (lp) {
+        lp.style.opacity = '0';
+        lp.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => { lp.style.display = 'none'; lp.style.opacity = ''; lp.style.transition = ''; }, 320);
+      }
+
+      // Hide hero welcome screen
+      const hero = document.getElementById('hero');
+      if (hero) hero.style.display = 'none';
+
       setMode(mode);
+
+      // Show the pending starting message (deferred on mobile)
+      if (window._pendingStartingMessage) {
+        const msg = window._pendingStartingMessage;
+        window._pendingStartingMessage = null;
+        setTimeout(() => {
+          appendMessage('assistant', msg);
+          if (mode === 'v2v') speakText(msg);
+        }, 350);
+      }
+
       if (mode === 'v2v') {
-        // Start listening
-        setTimeout(() => { if (!isListening) toggleVoice(); }, 400);
+        setTimeout(() => { if (!isListening) toggleVoice(); }, 700);
       }
     }
 

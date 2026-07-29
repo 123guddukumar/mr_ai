@@ -2809,6 +2809,7 @@ async function checkSessionAction() {
 }
 
 async function loadPublicHistory() {
+  if (!sessionId) return false;
   if (!isPublic || !AGENT_ID || !deviceId) return false;
   try {
     const url = `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
@@ -3312,39 +3313,110 @@ function deduplicateText(text) {
 
 function resetSilenceTimer() {
   clearTimeout(silenceTimer);
-  
-  // 0.8 seconds of silence means user has finished speaking
+
   silenceTimer = setTimeout(() => {
     const rawCleaned = cleanSpeechText(speechTranscript);
     const finalCleaned = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawCleaned))).trim();
     if (finalCleaned) {
       console.log("Silence detected. Sending message:", finalCleaned);
-      
+
       const trans = document.getElementById('vo-transcript');
-      trans.innerHTML = `<b>${finalCleaned}</b>`;
+      if (trans) trans.innerHTML = `<b>${finalCleaned}</b>`;
       document.getElementById('chat-input').value = finalCleaned;
-      
+
       isListening = false;
       document.getElementById('vo-btn').classList.remove('active');
       document.getElementById('vo-orb').classList.remove('listening');
       document.getElementById('vo-status').textContent = 'Processing…';
-      
+
       stopRecognition();
       sendMsg();
     }
   }, 800);
 }
 
+let nativeRecognition = null;
+function startNativeRecognition() {
+  if (nativeRecognition) return;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("Native Speech Recognition not supported in this browser");
+    return;
+  }
+  console.log("Starting native browser SpeechRecognition fallback...");
+  nativeRecognition = new SpeechRecognition();
+  nativeRecognition.continuous = true;
+  nativeRecognition.interimResults = true;
+  nativeRecognition.lang = 'hi-IN';
+
+  nativeRecognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+    if (finalTranscript || interimTranscript) {
+      resetSilenceTimer();
+      
+      if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+        if (window.currentAudio) {
+          window.currentAudio.pause();
+          window.currentAudio = null;
+        }
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+        clearInterval(subtitleInterval);
+        const status = document.getElementById('vo-status');
+        if (chatMode === 'v2v') {
+          status.textContent = 'Listening…';
+        }
+      }
+      
+      const display = cleanSpeechText(speechTranscript + finalTranscript + (interimTranscript ? ' ' + interimTranscript : ''));
+      const displayClean = cleanMixedScript(deduplicateText(removeSentenceRestarts(display)));
+      const trans = document.getElementById('vo-transcript');
+      if (trans) trans.innerHTML = `<span>${displayClean}</span>`;
+      
+      if (finalTranscript) {
+        speechTranscript += (speechTranscript ? ' ' : '') + finalTranscript;
+      }
+    }
+  };
+
+  nativeRecognition.onerror = (e) => {
+    console.error("Native Speech recognition error:", e);
+  };
+
+  nativeRecognition.onend = () => {
+    console.log("Native Speech recognition ended.");
+    nativeRecognition = null;
+    if (isListening && chatMode === 'v2v') {
+      startNativeRecognition();
+    }
+  };
+
+  nativeRecognition.start();
+}
+
 function startRecognition() {
   const trans = document.getElementById('vo-transcript');
   if (dgSocket) {
-    try { dgSocket.close(); } catch(e){}
+    try { dgSocket.close(); } catch (e) { }
   }
-  
+  if (nativeRecognition) {
+    try { nativeRecognition.stop(); } catch (e) {}
+    nativeRecognition = null;
+  }
+
   speechTranscript = '';
   currentInterim = '';
   clearTimeout(silenceTimer);
-  
+
   const loc = window.location;
   let wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
   let wsUrl = wsProto + '//' + loc.host + '/api/agents/ws/transcribe';
@@ -3354,36 +3426,42 @@ function startRecognition() {
     else if (BACKEND_URL.startsWith('http://')) wsProto = 'ws:';
     wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
   }
-  
-  dgSocket = new WebSocket(wsUrl);
-  
+
+  try {
+    dgSocket = new WebSocket(wsUrl);
+  } catch (err) {
+    console.warn("Failed to create Deepgram WebSocket, falling back to Native SpeechRecognition:", err);
+    startNativeRecognition();
+    return;
+  }
+
   dgSocket.onopen = async () => {
     console.log("Deepgram WS connected!");
     try {
-      audioStream = await navigator.mediaDevices.getUserMedia({ 
+      audioStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
           sampleRate: 48000,
           channelCount: 1
-        } 
+        }
       });
       let mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/ogg';
       }
-      
+
       mediaRecorder = new MediaRecorder(audioStream, { mimeType });
-      
+
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && dgSocket.readyState === WebSocket.OPEN) {
+        if (event.data.size > 0 && dgSocket && dgSocket.readyState === WebSocket.OPEN) {
           dgSocket.send(event.data);
         }
       };
-      
+
       mediaRecorder.start(250);
-      
+
       if (chatMode === 'v2v') {
         trans.innerHTML = `<i>Listening…</i>`;
       }
@@ -3399,17 +3477,16 @@ function startRecognition() {
       const data = JSON.parse(event.data);
       const channel = data.channel || (data.results && data.results.channels && data.results.channels[0]);
       if (!channel) return;
-      
+
       const alternatives = channel.alternatives || [];
       if (alternatives.length === 0) return;
-      
+
       const transcript = alternatives[0].transcript || '';
       const isFinal = data.is_final;
-      
+
       if (transcript.trim()) {
         resetSilenceTimer();
-        
-        // Barge-In Interruption: if user starts speaking while bot speaks, stop speaking instantly!
+
         if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
           console.log("Barge-In detected! User started speaking. Interrupting bot voice...");
           if (window.currentAudio) {
@@ -3425,7 +3502,7 @@ function startRecognition() {
             status.textContent = 'Listening…';
           }
         }
-        
+
         if (isFinal) {
           speechTranscript += (speechTranscript ? ' ' : '') + transcript;
           currentInterim = '';

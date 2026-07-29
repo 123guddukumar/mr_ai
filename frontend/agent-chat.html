@@ -4798,6 +4798,7 @@
         } catch (e) { console.warn("Could not load Root Agent chat history:", e); }
       }
 
+      if (!sessionId) return false;
       if (!isPublic || !AGENT_ID || !deviceId) return false;
       try {
         const url = `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
@@ -5521,10 +5522,82 @@
       }, 800);
     }
 
+    let nativeRecognition = null;
+    function startNativeRecognition() {
+      if (nativeRecognition) return;
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("Native Speech Recognition not supported in this browser");
+        return;
+      }
+      console.log("Starting native browser SpeechRecognition fallback...");
+      nativeRecognition = new SpeechRecognition();
+      nativeRecognition.continuous = true;
+      nativeRecognition.interimResults = true;
+      nativeRecognition.lang = 'hi-IN';
+
+      nativeRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript || interimTranscript) {
+          resetSilenceTimer();
+          
+          if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+            if (window.currentAudio) {
+              window.currentAudio.pause();
+              window.currentAudio = null;
+            }
+            if (window.speechSynthesis) {
+              window.speechSynthesis.cancel();
+            }
+            clearInterval(subtitleInterval);
+            const status = document.getElementById('vo-status');
+            if (chatMode === 'v2v') {
+              status.textContent = 'Listening…';
+            }
+          }
+          
+          const display = cleanSpeechText(speechTranscript + finalTranscript + (interimTranscript ? ' ' + interimTranscript : ''));
+          const displayClean = cleanMixedScript(deduplicateText(removeSentenceRestarts(display)));
+          const trans = document.getElementById('vo-transcript');
+          if (trans) trans.innerHTML = `<span>${displayClean}</span>`;
+          
+          if (finalTranscript) {
+            speechTranscript += (speechTranscript ? ' ' : '') + finalTranscript;
+          }
+        }
+      };
+
+      nativeRecognition.onerror = (e) => {
+        console.error("Native Speech recognition error:", e);
+      };
+
+      nativeRecognition.onend = () => {
+        console.log("Native Speech recognition ended.");
+        nativeRecognition = null;
+        if (isListening && chatMode === 'v2v') {
+          startNativeRecognition();
+        }
+      };
+
+      nativeRecognition.start();
+    }
+
     function startRecognition() {
       const trans = document.getElementById('vo-transcript');
       if (dgSocket) {
         try { dgSocket.close(); } catch (e) { }
+      }
+      if (nativeRecognition) {
+        try { nativeRecognition.stop(); } catch (e) {}
+        nativeRecognition = null;
       }
 
       speechTranscript = '';
@@ -5541,7 +5614,13 @@
         wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
       }
 
-      dgSocket = new WebSocket(wsUrl);
+      try {
+        dgSocket = new WebSocket(wsUrl);
+      } catch (err) {
+        console.warn("Failed to create Deepgram WebSocket, falling back to Native SpeechRecognition:", err);
+        startNativeRecognition();
+        return;
+      }
 
       dgSocket.onopen = async () => {
         console.log("Deepgram WS connected!");
@@ -5563,7 +5642,7 @@
           mediaRecorder = new MediaRecorder(audioStream, { mimeType });
 
           mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0 && dgSocket.readyState === WebSocket.OPEN) {
+            if (event.data.size > 0 && dgSocket && dgSocket.readyState === WebSocket.OPEN) {
               dgSocket.send(event.data);
             }
           };
@@ -5595,7 +5674,6 @@
           if (transcript.trim()) {
             resetSilenceTimer();
 
-            // Barge-In Interruption: if user starts speaking while bot speaks, stop speaking instantly!
             if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
               console.log("Barge-In detected! User started speaking. Interrupting bot voice...");
               if (window.currentAudio) {
@@ -5629,16 +5707,29 @@
       };
 
       dgSocket.onerror = (e) => {
-        console.error("Deepgram WS error:", e);
+        console.error("Deepgram WS error, falling back to Native SpeechRecognition...", e);
+        if (dgSocket) {
+          try { dgSocket.close(); } catch(err) {}
+          dgSocket = null;
+        }
+        startNativeRecognition();
       };
 
       dgSocket.onclose = () => {
         console.log("Deepgram WS connection closed.");
+        if (isListening && !nativeRecognition) {
+          console.warn("Deepgram WS closed while listening. Falling back to native...");
+          startNativeRecognition();
+        }
       };
     }
 
     function stopRecognition() {
       clearTimeout(silenceTimer);
+      if (nativeRecognition) {
+        try { nativeRecognition.stop(); } catch (e) {}
+        nativeRecognition = null;
+      }
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         try { mediaRecorder.stop(); } catch (e) { }
       }

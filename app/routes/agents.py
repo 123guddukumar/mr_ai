@@ -1547,6 +1547,13 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
         # Call LLM
         from app.services.llm import llm_with_history
         try:
+            if response_lang == "hindi":
+                system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in Hindi (Devanagari script हिंदी लिपि only). Do NOT use English or Hinglish."
+            elif response_lang == "english":
+                system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in English only."
+            elif response_lang == "hinglish":
+                system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in Hinglish only (Hindi written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main help karta hoon'). Do NOT use Devanagari script."
+
             answer = await llm_with_history(
                 question=req.question, system=system, history=req.history[-6:],
                 provider=voice_provider,
@@ -2282,6 +2289,13 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                 effective_question = f"[File Content/Context]:\n{req.file_context}\n\n[User Question]: {req.question}"
 
             try:
+                if response_lang == "hindi":
+                    system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in Hindi (Devanagari script हिंदी लिपि only). Do NOT use English or Hinglish."
+                elif response_lang == "english":
+                    system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in English only."
+                elif response_lang == "hinglish":
+                    system += "\n\nCRITICAL LANGUAGE DIRECTIVE: Regardless of user question or context, you MUST respond in Hinglish only (Hindi written using the English/Latin alphabet, e.g. 'Aap kaise hain?', 'Main help karta hoon'). Do NOT use Devanagari script."
+
                 answer = await llm_with_history(
                     question=effective_question, system=system, history=history_list,
                     provider=voice_provider,

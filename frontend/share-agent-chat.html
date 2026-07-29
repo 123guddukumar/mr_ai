@@ -353,6 +353,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   z-index: 9999;
   padding: 20px;
 }
+/* On mobile: show landing instantly via CSS — no JS flicker */
+@media (max-width: 767px) {
+  .landing-overlay {
+    display: flex;
+  }
+}
 .show-landing-instantly .landing-overlay {
   display: flex;
 }
@@ -517,8 +523,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     display: none !important;
   }
 }
+/* Desktop: hide landing page overlay (only show on mobile) */
 @media (min-width: 768px) {
-  #mobile-landing-page:not(.has-template) {
+  #mobile-landing-page {
     display: none !important;
   }
 }
@@ -1474,7 +1481,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 <body id="body">
 
 <!-- Mobile Landing Page Overlay -->
-<div id="mobile-landing-page" class="landing-overlay">
+<div id="mobile-landing-page" class="landing-overlay" style="position:fixed;">
   <!-- Default Template Content -->
   <div class="landing-content" id="landing-template-default" style="display:none">
     <div class="landing-top-body">
@@ -1501,6 +1508,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     </div>
   </div>
 
+  <!-- 5-min countdown timer pill (top-center of landing page) -->
+  <div id="landing-timer-bar" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.18);border-radius:20px;padding:5px 14px;z-index:10001;font-size:12px;font-weight:700;color:#fff;letter-spacing:0.5px;white-space:nowrap;">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff7a00" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span id="landing-timer-txt">5:00</span>
+  </div>
   <!-- Template 1: Rajesh Goyal Photography style -->
   <!-- Template 1: Rajesh Goyal Photography / Professional Style -->
   <!-- LEFT: full-height photo | RIGHT: Logo + Hello + Name | BOTTOM: 2 stacked pill buttons -->
@@ -1696,20 +1708,35 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <a class="nav-btn" id="nav-whatsapp-link" href="#" target="_blank" title="Chat on WhatsApp" style="display:none; color:#10b981; align-items:center; justify-content:center; text-decoration:none;">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z"/></svg>
     </a>
-    <button class="nav-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode"><i data-lucide="moon" id="theme-icon"></i></button>
     
     <!-- 3-dot dropdown menu trigger -->
     <div class="dropdown" id="nav-dropdown" style="position: relative; display: inline-block;">
       <button class="nav-btn" onclick="toggleNavDropdown(event)" title="More options">
         <i data-lucide="more-vertical"></i>
       </button>
-      <div class="dropdown-menu" id="nav-dropdown-menu" style="display: none; position: absolute; right: 0; top: 44px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; min-width: 160px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 1001; overflow: hidden;">
-        <button class="dropdown-item" onclick="handleDropdownAction(clearLocalChat)" style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+      <div class="dropdown-menu" id="nav-dropdown-menu" style="display: none; position: absolute; right: 0; top: 44px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; min-width: 170px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 1001; overflow: hidden;">
+        <button class="dropdown-item" onclick="handleDropdownAction(toggleTheme)" style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+          <i data-lucide="moon" id="theme-icon" style="width: 14px; height: 14px;"></i> Toggle Theme
+        </button>
+        <button class="dropdown-item" onclick="handleDropdownAction(clearLocalChat)" style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); transition: background 0.2s;">
           <i data-lucide="trash-2" style="width: 14px; height: 14px; color: var(--red);"></i> Clear Chat
         </button>
         <button class="dropdown-item" onclick="handleDropdownAction(openFeedbackModal)" style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); transition: background 0.2s;">
           <i data-lucide="flag" style="width: 14px; height: 14px; color: var(--accent);"></i> Feedback/Report
         </button>
+      </div>
+    </div>
+    
+    <!-- Continue/Leave popup (shown when 5-min timer expires on landing page) -->
+    <div id="landing-expire-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10002;align-items:center;justify-content:center;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:36px 28px;text-align:center;max-width:320px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.5);margin:20px;">
+        <div style="font-size:36px;margin-bottom:12px;">⏳</div>
+        <h2 style="font-size:18px;font-weight:800;margin:0 0 10px;color:var(--text);">Still there?</h2>
+        <p style="font-size:13.5px;color:var(--text2);margin:0 0 24px;line-height:1.5;">Your session is about to expire. Do you want to continue chatting?</p>
+        <div style="display:flex;gap:12px;">
+          <button onclick="landingLeaveSession()" style="flex:1;padding:12px 0;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;">Leave</button>
+          <button onclick="landingContinueSession()" style="flex:1;padding:12px 0;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Continue</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2207,26 +2234,6 @@ async function loadAgent() {
         document.getElementById('mobile-landing-page').style.background = '';
       }
     }
-
-    // WhatsApp features disabled as per request
-    /*
-    if (d.customization && d.customization.whatsapp_number) {
-      const cleanWaNum = d.customization.whatsapp_number.replace(/[^\d]/g, '');
-      if (cleanWaNum) {
-        const waUrl = `https://wa.me/${cleanWaNum}`;
-        const navWa = document.getElementById('nav-whatsapp-link');
-        if (navWa) {
-          navWa.href = waUrl;
-          navWa.style.display = 'inline-flex';
-        }
-        const landWa = document.getElementById('landing-whatsapp-link');
-        if (landWa) {
-          landWa.href = waUrl;
-          landWa.style.display = 'inline-flex';
-        }
-      }
-    }
-    */
 
     const hasPastHistory = await loadPublicHistory();
 
@@ -3635,54 +3642,96 @@ async function speakText(text) {
 
 function speakLocalSpeech(text) {
   const status = document.getElementById('vo-status');
-  const u = new SpeechSynthesisUtterance(text);
   const cfg = _agentData.voice_config || {};
   const voiceName = (cfg.voice_name || '').toLowerCase();
-  const voices = speechSynthesis.getVoices();
-  const isHindi = text.match(/[\u0900-\u097F]/);
-  
-  let v = null;
-  if (voices.length > 0) {
-    if (voiceName) {
-      v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
-      if (!v) {
-        if (voiceName === 'natural') {
-          v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
-        } else if (voiceName === 'friendly') {
-          v = voices.find(vo => vo.name.toLowerCase().includes('zira') || vo.name.toLowerCase().includes('samantha') || vo.name.toLowerCase().includes('female'));
-        } else if (voiceName === 'pro') {
-          v = voices.find(vo => vo.name.toLowerCase().includes('david') || vo.name.toLowerCase().includes('mark') || vo.name.toLowerCase().includes('male'));
+  const isHindi = /[\u0900-\u097F]/.test(text);
+  const isMobileBrowser = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  function getVoice() {
+    const voices = speechSynthesis.getVoices();
+    let v = null;
+    if (voices.length > 0) {
+      if (voiceName) {
+        v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
+        if (!v) {
+          if (voiceName === 'natural') v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
+          else if (voiceName === 'friendly') v = voices.find(vo => vo.name.toLowerCase().includes('zira') || vo.name.toLowerCase().includes('samantha') || vo.name.toLowerCase().includes('female'));
+          else if (voiceName === 'pro') v = voices.find(vo => vo.name.toLowerCase().includes('david') || vo.name.toLowerCase().includes('mark') || vo.name.toLowerCase().includes('male'));
         }
       }
+      if (!v) {
+        if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
+        else v = voices.find(vo => vo.lang.startsWith('en'));
+      }
     }
-    if (!v) {
-      if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
-      else v = voices.find(vo => vo.lang.startsWith('en'));
+    return v;
+  }
+
+  // Split text into natural sentence-level chunks (mobile safe)
+  const CHUNK_SIZE = isMobileBrowser ? 160 : 5000;
+  function splitChunks(txt, maxLen) {
+    const sentences = txt.match(/[^.!?\n]+[.!?\n]?/g) || [txt];
+    const chunks = [];
+    let cur = '';
+    for (const s of sentences) {
+      if ((cur + s).length > maxLen && cur.trim()) { chunks.push(cur.trim()); cur = s; }
+      else { cur += s; }
+    }
+    if (cur.trim()) chunks.push(cur.trim());
+    return chunks;
+  }
+
+  const chunks = splitChunks(text, CHUNK_SIZE);
+  let chunkIdx = 0;
+  let started = false;
+
+  function speakChunk() {
+    if (chunkIdx >= chunks.length) {
+      clearInterval(subtitleInterval);
+      if (chatMode === 'v2v') status.textContent = 'Listening\u2026';
+      return;
+    }
+    const chunk = chunks[chunkIdx++];
+    const u = new SpeechSynthesisUtterance(chunk);
+    const v = getVoice();
+    if (v) u.voice = v;
+    u.lang = isHindi ? 'hi-IN' : 'en-US';
+    u.rate = 1.0;
+
+    if (!started) {
+      u.onstart = () => {
+        started = true;
+        if (chatMode === 'v2v') {
+          showSubtitles(text, 380);
+          isListening = true;
+          document.getElementById('vo-btn').classList.add('active');
+          document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
+        }
+      };
+    }
+
+    u.onend = () => { speakChunk(); };
+    u.onerror = (e) => {
+      if (e.error === 'interrupted' || e.error === 'canceled') { speakChunk(); return; }
+      clearInterval(subtitleInterval);
+      if (chatMode === 'v2v') status.textContent = 'Listening\u2026';
+    };
+
+    speechSynthesis.speak(u);
+
+    // iOS WebKit keepalive: prevent auto-cancel on long text
+    if (isMobileBrowser) {
+      setTimeout(() => {
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+          speechSynthesis.pause(); speechSynthesis.resume();
+        }
+      }, 9000);
     }
   }
-  
-  if(v) u.voice = v;
-  u.lang = isHindi ? 'hi-IN' : 'en-US';
-  u.rate = 1.0;
-  
-  u.onstart = () => {
-    if(chatMode === 'v2v') {
-      showSubtitles(text, 380);
-      isListening = true;
-      document.getElementById('vo-btn').classList.add('active');
-      document.getElementById('vo-orb').classList.add('listening');
-      startRecognition();
-    }
-  };
-  
-  u.onend = () => {
-    clearInterval(subtitleInterval);
-    if(chatMode === 'v2v') {
-      status.textContent = 'Listening…';
-    }
-  };
 
-  speechSynthesis.speak(u);
+  speechSynthesis.cancel();
+  speakChunk();
 }
 
 function toast(msg, type) {
@@ -3693,16 +3742,58 @@ function toast(msg, type) {
 
 // ── Mobile Responsive Landing Page Helper ──
 let landingClosed = false;
+let _landingTimerInterval = null;
+let _landingSecondsLeft = 5 * 60; // 5 minutes
+
+function startLandingTimer() {
+  const timerTxt = document.getElementById('landing-timer-txt');
+  if (!timerTxt) return;
+  _landingSecondsLeft = 5 * 60;
+  clearInterval(_landingTimerInterval);
+  _landingTimerInterval = setInterval(() => {
+    _landingSecondsLeft--;
+    const m = Math.floor(_landingSecondsLeft / 60);
+    const s = _landingSecondsLeft % 60;
+    if (timerTxt) timerTxt.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    if (_landingSecondsLeft <= 0) {
+      clearInterval(_landingTimerInterval);
+      // Show continue/leave popup
+      const popup = document.getElementById('landing-expire-popup');
+      if (popup) popup.style.display = 'flex';
+    }
+  }, 1000);
+}
+
+function landingContinueSession() {
+  const popup = document.getElementById('landing-expire-popup');
+  if (popup) popup.style.display = 'none';
+  // Restart timer
+  startLandingTimer();
+}
+
+function landingLeaveSession() {
+  clearInterval(_landingTimerInterval);
+  // Navigate back or close
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    window.close();
+    // Fallback: blank the page
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#999;">Session ended. You may close this tab.</div>';
+  }
+}
 
 function checkShowLandingPage() {
   const lp = document.getElementById('mobile-landing-page');
   if (!lp) return;
-  
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+  const isMobile = window.matchMedia('(max-width: 767px)').matches;
   if (isMobile && !landingClosed) {
     lp.style.display = 'flex';
+    startLandingTimer();
   } else {
     lp.style.display = 'none';
+    clearInterval(_landingTimerInterval);
   }
 }
 

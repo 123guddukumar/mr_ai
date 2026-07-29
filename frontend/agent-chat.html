@@ -1126,18 +1126,6 @@
       box-shadow: 0 10px 25px rgba(255, 122, 0, 0.45);
     }
 
-    .dropdown-item-theme {
-      display: none !important;
-    }
-    @media (max-width: 767px) {
-      .nav-btn-theme {
-        display: none !important;
-      }
-      .dropdown-item-theme {
-        display: flex !important;
-      }
-    }
-
     .input-mic-btn {
       display: none;
     }
@@ -3485,7 +3473,7 @@
         </div>
         <div class="ag-name-box">
           <div class="ag-name" id="ag-title">AI Assistant</div>
-          <div class="ag-status" id="ag-status-container">Online <span id="chat-timer" style="margin-left: 8px; color: var(--text2); font-weight: normal; font-size: 11px;">(05:00)</span></div>
+          <div class="ag-status">Online</div>
         </div>
       </div>
     </div>
@@ -3497,7 +3485,7 @@
             d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.936 9.936 0 0 0 4.777 1.22h.005c5.505 0 9.989-4.478 9.99-9.985C22.007 6.476 17.519 2 12.012 2zm5.748 14.167c-.243.682-1.419 1.233-1.95 1.29-.483.051-1.11.085-3.033-.715-2.457-1.022-4.04-3.528-4.162-3.69-.122-.162-1.02-1.357-1.02-2.588 0-1.23.633-1.838.86-2.09.227-.253.513-.317.684-.317.172 0 .344.002.493.01.155.008.363-.058.568.44.209.508.715 1.745.776 1.868.062.124.103.268.02.434-.082.165-.124.268-.247.413-.124.145-.261.324-.372.434-.124.124-.254.26-.11.507.145.247.643 1.058 1.381 1.716.953.849 1.753 1.112 2.001 1.236.248.124.393.103.538-.062.145-.165.62-.724.786-.972.166-.248.331-.207.559-.124.227.083 1.448.683 1.696.807.248.124.413.186.475.29.062.103.062.599-.181 1.282z" />
         </svg>
       </a>
-      <button class="nav-btn nav-btn-theme" onclick="toggleTheme()" title="Toggle Dark/Light Mode"><i data-lucide="moon"
+      <button class="nav-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode"><i data-lucide="moon"
           id="theme-icon"></i></button>
 
       <!-- 3-dot dropdown menu trigger -->
@@ -3514,10 +3502,6 @@
           <button class="dropdown-item" onclick="handleDropdownAction(openFeedbackModal)"
             style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); transition: background 0.2s;">
             <i data-lucide="flag" style="width: 14px; height: 14px; color: var(--accent);"></i> Feedback/Report
-          </button>
-          <button class="dropdown-item dropdown-item-theme" onclick="handleDropdownAction(toggleTheme)"
-            style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); transition: background 0.2s;">
-            <i data-lucide="moon" style="width: 14px; height: 14px; color: var(--text2);"></i> Toggle Theme
           </button>
         </div>
       </div>
@@ -3817,55 +3801,6 @@
     let isTyping = false;
     let chatMode = params.get('mode') || 'text';
     let isListening = false;
-
-    let chatTimeLeft = 300; // 5 minutes in seconds
-    let chatTimerInterval = null;
-
-    function startChatTimer() {
-      const timerEl = document.getElementById('chat-timer');
-      if (!timerEl) return;
-      
-      if (chatTimerInterval) clearInterval(chatTimerInterval);
-      
-      chatTimerInterval = setInterval(() => {
-        chatTimeLeft--;
-        if (chatTimeLeft <= 0) {
-          clearInterval(chatTimerInterval);
-          timerEl.textContent = '(00:00)';
-          showTimeoutModal();
-        } else {
-          const mins = Math.floor(chatTimeLeft / 60).toString().padStart(2, '0');
-          const secs = (chatTimeLeft % 60).toString().padStart(2, '0');
-          timerEl.textContent = `(${mins}:${secs})`;
-        }
-      }, 1000);
-    }
-
-    function showTimeoutModal() {
-      const modal = document.getElementById('timeout-modal');
-      if (modal) {
-        modal.style.display = 'flex';
-      }
-    }
-
-    function handleTimeoutContinue() {
-      const modal = document.getElementById('timeout-modal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-      chatTimeLeft = 300;
-      startChatTimer();
-    }
-    window.handleTimeoutContinue = handleTimeoutContinue;
-
-    function handleTimeoutLeave() {
-      if (typeof isPublic !== 'undefined' && isPublic) {
-        window.location.href = (_agentData && _agentData.customization && _agentData.customization.chat_link) || 'https://vectorize.diintech.com';
-      } else {
-        window.location.href = '/dashboard';
-      }
-    }
-    window.handleTimeoutLeave = handleTimeoutLeave;
 
     function initTheme() {
       const theme = localStorage.getItem('mrairag_theme') || 'dark';
@@ -4284,9 +4219,6 @@
 
         // Start background polling for creator action buttons
         setInterval(checkSessionAction, 4000);
-
-        // Start the 5-minute session countdown timer
-        startChatTimer();
       } catch (e) {
         console.error('Load Failed:', e);
         toast('⚠️ Connection error. Please reload.', 'err');
@@ -7035,23 +6967,6 @@
       <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
         <button class="btn btn-secondary" onclick="closeMeetingDetailsModal()"
           style="padding: 8px 16px; font-size: 13px; border-radius: 8px; border: 1px solid #cbd5e1; color: #334155; background: #ffffff;">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Session Timeout Modal -->
-  <div id="timeout-modal" style="display: none; position: fixed; inset: 0; background: rgba(13, 15, 23, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 24px; padding: 30px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); animation: zoomIn 0.3s ease;">
-      <div style="font-size: 40px; margin-bottom: 15px;">⏱️</div>
-      <h3 style="font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 12px;">Chat Session Timeout</h3>
-      <p style="font-size: 14px; color: var(--text2); line-height: 1.5; margin-bottom: 24px;">Your 5-minute chat session has completed. Do you want to continue chatting or leave?</p>
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button onclick="handleTimeoutLeave()" style="flex: 1; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-          Leave
-        </button>
-        <button onclick="handleTimeoutContinue()" style="flex: 1; padding: 12px 20px; border-radius: 12px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(255,122,0,0.25);">
-          Continue
-        </button>
       </div>
     </div>
   </div>

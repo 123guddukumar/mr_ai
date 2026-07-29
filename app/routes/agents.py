@@ -1421,10 +1421,7 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
                 )
                 translated_answer = await generate_simple_response(
                     prompt=translation_prompt,
-                    system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
-                    provider=s_cfg.get("provider"),
-                    model=s_cfg.get("model"),
-                    api_key=s_cfg.get("api_key")
+                    system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
                 )
                 answer = translated_answer.strip()
             except Exception as e:
@@ -2152,10 +2149,7 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     )
                     translated_answer = await generate_simple_response(
                         prompt=translation_prompt,
-                        system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
-                        provider=s_cfg.get("provider"),
-                        model=s_cfg.get("model"),
-                        api_key=s_cfg.get("api_key")
+                        system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
                     )
                     answer = translated_answer.strip()
                 except Exception as e:

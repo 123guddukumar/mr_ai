@@ -357,22 +357,14 @@ async def llm_with_history(
     except Exception as e:
         logger.warning(f"llm_with_history error ({req_provider}): {e}. Falling back to generate_simple_response...")
 
-    return await generate_simple_response(full_prompt, system_prompt=sys_prompt, provider=req_provider, model=req_model, api_key=req_key)
+    return await generate_simple_response(full_prompt, system_prompt=sys_prompt)
 
 
-async def generate_simple_response(
-    prompt: str,
-    system_prompt: str = "You are a helpful assistant.",
-    max_tokens: int = 4096,
-    provider: str = None,
-    model: str = None,
-    api_key: str = None
-) -> str:
+async def generate_simple_response(prompt: str, system_prompt: str = "You are a helpful assistant.", max_tokens: int = 4096) -> str:
     """Generates a response without RAG boilerplate, with automatic rate limit fallbacks."""
-    provider = provider or get_active_provider()
-    if not model or model == "default":
-        model = get_active_model()
-    api_key = api_key or get_active_api_key(provider)
+    provider = get_active_provider()
+    model = get_active_model()
+    api_key = get_active_api_key(provider)
     
     try:
         if provider == "groq":

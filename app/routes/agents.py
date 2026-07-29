@@ -1413,15 +1413,26 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
                 
         if needs_translation:
             try:
-                from app.services.llm import generate_simple_response
+                provider = s_cfg.get('provider', 'gemini')
+                model = s_cfg.get('model', 'gemini-3.5-flash')
+                api_key = s_cfg.get('api_key', '')
+                if provider == 'gemini' and not api_key:
+                    import os
+                    api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+                from app.services.llm import llm_with_history
                 translation_prompt = (
                     f"You are a professional translator. Translate the following text into {target_lang}.\n"
                     f"Maintain the exact meaning, structure, facts, formatting, and markdown links (do NOT change or translate URLs in links, e.g. [text](url) -> keep url same).\n"
                     f"Text to translate:\n{raw_answer}"
                 )
-                translated_answer = await generate_simple_response(
-                    prompt=translation_prompt,
-                    system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
+                translated_answer = await llm_with_history(
+                    question=translation_prompt,
+                    system=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
+                    history=[],
+                    provider=provider,
+                    model=model,
+                    api_key=api_key
                 )
                 answer = translated_answer.strip()
             except Exception as e:
@@ -2141,15 +2152,26 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     
             if needs_translation:
                 try:
-                    from app.services.llm import generate_simple_response
+                    provider = s_cfg.get('provider', 'gemini')
+                    model = s_cfg.get('model', 'gemini-3.5-flash')
+                    api_key = s_cfg.get('api_key', '')
+                    if provider == 'gemini' and not api_key:
+                        import os
+                        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+                    from app.services.llm import llm_with_history
                     translation_prompt = (
                         f"You are a professional translator. Translate the following text into {target_lang}.\n"
                         f"Maintain the exact meaning, structure, facts, formatting, and markdown links (do NOT change or translate URLs in links, e.g. [text](url) -> keep url same).\n"
                         f"Text to translate:\n{raw_answer}"
                     )
-                    translated_answer = await generate_simple_response(
-                        prompt=translation_prompt,
-                        system_prompt=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments."
+                    translated_answer = await llm_with_history(
+                        question=translation_prompt,
+                        system=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
+                        history=[],
+                        provider=provider,
+                        model=model,
+                        api_key=api_key
                     )
                     answer = translated_answer.strip()
                 except Exception as e:

@@ -1436,8 +1436,28 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
                 )
                 answer = translated_answer.strip()
             except Exception as e:
-                logger.error(f"Failed to translate matched Q&A pair: {e}")
-                answer = raw_answer
+                logger.error(f"Failed to translate matched Q&A pair with agent's LLM: {e}")
+                # FALLBACK: Try translating using system's global Gemini / Google API Key!
+                try:
+                    import os
+                    from app.core.config import settings
+                    fallback_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
+                    if fallback_key:
+                        logger.info("Attempting translation fallback using global Gemini key...")
+                        translated_answer = await llm_with_history(
+                            question=translation_prompt,
+                            system=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
+                            history=[],
+                            provider="gemini",
+                            model="gemini-3.5-flash",
+                            api_key=fallback_key
+                        )
+                        answer = translated_answer.strip()
+                    else:
+                        raise ValueError("No global Gemini API key available for fallback")
+                except Exception as fallback_err:
+                    logger.error(f"Failed translation fallback: {fallback_err}")
+                    answer = raw_answer
         else:
             answer = raw_answer
     else:
@@ -2182,8 +2202,28 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                     )
                     answer = translated_answer.strip()
                 except Exception as e:
-                    logger.error(f"Failed to translate matched Q&A pair: {e}")
-                    answer = raw_answer
+                    logger.error(f"Failed to translate matched Q&A pair with agent's LLM: {e}")
+                    # FALLBACK: Try translating using system's global Gemini / Google API Key!
+                    try:
+                        import os
+                        from app.core.config import settings
+                        fallback_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
+                        if fallback_key:
+                            logger.info("Attempting translation fallback using global Gemini key...")
+                            translated_answer = await llm_with_history(
+                                question=translation_prompt,
+                                system=f"You are a precise translator translating to {target_lang}. Return ONLY the translated text without any conversational preamble, notes, or extra comments.",
+                                history=[],
+                                provider="gemini",
+                                model="gemini-3.5-flash",
+                                api_key=fallback_key
+                            )
+                            answer = translated_answer.strip()
+                        else:
+                            raise ValueError("No global Gemini API key available for fallback")
+                    except Exception as fallback_err:
+                        logger.error(f"Failed translation fallback: {fallback_err}")
+                        answer = raw_answer
             else:
                 answer = raw_answer
         else:

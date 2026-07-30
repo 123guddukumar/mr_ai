@@ -5881,11 +5881,11 @@
             }
             showSubtitles(text, delay);
 
-            // Turn microphone back on during play so user can interrupt (Barge-In)
-            isListening = true;
-            document.getElementById('vo-btn').classList.add('active');
-            document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
+            // Stop recognition while speaking to prevent self-listening feedback loop
+            stopRecognition();
+            isListening = false;
+            document.getElementById('vo-btn').classList.remove('active');
+            document.getElementById('vo-orb').classList.remove('listening');
           }
         };
 
@@ -5893,6 +5893,10 @@
           clearInterval(subtitleInterval);
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
+            isListening = true;
+            document.getElementById('vo-btn').classList.add('active');
+            document.getElementById('vo-orb').classList.add('listening');
+            startRecognition();
           }
         };
 
@@ -5961,10 +5965,11 @@
       u.onstart = () => {
         if (chatMode === 'v2v') {
           showSubtitles(text, 380);
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
+          // Stop recognition while speaking to prevent self-listening feedback loop
+          stopRecognition();
+          isListening = false;
+          document.getElementById('vo-btn').classList.remove('active');
+          document.getElementById('vo-orb').classList.remove('listening');
         }
       };
 
@@ -5972,6 +5977,21 @@
         clearInterval(subtitleInterval);
         if (chatMode === 'v2v') {
           status.textContent = 'Listening…';
+          isListening = true;
+          document.getElementById('vo-btn').classList.add('active');
+          document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
+        }
+      };
+
+      u.onerror = (e) => {
+        clearInterval(subtitleInterval);
+        if (chatMode === 'v2v') {
+          status.textContent = 'Listening…';
+          isListening = true;
+          document.getElementById('vo-btn').classList.add('active');
+          document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
         }
       };
 

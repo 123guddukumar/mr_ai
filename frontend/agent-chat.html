@@ -1394,41 +1394,117 @@
       flex: 1;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 12px 8px;
-      font-size: 13px;
-      font-weight: 700;
-      border-radius: 12px;
+      justify-content: space-between;
+      padding: 10px 12px;
+      height: 58px;
+      border-radius: 18px;
       border: none;
       cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-      transition: all 0.2s ease;
-      color: #fff;
-      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      transition: all 0.25s ease;
+      box-sizing: border-box;
+      text-decoration: none;
     }
-
     .custom-btn:hover {
       transform: translateY(-2px);
     }
-
     .custom-btn.chat-btn {
       background: var(--accent, #ff7a00);
     }
-
     .custom-btn.chat-btn:hover {
       box-shadow: 0 12px 28px rgba(255, 122, 0, 0.45);
     }
-
     .custom-btn.talk-btn {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.75);
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #0f172a;
     }
-
+    [data-theme="dark"] .custom-btn.talk-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
     .custom-btn.talk-btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.85);
+    }
+    [data-theme="dark"] .custom-btn.talk-btn:hover {
+      background: rgba(30, 41, 59, 0.8);
+    }
+    .custom-btn-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .custom-btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .custom-btn.chat-btn .custom-btn-icon {
+      background: #ffffff;
+      color: var(--accent, #ff7a00);
+    }
+    .custom-btn.talk-btn .custom-btn-icon {
+      background: var(--accent, #ff7a00);
+      color: #ffffff;
+    }
+    .custom-btn-text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      line-height: 1.25;
+      min-width: 0;
+    }
+    .custom-btn-text strong {
+      font-size: 11.5px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .custom-btn-text span {
+      font-size: 9px;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+    .custom-btn.chat-btn .custom-btn-text strong {
+      color: #ffffff;
+    }
+    .custom-btn.chat-btn .custom-btn-text span {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .custom-btn.talk-btn .custom-btn-text strong {
+      color: #0f172a;
+    }
+    [data-theme="dark"] .custom-btn.talk-btn .custom-btn-text strong {
+      color: #ffffff;
+    }
+    .custom-btn.talk-btn .custom-btn-text span {
+      color: #64748b;
+    }
+    [data-theme="dark"] .custom-btn.talk-btn .custom-btn-text span {
+      color: #94a3b8;
+    }
+    .custom-arrow {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .custom-btn.chat-btn .custom-arrow {
+      color: #ffffff;
+    }
+    .custom-btn.talk-btn .custom-arrow {
+      color: var(--accent, #ff7a00);
     }
 
     /* ── Landing Templates Premium Design System ── */
@@ -3441,17 +3517,23 @@
       <div id="custom-buttons-wrap" class="custom-buttons-wrap">
         <button class="custom-btn chat-btn" onclick="startChatFromLanding('text')">
           <span class="custom-btn-left">
-            <span class="custom-icon-circle">💬</span>
-            <span class="custom-btn-text">Chat with AI Assistant</span>
+            <span class="custom-btn-icon">💬</span>
+            <span class="custom-btn-text">
+              <strong>Chat with AI</strong>
+              <span>Ask anything</span>
+            </span>
           </span>
-          <span class="custom-btn-arrow">&rsaquo;</span>
+          <span class="custom-arrow">›</span>
         </button>
         <button class="custom-btn talk-btn" onclick="startChatFromLanding('v2v')">
           <span class="custom-btn-left">
-            <span class="custom-icon-circle">🎧</span>
-            <span class="custom-btn-text">Talk with AI Assistant</span>
+            <span class="custom-btn-icon">🎧</span>
+            <span class="custom-btn-text">
+              <strong>Voice Assistant</strong>
+              <span>Talk to AI</span>
+            </span>
           </span>
-          <span class="custom-btn-arrow">&rsaquo;</span>
+          <span class="custom-arrow">›</span>
         </button>
       </div>
     </div>

@@ -181,6 +181,17 @@ def init_db():
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS from_meeting BOOLEAN DEFAULT FALSE",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        # ── Root Daily Planner Analysis ──────────────────────────────────────────
+        "CREATE TABLE IF NOT EXISTS root_daily_plan_analyses (id SERIAL PRIMARY KEY, analysis_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), plan_date VARCHAR(20) NOT NULL, summary TEXT, feedback TEXT, analysis TEXT, key_points TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS analysis_id VARCHAR(64)",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS client_id VARCHAR(64)",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS plan_date VARCHAR(20)",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS summary TEXT",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS feedback TEXT",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS analysis TEXT",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS key_points TEXT",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
     ]
     
     try:

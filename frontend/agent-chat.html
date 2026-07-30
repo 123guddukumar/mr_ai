@@ -3674,9 +3674,14 @@
           <div class="planner-title"><span class="planner-title-icon">📅</span> Daily Planner</div>
           <div class="planner-date-label" id="planner-today-label">Today</div>
         </div>
-        <button onclick="openAddPlanModal()"
-          style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;font-size:11px;font-weight:800;padding:6px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;"
-          title="Add New Plan">+ Add Plan</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button onclick="openPlanAIAnalysisModal()"
+            style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; font-size:11px; font-weight:800; padding:6px 10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.2s;"
+            title="AI Insights">🧠 AI</button>
+          <button onclick="openAddPlanModal()"
+            style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none; color:#000; font-size:11px; font-weight:800; padding:6px 12px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s;"
+            title="Add New Plan">+ Add Plan</button>
+        </div>
       </div>
 
       <!-- Today's Sliding Plans -->
@@ -3712,6 +3717,26 @@
     style="display:none">
     📅
   </button>
+
+  <!-- Daily Planner AI Analysis Modal -->
+  <div id="planner-ai-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:99999; justify-content:center; align-items:center;">
+    <div style="background:#18181b; border:1px solid var(--border); width:480px; max-width:95vw; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.3); display:flex; flex-direction:column; max-height:85vh;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border);">
+        <h4 style="margin:0; font-size:15px; font-weight:800; color:#818cf8; display:flex; align-items:center; gap:6px;">
+          🧠 AI Schedule Insights
+        </h4>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button id="planner-btn-run-ai" onclick="runPlannerAIAnalysis()" style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; cursor:pointer;">
+            Re-Analyze
+          </button>
+          <button onclick="closePlanAIAnalysisModal()" style="background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer;">✕</button>
+        </div>
+      </div>
+      <div id="planner-ai-modal-content" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px;">
+        <!-- Dynamic content loaded via JS -->
+      </div>
+    </div>
+  </div>
 
   <!-- Add Plan Modal -->
   <div id="add-plan-modal">
@@ -6437,6 +6462,167 @@
     function togglePlannerPanel() {
       if (_plannerActive) hidePlannerPanel();
       else showPlannerPanel();
+    }
+
+    function openPlanAIAnalysisModal() {
+      const modal = document.getElementById('planner-ai-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+      const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      const todayStr = nowIST.toISOString().slice(0, 10);
+      loadPlannerAIAnalysis(todayStr);
+    }
+
+    function closePlanAIAnalysisModal() {
+      const modal = document.getElementById('planner-ai-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    async function loadPlannerAIAnalysis(dateVal) {
+      const container = document.getElementById('planner-ai-modal-content');
+      if (!container) return;
+      
+      container.innerHTML = '<div style="color:var(--text3); font-size:12px; text-align:center; padding:40px 10px;">⏳ Checking AI analysis...</div>';
+      
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (session && session.token) headers['X-App-Token'] = session.token;
+
+        const r = await fetch(`/api/root-agent/plans/analyze?plan_date=${dateVal}`, { headers: headers });
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        
+        if (data && data.analysis_id) {
+          renderPlannerAIAnalysis(data);
+        } else {
+          container.innerHTML = `
+            <div style="color:var(--text3); font-size:11px; text-align:center; padding:40px 10px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+              <span>No AI analysis generated for today.</span>
+              <button onclick="runPlannerAIAnalysis('${dateVal}')" style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; font-size:11px; font-weight:800; padding:6px 12px; border-radius:8px; cursor:pointer;">
+                ✨ Run AI Analysis
+              </button>
+            </div>
+          `;
+        }
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--text3); font-size:11px; text-align:center; padding:40px 10px;">⚠️ Could not check analysis status</div>';
+      }
+    }
+
+    async function runPlannerAIAnalysis(dateVal) {
+      if (!dateVal) {
+        const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+        dateVal = nowIST.toISOString().slice(0, 10);
+      }
+      
+      const container = document.getElementById('planner-ai-modal-content');
+      const btn = document.getElementById('planner-btn-run-ai');
+      if (!container) return;
+      
+      if (btn) btn.disabled = true;
+      container.innerHTML = `
+        <div style="color:var(--text3); font-size:12px; text-align:center; padding:60px 10px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <div class="planner-spinner" style="width:24px; height:24px; border:2px solid rgba(99,102,241,0.2); border-top-color:#818cf8; border-radius:50%; animation: plannerSpin 0.8s linear infinite;"></div>
+          <span>Analyzing today's plans using AI... Please wait.</span>
+        </div>
+        <style>
+          @keyframes plannerSpin { to { transform: rotate(360deg); } }
+        </style>
+      `;
+      
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (session && session.token) headers['X-App-Token'] = session.token;
+
+        const r = await fetch('/api/root-agent/plans/analyze', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ plan_date: dateVal })
+        });
+        
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.detail || 'Analysis failed');
+        }
+        
+        renderPlannerAIAnalysis(data);
+      } catch (e) {
+        toast('⚠️ ' + e.message, 'err');
+        container.innerHTML = `
+          <div style="color:#ef4444; font-size:11px; text-align:center; padding:40px 10px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <span>⚠️ ${e.message}</span>
+            <button onclick="runPlannerAIAnalysis('${dateVal}')" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:11px; font-weight:800; padding:6px 12px; border-radius:8px; cursor:pointer;">
+              Try Again
+            </button>
+          </div>
+        `;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderPlannerAIAnalysis(data) {
+      const container = document.getElementById('planner-ai-modal-content');
+      if (!container) return;
+      
+      const escHtml = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+      const keyPointsLi = (data.key_points || []).map(kp => `
+        <li style="display:flex; align-items:flex-start; gap:6px;">
+          <span style="color:#818cf8; margin-top:2px;">•</span>
+          <span>${escHtml(kp)}</span>
+        </li>
+      `).join('');
+      
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:12px; animation: plannerFadeIn 0.3s ease-out;">
+          <!-- Summary Card -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+            <div style="font-size:10.5px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              📝 Summary
+            </div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.summary)}</div>
+          </div>
+
+          <!-- Analysis Card -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+            <div style="font-size:10.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              📊 Priority Analysis
+            </div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.analysis)}</div>
+          </div>
+
+          <!-- Feedback Card -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+            <div style="font-size:10.5px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              💡 Schedule Feedback
+            </div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.feedback)}</div>
+          </div>
+
+          <!-- Key Points Card -->
+          ${data.key_points && data.key_points.length > 0 ? `
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+              <div style="font-size:10.5px; font-weight:800; color:#ec4899; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                🔑 Key Recommendations
+              </div>
+              <ul style="margin:0; padding:0; list-style:none; font-size:12px; color:var(--text2); line-height:1.4; display:flex; flex-direction:column; gap:6px;">
+                ${keyPointsLi}
+              </ul>
+            </div>
+          ` : ''}
+          
+          <div style="font-size:9.5px; color:var(--text3); text-align:right; margin-top:4px;">
+            Last Updated: ${new Date(data.updated_at || data.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+        <style>
+          @keyframes plannerFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        </style>
+      `;
     }
 
     // ── Auto-complete past plans ───────────────────────────────────────────

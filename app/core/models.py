@@ -1195,6 +1195,40 @@ class RootDailyPlan(Base):
         }
 
 
+class RootDailyPlanAnalysis(Base):
+    """AI analysis of daily planner plans for a specific date."""
+    __tablename__ = "root_daily_plan_analyses"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    analysis_id = Column(String(64), unique=True, index=True, nullable=False)
+    client_id   = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    plan_date   = Column(String(20), nullable=False, index=True)  # YYYY-MM-DD
+    summary     = Column(Text, nullable=True)
+    feedback    = Column(Text, nullable=True)
+    analysis    = Column(Text, nullable=True)
+    key_points  = Column(Text, default='[]')  # JSON array as text
+    created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        import json
+        try:
+            kp_parsed = json.loads(self.key_points or '[]')
+        except Exception:
+            kp_parsed = []
+        return {
+            "analysis_id": self.analysis_id,
+            "client_id": self.client_id,
+            "plan_date": self.plan_date,
+            "summary": self.summary or "",
+            "feedback": self.feedback or "",
+            "analysis": self.analysis or "",
+            "key_points": kp_parsed,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+            "updated_at": self.updated_at.isoformat() if self.updated_at else "",
+        }
+
+
 class AgentFeedback(Base):
     """User and Visitor feedback and policy reports for AI Agents."""
     __tablename__ = "agent_feedbacks"

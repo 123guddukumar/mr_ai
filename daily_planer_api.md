@@ -231,6 +231,66 @@ Sub-agent calendar modal open hone se pehle booked slots ko disable/red karne ke
 
 ---
 
+### 10. Get Daily Plan AI Analysis
+Target date ke plans ki cached AI analysis response fetch karne ke liye.
+- **Endpoint**: `GET /api/root-agent/plans/analyze`
+- **Query Parameters**:
+  - `plan_date` (Required): `YYYY-MM-DD`
+- **Response Example**:
+  ```json
+  {
+    "analysis_id": "3aef90d8c112abef",
+    "client_id": "client_abc123",
+    "plan_date": "2026-07-30",
+    "summary": "Today's schedule has 5 plans in total (4 completed, 1 pending). Key focus is on the client meeting in the afternoon.",
+    "feedback": "You've successfully completed 80% of your tasks today. Excellent time management! For your pending work slot, ensure you limit distractions.",
+    "analysis": "High work density in the morning, followed by a lighter afternoon. The schedule is well-balanced with personal goals.",
+    "key_points": [
+      "Prepare slides for client consultation.",
+      "Take a 15-minute screen break before the final session.",
+      "Track gym target metrics tonight."
+    ],
+    "created_at": "2026-07-30T11:00:40Z",
+    "updated_at": "2026-07-30T11:00:40Z"
+  }
+  ```
+
+---
+
+### 11. Run Daily Plan AI Analysis
+Target date ke plans ko AI se analyze karne ke liye aur database me update/save karne ke liye.
+- **Endpoint**: `POST /api/root-agent/plans/analyze`
+- **Request Body (JSON)**:
+  ```json
+  {
+    "plan_date": "2026-07-30"
+  }
+  ```
+- **Backend Behavior**:
+  1. Target date ke sabhi plans fetch karta hai.
+  2. Completion metrics calculate karta hai (Total plans count, Completed plans, Pending/not completed plans).
+  3. In metrics aur plans details ko Root Agent ke AI configuration (provider, API key, model) ke context me pass karta hai.
+  4. Output ko database table `root_daily_plan_analyses` me cache/persist karta hai.
+  5. JSON analysis structure return karta hai.
+- **Response Example**:
+  ```json
+  {
+    "analysis_id": "3aef90d8c112abef",
+    "client_id": "client_abc123",
+    "plan_date": "2026-07-30",
+    "summary": "Today's schedule has 5 plans in total (4 completed, 1 pending).",
+    "feedback": "Excellent work completing 4 out of 5 plans today!",
+    "analysis": "High productivity level observed. Keep up the momentum!",
+    "key_points": [
+      "Prepare slides for client consultation."
+    ],
+    "created_at": "2026-07-30T11:00:40Z",
+    "updated_at": "2026-07-30T11:00:40Z"
+  }
+  ```
+
+---
+
 ## 🛠️ Frontend Integration Code Example
 
 Aap is code structure ko copy-paste karke apne kisi bhi custom page me integrate kar sakte hain:

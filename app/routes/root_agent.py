@@ -20,7 +20,7 @@ from sqlalchemy import and_
 from app.core.database import get_db
 from app.core.models import (
     Agent, AgentPublicSession, AgentPublicMessage, Client, Notification,
-    RootMemory, RootMeeting, RootMedia, RootDailyPlan
+    RootMemory, RootMeeting, RootMedia, RootDailyPlan, RootDailyPlanAnalysis
 )
 from app.core.clients import validate_client_token
 from app.services.llm import generate_answer, set_runtime_provider, get_active_api_key
@@ -63,6 +63,10 @@ class ScheduleMeetingReq(BaseModel):
     description: Optional[str] = ""
     meeting_time: str
     duration_mins: Optional[int] = 30
+
+
+class AnalyzePlansReq(BaseModel):
+    plan_date: str
 
 
 # ── Ensure Root Agent Endpoint ────────────────────────────────────────────────
@@ -1057,3 +1061,200 @@ async def add_plan_from_meeting(
         "plan": d,
         "conflict": conflict_resp
     }
+
+
+@router.post("/root-agent/plans/analyze")
+async def analyze_daily_plans(
+    req: AnalyzePlansReq,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+    plan_date = req.plan_date
+    
+    # 1. Fetch plans for that date
+    plans = db.query(RootDailyPlan).filter(
+        RootDailyPlan.client_id == client_id,
+        RootDailyPlan.plan_date == plan_date
+    ).all()
+    
+    # Compute counts
+    total_count = len(plans)
+    completed_count = 0
+    pending_count = 0
+    
+    plans_text = []
+    for idx, p in enumerate(plans, 1):
+        status_str = _compute_plan_status(p.plan_date, p.plan_time, p.is_completed)
+        if status_str == "completed":
+            completed_count += 1
+        else:
+            pending_count += 1
+        
+        category_str = p.category.upper()
+        plans_text.append(
+            f"{idx}. [{category_str}] {p.title} at {p.plan_time} - Status: {status_str.capitalize()}\n"
+            f"   Description: {p.description or 'No description'}"
+        )
+    
+    plans_summary_input = "\n\n".join(plans_text) if plans_text else "No plans scheduled today."
+        
+    # 2. Get Root Agent configuration
+    root_agent = db.query(Agent).filter(Agent.client_id == client_id, Agent.is_root == True).first()
+    provider = "gemini"
+    model = "gemini-3.5-flash"
+    api_key = ""
+    if root_agent:
+        try:
+            s_cfg = json.loads(root_agent.system_config_json or "{}")
+            provider = s_cfg.get('provider', 'gemini')
+            model = s_cfg.get('model', 'gemini-3.5-flash')
+            api_key = s_cfg.get('api_key', '')
+        except Exception:
+            pass
+
+    if provider == 'gemini' and not api_key:
+        import os
+        api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+
+    # 4. Build prompt
+    system_prompt = (
+        "You are an expert personal productivity AI assistant. "
+        "You MUST analyze the owner's daily schedule and completion metrics for a specific date, "
+        "and return a JSON response object. Do not explain, do not add markdown code blocks like ```json.\n"
+        "The output MUST match this exact JSON schema:\n"
+        "{\n"
+        "  \"summary\": \"Brief summary of the entire day's plans and overall schedule (in Hinglish/Hindi or English as appropriate),\",\n"
+        "  \"feedback\": \"Constructive, actionable feedback on schedule density, balance, completed vs pending plans ratio, and flow (in Hinglish/Hindi or English),\",\n"
+        "  \"analysis\": \"Productivity and priority analysis (e.g. work vs personal time, meeting density, task completion rate) (in Hinglish/Hindi or English),\",\n"
+        "  \"key_points\": [\"3-5 critical actions, recommendations, or warnings for the day as strings in a list\"]\n"
+        "}\n"
+        "Ensure all descriptions are detailed, encouraging, executive-ready, and in Hinglish/Hindi or English matching the user. "
+        "If there are no plans, generate a friendly output suggesting the owner enjoy their free day productively or rest. "
+        "Return ONLY the raw JSON string."
+    )
+
+    question = (
+        f"Daily plans analysis for date: {plan_date}\n"
+        f"Metrics:\n"
+        f"- Total plans in a day: {total_count}\n"
+        f"- Completed plans today: {completed_count}\n"
+        f"- Pending/not completed plans today: {pending_count}\n\n"
+        f"Scheduled Plans details:\n"
+        f"{plans_summary_input}\n\n"
+        f"Please analyze this day's completed and not completed plans and return the JSON object."
+    )
+
+    from app.services.llm import llm_with_history
+    try:
+        raw_result = await llm_with_history(
+            question=question,
+            system=system_prompt,
+            history=[],
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            ollama_url="http://localhost:11434"
+        )
+    except Exception as e:
+        logger.error(f"Daily plans analysis LLM call failed: {e}")
+        try:
+            import os
+            fallback_api_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            raw_result = await llm_with_history(
+                question=question,
+                system=system_prompt,
+                history=[],
+                provider="gemini",
+                model="gemini-3.5-flash",
+                api_key=fallback_api_key,
+                ollama_url="http://localhost:11434"
+            )
+        except Exception as fallback_err:
+            raise HTTPException(status_code=502, detail=f"Analysis failed: {fallback_err}")
+
+    # Extract JSON
+    import re
+    match = re.search(r"```json\s*(.*?)\s*```", raw_result, re.DOTALL | re.IGNORECASE)
+    if match:
+        json_content = match.group(1).strip()
+    else:
+        match_simple = re.search(r"```\s*(.*?)\s*```", raw_result, re.DOTALL)
+        if match_simple:
+            json_content = match_simple.group(1).strip()
+        else:
+            json_content = raw_result.strip()
+
+    try:
+        from app.routes.agents import repair_json
+        try:
+            analyzed_data = json.loads(json_content)
+        except Exception:
+            repaired = repair_json(json_content)
+            analyzed_data = json.loads(repaired)
+        
+        # Validate keys
+        for key in ["summary", "feedback", "analysis"]:
+            if key not in analyzed_data:
+                analyzed_data[key] = "Not specified"
+        if "key_points" not in analyzed_data or not isinstance(analyzed_data["key_points"], list):
+            analyzed_data["key_points"] = []
+    except Exception as parse_err:
+        logger.error(f"Failed to parse LLM analysis: {parse_err}. Raw content: {raw_result}")
+        analyzed_data = {
+            "summary": "Failed to parse analysis from LLM.",
+            "feedback": raw_result,
+            "analysis": "Please check raw logs.",
+            "key_points": []
+        }
+
+    # Save/Update in DB
+    analysis_record = db.query(RootDailyPlanAnalysis).filter(
+        RootDailyPlanAnalysis.client_id == client_id,
+        RootDailyPlanAnalysis.plan_date == plan_date
+    ).first()
+
+    if not analysis_record:
+        analysis_record = RootDailyPlanAnalysis(
+            analysis_id=secrets.token_hex(8),
+            client_id=client_id,
+            plan_date=plan_date,
+            summary=analyzed_data["summary"],
+            feedback=analyzed_data["feedback"],
+            analysis=analyzed_data["analysis"],
+            key_points=json.dumps(analyzed_data["key_points"]),
+            created_at=datetime.utcnow()
+        )
+        db.add(analysis_record)
+    else:
+        analysis_record.summary = analyzed_data["summary"]
+        analysis_record.feedback = analyzed_data["feedback"]
+        analysis_record.analysis = analyzed_data["analysis"]
+        analysis_record.key_points = json.dumps(analyzed_data["key_points"])
+        analysis_record.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(analysis_record)
+
+    return analysis_record.to_dict()
+
+
+@router.get("/root-agent/plans/analyze")
+async def get_daily_plans_analysis(
+    plan_date: str = Query(...),
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+    
+    analysis_record = db.query(RootDailyPlanAnalysis).filter(
+        RootDailyPlanAnalysis.client_id == client_id,
+        RootDailyPlanAnalysis.plan_date == plan_date
+    ).first()
+
+    if not analysis_record:
+        return {}
+
+    return analysis_record.to_dict()

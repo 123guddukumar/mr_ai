@@ -17,7 +17,7 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Agent Chat — VectorizeAI</title>
+  <title>AI Agent</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -3898,7 +3898,14 @@
         document.getElementById('hero-desc').textContent = d.description || 'Ready to help.';
 
         // Set Page Title
-        document.title = (isRoot ? '👑 ' : '') + (d.name || 'Agent').replace(/\s*\/n\s*/gi, ' ').replace(/\n/g, ' ') + ' Chat — VectorizeAI';
+        const brandName = (d.customization && d.customization.brand_name) || 'VectorizeAI';
+        document.title = (isRoot ? '👑 ' : '') + 'AI Agent - ' + brandName;
+
+        // Display Brand Name in navbar status
+        if (brandName && brandName !== 'VectorizeAI') {
+          const statusEl = document.querySelector('.ag-status');
+          if (statusEl) statusEl.textContent = 'Online • ' + brandName;
+        }
 
         const template = (d.customization && d.customization.template) || '';
         const lp = document.getElementById('mobile-landing-page');
@@ -3975,7 +3982,7 @@
 
           // Populate text fields
           const t2BrandName = document.querySelector('#landing-template-2 #t2-brand-name');
-          if (t2BrandName) t2BrandName.innerHTML = nameWithBreaks;
+          if (t2BrandName) t2BrandName.innerHTML = brandName !== 'VectorizeAI' ? esc(brandName) : nameWithBreaks;
           const t2WithName = document.querySelector('#landing-template-2 #t2-with-name-lbl');
           if (t2WithName) t2WithName.innerHTML = nameWithBreaks;
           const t2WithRole = document.querySelector('#landing-template-2 #t2-with-role-lbl');
@@ -4014,7 +4021,10 @@
           const t2CardNameEl = document.querySelector('#landing-template-2 .t2-card-name');
           if (t2CardNameEl) t2CardNameEl.style.color = themeColor;
           const t2FooterBrand = document.querySelector('#landing-template-2 .t2-footer-brand');
-          if (t2FooterBrand) t2FooterBrand.style.color = themeColor;
+          if (t2FooterBrand) {
+            t2FooterBrand.textContent = brandName !== 'VectorizeAI' ? brandName : 'MagnifAI';
+            t2FooterBrand.style.color = themeColor;
+          }
 
         } else if (template === 'template3') {
           if (lp) lp.classList.add('has-template', 't3-theme');

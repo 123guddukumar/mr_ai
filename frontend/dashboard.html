@@ -4289,6 +4289,8 @@
 
                 <!-- 6. Customization -->
                 <div class="tab-pane" id="tab-cust">
+                  <label class="form-label">Brand Name</label>
+                  <input type="text" class="form-input" id="ag-cust-brand-name" placeholder="e.g. My Brand" style="margin-bottom:15px">
                   <label class="form-label">Business Logo</label>
                   <div style="display:flex; gap:10px; margin-bottom:15px">
                     <input type="text" class="form-input" id="ag-cust-logo" placeholder="https://..." style="flex:1">
@@ -10042,6 +10044,8 @@
               <div class="history-empty">🚀 Actions & Tools Integration coming soon.</div>
             </div>
             <div class="tab-pane" id="tab-cust">
+              <label class="form-label">Brand Name</label>
+              <input type="text" class="form-input" id="ag-cust-brand-name" placeholder="e.g. My Brand" style="margin-bottom:15px">
               <label class="form-label">Business Logo URL</label>
               <input type="text" class="form-input" id="ag-cust-logo" placeholder="https://...">
               <label class="form-label">Theme Color (for QR & Chat)</label>
@@ -18912,6 +18916,7 @@
       }
       document.getElementById('ag-sys-prompt').value = '';
       document.getElementById('ag-cust-logo').value = '';
+      document.querySelectorAll('#ag-cust-brand-name').forEach(el => el.value = '');
       document.getElementById('ag-cust-color').value = '#ff7a00';
       if (document.getElementById('ag-cust-chat-link')) {
         document.getElementById('ag-cust-chat-link').value = '';
@@ -19942,6 +19947,7 @@
           })()
         },
         customization: {
+          brand_name: document.getElementById('ag-cust-brand-name') ? document.getElementById('ag-cust-brand-name').value.trim() : '',
           logo_url: document.getElementById('ag-cust-logo').value,
           color: document.getElementById('ag-cust-color').value,
           chat_link: document.getElementById('ag-cust-chat-link') ? document.getElementById('ag-cust-chat-link').value.trim() : '',
@@ -20049,6 +20055,9 @@
       document.getElementById('ag-ai-key').value = a.system_config.api_key || '';
       document.getElementById('ag-sys-prompt').value = a.system_config.system_prompt || '';
       document.getElementById('ag-cust-logo').value = a.customization.logo_url || '';
+      document.querySelectorAll('#ag-cust-brand-name').forEach(el => {
+        el.value = (a.customization && a.customization.brand_name) || '';
+      });
       document.getElementById('ag-cust-color').value = a.customization.color || '#ff7a00';
       if (document.getElementById('ag-cust-chat-link')) {
         document.getElementById('ag-cust-chat-link').value = a.customization.chat_link || '';

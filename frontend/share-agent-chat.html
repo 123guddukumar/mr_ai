@@ -3245,6 +3245,31 @@ function setMode(m) {
   else { vo.classList.remove('active'); win.style.opacity = '1'; win.style.pointerEvents = 'auto'; window.speechSynthesis?.cancel(); }
 }
 
+window.currentlySpokenText = "";
+
+function isSelfEcho(transcript, spokenText) {
+  if (!spokenText) return false;
+  const clean = (str) => {
+    return str.toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+  const cleanTrans = clean(transcript);
+  const cleanSpoken = clean(spokenText);
+  if (!cleanTrans) return true;
+  if (cleanSpoken.includes(cleanTrans)) return true;
+  const transWords = cleanTrans.split(" ");
+  const spokenWords = cleanSpoken.split(" ");
+  let matchCount = 0;
+  for (const word of transWords) {
+    if (spokenWords.includes(word) || spokenWords.some(sw => sw.includes(word) || word.includes(sw))) {
+      matchCount++;
+    }
+  }
+  return (matchCount / transWords.length) >= 0.65;
+}
+
 function toggleVoice() {
   isListening = !isListening;
   const btn = document.getElementById('vo-btn');
@@ -3480,6 +3505,10 @@ function startNativeRecognition() {
       }
     }
     if (finalTranscript || interimTranscript) {
+      const currentText = finalTranscript || interimTranscript;
+      if (isSelfEcho(currentText, window.currentlySpokenText)) {
+        return;
+      }
       resetSilenceTimer();
       
       if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
@@ -3605,6 +3634,9 @@ function startRecognition() {
       const isFinal = data.is_final;
 
       if (transcript.trim()) {
+        if (isSelfEcho(transcript, window.currentlySpokenText)) {
+          return;
+        }
         resetSilenceTimer();
 
         if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
@@ -3669,6 +3701,7 @@ async function speakText(text) {
   if(!window.speechSynthesis) return;
   speechSynthesis.cancel();
   clearInterval(subtitleInterval);
+  window.currentlySpokenText = text;
   
   const status = document.getElementById('vo-status');
   if(chatMode === 'v2v') {
@@ -3701,16 +3734,17 @@ async function speakText(text) {
         }
         showSubtitles(text, delay);
         
-        // Stop recognition while speaking to prevent self-listening feedback loop
-        stopRecognition();
-        isListening = false;
-        document.getElementById('vo-btn').classList.remove('active');
-        document.getElementById('vo-orb').classList.remove('listening');
+        // Turn microphone back on during play so user can interrupt (Barge-In)
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
       }
     };
 
     audio.onended = () => {
       clearInterval(subtitleInterval);
+      window.currentlySpokenText = "";
       if(chatMode === 'v2v') {
         status.textContent = 'Listening…';
         isListening = true;
@@ -3722,6 +3756,7 @@ async function speakText(text) {
     
     audio.onerror = (e) => {
       clearInterval(subtitleInterval);
+      window.currentlySpokenText = "";
       console.warn("Backend TTS audio failed...", e);
       toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
       if(chatMode === 'v2v') {
@@ -3735,6 +3770,7 @@ async function speakText(text) {
     
     audio.play().catch(err => {
       clearInterval(subtitleInterval);
+      window.currentlySpokenText = "";
       console.warn("Audio play failed...", err);
       toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
       if(chatMode === 'v2v') {
@@ -3813,11 +3849,10 @@ function speakLocalSpeech(text) {
         started = true;
         if (chatMode === 'v2v') {
           showSubtitles(text, 380);
-          // Stop recognition while speaking to prevent self-listening feedback loop
-          stopRecognition();
-          isListening = false;
-          document.getElementById('vo-btn').classList.remove('active');
-          document.getElementById('vo-orb').classList.remove('listening');
+          isListening = true;
+          document.getElementById('vo-btn').classList.add('active');
+          document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
         }
       };
     }
@@ -3826,7 +3861,14 @@ function speakLocalSpeech(text) {
     u.onerror = (e) => {
       if (e.error === 'interrupted' || e.error === 'canceled') { speakChunk(); return; }
       clearInterval(subtitleInterval);
-      if (chatMode === 'v2v') status.textContent = 'Listening\u2026';
+      window.currentlySpokenText = "";
+      if (chatMode === 'v2v') {
+        status.textContent = 'Listening\u2026';
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
+      }
     };
 
     speechSynthesis.speak(u);

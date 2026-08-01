@@ -347,7 +347,7 @@ async def llm_with_history(
             payload = {
                 "system_instruction": {"parts": [{"text": sys_prompt}]},
                 "contents": [{"parts": [{"text": full_prompt}]}],
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096}
             }
             async with httpx.AsyncClient(timeout=30.0) as client:
                 r = await client.post(url, json=payload)
@@ -655,7 +655,7 @@ async def llm_with_history(
                              "parts": [{"text": t.get("content", "")}]})
         contents.append({"role": "user", "parts": [{"text": question}]})
         payload = {"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
-                   "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}}
+                   "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4096}}
         hc = get_llm_async_client()
         r = await hc.post(url, json=payload); r.raise_for_status()
         return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()

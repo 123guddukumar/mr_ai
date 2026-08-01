@@ -51,6 +51,7 @@ class RootChatReq(BaseModel):
     session_id: Optional[str] = None
     target_agent_id: Optional[str] = None
     offset: Optional[int] = 0
+    client_id: Optional[str] = None
 
 class SaveMemoryReq(BaseModel):
     title: str
@@ -168,6 +169,728 @@ def _parse_meeting_details(msg_raw: str) -> tuple[str, datetime]:
     return title, meeting_dt
 
 
+# ── Unified Planner Extractor and Handler (Voice/Chat) ─────────────────────────
+
+async def extract_planner_intent_with_llm(
+    question: str,
+    history: list,
+    db: Session
+) -> dict:
+    import json
+    from datetime import datetime, timedelta
+    from app.services.llm import llm_with_history
+    from app.core.config import settings
+
+    now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    current_date = now_local.strftime("%Y-%m-%d")
+    current_time = now_local.strftime("%H:%M")
+    current_day = now_local.strftime("%A")
+
+    system_prompt = f"""
+You are a precise JSON extractor helper for a Root Personal Assistant Agent.
+The owner of the system is talking to you. You need to analyze the conversation history and the new message to detect if the user is trying to:
+1. QUERY (view/list/check) their plans, schedule, meetings, or reminders for a specific date (or today/tomorrow).
+2. SET (create/schedule/add) a new plan, meeting, or reminder.
+3. COMPLETE (mark as completed/done) an existing plan, meeting, or reminder.
+4. EDIT (modify/change/reschedule) an existing plan, meeting, or reminder.
+
+Current local date: {current_date}
+Current local time: {current_time}
+Current day of week: {current_day}
+
+Intents:
+- "query": User wants to see their schedule/plans/meetings/reminders. (E.g., "aaj ka kya plan h", "meri meetings batao", "schedule check karo", "what is my schedule tomorrow?")
+- "set": User wants to schedule or create a plan, meeting, or reminder. (E.g., "meeting set kar do", "gym ka plan set kar do 5 pm", "reminder lagao", "aaj 4 baje team standup add karo")
+- "complete": User wants to mark a plan/meeting/reminder as completed or done. (E.g., "06:05 PM wala plan complete kr do", "gym ka reminder done mark karo", "meeting complete ho gayi h", "6:05 baje wala task complete mark kro", "complete mark 6:05 PM plan")
+- "edit": User wants to modify/change/reschedule a plan, meeting, or reminder. (E.g., "6:05 pm wala plan edit karke time 7:00 pm kar do", "gym ke plan ka name change kar do", "meeting 4 baje ke badle 5 baje shift kar do")
+- "none": Not related to querying, setting, completing, or editing plans/meetings/reminders.
+
+If intent is "query", extract:
+- "target_type": "plan" (daily plans only) | "meeting" (meetings only) | "reminder" (reminders only) | "all" (everything, default)
+- "date": "YYYY-MM-DD" (calculate based on relative terms: "aaj/today" -> "{current_date}", "kal/tomorrow" -> next day, etc. Default is "{current_date}").
+
+If intent is "set", extract:
+- "target_type": "plan" | "meeting" | "reminder" (e.g. if they say "reminder set kro" -> "reminder", "meeting schedule karo" -> "meeting", otherwise default to "plan". Be highly tolerant of typos, e.g. "meetiang", "meting", "meating", "meet" must map to "meeting". If they schedule something with a person, e.g. "guddu ke sath add kar do", target_type is "meeting").
+- "title": Clean title/description of the item (e.g. "Meeting with Ramesh", "Gym cardio session", "Drink water"). If it is a meeting with a person but title is not explicitly specified, construct it like "Meeting with Guddu". Set to null if not provided.
+- "date": "YYYY-MM-DD". Calculate based on relative terms. Default to today's date "{current_date}" if not specified.
+- "time": "HH:MM" (24-hour format). Parse relative times like "sham ko 6 baje" -> "18:00", "subah 10 baje" -> "10:00", "5:30 pm" -> "17:30". Set to null if not specified.
+- "category": Choose from "work", "personal", "health", "meeting", "reminder", "other". If not specified, map "reminder" to "reminder", "meeting" to "meeting", and others default to "work".
+
+If intent is "complete", extract:
+- "title": Title or description keyword of the item to complete (e.g. "Gym", "Meeting with Ramesh"). Set to null if not specified.
+- "time": "HH:MM" (24-hour format). Parse the time mentioned, e.g. "06:05 PM" -> "18:05", "6:05 baje" -> "18:05". Set to null if not specified.
+- "date": "YYYY-MM-DD". Calculate relative dates. Default to today's date "{current_date}" if not specified.
+- "target_type": "plan" | "meeting" | "reminder" | "all" (default "all").
+
+If intent is "edit", extract:
+- "search_parameters":
+  - "title": Clean keyword to match current title (e.g. "Gym", "Meeting with Ramesh"). Set to null if not specified.
+  - "time": "HH:MM" (24-hour format). Parse the current scheduled time to match, e.g. "06:05 PM" -> "18:05". Set to null if not specified.
+  - "date": "YYYY-MM-DD". Parse the current scheduled date, default to "{current_date}" if not specified.
+- "new_parameters":
+  - "title": The new title to assign. Set to null if not specified.
+  - "time": "HH:MM" (24-hour format). The new time to assign. Set to null if not specified.
+  - "date": "YYYY-MM-DD". The new date to assign. Set to null if not specified.
+  - "category": Choose from "work", "personal", "health", "meeting", "reminder", "other". Set to null if not specified.
+
+Rules for "set":
+- To create a plan, meeting, or reminder, we MUST have a "title" and a "time".
+- If either "title" or "time" is null, set "status" to "incomplete" and list the missing fields in "missing_fields".
+- If "status" is "incomplete", generate a natural, short, polite question in Hindi/Hinglish in "ask_clarification" asking the user for the missing fields. (E.g., "Sir, plan kis chiz ka set karna hai aur kitne baje?")
+- If all required fields are present, set "status" to "complete" and "missing_fields" to [].
+
+Response format: ONLY return a raw JSON object. No explanation, no markdown backticks, no code block wrapper. Just raw JSON.
+Example incomplete set response:
+{{
+  "intent": "set",
+  "target_type": "reminder",
+  "status": "incomplete",
+  "extracted_parameters": {{
+    "title": null,
+    "date": "{current_date}",
+    "time": "18:00",
+    "category": "reminder"
+  }},
+  "missing_fields": ["title"],
+  "ask_clarification": "Sir, sham 6 baje kis chiz ka reminder lagana hai?"
+}}
+
+Example complete set response:
+{{
+  "intent": "set",
+  "target_type": "plan",
+  "status": "complete",
+  "extracted_parameters": {{
+    "title": "Gym cardio session",
+    "date": "{current_date}",
+    "time": "18:00",
+    "category": "health"
+  }},
+  "missing_fields": [],
+  "ask_clarification": null
+}}
+
+Example complete complete response:
+{{
+  "intent": "complete",
+  "target_type": "plan",
+  "extracted_parameters": {{
+    "title": null,
+    "date": "{current_date}",
+    "time": "18:05"
+  }}
+}}
+"""
+    try:
+        ans = await llm_with_history(
+            question=question,
+            system=system_prompt,
+            history=history,
+            provider=settings.LLM_PROVIDER,
+            model=settings.GEMINI_MODEL if settings.LLM_PROVIDER == "gemini" else "default",
+            api_key=get_active_api_key(settings.LLM_PROVIDER)
+        )
+        ans_clean = ans.strip()
+        if ans_clean.startswith("```"):
+            ans_clean = re.sub(r'^```(?:json)?\n', '', ans_clean)
+            ans_clean = re.sub(r'\n```$', '', ans_clean)
+            ans_clean = ans_clean.strip()
+        
+        # Sometimes there's stray text, try to find the first '{' and last '}'
+        start_idx = ans_clean.find('{')
+        end_idx = ans_clean.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            ans_clean = ans_clean[start_idx:end_idx+1]
+
+        data = json.loads(ans_clean)
+        return data
+    except Exception as e:
+        logger.warning(f"Error parsing intent with LLM: {e}")
+        return {"intent": "none"}
+
+async def handle_planner_voice_and_chat(
+    message: str,
+    history: list,
+    client_id: str,
+    db: Session,
+    voice_mode: bool = False
+) -> Optional[str]:
+    data = await extract_planner_intent_with_llm(message, history, db)
+    intent = data.get("intent", "none")
+
+    msg_lower = message.lower()
+    now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    today_str = now_local.strftime("%Y-%m-%d")
+
+    # Rule-based fallback if LLM failed/returned none (e.g. rate limit error)
+    if intent == "none":
+        # Check if query intent
+        if any(kw in msg_lower for kw in ["aaj ka", "aaj ke", "plan", "plane", "reminder", "meeting", "checklist", "schedule", "kon kon"]):
+            if any(kw in msg_lower for kw in ["batao", "dikhao", "show", "list", "check", "h", "hai"]):
+                intent = "query"
+                data = {
+                    "intent": "query",
+                    "target_type": "all",
+                    "extracted_parameters": {
+                        "date": today_str
+                    }
+                }
+        
+        # Check if complete intent
+        if any(kw in msg_lower for kw in ["complete", "done", "mark"]):
+            time_match = re.search(r'(\d{1,2}):(\d{2})\s*(am|pm)?', msg_lower)
+            extracted_time = None
+            if time_match:
+                try:
+                    hr = int(time_match.group(1))
+                    mn = int(time_match.group(2))
+                    ampm = time_match.group(3) or ""
+                    if "pm" in ampm.lower() and hr < 12:
+                        hr += 12
+                    elif "am" in ampm.lower() and hr == 12:
+                        hr = 0
+                    extracted_time = f"{hr:02d}:{mn:02d}"
+                except:
+                    pass
+            
+            intent = "complete"
+            data = {
+                "intent": "complete",
+                "extracted_parameters": {
+                    "time": extracted_time,
+                    "date": today_str,
+                    "title": None,
+                    "target_type": "all"
+                }
+            }
+
+        # Check if set intent
+        elif any(kw in msg_lower for kw in ["set", "add", "schedule", "lagao", "lagado", "kr do", "kar do"]):
+            extracted_time = None
+            
+            time_match = re.search(r'(\d{1,2}):(\d{2})\s*(am|pm|baje)?', msg_lower)
+            if time_match:
+                try:
+                    hr = int(time_match.group(1))
+                    mn = int(time_match.group(2))
+                    ampm = time_match.group(3) or ""
+                    if "pm" in ampm.lower() and hr < 12:
+                        hr += 12
+                    elif "am" in ampm.lower() and hr == 12:
+                        hr = 0
+                    extracted_time = f"{hr:02d}:{mn:02d}"
+                except:
+                    pass
+            
+            if not extracted_time:
+                time_match2 = re.search(r'(\d{1,2})\s*(am|pm|baje)', msg_lower)
+                if time_match2:
+                    try:
+                        hr = int(time_match2.group(1))
+                        mn = 0
+                        ampm = time_match2.group(2) or ""
+                        if "pm" in ampm.lower() and hr < 12:
+                            hr += 12
+                        elif "am" in ampm.lower() and hr == 12:
+                            hr = 0
+                        extracted_time = f"{hr:02d}:{mn:02d}"
+                    except:
+                        pass
+
+            target_type = "plan"
+            is_meet_indicator = any(w in msg_lower for w in ["meeting", "meetiang", "metting", "meting", "meating", "meetin", "meet", "appointment", "call", "consultation", "session"])
+            is_with_person = any(w in msg_lower for w in ["ke sath", "ke saath", "with", "se milna", "guddu"])
+            
+            if is_meet_indicator or is_with_person:
+                target_type = "meeting"
+            elif "reminder" in msg_lower or "remind" in msg_lower:
+                target_type = "reminder"
+                
+            title = None
+            person_name = None
+            
+            if target_type == "meeting":
+                hindi_match = re.search(r'([a-zA-Z0-9\u0900-\u097F]+)\s+(?:ke\s+saath|ke\s+sath)', message, re.IGNORECASE)
+                if hindi_match:
+                    candidate = hindi_match.group(1).strip()
+                    if candidate.lower() not in ["add", "set", "kar", "kr", "do", "m", "me", "pe", "aaj", "kal", "time", "baje", "pm", "am", "meeting", "meetiang", "metting", "meetiang"]:
+                        person_name = candidate
+                
+                if not person_name:
+                    english_match = re.search(r'(?:with|se|milna)\s+([a-zA-Z0-9\u0900-\u097F]+)', message, re.IGNORECASE)
+                    if english_match:
+                        candidate = english_match.group(1).strip()
+                        if candidate.lower() not in ["add", "set", "kar", "kr", "do", "me", "aaj", "kal", "time"]:
+                            person_name = candidate
+
+                if person_name:
+                    title = f"Meeting with {person_name}"
+                else:
+                    title = "Meeting"
+            elif target_type == "reminder":
+                title = "Reminder"
+            else:
+                title = "Daily Plan"
+
+            missing_fields = []
+            if not extracted_time:
+                missing_fields.append("time")
+            if title in ["Meeting", "Reminder", "Daily Plan"]:
+                missing_fields.append("title")
+
+            ask_clarification = None
+            if missing_fields:
+                if target_type == "meeting":
+                    if "title" in missing_fields and "time" in missing_fields:
+                        ask_clarification = "Sir, meeting kiske sath aur kitne baje schedule karni hai?"
+                    elif "title" in missing_fields:
+                        ask_clarification = "Sir, meeting kiske sath schedule karni hai?"
+                    else:
+                        ask_clarification = "Sir, meeting kitne baje schedule karni hai?"
+                elif target_type == "reminder":
+                    if "title" in missing_fields and "time" in missing_fields:
+                        ask_clarification = "Sir, reminder kis chiz ka aur kitne baje lagana hai?"
+                    elif "title" in missing_fields:
+                        ask_clarification = "Sir, kis chiz ka reminder lagana hai?"
+                    else:
+                        ask_clarification = "Sir, reminder kitne baje lagana hai?"
+                else:
+                    if "title" in missing_fields and "time" in missing_fields:
+                        ask_clarification = "Sir, plan kis chiz ka aur kitne baje set karna hai?"
+                    elif "title" in missing_fields:
+                        ask_clarification = "Sir, plan kis chiz ka set karna hai?"
+                    else:
+                        ask_clarification = "Sir, plan kitne baje set karna hai?"
+
+            data = {
+                "intent": "set",
+                "target_type": target_type,
+                "status": "incomplete" if missing_fields else "complete",
+                "extracted_parameters": {
+                    "title": title if title not in ["Meeting", "Reminder", "Daily Plan"] else None,
+                    "date": today_str,
+                    "time": extracted_time,
+                    "category": target_type if target_type in ["meeting", "reminder"] else "work"
+                },
+                "missing_fields": missing_fields,
+                "ask_clarification": ask_clarification
+            }
+            intent = "set"
+
+    if intent == "none":
+        return None
+
+    # Handle Query
+    if intent == "query":
+        params = data.get("extracted_parameters", {})
+        target_date = params.get("date") or data.get("date")
+        target_type = data.get("target_type") or params.get("target_type") or "all"
+        if not target_date:
+            now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            target_date = now_local.strftime("%Y-%m-%d")
+
+        # Query RootDailyPlan
+        plans_q = db.query(RootDailyPlan).filter(
+            RootDailyPlan.client_id == client_id,
+            RootDailyPlan.plan_date == target_date
+        )
+        if target_type == "reminder":
+            plans_q = plans_q.filter(RootDailyPlan.category == "reminder")
+        elif target_type == "meeting":
+            plans_q = plans_q.filter(RootDailyPlan.category == "meeting")
+        elif target_type == "plan":
+            plans_q = plans_q.filter(RootDailyPlan.category.notin_(["meeting", "reminder"]))
+        
+        plans = plans_q.all()
+
+        # Query RootMeeting
+        meetings = []
+        if target_type in ["meeting", "all"]:
+            try:
+                start_dt = datetime.strptime(f"{target_date} 00:00:00", "%Y-%m-%d %H:%M:%S")
+                end_dt = datetime.strptime(f"{target_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                meetings = db.query(RootMeeting).filter(
+                    RootMeeting.client_id == client_id,
+                    RootMeeting.meeting_time >= start_dt,
+                    RootMeeting.meeting_time <= end_dt
+                ).all()
+            except Exception as e:
+                logger.warning(f"Error querying meetings: {e}")
+
+        # Format Display Date
+        now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        today_str = now_local.strftime("%Y-%m-%d")
+        tomorrow_str = (now_local + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        if target_date == today_str:
+            display_date = "aaj"
+        elif target_date == tomorrow_str:
+            display_date = "kal"
+        else:
+            try:
+                dt = datetime.strptime(target_date, "%Y-%m-%d")
+                display_date = dt.strftime("%d %b %Y")
+            except:
+                display_date = target_date
+
+        events = []
+        seen_meetings = set()
+
+        for p in plans:
+            t_type = "Plan"
+            if p.category == "reminder":
+                t_type = "Reminder"
+            elif p.category == "meeting":
+                t_type = "Meeting"
+                seen_meetings.add((p.title.lower(), p.plan_time))
+            
+            events.append({
+                "time": p.plan_time,
+                "title": p.title,
+                "type": t_type,
+                "status": "completed" if p.is_completed else "pending"
+            })
+
+        for m in meetings:
+            m_time_str = m.meeting_time.strftime("%H:%M")
+            if (m.title.lower(), m_time_str) not in seen_meetings:
+                events.append({
+                    "time": m_time_str,
+                    "title": m.title,
+                    "type": "Meeting",
+                    "status": m.status
+                })
+
+        # Sort events by time
+        events.sort(key=lambda x: x["time"])
+
+        if not events:
+            type_hindi = {
+                "plan": "plan",
+                "meeting": "meeting",
+                "reminder": "reminder",
+                "all": "plan, meeting ya reminder"
+            }.get(target_type, "plan")
+            return f"Sir, {display_date} ke liye koi {type_hindi} scheduled nahi hai."
+
+        # Build response string
+        response_parts = [f"Sir, {display_date} ka schedule is prakar hai:"]
+        for ev in events:
+            time_12h = ev["time"]
+            try:
+                time_obj = datetime.strptime(ev["time"], "%H:%M")
+                time_12h = time_obj.strftime("%I:%M %p")
+            except:
+                pass
+            status_str = " (completed)" if ev["status"] == "completed" else ""
+            response_parts.append(f"- {time_12h} par: [{ev['type']}] {ev['title']}{status_str}")
+            
+        return "\n".join(response_parts)
+
+    # Handle Complete
+    if intent == "complete":
+        params = data.get("extracted_parameters", {})
+        title = params.get("title") or data.get("title")
+        time = params.get("time") or data.get("time")
+        date = params.get("date") or data.get("date")
+        target_type = data.get("target_type") or params.get("target_type") or "all"
+
+        if not date:
+            now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            date = now_local.strftime("%Y-%m-%d")
+
+        query = db.query(RootDailyPlan).filter(
+            RootDailyPlan.client_id == client_id,
+            RootDailyPlan.plan_date == date
+        )
+        if time:
+            query = query.filter(RootDailyPlan.plan_time == time)
+        if target_type == "reminder":
+            query = query.filter(RootDailyPlan.category == "reminder")
+        elif target_type == "meeting":
+            query = query.filter(RootDailyPlan.category == "meeting")
+        elif target_type == "plan":
+            query = query.filter(RootDailyPlan.category.notin_(["meeting", "reminder"]))
+
+        plans = query.all()
+
+        # Fallback: if we filtered specifically but found nothing, query without category filter
+        if not plans and target_type != "all":
+            fallback_query = db.query(RootDailyPlan).filter(
+                RootDailyPlan.client_id == client_id,
+                RootDailyPlan.plan_date == date
+            )
+            if time:
+                fallback_query = fallback_query.filter(RootDailyPlan.plan_time == time)
+            plans = fallback_query.all()
+
+        if title and plans:
+            plans_filtered = []
+            for p in plans:
+                if title.lower() in p.title.lower() or p.title.lower() in title.lower():
+                    plans_filtered.append(p)
+            if plans_filtered:
+                plans = plans_filtered
+
+        if not plans:
+            time_part = f" jo {time} baje tha" if time else ""
+            title_part = f" '{title}'" if title else ""
+            return f"Sir, {date}{time_part}{title_part} ka koi plan scheduled nahi mila."
+
+        completed_titles = []
+        for p in plans:
+            p.is_completed = True
+            p.status = "completed"
+            p.completed_at = datetime.utcnow()
+            completed_titles.append(f"[{p.category.upper()}] {p.title}")
+
+            if p.category == "meeting" or p.from_meeting:
+                try:
+                    start_dt = datetime.strptime(f"{date} 00:00:00", "%Y-%m-%d %H:%M:%S")
+                    end_dt = datetime.strptime(f"{date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                    meeting = db.query(RootMeeting).filter(
+                        RootMeeting.client_id == client_id,
+                        RootMeeting.meeting_time >= start_dt,
+                        RootMeeting.meeting_time <= end_dt,
+                        RootMeeting.title.like(f"%{p.title}%")
+                    ).first()
+                    if meeting:
+                        meeting.status = "completed"
+                except Exception as me:
+                    logger.warning(f"Error marking matching RootMeeting complete: {me}")
+
+        db.commit()
+        titles_str = ", ".join(completed_titles)
+        time_formatted = time
+        try:
+            time_obj = datetime.strptime(time, "%H:%M")
+            time_formatted = time_obj.strftime("%I:%M %p")
+        except:
+            pass
+
+        time_part = f" jo {time_formatted} baje tha" if time else ""
+        return f"✅ Sir, maine {titles_str}{time_part} ko complete mark kar diya hai."
+
+    # Handle Edit
+    if intent == "edit":
+        search = data.get("search_parameters", {})
+        new_params = data.get("new_parameters", {})
+
+        s_title = search.get("title")
+        s_time = search.get("time")
+        s_date = search.get("date")
+        if not s_date:
+            now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            s_date = now_local.strftime("%Y-%m-%d")
+
+        query = db.query(RootDailyPlan).filter(
+            RootDailyPlan.client_id == client_id,
+            RootDailyPlan.plan_date == s_date
+        )
+        if s_time:
+            query = query.filter(RootDailyPlan.plan_time == s_time)
+
+        plans = query.all()
+
+        if s_title and plans:
+            plans_filtered = []
+            for p in plans:
+                if s_title.lower() in p.title.lower() or p.title.lower() in s_title.lower():
+                    plans_filtered.append(p)
+            if plans_filtered:
+                plans = plans_filtered
+
+        if not plans:
+            time_part = f" jo {s_time} baje tha" if s_time else ""
+            title_part = f" '{s_title}'" if s_title else ""
+            return f"Sir, {s_date}{time_part}{title_part} ka koi plan scheduled nahi mila."
+
+        edited_plans = []
+        for p in plans:
+            old_title = p.title
+            old_date = p.plan_date
+            old_time = p.plan_time
+
+            n_title = new_params.get("title")
+            n_time = new_params.get("time")
+            n_date = new_params.get("date")
+            n_category = new_params.get("category")
+
+            updates = []
+            if n_title:
+                p.title = n_title
+                updates.append(f"Title to '{n_title}'")
+            if n_time:
+                p.plan_time = n_time
+                updates.append(f"Time to '{n_time}'")
+            if n_date:
+                p.plan_date = n_date
+                updates.append(f"Date to '{n_date}'")
+            if n_category:
+                p.category = n_category
+                updates.append(f"Category to '{n_category}'")
+
+            if not updates:
+                return "Sir, kya edit karna hai (jaise title, date, ya time) kripya batayein."
+
+            if p.category == "meeting" or p.from_meeting:
+                try:
+                    start_dt = datetime.strptime(f"{old_date} 00:00:00", "%Y-%m-%d %H:%M:%S")
+                    end_dt = datetime.strptime(f"{old_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                    meeting = db.query(RootMeeting).filter(
+                        RootMeeting.client_id == client_id,
+                        RootMeeting.meeting_time >= start_dt,
+                        RootMeeting.meeting_time <= end_dt,
+                        RootMeeting.title == old_title
+                    ).first()
+                    if meeting:
+                        if n_title:
+                            meeting.title = n_title
+                        if n_date or n_time:
+                            final_date = n_date if n_date else old_date
+                            final_time = n_time if n_time else old_time
+                            meeting.meeting_time = datetime.strptime(f"{final_date} {final_time}", "%Y-%m-%d %H:%M")
+                except Exception as me:
+                    logger.warning(f"Error updating meeting during edit: {me}")
+
+            edited_plans.append(f"{old_title} ({', '.join(updates)})")
+
+        db.commit()
+        return f"📝 Sir, maine plan successfully edit kar diya hai:\n" + "\n".join([f"- {ep}" for ep in edited_plans])
+
+    # Handle Set
+    if intent == "set":
+        status = data.get("status", "incomplete")
+        if status == "incomplete":
+            return data.get("ask_clarification") or "Sir, schedule karne ke liye detail adhuri hai. Kripya puri detail batayein."
+
+        # Complete - Save to Database
+        params = data.get("extracted_parameters", {})
+        title = params.get("title")
+        date = params.get("date")
+        time = params.get("time")
+        category = params.get("category") or "work"
+        target_type = data.get("target_type", "plan")
+
+        if not title or not time:
+            return "Sir, plan set karne ke liye title aur time hona jaruri hai."
+
+        if not date:
+            now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            date = now_local.strftime("%Y-%m-%d")
+
+        if target_type == "meeting":
+            try:
+                meeting_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+                
+                # 1. Create RootMeeting
+                meeting_obj = RootMeeting(
+                    meeting_id=secrets.token_hex(8),
+                    client_id=client_id,
+                    owner_id=client_id,
+                    title=title,
+                    description=f"Scheduled via Root Agent Voice/Chat: {title}",
+                    meeting_time=meeting_dt,
+                    duration_mins=30,
+                    status="scheduled",
+                    reminder_sent=False,
+                    notification_sent=False,
+                    created_at=datetime.utcnow()
+                )
+                db.add(meeting_obj)
+
+                # 2. Sync to RootDailyPlan
+                plan_obj = RootDailyPlan(
+                    plan_id=secrets.token_hex(8),
+                    client_id=client_id,
+                    owner_id=client_id,
+                    title=title,
+                    description=f"Meeting: {title}",
+                    category="meeting",
+                    plan_date=date,
+                    plan_time=time,
+                    status="pending",
+                    is_completed=False,
+                    from_meeting=True,
+                    created_at=datetime.utcnow()
+                )
+                db.add(plan_obj)
+                db.commit()
+
+                time_formatted = meeting_dt.strftime("%d %b %Y, %I:%M %p")
+                return f"🗓️ Sir, aapka Meeting successful set ho gaya hai!\n\n📌 Title: {title}\n⏰ Timing: {time_formatted}\n📍 Status: Scheduled"
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error setting meeting: {e}")
+                return "Sir, meeting set karte waqt technical error aaya."
+
+        elif target_type == "reminder":
+            try:
+                plan_obj = RootDailyPlan(
+                    plan_id=secrets.token_hex(8),
+                    client_id=client_id,
+                    owner_id=client_id,
+                    title=title,
+                    description=f"Reminder: {title}",
+                    category="reminder",
+                    plan_date=date,
+                    plan_time=time,
+                    status="pending",
+                    is_completed=False,
+                    from_meeting=False,
+                    created_at=datetime.utcnow()
+                )
+                db.add(plan_obj)
+                db.commit()
+
+                time_formatted = time
+                try:
+                    time_obj = datetime.strptime(time, "%H:%M")
+                    time_formatted = time_obj.strftime("%I:%M %p")
+                except:
+                    pass
+
+                return f"🔔 Sir, aapka Reminder set ho gaya hai!\n\n📌 Title: {title}\n⏰ Timing: {date} at {time_formatted}"
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error setting reminder: {e}")
+                return "Sir, reminder set karte waqt technical error aaya."
+
+        else:  # plan
+            try:
+                plan_obj = RootDailyPlan(
+                    plan_id=secrets.token_hex(8),
+                    client_id=client_id,
+                    owner_id=client_id,
+                    title=title,
+                    description=f"Plan: {title}",
+                    category=category,
+                    plan_date=date,
+                    plan_time=time,
+                    status="pending",
+                    is_completed=False,
+                    from_meeting=False,
+                    created_at=datetime.utcnow()
+                )
+                db.add(plan_obj)
+                db.commit()
+
+                time_formatted = time
+                try:
+                    time_obj = datetime.strptime(time, "%H:%M")
+                    time_formatted = time_obj.strftime("%I:%M %p")
+                except:
+                    pass
+
+                return f"✅ Sir, aapka Daily Plan set ho gaya hai!\n\n📌 Title: {title}\n⏰ Timing: {date} at {time_formatted}\n📁 Category: {category}"
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error setting daily plan: {e}")
+                return "Sir, plan set karte waqt technical error aaya."
+
+    return None
+
+
 # ── Root Agent Interactive Chat Engine ────────────────────────────────────────
 
 @router.post("/root-agent/chat")
@@ -176,8 +899,11 @@ async def root_agent_chat(
     x_app_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
-    client = _get_owner_client(x_app_token, db)
-    client_id = client["client_id"]
+    if req.client_id:
+        client_id = req.client_id
+    else:
+        client = _get_owner_client(x_app_token, db)
+        client_id = client["client_id"]
     msg_raw = req.message.strip()
     msg_lower = msg_raw.lower()
 
@@ -191,15 +917,14 @@ async def root_agent_chat(
     session_obj = None
     try:
         session_obj = db.query(AgentPublicSession).filter(
-            AgentPublicSession.agent_id == root_agent.agent_id,
-            AgentPublicSession.client_id == client_id
+            AgentPublicSession.agent_id == root_agent.agent_id
         ).first()
 
         if not session_obj:
             session_obj = AgentPublicSession(
                 session_id=f"root_sess_{client_id}",
                 agent_id=root_agent.agent_id,
-                client_id=client_id,
+                device_id="root_chat",
                 user_name="Owner",
                 device_name="Owner Workspace",
                 created_at=datetime.utcnow()
@@ -235,6 +960,37 @@ async def root_agent_chat(
             logger.warning(f"Root asst msg save warning: {db_e}")
             db.rollback()
 
+    # ── Intercept Daily Planner / Reminders / Meetings Intents ──
+    parser_history = []
+    if session_obj:
+        try:
+            msgs = db.query(AgentPublicMessage).filter(
+                AgentPublicMessage.session_id == session_obj.session_id
+            ).order_by(AgentPublicMessage.created_at.desc()).limit(6).all()
+            msgs.reverse()
+            for m in msgs:
+                if m.content.strip() != msg_raw:
+                    parser_history.append({"role": m.role, "content": m.content})
+        except Exception as he:
+            logger.warning(f"Error fetching message history: {he}")
+
+    planner_resp = await handle_planner_voice_and_chat(
+        message=msg_raw,
+        history=parser_history,
+        client_id=client_id,
+        db=db,
+        voice_mode=False
+    )
+    if planner_resp:
+        _save_asst_msg(planner_resp)
+        return {
+            "role": "assistant",
+            "content": planner_resp,
+            "answer": planner_resp,
+            "media": None,
+            "agent_id": root_agent.agent_id
+        }
+
     # ──────────────────────────────────────────────────────────────────────────
     # INTENT 1: Meeting Creation / Schedule (HIGHEST PRIORITY if meeting word present)
     # ──────────────────────────────────────────────────────────────────────────
@@ -261,6 +1017,30 @@ async def root_agent_chat(
         db.add(meeting_obj)
         db.commit()
         db.refresh(meeting_obj)
+
+        # Sync to RootDailyPlan so it displays in the daily planner checklist/sidebar
+        try:
+            plan_date = meeting_dt.strftime("%Y-%m-%d")
+            plan_time = meeting_dt.strftime("%H:%M")
+            plan_obj = RootDailyPlan(
+                plan_id=secrets.token_hex(8),
+                client_id=client_id,
+                owner_id=client_id,
+                title=title,
+                description=f"Meeting: {title}",
+                category="meeting",
+                plan_date=plan_date,
+                plan_time=plan_time,
+                status="pending",
+                is_completed=False,
+                from_meeting=True,
+                created_at=datetime.utcnow()
+            )
+            db.add(plan_obj)
+            db.commit()
+        except Exception as sync_err:
+            logger.warning(f"Error syncing INTENT 1 meeting to RootDailyPlan: {sync_err}")
+            db.rollback()
 
         time_formatted = meeting_dt.strftime("%d %b %Y, %I:%M %p")
         reminder_time = (meeting_dt - timedelta(minutes=30)).strftime("%I:%M %p")
@@ -760,6 +1540,14 @@ class CreatePlanReq(BaseModel):
     plan_date: str   # YYYY-MM-DD
     plan_time: str   # HH:MM
 
+class EditPlanReq(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    plan_date: Optional[str] = None
+    plan_time: Optional[str] = None
+    status: Optional[str] = None
+
 class MeetingToPlanReq(BaseModel):
     title: str
     description: Optional[str] = ""
@@ -908,6 +1696,79 @@ async def complete_daily_plan(
     plan.is_completed = not plan.is_completed
     plan.completed_at = datetime.utcnow() if plan.is_completed else None
     plan.status = "completed" if plan.is_completed else _compute_plan_status(plan.plan_date, plan.plan_time, False)
+    db.commit()
+    db.refresh(plan)
+
+    d = plan.to_dict()
+    d["status"] = plan.status
+    return {"success": True, "plan": d}
+
+
+@router.put("/root-agent/plans/{plan_id}")
+async def edit_daily_plan(
+    plan_id: str,
+    req: EditPlanReq,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Edit/update an existing daily plan."""
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    plan = db.query(RootDailyPlan).filter(
+        RootDailyPlan.plan_id == plan_id,
+        RootDailyPlan.client_id == client_id
+    ).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    old_title = plan.title
+    old_date = plan.plan_date
+    old_time = plan.plan_time
+
+    if req.title is not None:
+        plan.title = req.title
+    if req.description is not None:
+        plan.description = req.description
+    if req.category is not None:
+        plan.category = req.category
+    if req.plan_date is not None:
+        plan.plan_date = req.plan_date
+    if req.plan_time is not None:
+        plan.plan_time = req.plan_time
+    if req.status is not None:
+        plan.status = req.status
+        if req.status == "completed":
+            plan.is_completed = True
+            plan.completed_at = datetime.utcnow()
+        else:
+            plan.is_completed = False
+            plan.completed_at = None
+
+    if plan.category == "meeting" or plan.from_meeting:
+        try:
+            start_dt = datetime.strptime(f"{old_date} 00:00:00", "%Y-%m-%d %H:%M:%S")
+            end_dt = datetime.strptime(f"{old_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+            meeting = db.query(RootMeeting).filter(
+                RootMeeting.client_id == client_id,
+                RootMeeting.meeting_time >= start_dt,
+                RootMeeting.meeting_time <= end_dt,
+                RootMeeting.title == old_title
+            ).first()
+            if meeting:
+                if req.title is not None:
+                    meeting.title = req.title
+                if req.description is not None:
+                    meeting.description = req.description
+                if req.plan_date is not None or req.plan_time is not None:
+                    final_date = req.plan_date if req.plan_date is not None else old_date
+                    final_time = req.plan_time if req.plan_time is not None else old_time
+                    meeting.meeting_time = datetime.strptime(f"{final_date} {final_time}", "%Y-%m-%d %H:%M")
+                if req.status is not None:
+                    meeting.status = req.status
+        except Exception as me:
+            logger.warning(f"Error syncing edit to RootMeeting: {me}")
+
     db.commit()
     db.refresh(plan)
 
@@ -1120,20 +1981,27 @@ async def analyze_daily_plans(
 
     # 4. Build prompt
     system_prompt = (
-        "You are an expert personal productivity AI assistant. "
-        "You MUST analyze the owner's daily schedule and completion metrics for a specific date, "
-        "and return a JSON response object. Do not explain, do not add markdown code blocks like ```json.\n"
-        "The output MUST match this exact JSON schema:\n"
+        "You are a Personal AI Productivity Advisor utilizing the PACE Framework (Priorities, Allocation, Control, Efficiency).\n"
+        "You analyze the owner's daily schedule and plans to assess how intentionally their time was allocated, structured, and how it can be improved. Your job is not to measure busyness, but to answer: 'Did the user invest their available time in the right things, with the right structure, and what should change next?'\n\n"
+        "You MUST return a JSON response object matching this exact schema:\n"
         "{\n"
-        "  \"summary\": \"Brief summary of the entire day's plans and overall schedule (in Hinglish/Hindi or English as appropriate),\",\n"
-        "  \"feedback\": \"Constructive, actionable feedback on schedule density, balance, completed vs pending plans ratio, and flow (in Hinglish/Hindi or English),\",\n"
-        "  \"analysis\": \"Productivity and priority analysis (e.g. work vs personal time, meeting density, task completion rate) (in Hinglish/Hindi or English),\",\n"
-        "  \"key_points\": [\"3-5 critical actions, recommendations, or warnings for the day as strings in a list\"]\n"
-        "}\n"
-        "Ensure all descriptions are detailed, encouraging, executive-ready, and in Hinglish/Hindi or English matching the user. "
-        "If there are no plans, generate a friendly output suggesting the owner enjoy their free day productively or rest. "
-        "Return ONLY the raw JSON string."
+        "  \"summary\": \"Must start with 'PACE — [Date]'. Provide a brief analytical summary of the entire day's plans. End with the Daily Insight as the last sentence (e.g. 'Daily Insight: Your calendar protected time for your core priorities, but fragmented meetings reduced execution blocks.'). Written in Hinglish/Hindi or English.\",\n"
+        "  \"analysis\": \"P — Priorities:\\nExplain whether the calendar appears aligned with the user's priorities, highlighting the strongest alignment and most important apparent gap.\\n\\n"
+        "A — Allocation:\\nSummarise where scheduled time went, focusing on patterns, durations, or proportions of scheduled work, meetings, personal time, etc. Written in Hinglish/Hindi or English.\",\n"
+        "  \"feedback\": \"C — Control:\\nExplain how intentionally the day was structured. Identify fragmentation, back-to-back meetings, focus blocks, buffers, context switching, and whether structure was intentional or reactive. Written in Hinglish/Hindi or English.\",\n"
+        "  \"key_points\": [\n"
+        "    \"E — Efficiency concrete action 1 (e.g., 'Your afternoon contains three short-gap internal meetings. Consider batching them to protect a longer block.')\",\n"
+        "    \"E — Efficiency concrete action 2\"\n"
+        "  ]\n"
+        "}\n\n"
+        "EVIDENCE & TONE RULES:\n"
+        "1. Tone: Executive advisor (concise, analytical, neutral, practical, action-oriented). No lecturing or excessive praise. Reading time should be ~1 minute.\n"
+        "2. Evidence: Base conclusions on visible calendar evidence. Distinguish observed vs inferred vs unknown. Do not claim tasks completed or meetings successful unless explicit.\n"
+        "3. Language: Hinglish/Hindi or English matching the user.\n"
+        "4. If no plans exist: Suggest the user rest or enjoy their free time productively.\n"
+        "Return ONLY the raw JSON string matching the structure above."
     )
+
 
     question = (
         f"Daily plans analysis for date: {plan_date}\n"

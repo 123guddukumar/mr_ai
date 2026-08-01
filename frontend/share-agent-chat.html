@@ -2396,7 +2396,23 @@ function renderActionBanner(action) {
   
   currentActionData = action;
   const isWa = action.action_type === 'whatsapp';
-  const cleanPhone = (action.phone_number || '').replace(/[^\d+]/g, '');
+  let cleanPhone = (action.phone_number || '').replace(/[^\d+]/g, '');
+  
+  // Format phone number with country code for correct international/local dialing
+  if (!cleanPhone.startsWith('+')) {
+    if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+      const nextDigit = cleanPhone.charAt(2);
+      // In India, mobile numbers start with 9, 8, 7, 6. Other digits (1, 2, 3, 4, 8) represent landline codes.
+      if (['9', '8', '7', '6'].includes(nextDigit)) {
+        cleanPhone = '+' + cleanPhone; // Mobile: format as +91...
+      } else {
+        cleanPhone = '0' + cleanPhone.substring(2); // Landline: format as 0... (e.g. 01171366938)
+      }
+    } else if (cleanPhone.length === 10) {
+      cleanPhone = '+91' + cleanPhone; // Mobile default
+    }
+  }
+
   const targetUrl = isWa 
     ? `https://wa.me/${cleanPhone.replace('+', '')}`
     : `tel:${cleanPhone}`;

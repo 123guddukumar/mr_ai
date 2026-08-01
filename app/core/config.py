@@ -104,6 +104,12 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "mr_ai_rag_verify_token"
     WHATSAPP_DEFAULT_AGENT_ID: str = "da3243d9babb9387"
 
+    # Vobiz Cloud Telephony
+    VOBIZ_AUTH_ID: str = ""
+    VOBIZ_AUTH_TOKEN: str = ""
+    VOBIZ_PHONE_NUMBER: str = ""
+    VOBIZ_DEFAULT_AGENT_ID: str = "da3243d9babb9387"
+
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (
         "You are MR AI RAG. "

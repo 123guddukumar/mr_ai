@@ -10308,13 +10308,16 @@
             <div style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase">Chat Messages
             </div>
             <div id="ag-action-toolbar" style="display:none; gap:6px; align-items:center">
+              <button class="ag-kb-analysis-btn" onclick="triggerOutboundCallToLead()" title="Trigger Outbound Call to Lead via Vobiz"
+                style="font-size:11px; padding:4px 10px; border-radius:15px; background:linear-gradient(135deg, #ea580c, #f97316); color:#fff; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px">📞
+                Call Directly</button>
               <button class="ag-kb-analysis-btn" onclick="promptSendAction('call')" title="Send Call Now Button"
                 style="font-size:11px; padding:4px 10px; border-radius:15px; background:linear-gradient(135deg, #4f46e5, #7c3aed); color:#fff; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px">📞
-                Call Now</button>
+                Send Call CTA</button>
               <button class="ag-kb-analysis-btn" onclick="promptSendAction('whatsapp')"
                 title="Send WhatsApp Connect Button"
                 style="font-size:11px; padding:4px 10px; border-radius:15px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px">💬
-                WhatsApp Connect</button>
+                Send WhatsApp CTA</button>
             </div>
           </div>
           <div id="ag-history-chat-area"
@@ -19430,7 +19433,10 @@
       `;
     }
 
+    let _activeHistoryTab = 'chats';
+
     function renderSessionsGroupedByVisitor(sessions, containerId, headerTitle, isRootBackBtn = false) {
+      window._currentAgentSessions = sessions || [];
       const container = document.getElementById(containerId);
       if (!container) return;
 
@@ -19439,7 +19445,7 @@
         : '';
 
       if (!sessions || sessions.length === 0) {
-        container.innerHTML = `${backBtn}<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px">No visitors have chatted with this agent yet.</div>`;
+        container.innerHTML = `${backBtn}<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px">No visitor sessions logged yet.</div>`;
         return;
       }
 
@@ -19458,26 +19464,59 @@
         visitorGroups[key].sessions.push(s);
       });
 
-      const totalChatsCount = sessions.length;
+      // Filter groups and sessions based on selected tab
+      const isCallsTab = _activeHistoryTab === 'calls';
+      const filteredGroups = {};
+      let totalCount = 0;
 
-      const visitorsListHtml = Object.keys(visitorGroups).map((key, idx) => {
+      Object.keys(visitorGroups).forEach(key => {
         const group = visitorGroups[key];
+        const filteredSessions = group.sessions.filter(s => {
+          const isCall = s.session_id.startsWith('tel_') || s.device_name === 'Voice Call';
+          return isCallsTab ? isCall : !isCall;
+        });
+
+        if (filteredSessions.length > 0) {
+          filteredGroups[key] = {
+            ...group,
+            sessions: filteredSessions
+          };
+          totalCount += filteredSessions.length;
+        }
+      });
+
+      // Render Tab Buttons
+      const chatsActive = !isCallsTab ? 'border-bottom:2px solid var(--accent); color:var(--accent); font-weight:800' : 'color:var(--text3)';
+      const callsActive = isCallsTab ? 'border-bottom:2px solid var(--accent); color:var(--accent); font-weight:800' : 'color:var(--text3)';
+
+      const tabsHtml = `
+        <div style="display:flex; border-bottom:1px solid var(--border); margin-bottom:12px; font-size:12px;">
+          <button onclick="switchHistoryTab('chats')" style="flex:1; padding:8px; border:none; background:none; cursor:pointer; text-align:center; transition:all 0.2s; ${chatsActive}">💬 Web & WA Chats</button>
+          <button onclick="switchHistoryTab('calls')" style="flex:1; padding:8px; border:none; background:none; cursor:pointer; text-align:center; transition:all 0.2s; ${callsActive}">📞 Voice Call Logs</button>
+        </div>
+      `;
+
+      const visitorsListHtml = Object.keys(filteredGroups).map((key, idx) => {
+        const group = filteredGroups[key];
         const dateStr = group.sessions[0].created_at ? new Date(group.sessions[0].created_at).toLocaleString() : 'Unknown Date';
         const namePart = group.user_name ? `<div style="font-weight:800; color:var(--accent); font-size:13px">👤 ${escHtml(group.user_name)}</div>` : `<div style="font-weight:800; color:var(--text); font-size:13px">👤 Guest Visitor</div>`;
         const phonePart = group.phone_number ? `<div style="font-size:11px; color:var(--text2); margin-top:2px">📞 ${escHtml(group.phone_number)}</div>` : '';
 
-        // Generate individual chat sessions list
+        // Generate individual sessions list
         const sessionsHtml = group.sessions.map((s, sIdx) => {
           const sDate = s.created_at ? new Date(s.created_at).toLocaleString() : 'Unknown Date';
+          const sessionLabel = isCallsTab ? `Call Block ${group.sessions.length - sIdx}` : `Chat ${group.sessions.length - sIdx}`;
           return `
             <div class="session-sub-card" onclick="event.stopPropagation(); selectVisitorChatSession('${s.session_id}', this, '${escHtml(s.phone_number || '')}')" 
                  style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; margin-top:5px; font-size:11.5px; transition:all 0.2s; cursor:pointer;"
                  onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <span>🗓️ Chat ${group.sessions.length - sIdx} — <span style="color:var(--text2)">${sDate}</span></span>
-              <button class="ag-kb-analysis-btn" onclick="event.stopPropagation(); analyzeAndShowSession('${key}', '${_activeHistoryAgentId}')" title="View AI Chat Analysis (All Sessions)" style="border:none; background:none; cursor:pointer; font-size:14px; padding:2px;">🧠</button>
+              <span>🗓️ ${sessionLabel} — <span style="color:var(--text2)">${sDate}</span></span>
+              <button class="ag-kb-analysis-btn" onclick="event.stopPropagation(); analyzeAndShowSession('${key}', '${_activeHistoryAgentId}')" title="View AI Analysis (All Sessions)" style="border:none; background:none; cursor:pointer; font-size:14px; padding:2px;">🧠</button>
             </div>
           `;
         }).join('');
+
+        const pillText = isCallsTab ? `📞 ${group.sessions.length} Calls` : `💬 ${group.sessions.length} Chats`;
 
         return `
           <div class="visitor-group-card" onclick="toggleVisitorGroup('${key}')" 
@@ -19491,7 +19530,7 @@
               <div style="display:flex; align-items:center; gap:6px;">
                 <button onclick="event.stopPropagation(); analyzeAndShowSession('${key}', '${_activeHistoryAgentId}')" title="Full Visitor AI Analysis" style="border:1px solid rgba(255,122,0,0.4); background:rgba(255,122,0,0.1); color:var(--accent); cursor:pointer; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px;">🧠 Analyze</button>
                 <span style="background:rgba(255,122,0,0.15); color:var(--accent); font-size:10px; font-weight:800; padding:3px 8px; border-radius:20px; border:1px solid rgba(255,122,0,0.25);">
-                  💬 ${group.sessions.length} Chats
+                  ${pillText}
                 </span>
               </div>
             </div>
@@ -19501,23 +19540,33 @@
             </div>
             
             <div id="visitor-sessions-${key}" style="display:none; margin-top:10px; padding-top:8px; border-top:1px dashed var(--border);">
-              <div style="font-size:10.5px; font-weight:700; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Select Chat Session:</div>
+              <div style="font-size:10.5px; font-weight:700; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Select History Item:</div>
               ${sessionsHtml}
             </div>
           </div>
         `;
       }).join('');
 
+      const listHeaderLabel = isCallsTab ? `📞 ${headerTitle.replace('🤖', '')} Call Logs` : `💬 ${headerTitle.replace('🤖', '')} Chats`;
+      const countLabel = isCallsTab ? `${totalCount} Calls` : `${totalCount} Chats`;
+
       container.innerHTML = `
         ${backBtn}
+        ${tabsHtml}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:rgba(255,122,0,0.06); padding:10px; border-radius:10px; border:1px solid rgba(255,122,0,0.15);">
-          <span style="font-size:13px; font-weight:800; color:var(--accent);">${headerTitle}</span>
-          <span style="background:var(--accent); color:#000; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px;">Total: ${totalChatsCount} Chats</span>
+          <span style="font-size:13px; font-weight:800; color:var(--accent);">${listHeaderLabel}</span>
+          <span style="background:var(--accent); color:#000; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px;">Total: ${countLabel}</span>
         </div>
-        <div style="font-size:11px; color:var(--text3); margin-bottom:8px;">💡 Click any visitor below to expand and view their individual chat sessions history.</div>
-        ${visitorsListHtml}
+        <div style="font-size:11px; color:var(--text3); margin-bottom:8px;">💡 Click any visitor below to expand and view history logs.</div>
+        ${visitorsListHtml || `<div style="font-size:12px; color:var(--text3); text-align:center; padding:20px; border:1px dashed var(--border); border-radius:12px; margin-top:10px">No logs found in this tab.</div>`}
       `;
     }
+
+    window.switchHistoryTab = function (tab) {
+      _activeHistoryTab = tab;
+      const cleanName = document.querySelector('#ag-history-sessions span[style*="font-size:13px"]')?.textContent || 'Agent History';
+      renderSessionsGroupedByVisitor(window._currentAgentSessions, 'ag-history-sessions', cleanName, false);
+    };
 
     function toggleVisitorGroup(key) {
       const container = document.getElementById(`visitor-sessions-${key}`);
@@ -19878,19 +19927,90 @@
           return;
         }
 
-        document.getElementById('ag-history-chat-area').innerHTML = messages.map(m => {
-          const isUser = m.role === 'user';
-          const align = isUser ? 'margin-left:auto; background:var(--accent); color:#fff; border-radius:12px 12px 2px 12px' : 'margin-right:auto; background:var(--bg2); border:1px solid var(--border); border-radius:12px 12px 12px 2px';
-          const senderName = isUser ? 'Visitor' : 'Agent';
-          const senderColor = isUser ? 'color:rgba(255,255,255,0.8)' : 'color:var(--accent)';
+        if (sessionId.startsWith('tel_')) {
+          // Group call logs by 5-minute time gaps
+          const callBlocks = [];
+          let currentBlock = [];
+          let lastTime = null;
 
-          return `
-            <div style="max-width:85%; padding:10px 14px; margin-bottom:8px; line-height:1.5; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.1); ${align}">
-              <div style="font-size:10px; font-weight:700; margin-bottom:4px; ${senderColor}">${senderName}</div>
-              <div style="white-space:pre-wrap; word-break:break-word">${escHtml(m.content)}</div>
-            </div>
-          `;
-        }).join('');
+          messages.forEach(m => {
+            const mTime = m.created_at ? new Date(m.created_at).getTime() : Date.now();
+            if (lastTime !== null && (mTime - lastTime > 5 * 60 * 1000)) {
+              if (currentBlock.length > 0) {
+                callBlocks.push(currentBlock);
+              }
+              currentBlock = [];
+            }
+            currentBlock.push(m);
+            lastTime = mTime;
+          });
+          if (currentBlock.length > 0) {
+            callBlocks.push(currentBlock);
+          }
+
+          document.getElementById('ag-history-chat-area').innerHTML = callBlocks.map((block, bIdx) => {
+            const firstMsgTime = block[0].created_at ? new Date(block[0].created_at).toLocaleString() : 'Unknown Time';
+            
+            const messagesHtml = block.map(m => {
+              const isUser = m.role === 'user';
+              const align = isUser ? 'margin-left:auto; background:var(--accent); color:#fff; border-radius:12px 12px 2px 12px' : 'margin-right:auto; background:var(--bg2); border:1px solid var(--border); border-radius:12px 12px 12px 2px';
+              const senderName = isUser ? 'Caller' : 'AI Agent';
+              const senderColor = isUser ? 'color:rgba(255,255,255,0.8)' : 'color:var(--accent)';
+              const timeString = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+              return `
+                <div style="max-width:85%; padding:10px 14px; margin-bottom:8px; line-height:1.5; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.06); ${align}">
+                  <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:700; margin-bottom:4px; ${senderColor}">
+                    <span>${senderName}</span>
+                    <span style="font-weight:normal; opacity:0.6">${timeString}</span>
+                  </div>
+                  <div style="white-space:pre-wrap; word-break:break-word">${escHtml(m.content)}</div>
+                </div>
+              `;
+            }).join('');
+
+            return `
+              <div style="border:1px solid var(--border); border-radius:12px; margin-bottom:12px; overflow:hidden; background:rgba(255,255,255,0.015);">
+                <div onclick="window.toggleCallBlockDetail(${bIdx})" style="padding:12px 16px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:12px; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:all 0.2s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--bg3)'">
+                  <span style="color:var(--accent)">📞 Conversation Call — ${firstMsgTime}</span>
+                  <span id="call-block-indicator-${bIdx}" style="font-size:10px; color:var(--text3); background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:8px">Expand ➡️</span>
+                </div>
+                <div id="call-block-detail-${bIdx}" style="display:none; padding:15px; background:rgba(0,0,0,0.1)">
+                  ${messagesHtml}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          window.toggleCallBlockDetail = function (bIdx) {
+            const detailDiv = document.getElementById(`call-block-detail-${bIdx}`);
+            const indicator = document.getElementById(`call-block-indicator-${bIdx}`);
+            if (detailDiv) {
+              const isHidden = detailDiv.style.display === 'none';
+              detailDiv.style.display = isHidden ? 'block' : 'none';
+              if (indicator) {
+                indicator.textContent = isHidden ? 'Collapse ⬇️' : 'Expand ➡️';
+                indicator.style.background = isHidden ? 'rgba(255,122,0,0.15)' : 'rgba(255,255,255,0.06)';
+                indicator.style.color = isHidden ? 'var(--accent)' : 'var(--text3)';
+              }
+            }
+          };
+
+        } else {
+          document.getElementById('ag-history-chat-area').innerHTML = messages.map(m => {
+            const isUser = m.role === 'user';
+            const align = isUser ? 'margin-left:auto; background:var(--accent); color:#fff; border-radius:12px 12px 2px 12px' : 'margin-right:auto; background:var(--bg2); border:1px solid var(--border); border-radius:12px 12px 12px 2px';
+            const senderName = isUser ? 'Visitor' : 'Agent';
+            const senderColor = isUser ? 'color:rgba(255,255,255,0.8)' : 'color:var(--accent)';
+
+            return `
+              <div style="max-width:85%; padding:10px 14px; margin-bottom:8px; line-height:1.5; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.1); ${align}">
+                <div style="font-size:10px; font-weight:700; margin-bottom:4px; ${senderColor}">${senderName}</div>
+                <div style="white-space:pre-wrap; word-break:break-word">${escHtml(m.content)}</div>
+              </div>
+            `;
+          }).join('');
+        }
 
         const area = document.getElementById('ag-history-chat-area');
         area.scrollTop = area.scrollHeight;
@@ -19934,6 +20054,45 @@
 
         toast(`✅ ${label} button sent to visitor!`, 'success');
         viewSessionChat(activeSessionId, null, activeSessionPhone);
+      } catch (e) {
+        toast(`❌ Error: ${e.message}`, 'err');
+      }
+    }
+
+    async function triggerOutboundCallToLead() {
+      if (!activeSessionId) {
+        toast('⚠️ Please select a visitor session first.', 'err');
+        return;
+      }
+      if (!activeSessionPhone) {
+        toast('⚠️ This visitor does not have a registered phone number.', 'err');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to call ${activeSessionPhone} directly via Vobiz?`)) {
+        return;
+      }
+
+      toast('📞 Initiating outbound call via Vobiz...', 'success');
+
+      try {
+        const r = await fetch('/api/telephony/outbound-call', {
+          method: 'POST',
+          headers: hdrs(),
+          body: JSON.stringify({
+            to_phone: activeSessionPhone,
+            agent_id: _activeHistoryAgentId || _currentAgentId,
+            server_url: window.location.origin
+          })
+        });
+
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.detail || 'Failed to trigger outbound call');
+        }
+
+        const res = await r.json();
+        toast('✅ Call queued successfully! Vobiz is ringing...', 'success');
       } catch (e) {
         toast(`❌ Error: ${e.message}`, 'err');
       }
@@ -35916,7 +36075,7 @@ Also include a "meta" object at the end:
             <div style="font-size:10.5px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               📝 Summary
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.summary)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.summary)}</div>
           </div>
 
           <!-- Analysis Card -->
@@ -35924,7 +36083,7 @@ Also include a "meta" object at the end:
             <div style="font-size:10.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               📊 Priority Analysis
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.analysis)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.analysis)}</div>
           </div>
 
           <!-- Feedback Card -->
@@ -35932,7 +36091,7 @@ Also include a "meta" object at the end:
             <div style="font-size:10.5px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               💡 Schedule Feedback
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.feedback)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.feedback)}</div>
           </div>
 
           <!-- Key Points Card -->
@@ -36069,6 +36228,9 @@ Also include a "meta" object at the end:
                       👁️ View Details
                     </button>
                   ` : ''}
+                  <button type="button" onclick="openDashboardEditPlan('${p.plan_id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:#3b82f6; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+                    ✏️ Edit
+                  </button>
                   <div style="color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')}; font-weight:700; text-transform:uppercase;">
                     ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
                   </div>
@@ -36126,9 +36288,15 @@ Also include a "meta" object at the end:
       }
     }
 
+    let _dbEditingPlanId = null;
+
     function openDashboardAddPlan() {
+      _dbEditingPlanId = null;
       const modal = document.getElementById('dashboard-add-plan-modal');
       if (!modal) return;
+
+      const modalHeader = document.querySelector('#dashboard-add-plan-modal h4');
+      if (modalHeader) modalHeader.textContent = '📅 Add New Plan / Meeting';
 
       const now = new Date();
       const year = now.getFullYear();
@@ -36256,6 +36424,64 @@ Also include a "meta" object at the end:
       hideDashboardConflictWarn();
     }
 
+    function openDashboardEditPlan(planId) {
+      const plan = _dbAllPlansCache.find(p => p.plan_id === planId);
+      if (!plan) return;
+
+      _dbEditingPlanId = planId;
+      
+      const modal = document.getElementById('dashboard-add-plan-modal');
+      if (!modal) return;
+
+      const dateInput = document.getElementById('db-plan-date-input');
+      const timeInput = document.getElementById('db-plan-time-input');
+
+      // Populate basic values
+      const titleInput = document.getElementById('db-plan-title-input');
+      const descInput = document.getElementById('db-plan-desc-input');
+
+      if (titleInput) titleInput.value = plan.title;
+      if (descInput) descInput.value = plan.description || '';
+      if (dateInput) {
+        dateInput.value = plan.plan_date;
+        dateInput.min = ''; // Allow editing past dates
+      }
+      if (timeInput) timeInput.value = plan.plan_time;
+
+      // Set Type
+      setDashboardAddType(plan.category === 'reminder' ? 'reminder' : (plan.category === 'meeting' ? 'meeting' : 'plan'));
+
+      // Change Title and Submit Button labels
+      const modalHeader = document.querySelector('#dashboard-add-plan-modal h4');
+      const submitBtn = document.getElementById('db-plan-submit-btn');
+      if (modalHeader) modalHeader.textContent = '✏️ Edit ' + (plan.category === 'reminder' ? 'Reminder' : (plan.category === 'meeting' ? 'Meeting' : 'Plan'));
+      if (submitBtn) submitBtn.textContent = 'Save Changes';
+
+      if (plan.category === 'meeting') {
+        const meetName = document.getElementById('db-plan-meeting-name');
+        const meetLoc = document.getElementById('db-plan-meeting-location');
+        const lines = (plan.description || '').split('\n');
+        let withName = '';
+        let whereLoc = 'Online';
+        let notes = '';
+
+        lines.forEach(l => {
+          if (l.startsWith('With: ')) withName = l.replace('With: ', '').trim();
+          else if (l.startsWith('Where: ')) whereLoc = l.replace('Where: ', '').trim();
+          else if (l.startsWith('Notes: ')) notes = l.replace('Notes: ', '').trim();
+        });
+
+        if (meetName) meetName.value = withName;
+        if (meetLoc) meetLoc.value = whereLoc;
+        if (descInput) descInput.value = notes || plan.description || '';
+      } else {
+        selectDashboardPlanCat(document.querySelector(`.db-cat-btn[data-cat="${plan.category}"]`), plan.category);
+      }
+
+      hideDashboardConflictWarn();
+      modal.classList.add('open');
+    }
+
     function selectDashboardPlanCat(btn, cat) {
       _dbSelectedPlanCat = cat;
       document.querySelectorAll('.db-cat-btn').forEach(b => b.classList.remove('selected'));
@@ -36326,16 +36552,18 @@ Also include a "meta" object at the end:
       if (!dateVal) { toast('⚠️ Please select a date', 'err'); return; }
       if (!timeVal) { toast('⚠️ Please select a time', 'err'); return; }
 
-      const planDt = new Date(`${dateVal}T${timeVal}`);
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - 5); // 5 minutes buffer
-      if (planDt < now) {
-        toast('⚠️ Cannot create plan for a past date/time', 'err');
-        return;
+      if (!_dbEditingPlanId) {
+        const planDt = new Date(`${dateVal}T${timeVal}`);
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - 5); // 5 minutes buffer
+        if (planDt < now) {
+          toast('⚠️ Cannot create plan for a past date/time', 'err');
+          return;
+        }
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = '⏳ Creating…';
+      submitBtn.textContent = _dbEditingPlanId ? '⏳ Saving…' : '⏳ Creating…';
 
       try {
         const payload = {
@@ -36345,23 +36573,25 @@ Also include a "meta" object at the end:
           plan_date: dateVal,
           plan_time: timeVal
         };
-        const r = await fetch('/api/root-agent/plans', {
-          method: 'POST',
+        const url = _dbEditingPlanId ? `/api/root-agent/plans/${_dbEditingPlanId}` : '/api/root-agent/plans';
+        const method = _dbEditingPlanId ? 'PUT' : 'POST';
+        const r = await fetch(url, {
+          method: method,
           headers: hdrs(),
           body: JSON.stringify(payload)
         });
         const data = await r.json();
-        if (!r.ok) throw new Error(data.detail || 'Failed to create plan');
+        if (!r.ok) throw new Error(data.detail || 'Failed to submit plan');
 
         closeDashboardAddPlan();
-        toast(_dbAddType === 'reminder' ? '🔔 Reminder set successfully!' : (_dbAddType === 'meeting' ? '📞 Meeting added successfully!' : '📅 Plan created successfully!'), '');
+        toast(_dbEditingPlanId ? '📝 Plan updated successfully!' : (_dbAddType === 'reminder' ? '🔔 Reminder set successfully!' : (_dbAddType === 'meeting' ? '📞 Meeting added successfully!' : '📅 Plan created successfully!')), '');
         loadDashboardTodayPlans();
         loadDashboardAllPlans(_dbPlanFilter);
       } catch (e) {
         toast('⚠️ ' + e.message, 'err');
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = _dbAddType === 'reminder' ? 'Set Reminder' : (_dbAddType === 'meeting' ? 'Add Meeting' : 'Create Plan');
+        submitBtn.textContent = _dbEditingPlanId ? 'Save Changes' : (_dbAddType === 'reminder' ? 'Set Reminder' : (_dbAddType === 'meeting' ? 'Add Meeting' : 'Create Plan'));
       }
     }
 

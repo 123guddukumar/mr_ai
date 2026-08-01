@@ -1346,6 +1346,25 @@ async def agent_ask(agent_id: str, req: AgentAskReq, db: Session = Depends(get_d
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
     if not agent: raise HTTPException(404, "Agent not found")
 
+    # 1. Root Agent Delegation if agent is_root or category is root_assistant
+    if agent.is_root or agent.category == 'root_assistant':
+        from app.routes.root_agent import root_agent_chat, RootChatReq
+        root_req = RootChatReq(
+            message=req.question,
+            session_id=f"root_sess_{agent.client_id}",
+            client_id=agent.client_id
+        )
+        root_res = await root_agent_chat(req=root_req, x_app_token=None, db=db)
+        ans_text = root_res.get("content") or root_res.get("answer") or "Sir, main aapke order par kaam kar raha hoon."
+        return {
+            "answer": ans_text,
+            "content": ans_text,
+            "sources": [],
+            "is_rag": False,
+            "session_id": f"root_sess_{agent.client_id}",
+            "media": root_res.get("media")
+        }
+
     # Get configured Q&A training pairs
     try:
         custom_cfg = json.loads(agent.customization_json or "{}")
@@ -1949,7 +1968,8 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
         from app.routes.root_agent import root_agent_chat, RootChatReq
         root_req = RootChatReq(
             message=req.question,
-            session_id=req.session_id
+            session_id=req.session_id,
+            client_id=agent.client_id
         )
         root_res = await root_agent_chat(req=root_req, x_app_token=None, db=db)
         ans_text = root_res.get("content") or root_res.get("answer") or "Sir, main aapke order par kaam kar raha hoon."

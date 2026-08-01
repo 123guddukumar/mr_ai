@@ -4368,7 +4368,23 @@
 
       currentActionData = action;
       const isWa = action.action_type === 'whatsapp';
-      const cleanPhone = (action.phone_number || '').replace(/[^\d+]/g, '');
+      let cleanPhone = (action.phone_number || '').replace(/[^\d+]/g, '');
+
+      // Format phone number with country code for correct international/local dialing
+      if (!cleanPhone.startsWith('+')) {
+        if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+          const nextDigit = cleanPhone.charAt(2);
+          // In India, mobile numbers start with 9, 8, 7, 6. Other digits (1, 2, 3, 4, 8) represent landline codes.
+          if (['9', '8', '7', '6'].includes(nextDigit)) {
+            cleanPhone = '+' + cleanPhone; // Mobile: format as +91...
+          } else {
+            cleanPhone = '0' + cleanPhone.substring(2); // Landline: format as 0... (e.g. 01171366938)
+          }
+        } else if (cleanPhone.length === 10) {
+          cleanPhone = '+91' + cleanPhone; // Mobile default
+        }
+      }
+
       const targetUrl = isWa
         ? `https://wa.me/${cleanPhone.replace('+', '')}`
         : `tel:${cleanPhone}`;
@@ -6584,7 +6600,7 @@
             <div style="font-size:10.5px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               📝 Summary
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.summary)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.summary)}</div>
           </div>
 
           <!-- Analysis Card -->
@@ -6592,7 +6608,7 @@
             <div style="font-size:10.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               📊 Priority Analysis
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.analysis)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.analysis)}</div>
           </div>
 
           <!-- Feedback Card -->
@@ -6600,7 +6616,7 @@
             <div style="font-size:10.5px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
               💡 Schedule Feedback
             </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4;">${escHtml(data.feedback)}</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.feedback)}</div>
           </div>
 
           <!-- Key Points Card -->
@@ -6754,6 +6770,9 @@
               👁️ View Details
             </button>
           ` : ''}
+          <button type="button" onclick="openEditPlanPopup('${p.plan_id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:#3b82f6; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" id="edit-btn-${p.plan_id}">
+            ✏️ Edit
+          </button>
           <div style="font-size:10px;color:${isCompleted ? '#6b7280' : (p.status === 'upcoming' ? '#60a5fa' : '#fbbf24')};font-weight:700;text-transform:uppercase;letter-spacing:0.4px">
             ${isCompleted ? 'Done' : (p.status === 'upcoming' ? 'Upcoming' : 'Pending')}
           </div>
@@ -6810,9 +6829,15 @@
       }
     }
 
+    let _editingPlanId = null;
+
     function openAddPlanModal() {
+      _editingPlanId = null;
       const modal = document.getElementById('add-plan-modal');
       if (!modal) return;
+
+      const modalHeader = document.querySelector('#add-plan-modal h4');
+      if (modalHeader) modalHeader.textContent = '📅 Add New Plan / Meeting';
 
       const now = new Date();
       const year = now.getFullYear();
@@ -6856,6 +6881,65 @@
       const modal = document.getElementById('add-plan-modal');
       if (modal) modal.classList.remove('open');
       hideConflictWarn();
+    }
+
+    function openEditPlanPopup(planId) {
+      const plan = _allPlansCache.find(p => p.plan_id === planId);
+      if (!plan) return;
+
+      _editingPlanId = planId;
+      
+      // Open modal first to set basic fields
+      const modal = document.getElementById('add-plan-modal');
+      if (!modal) return;
+
+      const dateInput = document.getElementById('plan-date-input');
+      const timeInput = document.getElementById('plan-time-input');
+
+      // Populate basic values
+      const titleInput = document.getElementById('plan-title-input');
+      const descInput = document.getElementById('plan-desc-input');
+
+      if (titleInput) titleInput.value = plan.title;
+      if (descInput) descInput.value = plan.description || '';
+      if (dateInput) {
+        dateInput.value = plan.plan_date;
+        dateInput.min = ''; // Allow editing past dates
+      }
+      if (timeInput) timeInput.value = plan.plan_time;
+
+      // Set Type
+      setAddType(plan.category === 'reminder' ? 'reminder' : (plan.category === 'meeting' ? 'meeting' : 'plan'));
+
+      // Change Title and Submit Button labels
+      const modalHeader = document.querySelector('#add-plan-modal h4');
+      const submitBtn = document.getElementById('plan-submit-btn');
+      if (modalHeader) modalHeader.textContent = '✏️ Edit ' + (plan.category === 'reminder' ? 'Reminder' : (plan.category === 'meeting' ? 'Meeting' : 'Plan'));
+      if (submitBtn) submitBtn.textContent = 'Save Changes';
+
+      if (plan.category === 'meeting') {
+        const meetName = document.getElementById('plan-meeting-name');
+        const meetLoc = document.getElementById('plan-meeting-location');
+        const lines = (plan.description || '').split('\n');
+        let withName = '';
+        let whereLoc = 'Online';
+        let notes = '';
+
+        lines.forEach(l => {
+          if (l.startsWith('With: ')) withName = l.replace('With: ', '').trim();
+          else if (l.startsWith('Where: ')) whereLoc = l.replace('Where: ', '').trim();
+          else if (l.startsWith('Notes: ')) notes = l.replace('Notes: ', '').trim();
+        });
+
+        if (meetName) meetName.value = withName;
+        if (meetLoc) meetLoc.value = whereLoc;
+        if (descInput) descInput.value = notes || plan.description || '';
+      } else {
+        selectPlanCat(document.querySelector(`.plan-cat-btn[data-cat="${plan.category}"]`), plan.category);
+      }
+
+      hideConflictWarn();
+      modal.classList.add('open');
     }
 
     let _addType = 'plan';
@@ -7015,16 +7099,18 @@
       if (!timeVal) { toast('⚠️ Please select a time', 'err'); return; }
 
       // Past date/time validation using actual local system Date comparison (timezone agnostic)
-      const planDt = new Date(`${dateVal}T${timeVal}`);
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - 5); // 5 minutes buffer
-      if (planDt < now) {
-        toast('⚠️ Cannot create plan for a past date/time', 'err');
-        return;
+      if (!_editingPlanId) {
+        const planDt = new Date(`${dateVal}T${timeVal}`);
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - 5); // 5 minutes buffer
+        if (planDt < now) {
+          toast('⚠️ Cannot create plan for a past date/time', 'err');
+          return;
+        }
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = '⏳ Creating…';
+      submitBtn.textContent = _editingPlanId ? '⏳ Saving…' : '⏳ Creating…';
 
       try {
         const h = { 'Content-Type': 'application/json' };
@@ -7036,23 +7122,25 @@
           plan_date: dateVal,
           plan_time: timeVal
         };
-        const r = await fetch('/api/root-agent/plans', {
-          method: 'POST',
+        const url = _editingPlanId ? `/api/root-agent/plans/${_editingPlanId}` : '/api/root-agent/plans';
+        const method = _editingPlanId ? 'PUT' : 'POST';
+        const r = await fetch(url, {
+          method: method,
           headers: h,
           body: JSON.stringify(payload)
         });
         const data = await r.json();
-        if (!r.ok) throw new Error(data.detail || 'Failed to create plan');
+        if (!r.ok) throw new Error(data.detail || 'Failed to submit plan');
 
         closeAddPlanModal();
-        toast(_addType === 'reminder' ? '🔔 Reminder set successfully!' : (_addType === 'meeting' ? '📞 Meeting added successfully!' : '📅 Plan created successfully!'), '');
+        toast(_editingPlanId ? '📝 Plan updated successfully!' : (_addType === 'reminder' ? '🔔 Reminder set successfully!' : (_addType === 'meeting' ? '📞 Meeting added successfully!' : '📅 Plan created successfully!')), '');
         loadTodaySlider();
         loadAllPlans(_planFilter);
       } catch (e) {
         toast('⚠️ ' + e.message, 'err');
       } finally {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = _addType === 'reminder' ? 'Set Reminder' : (_addType === 'meeting' ? 'Add Meeting' : '📅 Create Plan');
+        submitBtn.innerHTML = _editingPlanId ? 'Save Changes' : (_addType === 'reminder' ? 'Set Reminder' : (_addType === 'meeting' ? 'Add Meeting' : '📅 Create Plan'));
       }
     }
 

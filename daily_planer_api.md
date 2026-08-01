@@ -74,6 +74,12 @@ Naya plan create karne ke liye.
 > **Backend Time Validation Logic**: 
 > - Input dates ko server ke local timezone (`datetime.now()`) ke according check kiya jata hai taaki machine timezone mismatches na ho.
 > - Form bharne me lagne wale delay aur clock deviations ko avoid karne ke liye **12-hour buffer** (`now_local - timedelta(hours=12)`) lagaya gaya hai. Isse users current day ke kisi bhi past time ke liye task schedule kar sakte hain, par kal ya usse purane din ke tasks block hote hain.
+>
+> [!TIP]
+> **Typo Tolerance & Fallback Sync**:
+> - Parser Hinglish/Hindi typos ko tolerant level par support karta hai (e.g., `meetiang`, `metting` to `meeting`).
+> - Agar schedule request me kiske sath meeting karni hai ya timing missing hai, to response JSON me `status: "incomplete"` and specific targeted clarification text (`ask_clarification`) diya jata hai.
+> - Backend automated regex flow me schedule meetings ko directly `RootMeeting` aur `RootDailyPlan` tables dono me register karta hai.
 
 - **Endpoint**: `POST /api/root-agent/plans`
 - **Request Body (JSON)**:
@@ -291,6 +297,40 @@ Target date ke plans ko AI se analyze karne ke liye aur database me update/save 
 
 ---
 
+### 12. Edit Daily Plan
+Existing plan, meeting, or reminder ko edit/update karne ke liye.
+- **Endpoint**: `PUT /api/root-agent/plans/{plan_id}`
+- **Request Body (JSON)**:
+  ```json
+  {
+    "title": "Pushups Session (Optional)",
+    "description": "Updated description (Optional)",
+    "category": "health (Optional)",
+    "plan_date": "2026-08-01 (Optional)",
+    "plan_time": "19:30 (Optional)",
+    "status": "completed (Optional)"
+  }
+  ```
+- **Response Example**:
+  ```json
+  {
+    "success": true,
+    "plan": {
+      "plan_id": "a92e10f3c4b9d8a1",
+      "title": "Pushups Session",
+      "description": "Updated description",
+      "category": "health",
+      "plan_date": "2026-08-01",
+      "plan_time": "19:30",
+      "status": "completed",
+      "is_completed": true,
+      "from_meeting": false
+    }
+  }
+  ```
+
+---
+
 ## 🛠️ Frontend Integration Code Example
 
 Aap is code structure ko copy-paste karke apne kisi bhi custom page me integrate kar sakte hain:
@@ -389,6 +429,27 @@ async function togglePlanCompletion(planId) {
     loadPlans(); // UI refresh
   } catch (error) {
     console.error("Error updating plan:", error);
+  }
+}
+```
+
+### 5. Edit Daily Plan Function
+```javascript
+async function editPlan(planId, updatedFields) {
+  try {
+    const res = await fetch(`/api/root-agent/plans/${planId}`, {
+      method: 'PUT',
+      headers: hdrs(),
+      body: JSON.stringify(updatedFields)
+    });
+    
+    if (!res.ok) throw new Error("Update plan failed");
+    const data = await res.json();
+    console.log("Updated Plan details:", data.plan);
+    
+    loadPlans(); // UI refresh
+  } catch (error) {
+    console.error("Error editing plan:", error);
   }
 }
 ```

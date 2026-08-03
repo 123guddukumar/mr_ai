@@ -570,6 +570,30 @@ h1, h2, h3, h4, .brand-text {
   border-color: var(--red);
 }
 
+.modal-audio-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  margin-top: 4px;
+}
+
+.modal-audio-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
 .modal-right {
   display: flex;
   flex-direction: column;
@@ -900,6 +924,12 @@ h1, h2, h3, h4, .brand-text {
           </div>
         </div>
 
+        <!-- Audio Download button inside modal -->
+        <a id="modal-audio-btn" class="modal-audio-btn" href="#" target="_blank" style="display:none;">
+          <i data-lucide="headphones" style="width:16px;height:16px;"></i>
+          <span>Download Audio Summary</span>
+        </a>
+
         <button id="modal-del-btn" class="modal-del-btn" onclick="deleteCurrentBook()">
           <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
           <span>Delete Book</span>
@@ -1152,6 +1182,15 @@ function openBookModal(id) {
   document.getElementById('modal-category').textContent = book.category || 'General';
   document.getElementById('modal-read-time').textContent = book.read_time || '5 Min Read';
   document.getElementById('modal-target').textContent = book.target_audience || 'General readers';
+
+  // Audio Download button mapping
+  const audioBtn = document.getElementById('modal-audio-btn');
+  if (book.audio_url) {
+    audioBtn.href = book.audio_url;
+    audioBtn.style.display = 'flex';
+  } else {
+    audioBtn.style.display = 'none';
+  }
 
   // Key Lessons List Rendering
   const lessonsListContainer = document.getElementById('modal-lessons-list');

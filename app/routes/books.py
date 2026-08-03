@@ -37,6 +37,7 @@ class BookResponse(BaseModel):
     summary: str
     url: str
     video_url: str
+    audio_url: str
     read_time: str
     category: str
     target_audience: str
@@ -142,6 +143,21 @@ async def fetch_html_content(url: str) -> str:
         detail="Failed to fetch webpage (403 Forbidden). Cloudflare/security blocks requests. Try using a link ending with a '/' or a different book summary URL."
     )
 
+async def get_book_cover(title: str, author: str) -> str:
+    query = f"{title} {author}".strip()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"https://openlibrary.org/search.json?q={query.replace(' ', '+')}&limit=1")
+            if resp.status_code == 200:
+                docs = resp.json().get("docs", [])
+                if docs:
+                    cover_i = docs[0].get("cover_i")
+                    if cover_i:
+                        return f"https://covers.openlibrary.org/b/id/{cover_i}-L.jpg"
+    except Exception as e:
+        logger.warning(f"Failed to fetch cover from OpenLibrary for {query}: {e}")
+    return ""
+
 @router.post("/books", response_model=BookResponse, summary="Scrape and add a new book")
 async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     url_str = req.url.strip()
@@ -183,6 +199,15 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
             if "youtube.com/watch" in href or "youtu.be/" in href or "youtube.com/embed/" in href:
                 scraped_video_url = get_embed_url(href)
                 break
+
+    # Try to find audio download link from page links
+    scraped_audio_url = ""
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        text = a.get_text().lower()
+        if "download audio" in text or "audio version" in text or "audio & pdf" in text or "audio" in text or "ck.page" in href:
+            scraped_audio_url = href
+            break
 
     # Clean the HTML body to extract main text content
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
@@ -260,11 +285,24 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
 
     # Pick the best video url
     final_video = get_embed_url(extracted_data.get("video_url") or scraped_video_url)
+    if not final_video:
+        # Fallback to dynamic YouTube search list embed player
+        query_str = f"{final_title} {final_author} Book Summary".replace(" ", "+")
+        final_video = f"https://www.youtube.com/embed?listType=search&list={query_str}"
 
-    # Use meta image or fallback
-    final_cover_image = image_from_meta
-    if not final_cover_image or "logo" in final_cover_image.lower() or len(final_cover_image) < 10:
-        final_cover_image = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop"
+    # Pick best audio url
+    final_audio = scraped_audio_url or "https://four-minute-books.ck.page/8d4e2f2cf6"
+
+    # Fetch real cover page from OpenLibrary Cover API
+    logger.info(f"Searching OpenLibrary cover for: {final_title} by {final_author}")
+    real_cover = await get_book_cover(final_title, final_author)
+    if real_cover:
+        final_cover_image = real_cover
+    else:
+        # Fallback to OpenGraph image or placeholder
+        final_cover_image = image_from_meta
+        if not final_cover_image or "logo" in final_cover_image.lower() or len(final_cover_image) < 10 or "post-template" in final_cover_image.lower():
+            final_cover_image = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop"
 
     # Step 5: Save to Database
     db_book = Book(
@@ -277,6 +315,7 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
         summary=final_summary,
         url=url_str,
         video_url=final_video,
+        audio_url=final_audio,
         read_time=final_read_time,
         category=final_category,
         target_audience=final_target,

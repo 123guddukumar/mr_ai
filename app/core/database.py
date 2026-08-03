@@ -197,6 +197,7 @@ def init_db():
         "ALTER TABLE agent_public_messages ADD COLUMN IF NOT EXISTS file_name VARCHAR(300)",
         "ALTER TABLE agent_public_messages ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS video_url VARCHAR(1000) DEFAULT ''",
+        "ALTER TABLE books ADD COLUMN IF NOT EXISTS audio_url VARCHAR(1000) DEFAULT ''",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS read_time VARCHAR(100) DEFAULT ''",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS category VARCHAR(200) DEFAULT ''",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS target_audience TEXT DEFAULT ''",

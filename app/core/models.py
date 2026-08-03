@@ -1285,6 +1285,7 @@ class Book(Base):
     summary         = Column(Text, nullable=True)
     url             = Column(String(1000), nullable=True)
     video_url       = Column(String(1000), nullable=True, default="")
+    audio_url       = Column(String(1000), nullable=True, default="")
     read_time       = Column(String(100), nullable=True, default="")
     category        = Column(String(200), nullable=True, default="")
     target_audience = Column(Text, nullable=True, default="")
@@ -1308,6 +1309,7 @@ class Book(Base):
             "summary": self.summary or "",
             "url": self.url or "",
             "video_url": self.video_url or "",
+            "audio_url": self.audio_url or "",
             "read_time": self.read_time or "",
             "category": self.category or "",
             "target_audience": self.target_audience or "",

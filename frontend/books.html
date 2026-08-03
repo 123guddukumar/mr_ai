@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Book Summaries & Insights — VectorizeAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+:root {
+  --bg: #0d0f17;
+  --bg2: #13161f;
+  --bg3: #1a1e2e;
+  --card: #1e2235;
+  --border: #2a2f47;
+  --accent: #ff7a00;
+  --accent-glow: rgba(255, 122, 0, 0.15);
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --red: #f87171;
+  --green: #34d399;
+  --yellow: #fbbf24;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg2: #ffffff;
+  --bg3: #f1f5f9;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --accent: #ff7a00;
+  --accent-glow: rgba(255, 122, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+h1, h2, h3, h4, .brand-text {
+  font-family: 'Outfit', sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.topbar-logo {
+  font-size: 16px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), #ffb347);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.nav-links {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+
+.nav-link {
+  font-size: 13px;
+  color: var(--text2);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all .2s;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255,255,255,.05);
+}
+
+.theme-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  background: rgba(255,255,255,.05);
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.page-header {
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--text), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.page-sub {
+  font-size: 14px;
+  color: var(--text2);
+}
+
+/* Link input container */
+.search-container {
+  max-width: 700px;
+  margin: 0 auto 40px auto;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+
+.search-container:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text3);
+}
+
+.add-btn {
+  background: linear-gradient(135deg, var(--accent), #ff8c1a);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255,122,0,0.3);
+}
+
+.add-btn:active {
+  transform: translateY(0);
+}
+
+/* Books Grid */
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+@media(max-width: 1024px) {
+  .books-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media(max-width: 768px) {
+  .books-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media(max-width: 480px) {
+  .books-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Book Card */
+.book-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.book-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.cover-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: var(--bg3);
+  overflow: hidden;
+}
+
+.book-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.book-card:hover .book-cover {
+  transform: scale(1.05);
+}
+
+.bookmark-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(13, 15, 23, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+
+.bookmark-icon:hover {
+  transform: scale(1.1);
+  background: var(--accent);
+  color: #fff;
+}
+
+.book-details {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.book-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 42px; /* Fix height to align grids */
+}
+
+.book-author {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-rating-row {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.star-icon {
+  color: var(--yellow);
+  fill: var(--yellow);
+  width: 14px;
+  height: 14px;
+}
+
+.rating-value {
+  color: var(--text);
+}
+
+.rating-count {
+  color: var(--text3);
+  font-weight: 400;
+}
+
+/* Skeleton Loading Card */
+.skeleton-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 2/3.5;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-img {
+  width: 100%;
+  aspect-ratio: 2 / 2.6;
+  background: var(--bg3);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-text {
+  height: 14px;
+  background: var(--bg3);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-text.title {
+  width: 80%;
+  height: 18px;
+}
+
+.skeleton-text.author {
+  width: 50%;
+}
+
+.skeleton-text.rating {
+  width: 35%;
+  margin-top: auto;
+}
+
+.skeleton-img::after, .skeleton-text::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 15, 23, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  transform: scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.modal-overlay.open .modal-container {
+  transform: scale(1);
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--bg3);
+  border: none;
+  color: var(--text2);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.modal-close:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.modal-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+  padding: 32px;
+}
+
+@media(max-width: 700px) {
+  .modal-layout {
+    grid-template-columns: 1fr;
+  }
+  .modal-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.modal-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-cover-img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+}
+
+.modal-rating-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.modal-del-btn {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--red);
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.modal-del-btn:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+.modal-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.modal-author {
+  font-size: 16px;
+  color: var(--text2);
+  font-weight: 500;
+  margin-top: -12px;
+}
+
+.modal-quote-box {
+  background: linear-gradient(135deg, var(--bg3), rgba(255, 122, 0, 0.03));
+  border-left: 4px solid var(--accent);
+  border-radius: 0 16px 16px 0;
+  padding: 16px 20px;
+  position: relative;
+}
+
+.quote-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  opacity: 0.05;
+  width: 48px;
+  height: 48px;
+  color: var(--accent);
+}
+
+.modal-quote-text {
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  position: relative;
+  z-index: 2;
+}
+
+.summary-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-summary-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text2);
+  white-space: pre-line;
+}
+
+/* Toast Notification */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 600;
+}
+
+.toast {
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: toast-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  max-width: 320px;
+}
+
+@keyframes toast-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.toast.success { background: #052e16; border: 1px solid #166534; color: #86efac; }
+.toast.error { background: #450a0a; border: 1px solid #7f1d1d; color: #fca5a5; }
+.toast.info { background: #0f172a; border: 1px solid var(--border); color: var(--accent); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text3);
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--text3);
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.empty-state p {
+  font-size: 13px;
+  max-width: 340px;
+}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="section-dot"></div>
+    <span>VectorizeAI</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard" class="nav-link">Dashboard</a>
+    <a href="/playground" class="nav-link">Playground</a>
+    <a href="/memory" class="nav-link">Memory Bots</a>
+    <a href="/reels" class="nav-link">AI Reels</a>
+    <a href="/books" class="nav-link" style="color: var(--accent); font-weight: 700;">Book Summaries</a>
+    <a href="/help" class="nav-link">Help</a>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">
+      <i data-lucide="sun" id="theme-icon"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Main Page -->
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Personal Book Library</h1>
+    <p class="page-sub">Paste a book summary link (from Goodreads, Four Minute Books, or Wikipedia) to auto-extract details and ratings.</p>
+  </div>
+
+  <!-- Link Input Section -->
+  <div class="search-container">
+    <input type="text" id="book-link-input" class="search-input" placeholder="Paste book URL here (e.g. https://fourminutebooks.com/the-alchemist-summary/)..." onkeydown="handleSearchKey(event)">
+    <button class="add-btn" onclick="addBook()">
+      <i data-lucide="plus" style="width:16px;height:16px;"></i>
+      <span>Add Book</span>
+    </button>
+  </div>
+
+  <!-- Books Grid -->
+  <div class="books-grid" id="books-grid">
+    <!-- Books dynamically loaded here -->
+  </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal-overlay" id="book-modal" onclick="closeBookModal()">
+  <div class="modal-container" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeBookModal()">
+      <i data-lucide="x" style="width:18px;height:18px;"></i>
+    </button>
+    <div class="modal-layout">
+      <div class="modal-left">
+        <img id="modal-cover-img" class="modal-cover-img" src="" alt="Book Cover">
+        <div class="modal-rating-card">
+          <i data-lucide="star" class="star-icon"></i>
+          <span id="modal-rating-val">4.5</span>
+          <span id="modal-rating-count" class="rating-count">(9.5k)</span>
+        </div>
+        <button id="modal-del-btn" class="modal-del-btn" onclick="deleteCurrentBook()">
+          <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+          <span>Delete Book</span>
+        </button>
+      </div>
+      <div class="modal-right">
+        <h2 id="modal-title" class="modal-title">Book Title</h2>
+        <p id="modal-author" class="modal-author">Author Name</p>
+        
+        <div class="modal-quote-box">
+          <i data-lucide="quote" class="quote-icon"></i>
+          <p id="modal-quote" class="modal-quote-text">"Quote text goes here."</p>
+        </div>
+        
+        <div class="summary-section">
+          <div class="summary-heading">
+            <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+            <span>Jeevan ka Sar (Summary)</span>
+          </div>
+          <p id="modal-summary-content" class="modal-summary-content">Detailed summary...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// State Management
+let booksList = [];
+let currentOpenBookId = null;
+
+// Initialize Lucide Icons
+lucide.createIcons();
+
+// Theme Toggle logic
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+  const icon = document.getElementById('theme-icon');
+  if (theme === 'dark') {
+    icon.setAttribute('data-lucide', 'sun');
+  } else {
+    icon.setAttribute('data-lucide', 'moon');
+  }
+  lucide.createIcons();
+}
+
+// Fetch all books on load
+async function fetchBooks() {
+  const grid = document.getElementById('books-grid');
+  grid.innerHTML = '';
+  
+  // Show loading card state
+  for(let i=0; i<4; i++) {
+    grid.innerHTML += `
+      <div class="skeleton-card">
+        <div class="skeleton-img"></div>
+        <div class="skeleton-text title"></div>
+        <div class="skeleton-text author"></div>
+        <div class="skeleton-text rating"></div>
+      </div>
+    `;
+  }
+
+  try {
+    const res = await fetch('/api/books');
+    if (!res.ok) throw new Error('Failed to load books');
+    booksList = await res.json();
+    renderBooks();
+  } catch (err) {
+    showToast('Error loading books', 'error');
+    grid.innerHTML = `
+      <div class="empty-state">
+        <i data-lucide="alert-triangle" class="empty-icon"></i>
+        <h3>Failed to load library</h3>
+        <p>There was a connection problem fetching books. Please refresh or try again.</p>
+      </div>
+    `;
+    lucide.createIcons();
+  }
+}
+
+// Render Book Cards in Grid
+function renderBooks() {
+  const grid = document.getElementById('books-grid');
+  grid.innerHTML = '';
+
+  if (booksList.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <i data-lucide="book-marked" class="empty-icon"></i>
+        <h3>No books in your library</h3>
+        <p>Paste a book summary website link above and click 'Add Book' to get started!</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  booksList.forEach(book => {
+    grid.innerHTML += `
+      <div class="book-card" onclick="openBookModal(${book.id})">
+        <div class="cover-wrapper">
+          <img src="${book.cover_image_url || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800'}" alt="${book.title}" class="book-cover" onerror="this.src='https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800'">
+          <div class="bookmark-icon">
+            <i data-lucide="bookmark" style="width:14px;height:14px;fill:currentColor;"></i>
+          </div>
+        </div>
+        <div class="book-details">
+          <h3 class="book-title" title="${book.title}">${book.title}</h3>
+          <p class="book-author">${book.author}</p>
+          <div class="book-rating-row">
+            <i data-lucide="star" class="star-icon"></i>
+            <span class="rating-value">${book.rating}</span>
+            <span class="rating-count">(${book.rating_count})</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  lucide.createIcons();
+}
+
+// Add a Book
+async function addBook() {
+  const input = document.getElementById('book-link-input');
+  const url = input.value.trim();
+  if (!url) {
+    showToast('Please paste a book link first', 'error');
+    return;
+  }
+
+  // Prepend skeleton card at the beginning of the grid
+  const grid = document.getElementById('books-grid');
+  // If there was an empty state, clear it
+  if (booksList.length === 0) {
+    grid.innerHTML = '';
+  }
+  
+  const tempId = 'temp-' + Date.now();
+  const skeletonHTML = `
+    <div class="skeleton-card" id="${tempId}">
+      <div class="skeleton-img"></div>
+      <div class="skeleton-text title"></div>
+      <div class="skeleton-text author"></div>
+      <div class="skeleton-text rating"></div>
+    </div>
+  `;
+  grid.insertAdjacentHTML('afterbegin', skeletonHTML);
+  input.value = '';
+
+  try {
+    const res = await fetch('/api/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.detail || 'Failed to add book');
+    }
+    
+    const newBook = await res.json();
+    
+    // Check if book was already in library
+    const exists = booksList.find(b => b.id === newBook.id);
+    if (!exists) {
+      booksList.unshift(newBook);
+    } else {
+      showToast('Book is already in library!', 'info');
+    }
+    
+    showToast(`"${newBook.title}" successfully added!`, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error parsing book link', 'error');
+  } finally {
+    // Remove temporary skeleton
+    const skeleton = document.getElementById(tempId);
+    if (skeleton) skeleton.remove();
+    renderBooks();
+  }
+}
+
+function handleSearchKey(event) {
+  if (event.key === 'Enter') {
+    addBook();
+  }
+}
+
+// Modal management
+function openBookModal(id) {
+  const book = booksList.find(b => b.id === id);
+  if (!book) return;
+  
+  currentOpenBookId = id;
+  
+  document.getElementById('modal-cover-img').src = book.cover_image_url || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800';
+  document.getElementById('modal-rating-val').textContent = book.rating;
+  document.getElementById('modal-rating-count').textContent = `(${book.rating_count})`;
+  document.getElementById('modal-title').textContent = book.title;
+  document.getElementById('modal-author').textContent = book.author;
+  document.getElementById('modal-quote').textContent = book.bookmark_quote || 'Follow your Personal Legend.';
+  document.getElementById('modal-summary-content').textContent = book.summary || 'Summary details unavailable.';
+  
+  const modal = document.getElementById('book-modal');
+  modal.classList.add('open');
+}
+
+function closeBookModal() {
+  const modal = document.getElementById('book-modal');
+  modal.classList.remove('open');
+  currentOpenBookId = null;
+}
+
+// Delete Book
+async function deleteCurrentBook() {
+  if (!currentOpenBookId) return;
+  const book = booksList.find(b => b.id === currentOpenBookId);
+  if (!book) return;
+  
+  if (!confirm(`Are you sure you want to remove "${book.title}" from your library?`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/api/books/${currentOpenBookId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete book');
+    
+    booksList = booksList.filter(b => b.id !== currentOpenBookId);
+    showToast('Book removed from library', 'info');
+    closeBookModal();
+    renderBooks();
+  } catch (err) {
+    showToast('Failed to delete book', 'error');
+  }
+}
+
+// Helper: Show toast notification
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  let iconName = 'check-circle';
+  if (type === 'error') iconName = 'alert-octagon';
+  if (type === 'info') iconName = 'info';
+  
+  toast.innerHTML = `
+    <i data-lucide="${iconName}" style="width:16px;height:16px;flex-shrink:0;"></i>
+    <span>${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  lucide.createIcons();
+  
+  setTimeout(() => {
+    toast.style.animation = 'toast-out 0.3s forwards';
+    toast.addEventListener('animationend', () => toast.remove());
+  }, 4000);
+}
+
+// Add animation rule for toast-out
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+@keyframes toast-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-20px); opacity: 0; }
+}
+`;
+document.head.appendChild(styleSheet);
+
+// Initialize Page
+initTheme();
+fetchBooks();
+
+</script>
+</body>
+</html>

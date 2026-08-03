@@ -17,7 +17,7 @@ from app.routes import (
     reels as reels_routes, agents as agents_routes, social as social_routes,
     classroom as classroom_routes, extension as extension_routes,
     ugc as ugc_routes, root_agent as root_agent_routes, whatsapp as whatsapp_routes,
-    telephony as telephony_routes
+    telephony as telephony_routes, books as books_routes
 )
 from app.services.embedder import get_embedding_model
 from app.services.vector_store import get_vector_store
@@ -97,6 +97,7 @@ app.include_router(ugc_routes.router, prefix="/api", tags=["UGC Creator"])
 app.include_router(root_agent_routes.router, prefix="/api", tags=["Root Personal Assistant"])
 app.include_router(whatsapp_routes.router, prefix="/api", tags=["WhatsApp"])
 app.include_router(telephony_routes.router, prefix="/api", tags=["Telephony"])
+app.include_router(books_routes.router, prefix="/api", tags=["Books"])
 
 
 # ── Serve Frontend ────────────────────────────────────────────────────────────
@@ -170,6 +171,10 @@ if os.path.exists(frontend_path):
     @app.get("/reels", include_in_schema=False)
     async def reels_page():
         return FileResponse(os.path.join(frontend_path, "reels.html"))
+
+    @app.get("/books", include_in_schema=False)
+    async def books_page():
+        return FileResponse(os.path.join(frontend_path, "books.html"))
 
     @app.get("/embed/{memory_id}", include_in_schema=False)
     async def embed_page(memory_id: str):

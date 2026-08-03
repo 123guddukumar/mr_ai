@@ -1985,12 +1985,13 @@ async def analyze_daily_plans(
         "You analyze the owner's daily schedule and plans to assess how intentionally their time was allocated, structured, and how it can be improved. Your job is not to measure busyness, but to answer: 'Did the user invest their available time in the right things, with the right structure, and what should change next?'\n\n"
         "You MUST return a JSON response object matching this exact schema:\n"
         "{\n"
-        "  \"summary\": \"Must start with 'PACE — [Date]'. Provide a brief analytical summary of the entire day's plans. End with the Daily Insight as the last sentence (e.g. 'Daily Insight: Your calendar protected time for your core priorities, but fragmented meetings reduced execution blocks.'). Written in Hinglish/Hindi or English.\",\n"
+        "  \"summary\": \"Must start with 'PACE — [Date]'. Provide a brief analytical summary of the entire day's plans. End with the Day Insight as the last sentence (e.g. 'Day Insight: Your calendar protected time for your core priorities, but fragmented meetings reduced execution blocks.'). Written in Hinglish/Hindi or English.\",\n"
         "  \"analysis\": \"P — Priorities:\\nExplain whether the calendar appears aligned with the user's priorities, highlighting the strongest alignment and most important apparent gap.\\n\\nA — Allocation:\\nSummarise where scheduled time went, focusing on patterns, durations, or proportions of scheduled work, meetings, personal time, etc. Written in Hinglish/Hindi or English.\",\n"
         "  \"feedback\": \"C — Control:\\nExplain how intentionally the day was structured. Identify fragmentation, back-to-back meetings, focus blocks, buffers, context switching, and whether structure was intentional or reactive. Written in Hinglish/Hindi or English.\",\n"
         "  \"key_points\": [\n"
-        "    \"E — Efficiency concrete action 1 (e.g., 'Your afternoon contains three short-gap meetings. Consider batching them to protect a longer block.')\",\n"
-        "    \"E — Efficiency concrete action 2\"\n"
+        "    \"Improvement 1 (e.g., 'Schedule a 2-hour morning focus block for your core tasks.')\",\n"
+        "    \"Improvement 2 (e.g., 'Batch small admin tasks together.')\",\n"
+        "    \"Improvement 3 (e.g., 'Reduce meeting fragmentation by protecting open slot.')\"\n"
         "  ],\n"
         "  \"pace_structure\": {\n"
         "    \"priorities\": {\n"
@@ -2026,7 +2027,7 @@ async def analyze_daily_plans(
         "        }\n"
         "      ]\n"
         "    },\n"
-        "    \"daily_insight\": \"Brief, punchy final insight sentence matching the last sentence of the summary.\"\n"
+        "    \"day_insight\": \"Brief, punchy final insight sentence matching the last sentence of the summary.\"\n"
         "  }\n"
         "}\n\n"
         "EVIDENCE & TONE RULES:\n"
@@ -2034,6 +2035,7 @@ async def analyze_daily_plans(
         "2. Evidence: Base conclusions on visible calendar evidence. For Allocation category durations, sum/estimate reasonable times for tasks (e.g. meetings = 30-60 mins, focus blocks = 1-2 hours) to sum up to total_scheduled.\n"
         "3. Language: Hinglish/Hindi or English matching the user.\n"
         "4. If no plans exist: Suggest the user rest or enjoy their free time, total_scheduled '0h 00m' with 'Open Time' at 100%.\n"
+        "5. The 'key_points' array MUST contain exactly 3 concrete, actionable improvements for the user's daily plan based on the analysis. Written in Hinglish/Hindi or English.\n"
         "Return ONLY the raw JSON string matching the structure above."
     )
 
@@ -2103,6 +2105,14 @@ async def analyze_daily_plans(
                 analyzed_data[key] = "Not specified"
         if "key_points" not in analyzed_data or not isinstance(analyzed_data["key_points"], list):
             analyzed_data["key_points"] = []
+            
+        # Ensure pace_structure contains day_insight/daily_insight compatibility
+        if "pace_structure" in analyzed_data and isinstance(analyzed_data["pace_structure"], dict):
+            ps = analyzed_data["pace_structure"]
+            if "day_insight" in ps:
+                ps["daily_insight"] = ps["day_insight"]
+            elif "daily_insight" in ps:
+                ps["day_insight"] = ps["daily_insight"]
     except Exception as parse_err:
         logger.error(f"Failed to parse LLM analysis: {parse_err}. Raw content: {raw_result}")
         analyzed_data = {

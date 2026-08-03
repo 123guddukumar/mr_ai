@@ -1271,6 +1271,31 @@ class AgentFeedback(Base):
         }
 
 
+class Book(Base):
+    """Saved books metadata scraped from links."""
+    __tablename__ = "books"
 
+    id              = Column(Integer, primary_key=True, index=True)
+    title           = Column(String(500), nullable=False)
+    author          = Column(String(200), nullable=True)
+    rating          = Column(String(50), nullable=True)
+    rating_count    = Column(String(50), nullable=True)
+    cover_image_url = Column(String(1000), nullable=True)
+    bookmark_quote  = Column(Text, nullable=True)
+    summary         = Column(Text, nullable=True)
+    url             = Column(String(1000), nullable=True)
+    created_at      = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "author": self.author or "Unknown",
+            "rating": self.rating or "N/A",
+            "rating_count": self.rating_count or "N/A",
+            "cover_image_url": self.cover_image_url or "",
+            "bookmark_quote": self.bookmark_quote or "",
+            "summary": self.summary or "",
+            "url": self.url or "",
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+        }

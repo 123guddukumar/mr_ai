@@ -36125,6 +36125,15 @@ Also include a "meta" object at the end:
         container.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:16px; animation: dbFadeIn 0.3s ease-out;">
             
+            <!-- Day Insight Card -->
+            <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:16px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; margin-top:4px;">
+              <span style="font-size:18px;">💡</span>
+              <div style="flex:1;">
+                <div style="font-size:10.5px; font-weight:800; color:#a78bfa; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Day Insight</div>
+                <div style="font-size:11.5px; color:var(--text2); line-height:1.45;">${escHtml(pace.day_insight || pace.daily_insight || data.summary)}</div>
+              </div>
+            </div>
+            
             <!-- Priorities Card -->
             <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -36255,14 +36264,17 @@ Also include a "meta" object at the end:
               </div>
             </div>
 
-            <!-- Daily Insight Card -->
-            <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:16px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; margin-top:4px;">
-              <span style="font-size:18px;">💡</span>
-              <div style="flex:1;">
-                <div style="font-size:10.5px; font-weight:800; color:#a78bfa; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Daily Insight</div>
-                <div style="font-size:11.5px; color:var(--text2); line-height:1.45;">${escHtml(pace.daily_insight || data.summary)}</div>
+            <!-- Top 3 Improvements Card -->
+            ${data.key_points && data.key_points.length > 0 ? `
+            <div style="background:rgba(236,72,153,0.05); border:1px solid rgba(236,72,153,0.15); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+              <div style="font-size:10.5px; font-weight:800; color:#f472b6; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                🚀 Top 3 Improvements
               </div>
+              <ul style="margin:4px 0 0 0; padding:0 0 0 16px; font-size:11.5px; color:var(--text2); line-height:1.45; display:flex; flex-direction:column; gap:6px;">
+                ${data.key_points.slice(0, 3).map(kp => `<li>${escHtml(kp)}</li>`).join('')}
+              </ul>
             </div>
+            ` : ''}
             
             <div style="font-size:9.5px; color:var(--text3); text-align:right; margin-top:4px;">
               Last Updated: ${new Date(data.updated_at || data.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
@@ -37383,12 +37395,12 @@ Also include a "meta" object at the end:
           </div>
         </div>
 
-        <!-- Right side: AI Daily Analysis & Insights -->
+        <!-- Right side: AI Day Analysis & Insights -->
         <div id="db-planner-ai-panel"
           style="flex:1.2; display:flex; flex-direction:column; overflow:hidden; background:rgba(99,102,241,0.02); border:1px solid rgba(99,102,241,0.15); border-radius:12px; padding:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom: 1px solid rgba(99,102,241,0.15); padding-bottom:8px;">
             <div style="font-size:11px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
-              🧠 AI Daily Insights
+              🧠 AI Day Insights
             </div>
             <button id="db-btn-run-ai-analysis" onclick="runDashboardPlanAIAnalysis()"
               style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; font-size:10.5px; font-weight:800; padding:4px 10px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">

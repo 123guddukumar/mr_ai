@@ -1284,9 +1284,19 @@ class Book(Base):
     bookmark_quote  = Column(Text, nullable=True)
     summary         = Column(Text, nullable=True)
     url             = Column(String(1000), nullable=True)
+    video_url       = Column(String(1000), nullable=True, default="")
+    read_time       = Column(String(100), nullable=True, default="")
+    category        = Column(String(200), nullable=True, default="")
+    target_audience = Column(Text, nullable=True, default="")
+    key_lessons     = Column(Text, nullable=True, default="[]")
     created_at      = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
+        import json
+        try:
+            lessons_parsed = json.loads(self.key_lessons or '[]')
+        except Exception:
+            lessons_parsed = []
         return {
             "id": self.id,
             "title": self.title,
@@ -1297,5 +1307,10 @@ class Book(Base):
             "bookmark_quote": self.bookmark_quote or "",
             "summary": self.summary or "",
             "url": self.url or "",
+            "video_url": self.video_url or "",
+            "read_time": self.read_time or "",
+            "category": self.category or "",
+            "target_audience": self.target_audience or "",
+            "key_lessons": lessons_parsed,
             "created_at": self.created_at.isoformat() if self.created_at else "",
         }

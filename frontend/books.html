@@ -299,11 +299,40 @@ h1, h2, h3, h4, .brand-text {
   color: #fff;
 }
 
+.read-time-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(13, 15, 23, 0.75);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
 .book-details {
   padding: 16px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+}
+
+.category-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background: rgba(255, 122, 0, 0.08);
+  color: var(--accent);
+  margin-bottom: 8px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .book-title {
@@ -435,7 +464,7 @@ h1, h2, h3, h4, .brand-text {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 24px;
-  max-width: 800px;
+  max-width: 840px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -479,7 +508,7 @@ h1, h2, h3, h4, .brand-text {
   padding: 32px;
 }
 
-@media(max-width: 700px) {
+@media(max-width: 768px) {
   .modal-layout {
     grid-template-columns: 1fr;
   }
@@ -547,8 +576,36 @@ h1, h2, h3, h4, .brand-text {
   gap: 20px;
 }
 
+.modal-meta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.modal-badge {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.modal-badge.category {
+  color: var(--accent);
+  border-color: rgba(255, 122, 0, 0.3);
+  background: rgba(255, 122, 0, 0.05);
+}
+
+.modal-badge.readtime {
+  color: var(--yellow);
+  border-color: rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.05);
+}
+
 .modal-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text);
   line-height: 1.3;
@@ -588,21 +645,120 @@ h1, h2, h3, h4, .brand-text {
   z-index: 2;
 }
 
-.summary-heading {
-  font-size: 16px;
-  font-weight: 700;
+/* Sections inside modal */
+.section-title {
+  font-size: 15px;
+  font-weight: 800;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .modal-summary-content {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text2);
   white-space: pre-line;
+}
+
+/* Target Audience box */
+.target-audience-box {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.target-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.target-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #818cf8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.target-text {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Lessons Styling */
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lesson-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.lesson-number {
+  background: var(--accent);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.lesson-content {
+  flex: 1;
+}
+
+.lesson-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.lesson-desc {
+  font-size: 12.5px;
+  color: var(--text2);
+  line-height: 1.55;
+}
+
+/* Video Player */
+.video-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.video-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 
 /* Toast Notification */
@@ -667,6 +823,14 @@ h1, h2, h3, h4, .brand-text {
   font-size: 13px;
   max-width: 340px;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
 </style>
 </head>
 <body>
@@ -726,12 +890,28 @@ h1, h2, h3, h4, .brand-text {
           <span id="modal-rating-val">4.5</span>
           <span id="modal-rating-count" class="rating-count">(9.5k)</span>
         </div>
+        
+        <!-- Target Audience card inside modal -->
+        <div class="target-audience-box">
+          <span class="target-icon">🎯</span>
+          <div>
+            <div class="target-title">Target Audience</div>
+            <div id="modal-target" class="target-text">General readers</div>
+          </div>
+        </div>
+
         <button id="modal-del-btn" class="modal-del-btn" onclick="deleteCurrentBook()">
           <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
           <span>Delete Book</span>
         </button>
       </div>
       <div class="modal-right">
+        <!-- Badges row -->
+        <div class="modal-meta-row">
+          <span id="modal-category" class="modal-badge category">Self-Improvement</span>
+          <span id="modal-read-time" class="modal-badge readtime">5 Min Read</span>
+        </div>
+
         <h2 id="modal-title" class="modal-title">Book Title</h2>
         <p id="modal-author" class="modal-author">Author Name</p>
         
@@ -740,13 +920,35 @@ h1, h2, h3, h4, .brand-text {
           <p id="modal-quote" class="modal-quote-text">"Quote text goes here."</p>
         </div>
         
-        <div class="summary-section">
-          <div class="summary-heading">
+        <!-- Summary Section -->
+        <div>
+          <div class="section-title">
             <i data-lucide="book-open" style="width:16px;height:16px;"></i>
             <span>Jeevan ka Sar (Summary)</span>
           </div>
           <p id="modal-summary-content" class="modal-summary-content">Detailed summary...</p>
         </div>
+
+        <!-- Lessons Section -->
+        <div id="lessons-section" style="display:none;">
+          <div class="section-title">
+            <i data-lucide="award" style="width:16px;height:16px;"></i>
+            <span>Top 3 Key Lessons</span>
+          </div>
+          <div class="lessons-list" id="modal-lessons-list">
+            <!-- Dynamic Lessons loaded here -->
+          </div>
+        </div>
+
+        <!-- Video Embed Section -->
+        <div id="video-section" style="display:none;">
+          <div class="section-title">
+            <i data-lucide="video" style="width:16px;height:16px;"></i>
+            <span>Video Summary</span>
+          </div>
+          <div id="modal-video-wrap"></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -845,11 +1047,13 @@ function renderBooks() {
       <div class="book-card" onclick="openBookModal(${book.id})">
         <div class="cover-wrapper">
           <img src="${book.cover_image_url || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800'}" alt="${book.title}" class="book-cover" onerror="this.src='https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800'">
+          <div class="read-time-badge">⏱️ ${book.read_time || '5 Min'}</div>
           <div class="bookmark-icon">
             <i data-lucide="bookmark" style="width:14px;height:14px;fill:currentColor;"></i>
           </div>
         </div>
         <div class="book-details">
+          <span class="category-tag">${book.category || 'General'}</span>
           <h3 class="book-title" title="${book.title}">${book.title}</h3>
           <p class="book-author">${book.author}</p>
           <div class="book-rating-row">
@@ -876,7 +1080,6 @@ async function addBook() {
 
   // Prepend skeleton card at the beginning of the grid
   const grid = document.getElementById('books-grid');
-  // If there was an empty state, clear it
   if (booksList.length === 0) {
     grid.innerHTML = '';
   }
@@ -907,7 +1110,6 @@ async function addBook() {
     
     const newBook = await res.json();
     
-    // Check if book was already in library
     const exists = booksList.find(b => b.id === newBook.id);
     if (!exists) {
       booksList.unshift(newBook);
@@ -919,7 +1121,6 @@ async function addBook() {
   } catch (err) {
     showToast(err.message || 'Error parsing book link', 'error');
   } finally {
-    // Remove temporary skeleton
     const skeleton = document.getElementById(tempId);
     if (skeleton) skeleton.remove();
     renderBooks();
@@ -947,6 +1148,45 @@ function openBookModal(id) {
   document.getElementById('modal-quote').textContent = book.bookmark_quote || 'Follow your Personal Legend.';
   document.getElementById('modal-summary-content').textContent = book.summary || 'Summary details unavailable.';
   
+  // Extra detailed fields mapping
+  document.getElementById('modal-category').textContent = book.category || 'General';
+  document.getElementById('modal-read-time').textContent = book.read_time || '5 Min Read';
+  document.getElementById('modal-target').textContent = book.target_audience || 'General readers';
+
+  // Key Lessons List Rendering
+  const lessonsListContainer = document.getElementById('modal-lessons-list');
+  lessonsListContainer.innerHTML = '';
+  if (book.key_lessons && book.key_lessons.length > 0) {
+    document.getElementById('lessons-section').style.display = 'block';
+    book.key_lessons.forEach((lesson, index) => {
+      lessonsListContainer.innerHTML += `
+        <div class="lesson-item">
+          <div class="lesson-number">${index + 1}</div>
+          <div class="lesson-content">
+            <div class="lesson-title">${lesson.title || 'Lesson Key'}</div>
+            <div class="lesson-desc">${lesson.description || 'Lesson description details.'}</div>
+          </div>
+        </div>
+      `;
+    });
+  } else {
+    document.getElementById('lessons-section').style.display = 'none';
+  }
+
+  // Video Summary iframe renderer
+  const videoWrap = document.getElementById('modal-video-wrap');
+  if (book.video_url) {
+    document.getElementById('video-section').style.display = 'block';
+    videoWrap.innerHTML = `
+      <div class="video-container">
+        <iframe src="${book.video_url}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+      </div>
+    `;
+  } else {
+    document.getElementById('video-section').style.display = 'none';
+    videoWrap.innerHTML = '';
+  }
+
   const modal = document.getElementById('book-modal');
   modal.classList.add('open');
 }
@@ -954,6 +1194,8 @@ function openBookModal(id) {
 function closeBookModal() {
   const modal = document.getElementById('book-modal');
   modal.classList.remove('open');
+  // Clear video content so it stops playing in the background
+  document.getElementById('modal-video-wrap').innerHTML = '';
   currentOpenBookId = null;
 }
 

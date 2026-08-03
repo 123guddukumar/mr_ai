@@ -6,10 +6,10 @@ import logging
 import httpx
 import json
 import re
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from bs4 import BeautifulSoup
 
 from app.core.database import get_db
@@ -22,6 +22,10 @@ router = APIRouter()
 class BookAddRequest(BaseModel):
     url: str
 
+class KeyLessonSchema(BaseModel):
+    title: str
+    description: str
+
 class BookResponse(BaseModel):
     id: int
     title: str
@@ -32,6 +36,11 @@ class BookResponse(BaseModel):
     bookmark_quote: str
     summary: str
     url: str
+    video_url: str
+    read_time: str
+    category: str
+    target_audience: str
+    key_lessons: List[Dict[str, Any]]
     created_at: str
 
     class Config:
@@ -39,12 +48,21 @@ class BookResponse(BaseModel):
 
 def clean_json_string(s: str) -> str:
     s = s.strip()
-    # Remove markdown code blocks if present
     if s.startswith("```"):
         s = re.sub(r"^```(?:json)?\n", "", s)
         s = re.sub(r"\n```$", "", s)
     s = s.strip()
     return s
+
+def get_embed_url(url: str) -> str:
+    if not url:
+        return ""
+    # Look for YouTube watch or short links and extract ID
+    match = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([a-zA-Z0-9_-]+)", url)
+    if match:
+        video_id = match.group(1)
+        return f"https://www.youtube.com/embed/{video_id}"
+    return url
 
 @router.get("/books", response_model=List[BookResponse], summary="Get all saved books")
 async def get_books(db: Session = Depends(get_db)):
@@ -89,6 +107,23 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     title_from_meta = og_title.get("content", "").strip() if og_title else ""
     image_from_meta = og_image.get("content", "").strip() if og_image else ""
 
+    # Try to find embedded YouTube video directly in the html
+    scraped_video_url = ""
+    for iframe in soup.find_all("iframe"):
+        src = iframe.get("src", "")
+        if "youtube.com" in src or "youtu.be" in src:
+            if src.startswith("//"):
+                src = "https:" + src
+            scraped_video_url = get_embed_url(src)
+            break
+
+    if not scraped_video_url:
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if "youtube.com/watch" in href or "youtu.be/" in href or "youtube.com/embed/" in href:
+                scraped_video_url = get_embed_url(href)
+                break
+
     # Clean the HTML body to extract main text content
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.extract()
@@ -97,18 +132,27 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     # Truncate text to fit context limits (around 8000 characters)
     truncated_text = page_text[:8000]
 
-    # Step 3: Use LLM to extract book details (Title, Author, Rating, summary, quote)
+    # Step 3: Use LLM to extract book details
     llm_prompt = (
         "You are a helpful assistant specialized in extracting book details from webpage contents.\n"
-        "Analyze the provided text from a book summary webpage and extract the following details.\n"
+        "Analyze the provided text from a book summary webpage and extract the details.\n"
         "Return ONLY a raw JSON object (with no backticks, no markdown formatting, no leading/trailing text) containing exactly these fields:\n"
         "{\n"
         '  "title": "Clean book title (e.g. \'The Alchemist\')",\n'
         '  "author": "Author name (e.g. \'Paulo Coelho\')",\n'
-        '  "rating": "Average rating value if mentioned (e.g. \'3.9\' or \'4.5\'). If not mentioned, return \'4.2\' as a reasonable default.",\n'
-        '  "rating_count": "Total rating count if mentioned (e.g. \'2.6M\' or \'15k\'). If not mentioned, return \'10k\' as a default.",\n'
-        '  "bookmark_quote": "A famous inspirational quote, line, or bookmark motto from this book (preferably the most famous one).",\n'
-        '  "summary": "A detailed, engaging, and rich summary of the book. Write it in Hinglish (a natural blend of Hindi and English written in the English alphabet, e.g. \'Santiago ek charwaha hai...\') with 2-3 paragraphs."\n'
+        '  "rating": "Average rating value if mentioned (e.g. \'3.9\' or \'4.5\'). If not mentioned, return \'4.2\'.",\n'
+        '  "rating_count": "Total rating count if mentioned (e.g. \'2.6M\' or \'15k\'). If not, return \'10k\'.",\n'
+        '  "bookmark_quote": "A famous inspirational quote or bookmark motto from this book.",\n'
+        '  "summary": "A detailed, engaging, and rich summary of the book. Write it in Hinglish (a natural blend of Hindi and English written in the English alphabet, e.g. \'Santiago ek charwaha hai...\') with 2-3 paragraphs.",\n'
+        '  "read_time": "Reading time if mentioned (e.g. \'4 Min Read\'). If not, return \'5 Min Read\'.",\n'
+        '  "category": "One or two category tags representing the genre (e.g. \'Self-Improvement\' or \'Business & Finance\' or \'Fiction\').",\n'
+        '  "target_audience": "Brief description of who should read this book or summary (e.g. \'Office workers stuck in corporate jobs, teenagers seeking life goals\').",\n'
+        '  "key_lessons": [\n'
+        '     {"title": "Lesson 1 Title", "description": "1-2 sentence description of lesson 1"},\n'
+        '     {"title": "Lesson 2 Title", "description": "1-2 sentence description of lesson 2"},\n'
+        '     {"title": "Lesson 3 Title", "description": "1-2 sentence description of lesson 3"}\n'
+        '  ],\n'
+        '  "video_url": "If any youtube video URL is mentioned or linked in text, return it. Else leave blank."\n'
         "}\n"
     )
 
@@ -127,7 +171,16 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
             "rating": "4.0",
             "rating_count": "1k",
             "bookmark_quote": "Follow your dreams.",
-            "summary": "Failed to generate AI summary. Please check page content."
+            "summary": "Failed to generate AI summary. Please check page content.",
+            "read_time": "5 Min Read",
+            "category": "General",
+            "target_audience": "Anyone interested in learning.",
+            "key_lessons": [
+                {"title": "Follow your dreams", "description": "Pursue your personal legend despite obstacles."},
+                {"title": "Beat your fears", "description": "Fear is the biggest barrier to progress."},
+                {"title": "Persevere", "description": "Get up every time you fall on the journey."}
+            ],
+            "video_url": ""
         }
 
     # Step 4: Finalize fields
@@ -137,11 +190,20 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     final_rating_count = extracted_data.get("rating_count") or "1k"
     final_quote = extracted_data.get("bookmark_quote") or "Follow your dreams."
     final_summary = extracted_data.get("summary") or "No summary available."
+    final_read_time = extracted_data.get("read_time") or "5 Min Read"
+    final_category = extracted_data.get("category") or "General"
+    final_target = extracted_data.get("target_audience") or "General readers"
     
-    # Use meta image or fallback to a standard elegant cover placeholder if not found
+    # Handle key lessons formatting
+    raw_lessons = extracted_data.get("key_lessons") or []
+    final_lessons_str = json.dumps(raw_lessons)
+
+    # Pick the best video url
+    final_video = get_embed_url(extracted_data.get("video_url") or scraped_video_url)
+
+    # Use meta image or fallback
     final_cover_image = image_from_meta
     if not final_cover_image or "logo" in final_cover_image.lower() or len(final_cover_image) < 10:
-        # Standard high-quality fallback book image from Unsplash
         final_cover_image = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop"
 
     # Step 5: Save to Database
@@ -153,7 +215,12 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
         cover_image_url=final_cover_image,
         bookmark_quote=final_quote,
         summary=final_summary,
-        url=url_str
+        url=url_str,
+        video_url=final_video,
+        read_time=final_read_time,
+        category=final_category,
+        target_audience=final_target,
+        key_lessons=final_lessons_str
     )
     
     db.add(db_book)

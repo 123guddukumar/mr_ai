@@ -54,6 +54,13 @@ def clean_json_string(s: str) -> str:
     s = s.strip()
     return s
 
+def extract_json_block(s: str) -> str:
+    first_brace = s.find('{')
+    last_brace = s.rfind('}')
+    if first_brace != -1 and last_brace != -1:
+        return s[first_brace:last_brace+1]
+    return s
+
 def get_embed_url(url: str) -> str:
     if not url:
         return ""
@@ -212,9 +219,9 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     extracted_data = {}
     try:
         llm_response = await generate_answer(question=llm_prompt, context=truncated_text)
-        cleaned_response = clean_json_string(llm_response)
-        logger.info(f"LLM Response: {cleaned_response}")
-        extracted_data = json.loads(cleaned_response)
+        cleaned_response = extract_json_block(llm_response)
+        logger.info(f"LLM Response (Cleaned): {cleaned_response}")
+        extracted_data = json.loads(cleaned_response, strict=False)
     except Exception as e:
         logger.error(f"Failed to parse LLM response for book metadata: {e}")
         # Fallback values if LLM parsing fails

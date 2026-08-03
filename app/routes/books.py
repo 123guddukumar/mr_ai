@@ -69,6 +69,72 @@ async def get_books(db: Session = Depends(get_db)):
     books = db.query(Book).order_by(Book.created_at.desc()).all()
     return [BookResponse.model_validate(b.to_dict()) for b in books]
 
+async def fetch_html_content(url: str) -> str:
+    url = url.strip()
+    
+    # Complete Browser Headers
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Cache-Control": "max-age=0"
+    }
+    
+    # Try 1: HTTPX with complete headers
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=20.0) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                return resp.text
+            logger.warning(f"HTTPX fetch returned status {resp.status_code} for {url}. Trying fallback...")
+    except Exception as e:
+        logger.warning(f"HTTPX fetch failed for {url}: {e}. Trying fallback...")
+
+    # Try 2: If it didn't succeed and didn't have a trailing slash, try with trailing slash
+    if not url.endswith("/"):
+        alt_url = url + "/"
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=20.0) as client:
+                resp = await client.get(alt_url)
+                if resp.status_code == 200:
+                    return resp.text
+        except Exception as e:
+            logger.warning(f"HTTPX alt fetch failed for {alt_url}: {e}")
+
+    # Try 3: Standard urllib fallback (different TLS fingerprint and engine, often bypasses Cloudflare blocks)
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            url, 
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return response.read().decode('utf-8', errors='ignore')
+    except Exception as e:
+        logger.error(f"Urllib fallback failed for original url: {e}")
+
+    # Try 4: Standard urllib fallback with trailing slash
+    if not url.endswith("/"):
+        alt_url = url + "/"
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                alt_url, 
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as response:
+                return response.read().decode('utf-8', errors='ignore')
+        except Exception as e:
+            logger.error(f"Urllib fallback failed for alternative url: {e}")
+
+    raise HTTPException(
+        status_code=400, 
+        detail="Failed to fetch webpage (403 Forbidden). Cloudflare/security blocks requests. Try using a link ending with a '/' or a different book summary URL."
+    )
+
 @router.post("/books", response_model=BookResponse, summary="Scrape and add a new book")
 async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     url_str = req.url.strip()
@@ -82,20 +148,7 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
 
     # Step 1: Scrape Webpage Content
     logger.info(f"Scraping book URL: {url_str}")
-    try:
-        async with httpx.AsyncClient(
-            follow_redirects=True, 
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            },
-            timeout=30.0
-        ) as client:
-            resp = await client.get(url_str)
-            resp.raise_for_status()
-            html_content = resp.text
-    except Exception as e:
-        logger.error(f"Error fetching URL {url_str}: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to fetch webpage: {str(e)}")
+    html_content = await fetch_html_content(url_str)
 
     # Step 2: Parse Page with BeautifulSoup
     soup = BeautifulSoup(html_content, "html.parser")

@@ -1929,6 +1929,9 @@ class AgentPublicAskReq(BaseModel):
     device_name: Optional[str] = "Unknown Device"
     is_voice: Optional[bool] = False
     file_context: Optional[str] = None  # Extracted text/description from uploaded file
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    file_type: Optional[str] = None
 
 
 @router.get("/agents/{agent_id}/public-info", tags=["Agents & DataStores"])
@@ -2071,7 +2074,10 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
     user_msg = AgentPublicMessage(
         session_id=req.session_id,
         role="user",
-        content=req.question
+        content=req.question,
+        file_url=req.file_url,
+        file_name=req.file_name,
+        file_type=req.file_type
     )
     db.add(user_msg)
     db.commit()
@@ -3052,13 +3058,27 @@ async def api_upload_chat_file(agent_id: str, file: UploadFile = File(...), db: 
         file_type = "file"
         extracted_text = f"[File uploaded: {filename}]"
 
+    # Save file to disk
+    file_url = None
+    try:
+        os.makedirs("uploads", exist_ok=True)
+        import uuid
+        unique_filename = f"chat_{uuid.uuid4().hex}_{filename}"
+        filepath = os.path.join("uploads", unique_filename)
+        with open(filepath, "wb") as f:
+            f.write(file_bytes)
+        file_url = f"/uploads/{unique_filename}"
+    except Exception as save_err:
+        logger.error(f"Failed to save chat file to disk: {save_err}")
+
     return {
         "success": True,
         "file_type": file_type,
         "display_name": filename,
         "extracted_text": extracted_text,
         "preview_data_url": preview_data_url,
-        "size_bytes": len(file_bytes)
+        "size_bytes": len(file_bytes),
+        "file_url": file_url
     }
 
 

@@ -1058,6 +1058,9 @@ class AgentPublicMessage(Base):
     role = Column(String(20), nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    file_url = Column(String(500), nullable=True)
+    file_name = Column(String(300), nullable=True)
+    file_type = Column(String(50), nullable=True)
 
     session = relationship("AgentPublicSession", back_populates="messages")
 
@@ -1066,6 +1069,9 @@ class AgentPublicMessage(Base):
             "role": self.role,
             "content": self.content,
             "created_at": self.created_at.isoformat() if self.created_at else "",
+            "file_url": self.file_url or "",
+            "file_name": self.file_name or "",
+            "file_type": self.file_type or "",
         }
 
 
@@ -1207,6 +1213,7 @@ class RootDailyPlanAnalysis(Base):
     feedback    = Column(Text, nullable=True)
     analysis    = Column(Text, nullable=True)
     key_points  = Column(Text, default='[]')  # JSON array as text
+    pace_json   = Column(Text, nullable=True)  # Detailed structured JSON for PACE layout
     created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -1216,6 +1223,10 @@ class RootDailyPlanAnalysis(Base):
             kp_parsed = json.loads(self.key_points or '[]')
         except Exception:
             kp_parsed = []
+        try:
+            pace_parsed = json.loads(self.pace_json or '{}')
+        except Exception:
+            pace_parsed = {}
         return {
             "analysis_id": self.analysis_id,
             "client_id": self.client_id,
@@ -1224,6 +1235,7 @@ class RootDailyPlanAnalysis(Base):
             "feedback": self.feedback or "",
             "analysis": self.analysis or "",
             "key_points": kp_parsed,
+            "pace_json": pace_parsed,
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "updated_at": self.updated_at.isoformat() if self.updated_at else "",
         }

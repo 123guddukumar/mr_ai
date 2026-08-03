@@ -1986,19 +1986,54 @@ async def analyze_daily_plans(
         "You MUST return a JSON response object matching this exact schema:\n"
         "{\n"
         "  \"summary\": \"Must start with 'PACE — [Date]'. Provide a brief analytical summary of the entire day's plans. End with the Daily Insight as the last sentence (e.g. 'Daily Insight: Your calendar protected time for your core priorities, but fragmented meetings reduced execution blocks.'). Written in Hinglish/Hindi or English.\",\n"
-        "  \"analysis\": \"P — Priorities:\\nExplain whether the calendar appears aligned with the user's priorities, highlighting the strongest alignment and most important apparent gap.\\n\\n"
-        "A — Allocation:\\nSummarise where scheduled time went, focusing on patterns, durations, or proportions of scheduled work, meetings, personal time, etc. Written in Hinglish/Hindi or English.\",\n"
+        "  \"analysis\": \"P — Priorities:\\nExplain whether the calendar appears aligned with the user's priorities, highlighting the strongest alignment and most important apparent gap.\\n\\nA — Allocation:\\nSummarise where scheduled time went, focusing on patterns, durations, or proportions of scheduled work, meetings, personal time, etc. Written in Hinglish/Hindi or English.\",\n"
         "  \"feedback\": \"C — Control:\\nExplain how intentionally the day was structured. Identify fragmentation, back-to-back meetings, focus blocks, buffers, context switching, and whether structure was intentional or reactive. Written in Hinglish/Hindi or English.\",\n"
         "  \"key_points\": [\n"
-        "    \"E — Efficiency concrete action 1 (e.g., 'Your afternoon contains three short-gap internal meetings. Consider batching them to protect a longer block.')\",\n"
+        "    \"E — Efficiency concrete action 1 (e.g., 'Your afternoon contains three short-gap meetings. Consider batching them to protect a longer block.')\",\n"
         "    \"E — Efficiency concrete action 2\"\n"
-        "  ]\n"
+        "  ],\n"
+        "  \"pace_structure\": {\n"
+        "    \"priorities\": {\n"
+        "      \"status\": \"Aligned\" or \"Partially Aligned\" or \"Misaligned\",\n"
+        "      \"strong_alignment\": \"What went well regarding priorities alignment (1 short sentence)\",\n"
+        "      \"biggest_gap\": \"The main priority gap or missing item (1 short sentence)\"\n"
+        "    },\n"
+        "    \"allocation\": {\n"
+        "      \"total_scheduled\": \"Total scheduled time estimated (e.g., '9h 30m')\",\n"
+        "      \"categories\": [\n"
+        "        {\n"
+        "          \"name\": \"Client / Customer\" or \"Focused Work\" or \"Team / Leadership\" or \"Operations\" or \"Strategy / Planning\" or \"Open Time\",\n"
+        "          \"duration\": \"Estimated time (e.g., '3h 00m')\",\n"
+        "          \"percentage\": Percentage value as integer (e.g., 32),\n"
+        "          \"color\": \"Hex code (e.g. #818cf8 for Client / Customer, #3b82f6 for Focused Work, #10b981 for Team / Leadership, #f59e0b for Operations, #ec4899 for Strategy / Planning, #94a3b8 for Open Time)\"\n"
+        "        }\n"
+        "      ]\n"
+        "    },\n"
+        "    \"control\": {\n"
+        "      \"status\": \"High\" or \"Moderate\" or \"Low\",\n"
+        "      \"status_color\": \"#10b981\" or \"#f59e0b\" or \"#ef4444\",\n"
+        "      \"good\": \"Positive aspect of daily structure (1 short phrase, e.g., '2 focus blocks protected')\",\n"
+        "      \"watch_out\": \"Warning sign or risk (1 short phrase, e.g., 'Back-to-back meetings in afternoon')\",\n"
+        "      \"needs_more\": \"Where support is needed (1 short phrase, e.g., 'Short gaps causing context switching')\"\n"
+        "    },\n"
+        "    \"efficiency\": {\n"
+        "      \"status\": \"High Impact\" or \"Medium Impact\" or \"Low Impact\",\n"
+        "      \"actions\": [\n"
+        "        {\n"
+        "          \"icon\": \"users\" or \"clock\" or \"target\" or \"calendar\" or \"zap\",\n"
+        "          \"title\": \"Title of concrete action (e.g., 'Batch 3 internal meetings into one block')\",\n"
+        "          \"description\": \"Subtext explaining value (e.g., 'Save ~45 mins and reduce context switching.')\"\n"
+        "        }\n"
+        "      ]\n"
+        "    },\n"
+        "    \"daily_insight\": \"Brief, punchy final insight sentence matching the last sentence of the summary.\"\n"
+        "  }\n"
         "}\n\n"
         "EVIDENCE & TONE RULES:\n"
         "1. Tone: Executive advisor (concise, analytical, neutral, practical, action-oriented). No lecturing or excessive praise. Reading time should be ~1 minute.\n"
-        "2. Evidence: Base conclusions on visible calendar evidence. Distinguish observed vs inferred vs unknown. Do not claim tasks completed or meetings successful unless explicit.\n"
+        "2. Evidence: Base conclusions on visible calendar evidence. For Allocation category durations, sum/estimate reasonable times for tasks (e.g. meetings = 30-60 mins, focus blocks = 1-2 hours) to sum up to total_scheduled.\n"
         "3. Language: Hinglish/Hindi or English matching the user.\n"
-        "4. If no plans exist: Suggest the user rest or enjoy their free time productively.\n"
+        "4. If no plans exist: Suggest the user rest or enjoy their free time, total_scheduled '0h 00m' with 'Open Time' at 100%.\n"
         "Return ONLY the raw JSON string matching the structure above."
     )
 
@@ -2083,6 +2118,8 @@ async def analyze_daily_plans(
         RootDailyPlanAnalysis.plan_date == plan_date
     ).first()
 
+    pace_json_str = json.dumps(analyzed_data.get("pace_structure", {}))
+
     if not analysis_record:
         analysis_record = RootDailyPlanAnalysis(
             analysis_id=secrets.token_hex(8),
@@ -2092,6 +2129,7 @@ async def analyze_daily_plans(
             feedback=analyzed_data["feedback"],
             analysis=analyzed_data["analysis"],
             key_points=json.dumps(analyzed_data["key_points"]),
+            pace_json=pace_json_str,
             created_at=datetime.utcnow()
         )
         db.add(analysis_record)
@@ -2100,6 +2138,7 @@ async def analyze_daily_plans(
         analysis_record.feedback = analyzed_data["feedback"]
         analysis_record.analysis = analyzed_data["analysis"]
         analysis_record.key_points = json.dumps(analyzed_data["key_points"])
+        analysis_record.pace_json = pace_json_str
         analysis_record.updated_at = datetime.utcnow()
 
     db.commit()

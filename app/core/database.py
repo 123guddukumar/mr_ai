@@ -192,6 +192,10 @@ def init_db():
         "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS key_points TEXT",
         "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE root_daily_plan_analyses ADD COLUMN IF NOT EXISTS pace_json TEXT",
+        "ALTER TABLE agent_public_messages ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)",
+        "ALTER TABLE agent_public_messages ADD COLUMN IF NOT EXISTS file_name VARCHAR(300)",
+        "ALTER TABLE agent_public_messages ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
     ]
     
     try:

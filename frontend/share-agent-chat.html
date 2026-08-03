@@ -2963,7 +2963,15 @@ async function loadPublicHistory() {
       localStorage.setItem('ag_has_history_' + AGENT_ID, 'true');
       
       data.messages.forEach(m => {
-        appendMessage(m.role === 'user' ? 'user' : 'assistant', m.content);
+        let mediaObj = null;
+        if (m.file_url) {
+          mediaObj = {
+            media_type: m.file_type,
+            file_url: m.file_url,
+            name: m.file_name
+          };
+        }
+        appendMessage(m.role === 'user' ? 'user' : 'assistant', m.content, null, mediaObj);
       });
       if (data.session && data.session.action_button) {
         renderActionBanner(data.session.action_button);
@@ -3071,7 +3079,7 @@ async function uploadPendingFile() {
     }
     const data = await r.json();
     if (statusEl) statusEl.textContent = '✅ Uploaded';
-    return data.extracted_text || null;
+    return data;
   } catch (e) {
     if (statusEl) statusEl.textContent = `❌ ${e.message}`;
     toast(`❌ File upload failed: ${e.message}`, 'err');
@@ -3086,16 +3094,32 @@ async function sendMsg() {
   inp.value = ''; autoResize(inp); isTyping = true;
   // Upload file if pending
   let fileContext = null;
+  let uploadedFileObj = null;
   let displayText = text;
   if (_pendingFile) {
-    fileContext = await uploadPendingFile();
+    uploadedFileObj = await uploadPendingFile();
+    if (uploadedFileObj) {
+      fileContext = uploadedFileObj.extracted_text;
+    }
     const fname = _pendingFile.display_name;
     displayText = text ? `📎 ${fname}\n\n${text}` : `📎 ${fname}`;
+  }
+
+  let mediaObj = null;
+  if (uploadedFileObj && uploadedFileObj.file_url) {
+    mediaObj = {
+      media_type: uploadedFileObj.file_type,
+      file_url: uploadedFileObj.file_url,
+      name: uploadedFileObj.display_name
+    };
+  }
+
+  if (_pendingFile) {
     clearFileAttachment();
   }
 
   document.getElementById('hero').style.display = 'none';
-  appendMessage('user', displayText);
+  appendMessage('user', displayText, null, mediaObj);
   localStorage.setItem('ag_has_history_' + AGENT_ID, 'true');
   const typing = appendTyping();
 
@@ -3115,7 +3139,10 @@ async function sendMsg() {
       device_id: deviceId,
       device_name: deviceName,
       is_voice: chatMode === 'v2v',
-      file_context: fileContext || undefined
+      file_context: fileContext || undefined,
+      file_url: (uploadedFileObj && uploadedFileObj.file_url) ? uploadedFileObj.file_url : undefined,
+      file_name: (uploadedFileObj && uploadedFileObj.display_name) ? uploadedFileObj.display_name : undefined,
+      file_type: (uploadedFileObj && uploadedFileObj.file_type) ? uploadedFileObj.file_type : undefined
     } : {
       question: text,
       history: history.slice(-6),
@@ -3191,16 +3218,41 @@ async function sendMsg() {
   } catch(e) { stopResponseTimer(); removeTyping(typing); toast('❌ Send failed', 'err'); } finally { isTyping = false; }
 }
 
-function appendMessage(role, text, srcs) {
+function buildMediaHTML(media) {
+  if (!media) return '';
+  if (media.media_type === 'image') {
+    return `<div style="margin-top:10px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); max-width:380px;">
+  <img src="${media.file_url}" alt="${esc(media.name)}" style="width:100%; height:auto; display:block; border-radius:8px;" />
+  <div style="padding:6px 10px; font-size:11px; background:rgba(0,0,0,0.6); color:#f1f5f9; font-weight:600;">🖼️ ${esc(media.name)}</div>
+</div>`;
+  } else if (media.media_type === 'video') {
+    return `<div style="margin-top:10px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); max-width:420px;">
+  <video src="${media.file_url}" controls style="width:100%; max-height:260px; display:block; background:#000; border-radius:8px;"></video>
+  <div style="padding:6px 10px; font-size:11px; background:rgba(0,0,0,0.6); color:#f1f5f9; font-weight:600;">🎥 ${esc(media.name)}</div>
+</div>`;
+  } else if (media.media_type === 'document') {
+    return `<div style="margin-top:10px; padding:12px 16px; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:10px; display:inline-flex; align-items:center; gap:12px;">
+  <span style="font-size:24px;">📄</span>
+  <div>
+    <div style="font-weight:700; font-size:13px; color:#60a5fa;">${esc(media.name)}</div>
+    <a href="${media.file_url}" target="_blank" download style="font-size:11px; color:#93c5fd; text-decoration:underline; font-weight:600;">⬇️ Download / Open Document</a>
+  </div>
+</div>`;
+  }
+  return '';
+}
+
+function appendMessage(role, text, srcs, mediaObj) {
   const area = document.getElementById('msg-area');
   const div = document.createElement('div');
   div.className = 'msg-wrap ' + role;
   let sHtml = '';
   if(srcs && srcs.length) sHtml = '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' + srcs.slice(0,2).map(s=>`<span style="font-size:10px;background:rgba(255,122,0,0.1);padding:3px 8px;border-radius:6px;color:var(--accent);border:1px solid rgba(255,122,0,0.2)">📎 ${esc(s.source_name||s.filename)}</span>`).join('') + '</div>';
+  let mHtml = buildMediaHTML(mediaObj);
   const icon = role === 'user' ? '<i data-lucide="user"></i>' : '<i data-lucide="bot"></i>';
   
   // Set bubble-box with full flex to take full width of container
-  div.innerHTML = `<div class="msg-icon ${role}">${icon}</div><div class="bubble-box" style="flex:1; min-width:0"><div class="bubble">${formatMessageText(text)}</div>${sHtml}</div>`;
+  div.innerHTML = `<div class="msg-icon ${role}">${icon}</div><div class="bubble-box" style="flex:1; min-width:0"><div class="bubble">${formatMessageText(text)}</div>${mHtml}${sHtml}</div>`;
   area.appendChild(div);
   
   // Truncate long assistant replies (greater than 5-6 lines) and add Read More link

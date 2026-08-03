@@ -20003,10 +20003,39 @@
             const senderName = isUser ? 'Visitor' : 'Agent';
             const senderColor = isUser ? 'color:rgba(255,255,255,0.8)' : 'color:var(--accent)';
 
+            let mediaHtml = '';
+            if (m.file_url) {
+              if (m.file_type === 'image') {
+                mediaHtml = `
+                  <div style="margin-top:8px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); max-width:260px;">
+                    <a href="${m.file_url}" target="_blank">
+                      <img src="${m.file_url}" alt="${escHtml(m.file_name)}" style="width:100%; height:auto; display:block; cursor:pointer;" />
+                    </a>
+                    <div style="padding:4px 8px; font-size:10px; background:rgba(0,0,0,0.6); color:#f1f5f9; font-weight:600;">🖼️ ${escHtml(m.file_name)}</div>
+                  </div>`;
+              } else if (m.file_type === 'video') {
+                mediaHtml = `
+                  <div style="margin-top:8px; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); max-width:300px;">
+                    <video src="${m.file_url}" controls style="width:100%; max-height:180px; display:block; background:#000;"></video>
+                    <div style="padding:4px 8px; font-size:10px; background:rgba(0,0,0,0.6); color:#f1f5f9; font-weight:600;">🎥 ${escHtml(m.file_name)}</div>
+                  </div>`;
+              } else {
+                mediaHtml = `
+                  <div style="margin-top:8px; padding:8px 12px; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:8px; display:inline-flex; align-items:center; gap:8px;">
+                    <span style="font-size:18px;">📄</span>
+                    <div>
+                      <div style="font-weight:700; font-size:12px; color:#60a5fa; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(m.file_name)}</div>
+                      <a href="${m.file_url}" target="_blank" download style="font-size:10px; color:#93c5fd; text-decoration:underline; font-weight:600;">⬇️ Download / Open</a>
+                    </div>
+                  </div>`;
+              }
+            }
+
             return `
               <div style="max-width:85%; padding:10px 14px; margin-bottom:8px; line-height:1.5; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.1); ${align}">
                 <div style="font-size:10px; font-weight:700; margin-bottom:4px; ${senderColor}">${senderName}</div>
                 <div style="white-space:pre-wrap; word-break:break-word">${escHtml(m.content)}</div>
+                ${mediaHtml}
               </div>
             `;
           }).join('');
@@ -36061,55 +36090,240 @@ Also include a "meta" object at the end:
       const container = document.getElementById('db-planner-ai-content');
       if (!container) return;
       
-      const keyPointsLi = (data.key_points || []).map(kp => `
-        <li style="display:flex; align-items:flex-start; gap:6px;">
-          <span style="color:#818cf8; margin-top:2px;">•</span>
-          <span>${escHtml(kp)}</span>
-        </li>
-      `).join('');
-      
-      container.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:12px; animation: dbFadeIn 0.3s ease-out;">
-          <!-- Summary Card -->
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
-            <div style="font-size:10.5px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-              📝 Summary
-            </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.summary)}</div>
-          </div>
+      const escHtml = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-          <!-- Analysis Card -->
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
-            <div style="font-size:10.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-              📊 Priority Analysis
-            </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.analysis)}</div>
-          </div>
+      if (data && data.pace_json && Object.keys(data.pace_json).length > 0) {
+        const pace = data.pace_json;
+        const priorities = pace.priorities || {};
+        const allocation = pace.allocation || {};
+        const control = pace.control || {};
+        const efficiency = pace.efficiency || {};
+        const categories = allocation.categories || [];
+        const actions = efficiency.actions || [];
 
-          <!-- Feedback Card -->
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
-            <div style="font-size:10.5px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-              💡 Schedule Feedback
-            </div>
-            <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.feedback)}</div>
-          </div>
+        // Build priority color
+        const prioStatus = priorities.status || 'Aligned';
+        const prioColor = prioStatus === 'Aligned' ? '#10b981' : (prioStatus === 'Partially Aligned' ? '#f59e0b' : '#ef4444');
+        const prioBg = prioStatus === 'Aligned' ? 'rgba(16,185,129,0.1)' : (prioStatus === 'Partially Aligned' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)');
 
-          <!-- Key Points Card -->
-          ${data.key_points && data.key_points.length > 0 ? `
-            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
-              <div style="font-size:10.5px; font-weight:800; color:#ec4899; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                🔑 Key Recommendations
+        // Build conic gradient for donut chart
+        let accumPercent = 0;
+        let gradientParts = '#94a3b8 0% 100%';
+        if (categories.length > 0) {
+          gradientParts = categories.map(cat => {
+            const start = accumPercent;
+            accumPercent += cat.percentage;
+            return `${cat.color || '#94a3b8'} ${start}% ${accumPercent}%`;
+          }).join(', ');
+        }
+
+        // Build control colors
+        const ctrlStatus = control.status || 'Moderate';
+        const ctrlColor = ctrlStatus === 'High' ? '#10b981' : (ctrlStatus === 'Moderate' ? '#a78bfa' : '#ef4444');
+        const ctrlBg = ctrlStatus === 'High' ? 'rgba(16,185,129,0.1)' : (ctrlStatus === 'Moderate' ? 'rgba(139,92,246,0.1)' : 'rgba(239,68,68,0.1)');
+
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:16px; animation: dbFadeIn 0.3s ease-out;">
+            
+            <!-- Priorities Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:30px; height:30px; border-radius:8px; background:rgba(16,185,129,0.1); display:flex; align-items:center; justify-content:center; font-weight:900; color:#10b981; font-size:14px;">P</div>
+                  <div>
+                    <div style="font-size:13px; font-weight:800; color:var(--text1);">Priorities</div>
+                    <div style="font-size:10.5px; color:var(--text3);">Did your day reflect what mattered most?</div>
+                  </div>
+                </div>
+                <span style="font-size:10.5px; font-weight:800; padding:4px 8px; border-radius:6px; background:${prioBg}; color:${prioColor}; display:flex; align-items:center; gap:4px;">
+                  ● ${escHtml(prioStatus)}
+                </span>
               </div>
-              <ul style="margin:0; padding:0; list-style:none; font-size:12px; color:var(--text2); line-height:1.4; display:flex; flex-direction:column; gap:6px;">
-                ${keyPointsLi}
-              </ul>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:10px;">
+                  <div style="font-size:10.5px; font-weight:800; color:#10b981; display:flex; align-items:center; gap:4px; margin-bottom:4px;">
+                    <span style="font-size:11px;">✓</span> Strong Alignment
+                  </div>
+                  <div style="font-size:11px; color:var(--text2); line-height:1.4;">${escHtml(priorities.strong_alignment || 'N/A')}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:10px;">
+                  <div style="font-size:10.5px; font-weight:800; color:#f59e0b; display:flex; align-items:center; gap:4px; margin-bottom:4px;">
+                    <span style="font-size:11px;">⚠️</span> Biggest Gap
+                  </div>
+                  <div style="font-size:11px; color:var(--text2); line-height:1.4;">${escHtml(priorities.biggest_gap || 'N/A')}</div>
+                </div>
+              </div>
             </div>
-          ` : ''}
-          
-          <div style="font-size:9.5px; color:var(--text3); text-align:right; margin-top:4px;">
-            Last Updated: ${new Date(data.updated_at || data.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+
+            <!-- Allocation Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:30px; height:30px; border-radius:8px; background:rgba(245,158,11,0.1); display:flex; align-items:center; justify-content:center; font-weight:900; color:#f59e0b; font-size:14px;">A</div>
+                <div>
+                  <div style="font-size:13px; font-weight:800; color:var(--text1);">Allocation</div>
+                  <div style="font-size:10.5px; color:var(--text3);">Where did your scheduled time go?</div>
+                </div>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:20px; margin-top:6px; padding:5px 0;">
+                <div style="position:relative; width:110px; height:110px; border-radius:50%; background:conic-gradient(${gradientParts}); display:flex; align-items:center; justify-content:center;">
+                  <div style="width:84px; height:84px; border-radius:50%; background:#17171a; display:flex; flex-direction:column; align-items:center; justify-content:center; position:absolute; z-index:2;">
+                    <span style="font-size:12.5px; font-weight:800; color:#fff;">${escHtml(allocation.total_scheduled || '0h 00m')}</span>
+                    <span style="font-size:8px; color:var(--text3);">Scheduled</span>
+                  </div>
+                </div>
+                <div style="flex:1; min-width:150px; display:flex; flex-direction:column; gap:6px;">
+                  ${categories.map(cat => `
+                    <div style="display:flex; align-items:center; justify-content:space-between; font-size:10.5px; color:var(--text2);">
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${cat.color || '#94a3b8'};"></span>
+                        <span>${escHtml(cat.name)}</span>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:var(--text1); font-weight:700;">${escHtml(cat.duration)}</span>
+                        <span style="color:var(--text3); min-width:24px; text-align:right;">${cat.percentage}%</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Control Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:30px; height:30px; border-radius:8px; background:rgba(139,92,246,0.1); display:flex; align-items:center; justify-content:center; font-weight:900; color:#8b5cf6; font-size:14px;">C</div>
+                  <div>
+                    <div style="font-size:13px; font-weight:800; color:var(--text1);">Control</div>
+                    <div style="font-size:10.5px; color:var(--text3);">How intentionally was your day structured?</div>
+                  </div>
+                </div>
+                <span style="font-size:10.5px; font-weight:800; padding:4px 8px; border-radius:6px; background:${ctrlBg}; color:${ctrlColor};">
+                  ● ${escHtml(ctrlStatus)}
+                </span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:8px;">
+                  <div style="font-size:10px; font-weight:800; color:#10b981; margin-bottom:3px;">Good</div>
+                  <div style="font-size:10.5px; color:var(--text2); line-height:1.3;">${escHtml(control.good || 'N/A')}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:8px;">
+                  <div style="font-size:10px; font-weight:800; color:#f59e0b; margin-bottom:3px;">Watch Out</div>
+                  <div style="font-size:10.5px; color:var(--text2); line-height:1.3;">${escHtml(control.watch_out || 'N/A')}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:8px;">
+                  <div style="font-size:10px; font-weight:800; color:#3b82f6; margin-bottom:3px;">Needs More</div>
+                  <div style="font-size:10.5px; color:var(--text2); line-height:1.3;">${escHtml(control.needs_more || 'N/A')}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Efficiency Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:30px; height:30px; border-radius:8px; background:rgba(59,130,246,0.1); display:flex; align-items:center; justify-content:center; font-weight:900; color:#3b82f6; font-size:14px;">E</div>
+                  <div>
+                    <div style="font-size:13px; font-weight:800; color:var(--text1);">Efficiency</div>
+                    <div style="font-size:10.5px; color:var(--text3);">How can the same time create more value?</div>
+                  </div>
+                </div>
+                <span style="font-size:10.5px; font-weight:800; padding:4px 8px; border-radius:6px; background:rgba(59,130,246,0.1); color:#3b82f6;">
+                  ${escHtml(efficiency.status || 'High Impact')}
+                </span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+                ${actions.map(action => {
+                  let emoji = '⚡';
+                  if (action.icon === 'users') emoji = '👥';
+                  else if (action.icon === 'clock') emoji = '🕒';
+                  else if (action.icon === 'target') emoji = '🎯';
+                  else if (action.icon === 'calendar') emoji = '📅';
+                  return `
+                    <div style="background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; transition:all 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)';" onmouseleave="this.style.background='rgba(255,255,255,0.01)';">
+                      <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                        <span style="font-size:16px;">${emoji}</span>
+                        <div>
+                          <div style="font-size:11px; font-weight:700; color:var(--text1);">${escHtml(action.title)}</div>
+                          <div style="font-size:9.5px; color:var(--text3); margin-top:1px;">${escHtml(action.description)}</div>
+                        </div>
+                      </div>
+                      <span style="color:var(--text3); font-size:11px;">➔</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Daily Insight Card -->
+            <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:16px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; margin-top:4px;">
+              <span style="font-size:18px;">💡</span>
+              <div style="flex:1;">
+                <div style="font-size:10.5px; font-weight:800; color:#a78bfa; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Daily Insight</div>
+                <div style="font-size:11.5px; color:var(--text2); line-height:1.45;">${escHtml(pace.daily_insight || data.summary)}</div>
+              </div>
+            </div>
+            
+            <div style="font-size:9.5px; color:var(--text3); text-align:right; margin-top:4px;">
+              Last Updated: ${new Date(data.updated_at || data.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
-        </div>
+        `;
+      } else {
+        // Fallback for older analysis versions
+        const keyPointsLi = (data.key_points || []).map(kp => `
+          <li style="display:flex; align-items:flex-start; gap:6px;">
+            <span style="color:#818cf8; margin-top:2px;">•</span>
+            <span>${escHtml(kp)}</span>
+          </li>
+        `).join('');
+        
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:12px; animation: dbFadeIn 0.3s ease-out;">
+            <!-- Summary Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+              <div style="font-size:10.5px; font-weight:800; color:#818cf8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                📝 Summary
+              </div>
+              <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.summary)}</div>
+            </div>
+
+            <!-- Analysis Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+              <div style="font-size:10.5px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                📊 Priority Analysis
+              </div>
+              <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.analysis)}</div>
+            </div>
+
+            <!-- Feedback Card -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+              <div style="font-size:10.5px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                💡 Schedule Feedback
+              </div>
+              <div style="font-size:12px; color:var(--text2); line-height:1.4; white-space:pre-wrap;">${escHtml(data.feedback)}</div>
+            </div>
+
+            <!-- Key Points Card -->
+            ${data.key_points && data.key_points.length > 0 ? `
+              <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; padding:10px;">
+                <div style="font-size:10.5px; font-weight:800; color:#ec4899; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  🔑 Key Recommendations
+                </div>
+                <ul style="margin:0; padding:0; list-style:none; font-size:12px; color:var(--text2); line-height:1.4; display:flex; flex-direction:column; gap:6px;">
+                  ${keyPointsLi}
+                </ul>
+              </div>
+            ` : ''}
+            
+            <div style="font-size:9.5px; color:var(--text3); text-align:right; margin-top:4px;">
+              Last Updated: ${new Date(data.updated_at || data.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        `;
+      }
+      
+      container.innerHTML += `
         <style>
           @keyframes dbFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         </style>

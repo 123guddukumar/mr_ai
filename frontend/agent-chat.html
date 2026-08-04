@@ -3468,18 +3468,23 @@
 
     /* Message Wrapper and Layout Alignment like ChatGPT */
     .chatgpt-layout .msg-wrap {
-      max-width: 800px !important;
-      width: 100% !important;
-      margin-left: auto !important;
-      margin-right: auto !important;
-      padding: 24px 20px !important;
       border-radius: 0 !important;
       background: transparent !important;
       box-shadow: none !important;
       border: none !important;
     }
 
-    /* Style assistant messages: no bubble background, plain text, elegant typography */
+    /* Style assistant messages: aligned left, no bubble background, plain text, elegant typography */
+    .chatgpt-layout .msg-wrap.assistant {
+      align-self: flex-start !important;
+      margin-left: 0 !important;
+      margin-right: auto !important;
+      flex-direction: row !important;
+      max-width: 800px !important;
+      width: 100% !important;
+      padding: 24px 20px !important;
+    }
+
     .chatgpt-layout .msg-wrap.assistant .bubble-box {
       border: none !important;
       background: transparent !important;
@@ -3498,13 +3503,20 @@
       border-radius: 0 !important;
     }
 
-    /* Style user messages: rounded pill, alignment on right */
+    /* Style user messages: aligned right, rounded bubble, row-reverse layout */
     .chatgpt-layout .msg-wrap.user {
-      justify-content: flex-end;
+      align-self: flex-end !important;
+      margin-left: auto !important;
+      margin-right: 0 !important;
+      flex-direction: row-reverse !important;
+      max-width: 75% !important;
+      width: auto !important;
+      padding: 12px 20px !important;
+      gap: 14px !important;
     }
 
     .chatgpt-layout .msg-wrap.user .bubble-box {
-      max-width: 70% !important;
+      max-width: 100% !important;
       flex-grow: 0 !important;
     }
 
@@ -3517,6 +3529,7 @@
       font-size: 15px !important;
       line-height: 1.5 !important;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+      word-break: break-word !important;
     }
 
     .chatgpt-layout .msg-icon {
@@ -3852,18 +3865,12 @@
 
   <nav class="navbar">
     <div class="nav-left">
-      <div class="mode-switches">
-        <button class="m-btn active" id="m-chat" onclick="setMode('text')"><i data-lucide="message-square"
-            style="width:14px;height:14px"></i> Chat</button>
-        <button class="m-btn" id="m-voice" onclick="setMode('v2v')"><i data-lucide="mic"
-            style="width:14px;height:14px"></i> Voice</button>
-      </div>
+      <button id="sidebar-toggle-btn" onclick="toggleSidebar(event)" style="background:none; border:none; color:var(--text2); cursor:pointer; padding:8px; border-radius:8px; display:none; align-items:center; justify-content:center; margin-right:8px; transition:all 0.2s;" onmouseover="this.style.color='var(--accent)'; this.style.background='rgba(255,255,255,0.05)';" onmouseout="this.style.color='var(--text2)'; this.style.background='transparent';" title="Toggle Sidebar">
+        <i data-lucide="menu" style="width:18px; height:18px;"></i>
+      </button>
     </div>
     <div class="nav-center">
       <div class="ag-identity">
-        <button id="sidebar-toggle-btn" onclick="toggleSidebar(event)" style="background:none; border:none; color:var(--text2); cursor:pointer; padding:8px; border-radius:8px; display:none; align-items:center; justify-content:center; margin-right:8px; transition:all 0.2s;" onmouseover="this.style.color='var(--accent)'; this.style.background='rgba(255,255,255,0.05)';" onmouseout="this.style.color='var(--text2)'; this.style.background='transparent';" title="Toggle Sidebar">
-          <i data-lucide="menu" style="width:18px; height:18px;"></i>
-        </button>
         <div class="ag-logo-circle">
           <img id="ag-logo-img" src="" class="ag-logo-img" style="display:none">
           <span id="ag-logo-init">🤖</span>
@@ -3875,12 +3882,6 @@
       </div>
     </div>
     <div class="nav-right" style="position: relative; display: flex; align-items: center; gap: 12px;">
-      <button id="nav-voice-btn" class="nav-btn" onclick="setMode('v2v')" title="Voice Mode" style="color:var(--accent); font-weight:700; display:none; align-items:center; gap:6px;">
-        <i data-lucide="mic"></i> Voice
-      </button>
-      <button id="planner-toggle-btn" class="nav-btn" onclick="togglePlanner()" title="Daily Planner" style="color:#f59e0b; display:none; align-items:center; gap:6px; font-weight:700;">
-        <i data-lucide="calendar"></i> Planner
-      </button>
       <a class="nav-btn" id="nav-whatsapp-link" href="#" target="_blank" title="Chat on WhatsApp"
         style="display:none; color:#10b981; align-items:center; justify-content:center; text-decoration:none;">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -3943,10 +3944,19 @@
           0.0s</div>
         <div class="vo-sub" id="vo-sub">I am listening to your voice</div>
 
-
         <div class="vo-transcript" id="vo-transcript"><i>Waiting for speech…</i></div>
         <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
         <button class="vo-close-btn" onclick="setMode('text')"><i data-lucide="message-square"></i> Text Chat</button>
+      </div>
+
+      <!-- Floating controls in bottom right -->
+      <div id="bottom-controls-wrap" style="position: absolute; right: 24px; bottom: 100px; display: none; flex-direction: column; gap: 10px; z-index: 1000;">
+        <button id="float-voice-btn" onclick="setMode('v2v')" style="width: 44px; height: 44px; border-radius: 50%; background: var(--accent); border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" title="Start Voice Mode">
+          <i data-lucide="mic" style="width: 18px; height: 18px;"></i>
+        </button>
+        <button id="float-planner-btn" onclick="togglePlanner()" style="width: 44px; height: 44px; border-radius: 50%; background: #f59e0b; border: none; color: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" title="Toggle Daily Planner">
+          <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
+        </button>
       </div>
 
       <div class="chat-window" id="chat-win">
@@ -4348,9 +4358,9 @@
           const toggleBtn = document.getElementById('sidebar-toggle-btn');
           if (toggleBtn) toggleBtn.style.display = 'flex';
 
-          // Show Voice Mode nav button
-          const voiceNavBtn = document.getElementById('nav-voice-btn');
-          if (voiceNavBtn) voiceNavBtn.style.display = 'inline-flex';
+          // Show bottom floating buttons
+          const floatControls = document.getElementById('bottom-controls-wrap');
+          if (floatControls) floatControls.style.display = 'flex';
 
           // Load sessions history
           loadRootAgentSessions();

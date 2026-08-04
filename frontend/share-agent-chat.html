@@ -692,6 +692,117 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   color: var(--accent, #ff7a00);
 }
 
+/* Small Button Side Layout style rules */
+.custom-buttons-small-side-wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  margin-top: auto;
+  margin-bottom: 2px; /* Thoda niche alignment */
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.small-side-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.small-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.small-btn:hover {
+  transform: translateY(-2px);
+}
+
+.small-btn.chat-btn-small {
+  background: #1b4d0f; /* Dark green theme color */
+  color: #ffffff;
+}
+
+.small-btn.chat-btn-small:hover {
+  box-shadow: 0 8px 22px rgba(27, 77, 15, 0.45);
+}
+
+.small-btn.talk-btn-small {
+  background: #eab308; /* Amber yellow theme color */
+  color: #000000;
+}
+
+.small-btn.talk-btn-small:hover {
+  box-shadow: 0 8px 22px rgba(234, 179, 8, 0.45);
+  background: #f1af09;
+}
+
+.small-btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.small-btn-icon {
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.small-btn-text {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.magnifai-footer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  justify-content: center;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+.footer-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(27, 77, 15, 0.25);
+}
+
+.footer-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1b4d0f;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.footer-shield {
+  width: 14px;
+  height: 14px;
+  fill: #2e7d32;
+}
+
 /* ── Landing Templates Premium Design System ── */
 
 /* Template 1 (Rajesh Goyal style) */
@@ -1778,6 +1889,35 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
         <span class="custom-arrow">›</span>
       </button>
     </div>
+    
+    <!-- Small Button Side layout wrapper -->
+    <div id="custom-buttons-small-side" class="custom-buttons-small-side-wrap" style="display:none">
+      <div class="small-side-row">
+        <button class="small-btn chat-btn-small" onclick="startChatFromLanding('text')">
+          <span class="small-btn-content">
+            <span class="small-btn-icon">💬</span>
+            <span class="small-btn-text">Chat</span>
+          </span>
+        </button>
+        <button class="small-btn talk-btn-small" onclick="startChatFromLanding('v2v')">
+          <span class="small-btn-content">
+            <span class="small-btn-icon">🎧</span>
+            <span class="small-btn-text">Talk</span>
+          </span>
+        </button>
+      </div>
+      <div class="magnifai-footer">
+        <div class="footer-line"></div>
+        <div class="footer-text-wrap">
+          <svg class="footer-shield" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path fill="#fff" d="M10 14.5l-3-3 1.4-1.4 1.6 1.6 4-4 1.4 1.4-5.4 5.4z"/>
+          </svg>
+          <span>Powered By MagnifAI</span>
+        </div>
+        <div class="footer-line"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2271,13 +2411,24 @@ async function loadAgent() {
         
         const customBtnLayout = (d.customization && d.customization.custom_btn_layout) || 'row';
         const btnWrap = document.getElementById('custom-buttons-wrap');
-        if (btnWrap) {
-          if (customBtnLayout === 'stacked') {
-            btnWrap.style.flexDirection = 'column';
-            btnWrap.style.alignItems = 'stretch';
-          } else {
-            btnWrap.style.flexDirection = 'row';
-            btnWrap.style.alignItems = 'center';
+        const btnWrapSmallSide = document.getElementById('custom-buttons-small-side');
+        
+        if (customBtnLayout === 'small_side') {
+          if (btnWrap) btnWrap.style.display = 'none';
+          if (btnWrapSmallSide) btnWrapSmallSide.style.display = 'flex';
+          tContainer.style.paddingBottom = '6px';
+        } else {
+          tContainer.style.paddingBottom = '18px';
+          if (btnWrapSmallSide) btnWrapSmallSide.style.display = 'none';
+          if (btnWrap) {
+            btnWrap.style.display = 'flex';
+            if (customBtnLayout === 'stacked') {
+              btnWrap.style.flexDirection = 'column';
+              btnWrap.style.alignItems = 'stretch';
+            } else {
+              btnWrap.style.flexDirection = 'row';
+              btnWrap.style.alignItems = 'center';
+            }
           }
         }
         

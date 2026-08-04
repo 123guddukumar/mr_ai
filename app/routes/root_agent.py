@@ -916,22 +916,34 @@ async def root_agent_chat(
     # Save user message to Root Agent Public Session
     session_obj = None
     try:
-        session_obj = db.query(AgentPublicSession).filter(
-            AgentPublicSession.agent_id == root_agent.agent_id
-        ).first()
+        req_sess_id = req.session_id
+        if req_sess_id:
+            session_obj = db.query(AgentPublicSession).filter(
+                AgentPublicSession.session_id == req_sess_id,
+                AgentPublicSession.agent_id == root_agent.agent_id
+            ).first()
 
         if not session_obj:
+            if not req_sess_id:
+                req_sess_id = f"root_sess_{client_id}_{secrets.token_hex(4)}"
+
             session_obj = AgentPublicSession(
-                session_id=f"root_sess_{client_id}",
+                session_id=req_sess_id,
                 agent_id=root_agent.agent_id,
                 device_id="root_chat",
                 user_name="Owner",
-                device_name="Owner Workspace",
-                created_at=datetime.utcnow()
+                device_name=msg_raw[:40] + ("..." if len(msg_raw) > 40 else ""),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
             )
             db.add(session_obj)
             db.commit()
             db.refresh(session_obj)
+        else:
+            if session_obj.device_name in ["Owner Workspace", "Unknown Device", "New Chat", ""]:
+                session_obj.device_name = msg_raw[:40] + ("..." if len(msg_raw) > 40 else "")
+            session_obj.updated_at = datetime.utcnow()
+            db.commit()
 
         user_msg_db = AgentPublicMessage(
             session_id=session_obj.session_id,
@@ -988,7 +1000,8 @@ async def root_agent_chat(
             "content": planner_resp,
             "answer": planner_resp,
             "media": None,
-            "agent_id": root_agent.agent_id
+            "agent_id": root_agent.agent_id,
+            "session_id": session_obj.session_id
         }
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -1323,7 +1336,8 @@ async def root_agent_chat(
         "content": resp,
         "answer": resp,
         "media": media_payload,
-        "agent_id": root_agent.agent_id
+        "agent_id": root_agent.agent_id,
+        "session_id": session_obj.session_id
     }
 
 
@@ -1331,6 +1345,52 @@ async def root_agent_chat(
 
 @router.get("/root-agent/history")
 def get_root_agent_history(
+    session_id: Optional[str] = Query(None),
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    root_agent = db.query(Agent).filter(Agent.client_id == client_id, Agent.is_root == True).first()
+    if not root_agent:
+        return {"session_id": None, "messages": []}
+
+    session_obj = None
+    if session_id:
+        session_obj = db.query(AgentPublicSession).filter(
+            AgentPublicSession.session_id == session_id,
+            AgentPublicSession.agent_id == root_agent.agent_id
+        ).first()
+    else:
+        session_obj = db.query(AgentPublicSession).filter(
+            AgentPublicSession.agent_id == root_agent.agent_id
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+
+    if not session_obj:
+        return {"session_id": None, "messages": []}
+
+    messages = db.query(AgentPublicMessage).filter(
+        AgentPublicMessage.session_id == session_obj.session_id
+    ).order_by(AgentPublicMessage.created_at.asc()).all()
+
+    return {
+        "session_id": session_obj.session_id,
+        "messages": [
+            {
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat() if m.created_at else "",
+                "file_url": m.file_url or "",
+                "file_name": m.file_name or "",
+                "file_type": m.file_type or ""
+            } for m in messages
+        ]
+    }
+
+
+@router.get("/root-agent/sessions")
+def get_root_agent_sessions(
     x_app_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
@@ -1341,19 +1401,37 @@ def get_root_agent_history(
     if not root_agent:
         return []
 
+    sessions = db.query(AgentPublicSession).filter(
+        AgentPublicSession.agent_id == root_agent.agent_id
+    ).order_by(AgentPublicSession.updated_at.desc()).all()
+
+    return [s.to_dict() for s in sessions]
+
+
+@router.delete("/root-agent/sessions/{session_id}")
+def delete_root_agent_session(
+    session_id: str,
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    root_agent = db.query(Agent).filter(Agent.client_id == client_id, Agent.is_root == True).first()
+    if not root_agent:
+        raise HTTPException(status_code=404, detail="Root Agent not found")
+
     session_obj = db.query(AgentPublicSession).filter(
-        AgentPublicSession.agent_id == root_agent.agent_id,
-        AgentPublicSession.client_id == client_id
+        AgentPublicSession.session_id == session_id,
+        AgentPublicSession.agent_id == root_agent.agent_id
     ).first()
 
     if not session_obj:
-        return []
+        raise HTTPException(status_code=404, detail="Session not found")
 
-    messages = db.query(AgentPublicMessage).filter(
-        AgentPublicMessage.session_id == session_obj.session_id
-    ).order_by(AgentPublicMessage.created_at.asc()).all()
-
-    return [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat() if m.created_at else ""} for m in messages]
+    db.delete(session_obj)
+    db.commit()
+    return {"status": "success", "message": "Session deleted successfully"}
 
 
 # ── Media Vault Upload Endpoint ───────────────────────────────────────────────

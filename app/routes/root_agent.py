@@ -365,7 +365,18 @@ async def handle_planner_voice_and_chat(
             }
 
         # Check if set intent
-        elif any(kw in msg_lower for kw in ["set", "add", "schedule", "lagao", "lagado", "kr do", "kar do"]):
+        last_assistant_msg = None
+        if history:
+            for h in reversed(history):
+                if h.get("role") == "assistant":
+                    last_assistant_msg = h.get("content", "").lower()
+                    break
+
+        is_set_followup = False
+        if last_assistant_msg:
+            is_set_followup = any(kw in last_assistant_msg for kw in ["schedule karni hai", "reminder lagana hai", "plan set karna hai", "kiske sath", "kitne baje", "kis chiz ka", "set karna hai"])
+
+        if any(kw in msg_lower for kw in ["set", "add", "schedule", "lagao", "lagado", "kr do", "kar do"]) or is_set_followup:
             extracted_time = None
             
             time_match = re.search(r'(\d{1,2}):(\d{2})\s*(am|pm|baje)?', msg_lower)
@@ -401,9 +412,9 @@ async def handle_planner_voice_and_chat(
             is_meet_indicator = any(w in msg_lower for w in ["meeting", "meetiang", "metting", "meting", "meating", "meetin", "meet", "appointment", "call", "consultation", "session"])
             is_with_person = any(w in msg_lower for w in ["ke sath", "ke saath", "with", "se milna", "guddu"])
             
-            if is_meet_indicator or is_with_person:
+            if is_meet_indicator or is_with_person or (last_assistant_msg and "meeting" in last_assistant_msg):
                 target_type = "meeting"
-            elif "reminder" in msg_lower or "remind" in msg_lower:
+            elif "reminder" in msg_lower or "remind" in msg_lower or (last_assistant_msg and "reminder" in last_assistant_msg):
                 target_type = "reminder"
                 
             title = None

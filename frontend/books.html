@@ -855,6 +855,140 @@ h1, h2, h3, h4, .brand-text {
   background: var(--border);
   border-radius: 3px;
 }
+
+/* Manual Modal Styles */
+.manual-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.manual-btn:hover {
+  background: var(--bg3);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.manual-modal-container {
+  max-width: 650px !important;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.manual-modal-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+  margin-top: 8px;
+}
+
+.manual-modal-sub {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 24px;
+}
+
+.manual-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: left;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input, .form-group textarea {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.lesson-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.manual-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.cancel-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: var(--bg2);
+}
+
+.save-btn {
+  background: linear-gradient(135deg, var(--accent), #ff8c1a);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--accent-glow);
+}
 </style>
 </head>
 <body>
@@ -888,10 +1022,16 @@ h1, h2, h3, h4, .brand-text {
   <!-- Link Input Section -->
   <div class="search-container">
     <input type="text" id="book-link-input" class="search-input" placeholder="Paste book URL here (e.g. https://fourminutebooks.com/the-alchemist-summary/)..." onkeydown="handleSearchKey(event)">
-    <button class="add-btn" onclick="addBook()">
-      <i data-lucide="plus" style="width:16px;height:16px;"></i>
-      <span>Add Book</span>
-    </button>
+    <div style="display:flex; gap:8px;">
+      <button class="add-btn" onclick="addBook()">
+        <i data-lucide="plus" style="width:16px;height:16px;"></i>
+        <span>Add Book</span>
+      </button>
+      <button class="manual-btn" onclick="openManualModal()">
+        <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
+        <span>Add Manually</span>
+      </button>
+    </div>
   </div>
 
   <!-- Books Grid -->
@@ -979,6 +1119,90 @@ h1, h2, h3, h4, .brand-text {
           <div id="modal-video-wrap"></div>
         </div>
 
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Add Modal -->
+<div class="modal-overlay" id="manual-modal" onclick="closeManualModal()">
+  <div class="modal-container manual-modal-container" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeManualModal()">
+      <i data-lucide="x" style="width:18px;height:18px;"></i>
+    </button>
+    <div class="manual-modal-content">
+      <h2 class="manual-modal-title">Add Book Manually</h2>
+      <p class="manual-modal-sub">Fill in the book details to add it to your personal library.</p>
+      
+      <div class="manual-form-grid">
+        <div class="form-group">
+          <label for="manual-title-input">Book Title *</label>
+          <input type="text" id="manual-title-input" placeholder="e.g. The Alchemist">
+        </div>
+        <div class="form-group">
+          <label for="manual-author-input">Author Name</label>
+          <input type="text" id="manual-author-input" placeholder="e.g. Paulo Coelho">
+        </div>
+        <div class="form-group">
+          <label for="manual-category-input">Category</label>
+          <input type="text" id="manual-category-input" placeholder="e.g. Self-Improvement, Fiction">
+        </div>
+        <div class="form-group">
+          <label for="manual-readtime-input">Read Time</label>
+          <input type="text" id="manual-readtime-input" placeholder="e.g. 4 Min Read">
+        </div>
+        <div class="form-group">
+          <label for="manual-rating-input">Rating (0-5)</label>
+          <input type="text" id="manual-rating-input" placeholder="e.g. 4.5">
+        </div>
+        <div class="form-group">
+          <label for="manual-ratingcount-input">Rating Count</label>
+          <input type="text" id="manual-ratingcount-input" placeholder="e.g. 10k or 2.5M">
+        </div>
+        <div class="form-group full-width">
+          <label for="manual-cover-input">Cover Image URL</label>
+          <input type="text" id="manual-cover-input" placeholder="Leave blank to auto-fetch original cover art...">
+        </div>
+        <div class="form-group full-width">
+          <label for="manual-quote-input">Bookmark Quote</label>
+          <input type="text" id="manual-quote-input" placeholder="e.g. Follow your Personal Legend.">
+        </div>
+        <div class="form-group full-width">
+          <label for="manual-target-input">Target Audience</label>
+          <input type="text" id="manual-target-input" placeholder="e.g. Anyone seeking life goals.">
+        </div>
+        <div class="form-group full-width">
+          <label for="manual-summary-input">Jeevan ka Sar (Summary) *</label>
+          <textarea id="manual-summary-input" rows="4" placeholder="Write a detailed summary here (Hinglish preferred)..."></textarea>
+        </div>
+        <div class="form-group full-width">
+          <label>Top 3 Key Lessons</label>
+          <div class="lesson-input-row">
+            <input type="text" id="manual-lesson1-title" placeholder="Lesson 1 Title" style="width: 30%;">
+            <input type="text" id="manual-lesson1-desc" placeholder="Lesson 1 Description" style="flex: 1;">
+          </div>
+          <div class="lesson-input-row" style="margin-top: 8px;">
+            <input type="text" id="manual-lesson2-title" placeholder="Lesson 2 Title" style="width: 30%;">
+            <input type="text" id="manual-lesson2-desc" placeholder="Lesson 2 Description" style="flex: 1;">
+          </div>
+          <div class="lesson-input-row" style="margin-top: 8px;">
+            <input type="text" id="manual-lesson3-title" placeholder="Lesson 3 Title" style="width: 30%;">
+            <input type="text" id="manual-lesson3-desc" placeholder="Lesson 3 Description" style="flex: 1;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="manual-video-input">YouTube Video URL (Optional)</label>
+          <input type="text" id="manual-video-input" placeholder="Leave blank to auto-find YouTube summary...">
+        </div>
+        <div class="form-group">
+          <label for="manual-audio-input">Audio Download URL (Optional)</label>
+          <input type="text" id="manual-audio-input" placeholder="e.g. https://four-minute-books.ck.page/...">
+        </div>
+      </div>
+      
+      <div class="manual-modal-actions">
+        <button class="cancel-btn" onclick="closeManualModal()">Cancel</button>
+        <button class="save-btn" onclick="submitManualBook()">Add Book</button>
       </div>
     </div>
   </div>
@@ -1294,6 +1518,99 @@ styleSheet.innerText = `
 }
 `;
 document.head.appendChild(styleSheet);
+
+// Manual modal handlers
+function openManualModal() {
+  document.getElementById('manual-modal').style.display = 'flex';
+}
+
+function closeManualModal() {
+  document.getElementById('manual-modal').style.display = 'none';
+  document.getElementById('manual-title-input').value = '';
+  document.getElementById('manual-author-input').value = '';
+  document.getElementById('manual-category-input').value = '';
+  document.getElementById('manual-readtime-input').value = '';
+  document.getElementById('manual-rating-input').value = '';
+  document.getElementById('manual-ratingcount-input').value = '';
+  document.getElementById('manual-cover-input').value = '';
+  document.getElementById('manual-quote-input').value = '';
+  document.getElementById('manual-target-input').value = '';
+  document.getElementById('manual-summary-input').value = '';
+  document.getElementById('manual-lesson1-title').value = '';
+  document.getElementById('manual-lesson1-desc').value = '';
+  document.getElementById('manual-lesson2-title').value = '';
+  document.getElementById('manual-lesson2-desc').value = '';
+  document.getElementById('manual-lesson3-title').value = '';
+  document.getElementById('manual-lesson3-desc').value = '';
+  document.getElementById('manual-video-input').value = '';
+  document.getElementById('manual-audio-input').value = '';
+}
+
+async function submitManualBook() {
+  const title = document.getElementById('manual-title-input').value.trim();
+  const summary = document.getElementById('manual-summary-input').value.trim();
+  
+  if (!title) {
+    showToast('Book Title is required', 'error');
+    return;
+  }
+  if (!summary) {
+    showToast('Summary is required', 'error');
+    return;
+  }
+  
+  const key_lessons = [];
+  const l1Title = document.getElementById('manual-lesson1-title').value.trim();
+  const l1Desc = document.getElementById('manual-lesson1-desc').value.trim();
+  if (l1Title || l1Desc) {
+    key_lessons.push({ title: l1Title || 'Lesson 1', description: l1Desc || '' });
+  }
+  const l2Title = document.getElementById('manual-lesson2-title').value.trim();
+  const l2Desc = document.getElementById('manual-lesson2-desc').value.trim();
+  if (l2Title || l2Desc) {
+    key_lessons.push({ title: l2Title || 'Lesson 2', description: l2Desc || '' });
+  }
+  const l3Title = document.getElementById('manual-lesson3-title').value.trim();
+  const l3Desc = document.getElementById('manual-lesson3-desc').value.trim();
+  if (l3Title || l3Desc) {
+    key_lessons.push({ title: l3Title || 'Lesson 3', description: l3Desc || '' });
+  }
+
+  const payload = {
+    title: title,
+    author: document.getElementById('manual-author-input').value.trim() || 'Unknown Author',
+    category: document.getElementById('manual-category-input').value.trim() || 'General',
+    read_time: document.getElementById('manual-readtime-input').value.trim() || '5 Min Read',
+    rating: document.getElementById('manual-rating-input').value.trim() || '4.5',
+    rating_count: document.getElementById('manual-ratingcount-input').value.trim() || '1k',
+    cover_image_url: document.getElementById('manual-cover-input').value.trim(),
+    bookmark_quote: document.getElementById('manual-quote-input').value.trim() || 'Follow your Personal Legend.',
+    target_audience: document.getElementById('manual-target-input').value.trim() || 'General readers',
+    summary: summary,
+    key_lessons: key_lessons,
+    video_url: document.getElementById('manual-video-input').value.trim(),
+    audio_url: document.getElementById('manual-audio-input').value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/books/manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.detail || 'Failed to add manual book');
+    }
+    const newBook = await res.json();
+    booksList.unshift(newBook);
+    closeManualModal();
+    renderBooks();
+    showToast(`"${newBook.title}" successfully added!`, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error adding book', 'error');
+  }
+}
 
 // Initialize Page
 initTheme();

@@ -143,6 +143,24 @@ async def fetch_html_content(url: str) -> str:
         detail="Failed to fetch webpage (403 Forbidden). Cloudflare/security blocks requests. Try using a link ending with a '/' or a different book summary URL."
     )
 
+async def get_youtube_video(title: str, author: str) -> str:
+    query = f"{title} {author} Book Summary".strip().replace(" ", "+")
+    url = f"https://www.youtube.com/results?search_query={query}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0, headers=headers, follow_redirects=True) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                matches = re.findall(r"/watch\?v=([a-zA-Z0-9_-]{11})", resp.text)
+                if matches:
+                    for video_id in matches:
+                        return f"https://www.youtube.com/embed/{video_id}"
+    except Exception as e:
+        logger.warning(f"Failed to fetch video from YouTube search for {title}: {e}")
+    return ""
+
 async def get_book_cover(title: str, author: str) -> str:
     query = f"{title} {author}".strip()
     try:
@@ -228,7 +246,7 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
         '  "rating": "Average rating value if mentioned (e.g. \'3.9\' or \'4.5\'). If not mentioned, return \'4.2\'.",\n'
         '  "rating_count": "Total rating count if mentioned (e.g. \'2.6M\' or \'15k\'). If not, return \'10k\'.",\n'
         '  "bookmark_quote": "A famous inspirational quote or bookmark motto from this book.",\n'
-        '  "summary": "A detailed, engaging, and rich summary of the book. Write it in Hinglish (a natural blend of Hindi and English written in the English alphabet, e.g. \'Santiago ek charwaha hai...\') with 2-3 paragraphs.",\n'
+        '  "summary": "A comprehensive, structured, and extremely rich summary of the book covering all key parts or chapters mentioned in the text. Include sections like: 1. \'### Jeevan Ka Sar\' (a detailed blend of Hindi and English written in the English alphabet explaining the story and plot in 2-3 paragraphs), 2. \'### Book Review\' (a review of the book\'s ideas and impact), and 3. \'### Main Takeaway\' (the overall lesson). Format it beautifully with markdown headers and bullet points in Hinglish.",\n'
         '  "read_time": "Reading time if mentioned (e.g. \'4 Min Read\'). If not, return \'5 Min Read\'.",\n'
         '  "category": "One or two category tags representing the genre (e.g. \'Self-Improvement\' or \'Business & Finance\' or \'Fiction\').",\n'
         '  "target_audience": "Brief description of who should read this book or summary (e.g. \'Office workers stuck in corporate jobs, teenagers seeking life goals\').",\n'
@@ -286,9 +304,14 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
     # Pick the best video url
     final_video = get_embed_url(extracted_data.get("video_url") or scraped_video_url)
     if not final_video:
-        # Fallback to dynamic YouTube search list embed player
-        query_str = f"{final_title} {final_author} Book Summary".replace(" ", "+")
-        final_video = f"https://www.youtube.com/embed?listType=search&list={query_str}"
+        # Fallback to scraping a real youtube video via youtube search results parsing
+        logger.info(f"Scraping YouTube video for: {final_title} by {final_author}")
+        real_video = await get_youtube_video(final_title, final_author)
+        if real_video:
+            final_video = real_video
+        else:
+            query_str = f"{final_title} {final_author} Book Summary".replace(" ", "+")
+            final_video = f"https://www.youtube.com/embed?listType=search&list={query_str}"
 
     # Pick best audio url
     final_audio = scraped_audio_url or "https://four-minute-books.ck.page/8d4e2f2cf6"
@@ -330,6 +353,67 @@ async def add_book(req: BookAddRequest, db: Session = Depends(get_db)):
         db.rollback()
         logger.error(f"Database error saving book: {e}")
         raise HTTPException(status_code=500, detail="Failed to save book to database")
+
+    return BookResponse.model_validate(db_book.to_dict())
+
+class BookManualAddRequest(BaseModel):
+    title: str
+    author: Optional[str] = "Unknown Author"
+    rating: Optional[str] = "4.5"
+    rating_count: Optional[str] = "1k"
+    cover_image_url: Optional[str] = ""
+    bookmark_quote: Optional[str] = ""
+    summary: Optional[str] = ""
+    url: Optional[str] = ""
+    video_url: Optional[str] = ""
+    audio_url: Optional[str] = ""
+    read_time: Optional[str] = "5 Min Read"
+    category: Optional[str] = "General"
+    target_audience: Optional[str] = "General readers"
+    key_lessons: Optional[List[Dict[str, Any]]] = []
+
+@router.post("/books/manual", response_model=BookResponse, summary="Manually add a book")
+async def add_book_manual(req: BookManualAddRequest, db: Session = Depends(get_db)):
+    cover_image = req.cover_image_url.strip() if req.cover_image_url else ""
+    if not cover_image:
+        cover_image = await get_book_cover(req.title, req.author)
+        if not cover_image:
+            cover_image = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop"
+
+    final_video = get_embed_url(req.video_url.strip()) if req.video_url else ""
+    if not final_video:
+        final_video = await get_youtube_video(req.title, req.author)
+        if not final_video:
+            query_str = f"{req.title} {req.author} Book Summary".replace(" ", "+")
+            final_video = f"https://www.youtube.com/embed?listType=search&list={query_str}"
+
+    lessons_str = json.dumps(req.key_lessons or [])
+
+    db_book = Book(
+        title=req.title,
+        author=req.author or "Unknown Author",
+        rating=req.rating or "4.5",
+        rating_count=req.rating_count or "1k",
+        cover_image_url=cover_image,
+        bookmark_quote=req.bookmark_quote or "Follow your Personal Legend.",
+        summary=req.summary or "Manual summary details.",
+        url=req.url or "manual",
+        video_url=final_video,
+        audio_url=req.audio_url or "https://four-minute-books.ck.page/8d4e2f2cf6",
+        read_time=req.read_time or "5 Min Read",
+        category=req.category or "General",
+        target_audience=req.target_audience or "General readers",
+        key_lessons=lessons_str
+    )
+
+    db.add(db_book)
+    try:
+        db.commit()
+        db.refresh(db_book)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database error saving manual book: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save manual book to database")
 
     return BookResponse.model_validate(db_book.to_dict())
 

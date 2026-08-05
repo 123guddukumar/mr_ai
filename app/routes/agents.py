@@ -2811,11 +2811,9 @@ async def websocket_transcribe(websocket: WebSocket):
     from fastapi import WebSocketDisconnect
     
     await websocket.accept()
-    logger.info("STT: Client connected to WebSocket /agents/ws/transcribe")
     
     dg_api_key = os.getenv("DEEPGRAM_API_KEY", "5d3770e0a1b4aa755f6d799839bb62ba5561a868")
     if not dg_api_key:
-        logger.error("STT: DEEPGRAM_API_KEY is not configured")
         await websocket.send_json({"error": "DEEPGRAM_API_KEY not configured"})
         await websocket.close()
         return
@@ -2830,35 +2828,27 @@ async def websocket_transcribe(websocket: WebSocket):
         connected = False
         for attempt in range(3):
             try:
-                logger.info(f"STT: Connecting to Deepgram Nova-3 (attempt {attempt + 1}/3)...")
                 async with websockets.connect(dg_url, additional_headers=headers, open_timeout=15.0) as dg_ws:
                     connected = True
-                    logger.info("STT: Connected to Deepgram successfully!")
                     
                     async def receive_from_client():
-                        byte_count = 0
                         try:
                             while True:
                                 data = await websocket.receive()
                                 if "bytes" in data:
-                                    byte_count += len(data["bytes"])
-                                    # Log every 20 packets to avoid console flooding
-                                    if byte_count % 20 == 0 or byte_count < 10000:
-                                        logger.info(f"STT: Received {len(data['bytes'])} bytes from client (total: {byte_count} bytes)")
                                     await dg_ws.send(data["bytes"])
                                 elif "text" in data:
                                     msg = json.loads(data["text"])
-                                    logger.info(f"STT: Received text command from client: {msg}")
                                     if msg.get("type") == "stop":
                                         break
                         except WebSocketDisconnect:
-                            logger.info("STT: Client WebSocket disconnected")
+                            pass
                         except Exception as e:
+                            # Ignore normal socket closure logs
                             e_str = str(e).lower()
                             if "disconnect" not in e_str and "closed" not in e_str and "receive" not in e_str:
-                                logger.error(f"STT: Error receiving from client: {e}")
+                                logger.error(f"Error receiving from client: {e}")
                         finally:
-                            logger.info("STT: Finished receiving from client. Closing Deepgram stream.")
                             try:
                                 await dg_ws.send(b"")
                             except:
@@ -2867,35 +2857,28 @@ async def websocket_transcribe(websocket: WebSocket):
                     async def send_to_client():
                         try:
                             async for message in dg_ws:
-                                # Log Deepgram result if transcript is found
-                                try:
-                                    res = json.loads(message)
-                                    channel = res.get("channel", {}) or (res.get("results", {}).get("channels", [{}])[0])
-                                    transcript = channel.get("alternatives", [{}])[0].get("transcript", "")
-                                    if transcript:
-                                        logger.info(f"STT: Deepgram transcribed text: '{transcript}' (is_final: {res.get('is_final')})")
-                                except Exception as parse_err:
-                                    pass
-                                
                                 await websocket.send_text(message)
                         except WebSocketDisconnect:
-                            logger.info("STT: Send loop client disconnected")
+                            pass
                         except Exception as e:
+                            # Ignore normal socket closure logs
                             e_str = str(e).lower()
                             if "disconnect" not in e_str and "closed" not in e_str and "send" not in e_str:
-                                logger.error(f"STT: Error sending to client: {e}")
+                                logger.error(f"Error sending to client: {e}")
 
                     await asyncio.gather(receive_from_client(), send_to_client())
                 break
             except Exception as e:
                 if connected:
+                    # If it failed mid-session, do not retry
                     raise e
                 if attempt == 2:
+                    # If all retries failed, raise the connection exception
                     raise e
-                logger.warning(f"STT: Deepgram handshake failed (attempt {attempt + 1}/3): {e}. Retrying in 0.5s...")
+                logger.warning(f"Deepgram handshake failed (attempt {attempt + 1}/3): {e}. Retrying in 0.5s...")
                 await asyncio.sleep(0.5)
     except Exception as e:
-        logger.error(f"STT: Deepgram WebSocket parent error: {e}")
+        logger.error(f"Deepgram WebSocket error: {e}")
         try:
             await websocket.send_json({"error": f"Connection failed: {e}"})
         except:

@@ -4151,6 +4151,14 @@
             </select>
           </div>
         </div>
+        <div class="plan-form-group">
+          <label class="plan-form-label">Recurrence *</label>
+          <select id="plan-meeting-recurrence" class="plan-form-input"
+            style="background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer; width:100%;">
+            <option value="false">One-Time Meeting</option>
+            <option value="true">Recurring Meeting (Daily)</option>
+          </select>
+        </div>
       </div>
 
       <!-- Plan Title -->
@@ -7637,6 +7645,8 @@
       const durMinsSelect = document.getElementById('plan-meeting-duration-minutes');
       if (durHoursSelect) durHoursSelect.value = '0';
       if (durMinsSelect) durMinsSelect.value = '30';
+      const recurrenceSelect = document.getElementById('plan-meeting-recurrence');
+      if (recurrenceSelect) recurrenceSelect.value = 'false';
       selectPlanCat(document.querySelector('.plan-cat-btn[data-cat="work"]'), 'work');
       hideConflictWarn();
 
@@ -7716,6 +7726,8 @@
         const durMinsSelect = document.getElementById('plan-meeting-duration-minutes');
         if (durHoursSelect) durHoursSelect.value = String(hrs);
         if (durMinsSelect) durMinsSelect.value = String(mins);
+        const recurrenceSelect = document.getElementById('plan-meeting-recurrence');
+        if (recurrenceSelect) recurrenceSelect.value = plan.is_recurring ? 'true' : 'false';
       } else {
         selectPlanCat(document.querySelector(`.plan-cat-btn[data-cat="${plan.category}"]`), plan.category);
       }
@@ -7899,10 +7911,12 @@
         if (session && session.token) h['X-App-Token'] = session.token;
 
         let duration_mins = 30;
+        let is_recurring = false;
         if (categoryVal === 'meeting') {
           const hrs = parseInt(document.getElementById('plan-meeting-duration-hours')?.value || '0', 10);
           const mins = parseInt(document.getElementById('plan-meeting-duration-minutes')?.value || '30', 10);
           duration_mins = (hrs * 60) + mins;
+          is_recurring = document.getElementById('plan-meeting-recurrence')?.value === 'true';
         }
 
         const payload = {
@@ -7911,7 +7925,8 @@
           category: categoryVal,
           plan_date: dateVal,
           plan_time: timeVal,
-          duration_mins: duration_mins
+          duration_mins: duration_mins,
+          is_recurring: is_recurring
         };
         const url = _editingPlanId ? `/api/root-agent/plans/${_editingPlanId}` : '/api/root-agent/plans';
         const method = _editingPlanId ? 'PUT' : 'POST';

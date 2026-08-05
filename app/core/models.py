@@ -1183,6 +1183,7 @@ class RootDailyPlan(Base):
     completed_at = Column(DateTime, nullable=True)
     from_meeting = Column(Boolean, default=False, nullable=False)  # True if added via sub-agent meeting
     duration_mins = Column(Integer, default=30, nullable=True)
+    is_recurring = Column(Boolean, default=False, nullable=False)
     created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -1195,6 +1196,7 @@ class RootDailyPlan(Base):
             "plan_date": self.plan_date,
             "plan_time": self.plan_time,
             "duration_mins": self.duration_mins,
+            "is_recurring": self.is_recurring,
             "status": self.status,
             "is_completed": self.is_completed,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,

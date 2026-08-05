@@ -36799,6 +36799,9 @@ Also include a "meta" object at the end:
       if (durHoursSelect) durHoursSelect.value = '0';
       if (durMinsSelect) durMinsSelect.value = '30';
 
+      const recurrenceSelect = document.getElementById('db-plan-meeting-recurrence');
+      if (recurrenceSelect) recurrenceSelect.value = 'false';
+
       selectDashboardPlanCat(document.querySelector('.db-cat-btn[data-cat="work"]'), 'work');
       hideDashboardConflictWarn();
 
@@ -36959,6 +36962,9 @@ Also include a "meta" object at the end:
         const durMinsSelect = document.getElementById('db-plan-meeting-duration-minutes');
         if (durHoursSelect) durHoursSelect.value = String(hrs);
         if (durMinsSelect) durMinsSelect.value = String(mins);
+
+        const recurrenceSelect = document.getElementById('db-plan-meeting-recurrence');
+        if (recurrenceSelect) recurrenceSelect.value = plan.is_recurring ? 'true' : 'false';
       } else {
         selectDashboardPlanCat(document.querySelector(`.db-cat-btn[data-cat="${plan.category}"]`), plan.category);
       }
@@ -37052,10 +37058,12 @@ Also include a "meta" object at the end:
 
       try {
         let duration_mins = 30;
+        let is_recurring = false;
         if (categoryVal === 'meeting') {
           const hrs = parseInt(document.getElementById('db-plan-meeting-duration-hours')?.value || '0', 10);
           const mins = parseInt(document.getElementById('db-plan-meeting-duration-minutes')?.value || '30', 10);
           duration_mins = (hrs * 60) + mins;
+          is_recurring = document.getElementById('db-plan-meeting-recurrence')?.value === 'true';
         }
 
         const payload = {
@@ -37064,7 +37072,8 @@ Also include a "meta" object at the end:
           category: categoryVal,
           plan_date: dateVal,
           plan_time: timeVal,
-          duration_mins: duration_mins
+          duration_mins: duration_mins,
+          is_recurring: is_recurring
         };
         const url = _dbEditingPlanId ? `/api/root-agent/plans/${_dbEditingPlanId}` : '/api/root-agent/plans';
         const method = _dbEditingPlanId ? 'PUT' : 'POST';
@@ -37739,6 +37748,14 @@ Also include a "meta" object at the end:
               <option value="45">45 Mins</option>
             </select>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Recurrence *</label>
+          <select id="db-plan-meeting-recurrence" class="form-input"
+            style="background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer; width:100%;">
+            <option value="false">One-Time Meeting</option>
+            <option value="true">Recurring Meeting (Daily)</option>
+          </select>
         </div>
       </div>
 

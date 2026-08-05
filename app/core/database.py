@@ -167,7 +167,7 @@ def init_db():
         "ALTER TABLE agent_feedbacks ADD COLUMN IF NOT EXISTS device_id VARCHAR(64)",
         "ALTER TABLE agent_feedbacks ADD COLUMN IF NOT EXISTS session_id VARCHAR(64)",
         # ── Root Daily Planner ──────────────────────────────────────────────────
-        "CREATE TABLE IF NOT EXISTS root_daily_plans (id SERIAL PRIMARY KEY, plan_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), owner_id VARCHAR(64), title VARCHAR(300) NOT NULL, description TEXT DEFAULT '', category VARCHAR(50) DEFAULT 'work', plan_date VARCHAR(20) NOT NULL, plan_time VARCHAR(10) NOT NULL, status VARCHAR(30) DEFAULT 'pending', is_completed BOOLEAN DEFAULT FALSE, completed_at TIMESTAMP, from_meeting BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+        "CREATE TABLE IF NOT EXISTS root_daily_plans (id SERIAL PRIMARY KEY, plan_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), owner_id VARCHAR(64), title VARCHAR(300) NOT NULL, description TEXT DEFAULT '', category VARCHAR(50) DEFAULT 'work', plan_date VARCHAR(20) NOT NULL, plan_time VARCHAR(10) NOT NULL, status VARCHAR(30) DEFAULT 'pending', is_completed BOOLEAN DEFAULT FALSE, completed_at TIMESTAMP, from_meeting BOOLEAN DEFAULT FALSE, duration_mins INTEGER DEFAULT 30, is_recurring BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS plan_id VARCHAR(64)",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS client_id VARCHAR(64)",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)",
@@ -181,6 +181,7 @@ def init_db():
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS from_meeting BOOLEAN DEFAULT FALSE",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS duration_mins INTEGER DEFAULT 30",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         # ── Root Daily Planner Analysis ──────────────────────────────────────────
         "CREATE TABLE IF NOT EXISTS root_daily_plan_analyses (id SERIAL PRIMARY KEY, analysis_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), plan_date VARCHAR(20) NOT NULL, summary TEXT, feedback TEXT, analysis TEXT, key_points TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",

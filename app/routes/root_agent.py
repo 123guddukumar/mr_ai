@@ -1649,6 +1649,7 @@ class CreatePlanReq(BaseModel):
     plan_date: str   # YYYY-MM-DD
     plan_time: str   # HH:MM
     duration_mins: Optional[int] = 30
+    is_recurring: Optional[bool] = False
 
 class EditPlanReq(BaseModel):
     title: Optional[str] = None
@@ -1658,6 +1659,7 @@ class EditPlanReq(BaseModel):
     plan_time: Optional[str] = None
     status: Optional[str] = None
     duration_mins: Optional[int] = None
+    is_recurring: Optional[bool] = None
 
 class MeetingToPlanReq(BaseModel):
     title: str
@@ -1666,6 +1668,70 @@ class MeetingToPlanReq(BaseModel):
     plan_time: str   # HH:MM
     source_agent_id: Optional[str] = None
     duration_mins: Optional[int] = 30
+    is_recurring: Optional[bool] = False
+
+
+def _create_next_recurring_occurrence(plan: RootDailyPlan, db: Session):
+    if not plan.is_recurring or plan.category != "meeting":
+        return
+
+    try:
+        # Calculate next day's date string YYYY-MM-DD
+        current_date_dt = datetime.strptime(plan.plan_date, "%Y-%m-%d")
+        next_date_dt = current_date_dt + timedelta(days=1)
+        next_date_str = next_date_dt.strftime("%Y-%m-%d")
+
+        # Check if already exists for tomorrow to avoid duplicates
+        existing = db.query(RootDailyPlan).filter(
+            RootDailyPlan.client_id == plan.client_id,
+            RootDailyPlan.title == plan.title,
+            RootDailyPlan.plan_date == next_date_str,
+            RootDailyPlan.plan_time == plan.plan_time
+        ).first()
+
+        if existing:
+            logger.info(f"Recurring plan already exists for tomorrow: {next_date_str}")
+            return
+
+        # Create next day daily plan
+        next_plan = RootDailyPlan(
+            plan_id=secrets.token_hex(8),
+            client_id=plan.client_id,
+            owner_id=plan.owner_id,
+            title=plan.title,
+            description=plan.description or "",
+            category="meeting",
+            plan_date=next_date_str,
+            plan_time=plan.plan_time,
+            status="pending",
+            is_completed=False,
+            from_meeting=True,
+            duration_mins=plan.duration_mins or 30,
+            is_recurring=True,
+            created_at=datetime.utcnow()
+        )
+        db.add(next_plan)
+
+        # Sync next day RootMeeting record
+        meeting_dt = datetime.strptime(f"{next_date_str} {plan.plan_time}", "%Y-%m-%d %H:%M")
+        meeting_obj = RootMeeting(
+            meeting_id=secrets.token_hex(8),
+            client_id=plan.client_id,
+            owner_id=plan.owner_id,
+            title=plan.title,
+            description=plan.description or "",
+            meeting_time=meeting_dt,
+            duration_mins=plan.duration_mins or 30,
+            status="scheduled",
+            reminder_sent=False,
+            notification_sent=False,
+            created_at=datetime.utcnow()
+        )
+        db.add(meeting_obj)
+        db.flush()
+        logger.info(f"Created next recurring meeting for {next_date_str} {plan.plan_time}")
+    except Exception as e:
+        logger.error(f"Error creating next recurring occurrence: {e}")
 
 
 def _compute_plan_status(plan_date: str, plan_time: str, is_completed: bool) -> str:
@@ -1780,6 +1846,7 @@ async def create_daily_plan(
         is_completed=False,
         from_meeting=(req.category == "meeting"),
         duration_mins=dur_mins,
+        is_recurring=bool(req.is_recurring),
         created_at=datetime.utcnow()
     )
     db.add(plan)
@@ -1832,6 +1899,10 @@ async def complete_daily_plan(
     plan.is_completed = not plan.is_completed
     plan.completed_at = datetime.utcnow() if plan.is_completed else None
     plan.status = "completed" if plan.is_completed else _compute_plan_status(plan.plan_date, plan.plan_time, False)
+    
+    if plan.is_completed:
+        _create_next_recurring_occurrence(plan, db)
+
     db.commit()
     db.refresh(plan)
 
@@ -1861,6 +1932,7 @@ async def edit_daily_plan(
     old_title = plan.title
     old_date = plan.plan_date
     old_time = plan.plan_time
+    was_completed = plan.is_completed
 
     if req.title is not None:
         plan.title = req.title
@@ -1874,6 +1946,8 @@ async def edit_daily_plan(
         plan.plan_time = req.plan_time
     if req.duration_mins is not None:
         plan.duration_mins = req.duration_mins
+    if req.is_recurring is not None:
+        plan.is_recurring = req.is_recurring
     if req.status is not None:
         plan.status = req.status
         if req.status == "completed":
@@ -1882,6 +1956,9 @@ async def edit_daily_plan(
         else:
             plan.is_completed = False
             plan.completed_at = None
+
+    if plan.is_completed and not was_completed:
+        _create_next_recurring_occurrence(plan, db)
 
     if plan.category == "meeting" or plan.from_meeting:
         try:
@@ -1944,6 +2021,9 @@ async def auto_complete_past_plans(
                 p.status = "completed"
                 p.completed_at = datetime.utcnow()
                 updated_count += 1
+                
+                # Setup next day occurrence if recurring
+                _create_next_recurring_occurrence(p, db)
         except Exception:
             pass
 

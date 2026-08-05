@@ -36595,13 +36595,25 @@ Also include a "meta" object at the end:
           const isReminder = p.category === 'reminder';
           const isMeeting = p.category === 'meeting';
           const isChatMeeting = p.from_meeting;
+
+          let durationStr = '';
+          if (p.duration_mins) {
+            const hrs = Math.floor(p.duration_mins / 60);
+            const mins = p.duration_mins % 60;
+            if (hrs > 0) {
+              durationStr = `${hrs}h ${mins > 0 ? mins + 'm' : ''}`;
+            } else {
+              durationStr = `${mins}m`;
+            }
+          }
+
           return `
             <div class="db-plan-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed' : ''}" style="cursor:pointer;" onclick="if(event.target.tagName !== 'BUTTON') markDashboardPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
               <div class="db-plan-card-top">
                 <div style="flex:1;">
                   <div style="margin-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <span class="db-cat-badge ${getDbCatBadgeCls(p.category)}">${cat.icon} ${cat.label}</span>
-                    <span style="font-size:10px; color:var(--text3);">${timeStr}</span>
+                    <span style="font-size:10px; color:var(--text3);">${timeStr}${durationStr ? ` (${durationStr})` : ''}</span>
                   </div>
                   <div class="db-plan-card-title">${escHtml(p.title)}</div>
                 </div>
@@ -36653,6 +36665,18 @@ Also include a "meta" object at the end:
           const isReminder = p.category === 'reminder';
           const isMeeting = p.category === 'meeting';
           const isChatMeeting = p.from_meeting;
+
+          let durationStr = '';
+          if (p.duration_mins) {
+            const hrs = Math.floor(p.duration_mins / 60);
+            const mins = p.duration_mins % 60;
+            if (hrs > 0) {
+              durationStr = `${hrs} hr${hrs > 1 ? 's' : ''} ${mins > 0 ? mins + ' min' : ''}`;
+            } else {
+              durationStr = `${mins} min${mins > 1 ? 's' : ''}`;
+            }
+          }
+
           return `
             <div class="db-plan-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed' : ''}">
               <div class="db-plan-card-top">
@@ -36669,7 +36693,7 @@ Also include a "meta" object at the end:
               </div>
               ${p.description ? `<div class="db-plan-card-desc" style="margin-top:6px;">${escHtml(p.description)}</div>` : ''}
               <div class="db-plan-card-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                <div style="font-size:11px; color:var(--text2);">📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}</div>
+                <div style="font-size:11px; color:var(--text2);">📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}${durationStr ? ` (${durationStr})` : ''}</div>
                 <div style="display:flex; align-items:center; gap:8px;">
                   ${isMeeting || isChatMeeting ? `
                     <button type="button" onclick="openMeetingDetailsPopup('${p.plan_id}')" style="background:rgba(249, 115, 22, 0.15); border:1px solid rgba(249, 115, 22, 0.3); color:#f97316; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
@@ -36769,6 +36793,11 @@ Also include a "meta" object at the end:
       if (descInput) descInput.value = '';
       if (meetName) meetName.value = '';
       if (meetLoc) meetLoc.value = 'Online';
+
+      const durHoursSelect = document.getElementById('db-plan-meeting-duration-hours');
+      const durMinsSelect = document.getElementById('db-plan-meeting-duration-minutes');
+      if (durHoursSelect) durHoursSelect.value = '0';
+      if (durMinsSelect) durMinsSelect.value = '30';
 
       selectDashboardPlanCat(document.querySelector('.db-cat-btn[data-cat="work"]'), 'work');
       hideDashboardConflictWarn();
@@ -36922,6 +36951,14 @@ Also include a "meta" object at the end:
         if (meetName) meetName.value = withName;
         if (meetLoc) meetLoc.value = whereLoc;
         if (descInput) descInput.value = notes || plan.description || '';
+
+        const durationMins = plan.duration_mins || 30;
+        const hrs = Math.floor(durationMins / 60);
+        const mins = durationMins % 60;
+        const durHoursSelect = document.getElementById('db-plan-meeting-duration-hours');
+        const durMinsSelect = document.getElementById('db-plan-meeting-duration-minutes');
+        if (durHoursSelect) durHoursSelect.value = String(hrs);
+        if (durMinsSelect) durMinsSelect.value = String(mins);
       } else {
         selectDashboardPlanCat(document.querySelector(`.db-cat-btn[data-cat="${plan.category}"]`), plan.category);
       }
@@ -37014,12 +37051,20 @@ Also include a "meta" object at the end:
       submitBtn.textContent = _dbEditingPlanId ? '⏳ Saving…' : '⏳ Creating…';
 
       try {
+        let duration_mins = 30;
+        if (categoryVal === 'meeting') {
+          const hrs = parseInt(document.getElementById('db-plan-meeting-duration-hours')?.value || '0', 10);
+          const mins = parseInt(document.getElementById('db-plan-meeting-duration-minutes')?.value || '30', 10);
+          duration_mins = (hrs * 60) + mins;
+        }
+
         const payload = {
           title,
           description: desc,
           category: categoryVal,
           plan_date: dateVal,
-          plan_time: timeVal
+          plan_time: timeVal,
+          duration_mins: duration_mins
         };
         const url = _dbEditingPlanId ? `/api/root-agent/plans/${_dbEditingPlanId}` : '/api/root-agent/plans';
         const method = _dbEditingPlanId ? 'PUT' : 'POST';
@@ -37675,6 +37720,25 @@ Also include a "meta" object at the end:
             <option value="Online">🌐 Online Meeting</option>
             <option value="Office">🏢 Office Meeting</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:block; margin-bottom:4px; font-size:12px; color:var(--text2);">Duration *</label>
+          <div style="display: flex; gap: 10px;">
+            <select id="db-plan-meeting-duration-hours" class="form-input" style="flex: 1; background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer;">
+              <option value="0">0 Hours</option>
+              <option value="1">1 Hour</option>
+              <option value="2">2 Hours</option>
+              <option value="3">3 Hours</option>
+              <option value="4">4 Hours</option>
+              <option value="5">5 Hours</option>
+            </select>
+            <select id="db-plan-meeting-duration-minutes" class="form-input" style="flex: 1; background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer;">
+              <option value="0">0 Mins</option>
+              <option value="15">15 Mins</option>
+              <option value="30" selected>30 Mins</option>
+              <option value="45">45 Mins</option>
+            </select>
+          </div>
         </div>
       </div>
 

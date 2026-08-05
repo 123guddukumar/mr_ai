@@ -180,6 +180,7 @@ def init_db():
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS from_meeting BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS duration_mins INTEGER DEFAULT 30",
         "ALTER TABLE root_daily_plans ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         # ── Root Daily Planner Analysis ──────────────────────────────────────────
         "CREATE TABLE IF NOT EXISTS root_daily_plan_analyses (id SERIAL PRIMARY KEY, analysis_id VARCHAR(64) UNIQUE, client_id VARCHAR(64), plan_date VARCHAR(20) NOT NULL, summary TEXT, feedback TEXT, analysis TEXT, key_points TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",

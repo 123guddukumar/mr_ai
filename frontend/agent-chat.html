@@ -4132,6 +4132,25 @@
             <option value="Office">🏢 Office Meeting</option>
           </select>
         </div>
+        <div class="plan-form-group">
+          <label class="plan-form-label">Duration *</label>
+          <div style="display: flex; gap: 10px;">
+            <select id="plan-meeting-duration-hours" class="plan-form-input" style="flex: 1; background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer;">
+              <option value="0">0 Hours</option>
+              <option value="1">1 Hour</option>
+              <option value="2">2 Hours</option>
+              <option value="3">3 Hours</option>
+              <option value="4">4 Hours</option>
+              <option value="5">5 Hours</option>
+            </select>
+            <select id="plan-meeting-duration-minutes" class="plan-form-input" style="flex: 1; background:#18181b; color:#fff; border:1px solid var(--border); border-radius:8px; padding:8px; outline:none; cursor:pointer;">
+              <option value="0">0 Mins</option>
+              <option value="15">15 Mins</option>
+              <option value="30" selected>30 Mins</option>
+              <option value="45">45 Mins</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- Plan Title -->
@@ -7414,10 +7433,22 @@
         const isReminder = p.category === 'reminder';
         const isMeeting = p.category === 'meeting';
         const isChatMeeting = p.from_meeting;
+
+        let durationStr = '';
+        if (p.duration_mins) {
+          const hrs = Math.floor(p.duration_mins / 60);
+          const mins = p.duration_mins % 60;
+          if (hrs > 0) {
+            durationStr = `${hrs} hr${hrs > 1 ? 's' : ''} ${mins > 0 ? mins + ' min' : ''}`;
+          } else {
+            durationStr = `${mins} min${mins > 1 ? 's' : ''}`;
+          }
+        }
+
         return `
     <div class="slider-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed-card' : ''}" onclick="if(event.target.tagName !== 'BUTTON') markPlanComplete('${p.plan_id}', this)" title="${isCompleted ? 'Completed ✅' : 'Click to mark complete'}">
       <div class="slider-card-cat ${cat.cls}">${cat.icon} ${cat.label}</div>
-      <div class="slider-card-time">${timeStr}</div>
+      <div class="slider-card-time">${timeStr}${durationStr ? ` (${durationStr})` : ''}</div>
       <div class="slider-card-title">${esc(p.title)}</div>
       ${isCompleted ? '<div style="font-size:10px;color:#4ade80;margin-top:4px;font-weight:700;">✅ Done</div>' : ''}
       ${isMeeting || isChatMeeting ? `
@@ -7471,6 +7502,18 @@
         const isMeeting = p.category === 'meeting';
         const isChatMeeting = p.from_meeting;
         const isReminder = p.category === 'reminder';
+
+        let durationStr = '';
+        if (p.duration_mins) {
+          const hrs = Math.floor(p.duration_mins / 60);
+          const mins = p.duration_mins % 60;
+          if (hrs > 0) {
+            durationStr = `${hrs} hr${hrs > 1 ? 's' : ''} ${mins > 0 ? mins + ' min' : ''}`;
+          } else {
+            durationStr = `${mins} min${mins > 1 ? 's' : ''}`;
+          }
+        }
+
         return `
     <div class="plan-card ${isReminder ? 'reminder-card' : ''} ${isMeeting ? 'meeting-card' : ''} ${isChatMeeting ? 'from-meeting-card' : ''} ${isCompleted ? 'completed' : ''}" id="plan-card-${p.plan_id}">
       <div class="plan-card-top">
@@ -7489,7 +7532,7 @@
       ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
       <div class="plan-card-footer" style="display:flex; justify-content:space-between; align-items:center;">
         <div class="plan-card-dt">
-          📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}
+          📅 ${dateStr} &nbsp;•&nbsp; 🕐 ${timeStr}${durationStr ? ` (${durationStr})` : ''}
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           ${isMeeting || isChatMeeting ? `
@@ -7590,6 +7633,10 @@
       if (descInput) descInput.value = '';
       if (meetName) meetName.value = '';
       if (meetLoc) meetLoc.value = 'Online';
+      const durHoursSelect = document.getElementById('plan-meeting-duration-hours');
+      const durMinsSelect = document.getElementById('plan-meeting-duration-minutes');
+      if (durHoursSelect) durHoursSelect.value = '0';
+      if (durMinsSelect) durMinsSelect.value = '30';
       selectPlanCat(document.querySelector('.plan-cat-btn[data-cat="work"]'), 'work');
       hideConflictWarn();
 
@@ -7661,6 +7708,14 @@
         if (meetName) meetName.value = withName;
         if (meetLoc) meetLoc.value = whereLoc;
         if (descInput) descInput.value = notes || plan.description || '';
+
+        const durationMins = plan.duration_mins || 30;
+        const hrs = Math.floor(durationMins / 60);
+        const mins = durationMins % 60;
+        const durHoursSelect = document.getElementById('plan-meeting-duration-hours');
+        const durMinsSelect = document.getElementById('plan-meeting-duration-minutes');
+        if (durHoursSelect) durHoursSelect.value = String(hrs);
+        if (durMinsSelect) durMinsSelect.value = String(mins);
       } else {
         selectPlanCat(document.querySelector(`.plan-cat-btn[data-cat="${plan.category}"]`), plan.category);
       }
@@ -7842,12 +7897,21 @@
       try {
         const h = { 'Content-Type': 'application/json' };
         if (session && session.token) h['X-App-Token'] = session.token;
+
+        let duration_mins = 30;
+        if (categoryVal === 'meeting') {
+          const hrs = parseInt(document.getElementById('plan-meeting-duration-hours')?.value || '0', 10);
+          const mins = parseInt(document.getElementById('plan-meeting-duration-minutes')?.value || '30', 10);
+          duration_mins = (hrs * 60) + mins;
+        }
+
         const payload = {
           title,
           description: desc,
           category: categoryVal,
           plan_date: dateVal,
-          plan_time: timeVal
+          plan_time: timeVal,
+          duration_mins: duration_mins
         };
         const url = _editingPlanId ? `/api/root-agent/plans/${_editingPlanId}` : '/api/root-agent/plans';
         const method = _editingPlanId ? 'PUT' : 'POST';

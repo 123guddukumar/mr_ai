@@ -215,6 +215,7 @@ If intent is "set", extract:
 - "date": "YYYY-MM-DD". Calculate based on relative terms. Default to today's date "{current_date}" if not specified.
 - "time": "HH:MM" (24-hour format). Parse relative times like "sham ko 6 baje" -> "18:00", "subah 10 baje" -> "10:00", "5:30 pm" -> "17:30". Set to null if not specified.
 - "category": Choose from "work", "personal", "health", "meeting", "reminder", "other". If not specified, map "reminder" to "reminder", "meeting" to "meeting", and others default to "work".
+- "duration_mins": Integer. The duration in minutes if specified (e.g., "1 hour" -> 60, "2 hours" -> 120, "30 minutes" -> 30, "45 mins" -> 45, "aadha ghanta" -> 30, "ek ghanta" -> 60). Set to 30 by default if not specified or not clear.
 
 If intent is "complete", extract:
 - "title": Title or description keyword of the item to complete (e.g. "Gym", "Meeting with Ramesh"). Set to null if not specified.
@@ -232,6 +233,7 @@ If intent is "edit", extract:
   - "time": "HH:MM" (24-hour format). The new time to assign. Set to null if not specified.
   - "date": "YYYY-MM-DD". The new date to assign. Set to null if not specified.
   - "category": Choose from "work", "personal", "health", "meeting", "reminder", "other". Set to null if not specified.
+  - "duration_mins": Integer. The new duration in minutes to assign (e.g. "1 hour" -> 60). Set to null if not specified.
 
 Rules for "set":
 - To create a plan, meeting, or reminder, we MUST have a "title" and a "time".
@@ -249,7 +251,8 @@ Example incomplete set response:
     "title": null,
     "date": "{current_date}",
     "time": "18:00",
-    "category": "reminder"
+    "category": "reminder",
+    "duration_mins": 30
   }},
   "missing_fields": ["title"],
   "ask_clarification": "Sir, sham 6 baje kis chiz ka reminder lagana hai?"
@@ -264,7 +267,8 @@ Example complete set response:
     "title": "Gym cardio session",
     "date": "{current_date}",
     "time": "18:00",
-    "category": "health"
+    "category": "health",
+    "duration_mins": 30
   }},
   "missing_fields": [],
   "ask_clarification": null
@@ -793,6 +797,7 @@ async def handle_planner_voice_and_chat(
         if target_type == "meeting":
             try:
                 meeting_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+                dur_mins = params.get("duration_mins") or 30
                 
                 # 1. Create RootMeeting
                 meeting_obj = RootMeeting(
@@ -802,7 +807,7 @@ async def handle_planner_voice_and_chat(
                     title=title,
                     description=f"Scheduled via Root Agent Voice/Chat: {title}",
                     meeting_time=meeting_dt,
-                    duration_mins=30,
+                    duration_mins=dur_mins,
                     status="scheduled",
                     reminder_sent=False,
                     notification_sent=False,
@@ -823,6 +828,7 @@ async def handle_planner_voice_and_chat(
                     status="pending",
                     is_completed=False,
                     from_meeting=True,
+                    duration_mins=dur_mins,
                     created_at=datetime.utcnow()
                 )
                 db.add(plan_obj)
@@ -1025,6 +1031,19 @@ async def root_agent_chat(
     if is_meeting_word and is_save_action and not (is_inquiry_word and "save" not in msg_lower):
         title, meeting_dt = _parse_meeting_details(msg_raw)
         
+        dur_mins = 30
+        dur_match = re.search(r'(\d+)\s*(hour|hr|ghanta|ghante|minute|min|m)', msg_lower)
+        if dur_match:
+            try:
+                val = int(dur_match.group(1))
+                unit = dur_match.group(2)
+                if any(x in unit for x in ['hour', 'hr', 'ghant']):
+                    dur_mins = val * 60
+                else:
+                    dur_mins = val
+            except Exception:
+                pass
+
         meeting_obj = RootMeeting(
             meeting_id=secrets.token_hex(8),
             client_id=client_id,
@@ -1032,7 +1051,7 @@ async def root_agent_chat(
             title=title,
             description=msg_raw,
             meeting_time=meeting_dt,
-            duration_mins=30,
+            duration_mins=dur_mins,
             status="scheduled",
             reminder_sent=False,
             notification_sent=False,
@@ -1058,6 +1077,7 @@ async def root_agent_chat(
                 status="pending",
                 is_completed=False,
                 from_meeting=True,
+                duration_mins=dur_mins,
                 created_at=datetime.utcnow()
             )
             db.add(plan_obj)
@@ -1628,6 +1648,7 @@ class CreatePlanReq(BaseModel):
     category: Optional[str] = "work"   # work | personal | health | meeting | other
     plan_date: str   # YYYY-MM-DD
     plan_time: str   # HH:MM
+    duration_mins: Optional[int] = 30
 
 class EditPlanReq(BaseModel):
     title: Optional[str] = None
@@ -1636,6 +1657,7 @@ class EditPlanReq(BaseModel):
     plan_date: Optional[str] = None
     plan_time: Optional[str] = None
     status: Optional[str] = None
+    duration_mins: Optional[int] = None
 
 class MeetingToPlanReq(BaseModel):
     title: str
@@ -1643,6 +1665,7 @@ class MeetingToPlanReq(BaseModel):
     plan_date: str   # YYYY-MM-DD
     plan_time: str   # HH:MM
     source_agent_id: Optional[str] = None
+    duration_mins: Optional[int] = 30
 
 
 def _compute_plan_status(plan_date: str, plan_time: str, is_completed: bool) -> str:
@@ -1742,6 +1765,8 @@ async def create_daily_plan(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date or time format. Use YYYY-MM-DD and HH:MM.")
 
+    dur_mins = req.duration_mins if req.duration_mins is not None else 30
+
     plan = RootDailyPlan(
         plan_id=secrets.token_hex(8),
         client_id=client_id,
@@ -1753,10 +1778,32 @@ async def create_daily_plan(
         plan_time=req.plan_time,
         status="pending",
         is_completed=False,
-        from_meeting=False,
+        from_meeting=(req.category == "meeting"),
+        duration_mins=dur_mins,
         created_at=datetime.utcnow()
     )
     db.add(plan)
+
+    if req.category == "meeting":
+        try:
+            meeting_dt = datetime.strptime(f"{req.plan_date} {req.plan_time}", "%Y-%m-%d %H:%M")
+            meeting_obj = RootMeeting(
+                meeting_id=secrets.token_hex(8),
+                client_id=client_id,
+                owner_id=client_id,
+                title=req.title.strip(),
+                description=req.description or "",
+                meeting_time=meeting_dt,
+                duration_mins=dur_mins,
+                status="scheduled",
+                reminder_sent=False,
+                notification_sent=False,
+                created_at=datetime.utcnow()
+            )
+            db.add(meeting_obj)
+        except Exception as me:
+            logger.error(f"Error creating matching RootMeeting: {me}")
+
     db.commit()
     db.refresh(plan)
 
@@ -1825,6 +1872,8 @@ async def edit_daily_plan(
         plan.plan_date = req.plan_date
     if req.plan_time is not None:
         plan.plan_time = req.plan_time
+    if req.duration_mins is not None:
+        plan.duration_mins = req.duration_mins
     if req.status is not None:
         plan.status = req.status
         if req.status == "completed":
@@ -1855,6 +1904,8 @@ async def edit_daily_plan(
                     meeting.meeting_time = datetime.strptime(f"{final_date} {final_time}", "%Y-%m-%d %H:%M")
                 if req.status is not None:
                     meeting.status = req.status
+                if req.duration_mins is not None:
+                    meeting.duration_mins = req.duration_mins
         except Exception as me:
             logger.warning(f"Error syncing edit to RootMeeting: {me}")
 
@@ -1998,6 +2049,7 @@ async def add_plan_from_meeting(
         status="pending",
         is_completed=False,
         from_meeting=True,
+        duration_mins=req.duration_mins if req.duration_mins is not None else 30,
         created_at=datetime.utcnow()
     )
     db.add(plan)

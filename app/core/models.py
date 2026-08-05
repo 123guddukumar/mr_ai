@@ -1182,6 +1182,7 @@ class RootDailyPlan(Base):
     is_completed = Column(Boolean, default=False, nullable=False)
     completed_at = Column(DateTime, nullable=True)
     from_meeting = Column(Boolean, default=False, nullable=False)  # True if added via sub-agent meeting
+    duration_mins = Column(Integer, default=30, nullable=True)
     created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -1193,6 +1194,7 @@ class RootDailyPlan(Base):
             "category": self.category,
             "plan_date": self.plan_date,
             "plan_time": self.plan_time,
+            "duration_mins": self.duration_mins,
             "status": self.status,
             "is_completed": self.is_completed,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,

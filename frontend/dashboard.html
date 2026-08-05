@@ -4341,11 +4341,27 @@
                         style="flex-shrink:0; padding:10px 15px; height: 42px;">⬆️ Upload</button>
                     </div>
                     <label class="form-label">Buttons Layout Position</label>
-                    <select class="form-input" id="ag-cust-btn-layout" style="margin-bottom:0">
+                    <select class="form-input" id="ag-cust-btn-layout" style="margin-bottom:15px">
                       <option value="row">Single Row (Side-by-Side)</option>
                       <option value="stacked">Stacked (One Button per Row)</option>
                       <option value="small_side">Small Button Side</option>
                     </select>
+                    
+                    <div style="margin-bottom:15px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label class="form-label" style="margin-bottom: 0;">Button Spacing (Bottom Offset)</label>
+                        <span id="ag-cust-btn-position-val" style="font-size: 13px; font-weight: bold; color: var(--accent);">10px</span>
+                      </div>
+                      <input type="range" class="form-input" id="ag-cust-btn-position" min="2" max="250" value="10" oninput="document.getElementById('ag-cust-btn-position-val').textContent = this.value + 'px';" style="padding: 0; height: auto; cursor: pointer;">
+                    </div>
+                    
+                    <div>
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label class="form-label" style="margin-bottom: 0;">Button Size (Scale)</label>
+                        <span id="ag-cust-btn-size-val" style="font-size: 13px; font-weight: bold; color: var(--accent);">1.0x</span>
+                      </div>
+                      <input type="range" class="form-input" id="ag-cust-btn-size" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('ag-cust-btn-size-val').textContent = this.value + 'x';" style="padding: 0; height: auto; cursor: pointer;">
+                    </div>
                   </div>
                 </div>
 
@@ -10053,14 +10069,20 @@
               <input type="color" class="form-input" id="ag-cust-color"
                 style="height:60px; padding:5px; border-radius:12px" value="#ff7a00">
               <label class="form-label" style="margin-top:15px">Landing Page Template</label>
-              <select class="form-input" id="ag-cust-template-plural" onchange="toggleCustomTemplateOptions();"
-                style="margin-bottom:15px">
-                <option value="">Default (Standard Landing Page)</option>
-                <option value="template1">Template 1 (Rajesh Goyal - Photography Style)</option>
-                <option value="template2">Template 2 (Nitin Nagar - Organic/Product Style)</option>
-                <option value="template3">Template 3 (Lakshmi Raj Singh - Leader/Political Style)</option>
-                <option value="custom">Custom (Upload Background & Buttons)</option>
-              </select>
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px">
+                <select class="form-input" id="ag-cust-template-plural"
+                  onchange="toggleTemplatePreviewButtonPlural(); toggleCustomTemplateOptions();"
+                  style="flex:1; margin-bottom:0">
+                  <option value="">Default (Standard Landing Page)</option>
+                  <option value="template1">Template 1 (Rajesh Goyal - Photography Style)</option>
+                  <option value="template2">Template 2 (Nitin Nagar - Organic/Product Style)</option>
+                  <option value="template3">Template 3 (Lakshmi Raj Singh - Leader/Political Style)</option>
+                  <option value="custom">Custom (Upload Background & Buttons)</option>
+                </select>
+                <button type="button" class="btn btn-secondary" id="ag-cust-template-preview-btn-plural"
+                  onclick="previewSelectedTemplate()"
+                  style="display:none; flex-shrink:0; height: 42px; padding:0 15px">👁️ Preview</button>
+              </div>
               <div id="ag-custom-template-fields-plural"
                 style="display:none; margin-top:15px; padding:15px; border:1px dashed var(--border); border-radius:12px; background:var(--bg3); margin-bottom:15px">
                 <label class="form-label">Custom Background Image</label>
@@ -10072,11 +10094,27 @@
                     style="flex-shrink:0; padding:10px 15px; height: 42px;">⬆️ Upload</button>
                 </div>
                 <label class="form-label">Buttons Layout Position</label>
-                <select class="form-input" id="ag-cust-btn-layout-plural" style="margin-bottom:0">
+                <select class="form-input" id="ag-cust-btn-layout-plural" style="margin-bottom:15px">
                   <option value="row">Single Row (Side-by-Side)</option>
                   <option value="stacked">Stacked (One Button per Row)</option>
                   <option value="small_side">Small Button Side</option>
                 </select>
+                
+                <div style="margin-bottom:15px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label class="form-label" style="margin-bottom: 0;">Button Spacing (Bottom Offset)</label>
+                    <span id="ag-cust-btn-position-plural-val" style="font-size: 13px; font-weight: bold; color: var(--accent);">10px</span>
+                  </div>
+                  <input type="range" class="form-input" id="ag-cust-btn-position-plural" min="2" max="250" value="10" oninput="document.getElementById('ag-cust-btn-position-plural-val').textContent = this.value + 'px';" style="padding: 0; height: auto; cursor: pointer;">
+                </div>
+                
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label class="form-label" style="margin-bottom: 0;">Button Size (Scale)</label>
+                    <span id="ag-cust-btn-size-plural-val" style="font-size: 13px; font-weight: bold; color: var(--accent);">1.0x</span>
+                  </div>
+                  <input type="range" class="form-input" id="ag-cust-btn-size-plural" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('ag-cust-btn-size-plural-val').textContent = this.value + 'x';" style="padding: 0; height: auto; cursor: pointer;">
+                </div>
               </div>
             </div>
             <div class="tab-pane" id="tab-kb">
@@ -10152,6 +10190,23 @@
       <div id="template-preview-frame-container"
         style="flex:1; width:100%; overflow-y:auto; position:relative; background:var(--bg2);">
         <!-- Dynamic preview content will be rendered inside here -->
+      </div>
+      <div id="custom-preview-controls" style="display:none; padding:15px; border-top:1px solid var(--border); background:var(--bg3); flex-direction:column; gap:12px; flex-shrink:0;">
+        <div style="font-weight:bold; font-size:12px; color:var(--text2); letter-spacing:0.5px;">CUSTOMIZE BUTTON OPTIONS (LIVE)</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:12px; color:var(--text); font-weight:600;">Button Spacing (Bottom Offset)</label>
+            <span id="preview-btn-pos-val" style="font-size:12px; font-weight:bold; color:var(--accent)">10px</span>
+          </div>
+          <input type="range" id="preview-btn-pos-slider" min="2" max="250" value="10" oninput="updateLivePreviewBtnPosition(this.value)" style="width:100%; cursor:pointer;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:12px; color:var(--text); font-weight:600;">Button Size (Scale)</label>
+            <span id="preview-btn-size-val" style="font-size:12px; font-weight:bold; color:var(--accent)">1.0x</span>
+          </div>
+          <input type="range" id="preview-btn-size-slider" min="0.5" max="2.0" step="0.05" value="1.0" oninput="updateLivePreviewBtnSize(this.value)" style="width:100%; cursor:pointer;">
+        </div>
       </div>
     </div>
   </div>
@@ -12873,7 +12928,12 @@
     }
 
     function previewSelectedTemplate() {
-      const template = document.getElementById('ag-cust-template').value;
+      const isPlural = document.getElementById('ag-cust-template-plural') && document.getElementById('ag-cust-template-plural').offsetParent !== null;
+
+      const template = isPlural
+        ? document.getElementById('ag-cust-template-plural').value
+        : document.getElementById('ag-cust-template').value;
+        
       if (!template) return;
 
       const name = document.getElementById('ag-name').value.trim() || 'Agent Name';
@@ -12881,8 +12941,22 @@
       const logo = document.getElementById('ag-cust-logo').value.trim();
       const author = document.getElementById('ag-cust-author').value.trim();
       const color = document.getElementById('ag-cust-color').value;
-      const customBg = document.getElementById('ag-cust-bg-image') ? document.getElementById('ag-cust-bg-image').value.trim() : '';
-      const customBtnLayout = document.getElementById('ag-cust-btn-layout') ? document.getElementById('ag-cust-btn-layout').value : 'row';
+
+      const customBg = isPlural
+        ? (document.getElementById('ag-cust-bg-image-plural') ? document.getElementById('ag-cust-bg-image-plural').value.trim() : '')
+        : (document.getElementById('ag-cust-bg-image') ? document.getElementById('ag-cust-bg-image').value.trim() : '');
+
+      const customBtnLayout = isPlural
+        ? (document.getElementById('ag-cust-btn-layout-plural') ? document.getElementById('ag-cust-btn-layout-plural').value : 'row')
+        : (document.getElementById('ag-cust-btn-layout') ? document.getElementById('ag-cust-btn-layout').value : 'row');
+
+      const btnPos = isPlural
+        ? (document.getElementById('ag-cust-btn-position-plural') ? parseInt(document.getElementById('ag-cust-btn-position-plural').value) : 10)
+        : (document.getElementById('ag-cust-btn-position') ? parseInt(document.getElementById('ag-cust-btn-position').value) : 10);
+
+      const btnSize = isPlural
+        ? (document.getElementById('ag-cust-btn-size-plural') ? parseFloat(document.getElementById('ag-cust-btn-size-plural').value) : 1.0)
+        : (document.getElementById('ag-cust-btn-size') ? parseFloat(document.getElementById('ag-cust-btn-size').value) : 1.0);
 
       const container = document.getElementById('template-preview-frame-container');
       if (!container) return;
@@ -13801,12 +13875,12 @@
             ${styleHtml}
             <div class="preview-phone-shell">
               <div class="preview-screen">
-                <div class="preview-custom" style="${bgStyle}; padding-bottom: 10px; justify-content: flex-end; align-items: center; display: flex; flex-direction: column;">
+                <div class="preview-custom" style="${bgStyle}; padding-bottom: 6px; justify-content: flex-end; align-items: center; display: flex; flex-direction: column;">
                   <div class="preview-custom-overlay"></div>
                   
-                  <div class="custom-buttons-small-side-wrap" style="width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; z-index: 2; margin-top: auto; margin-bottom: 2px;">
+                  <div class="custom-buttons-small-side-wrap" style="width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; z-index: 2; margin-top: auto; margin-bottom: ${btnPos}px; transform: scale(${btnSize}); transform-origin: bottom center; transition: all 0.15s ease;">
                     <div class="small-side-row" style="display: flex; gap: 10px; width: 100%; justify-content: center; box-sizing: border-box; padding: 0 12px;">
-                      <button type="button" class="small-btn chat-btn-small" style="flex: 1; height: 38px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: #1b4d0f; color: #ffffff; font-weight: bold; font-size: 12px; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+                      <button type="button" class="small-btn chat-btn-small" style="flex: 1; height: 38px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: ${color}; color: #ffffff; font-weight: bold; font-size: 12px; gap: 6px; box-shadow: 0 4px 10px ${color}44;">
                         <span class="small-btn-icon" style="font-size: 13px;">💬</span>
                         <span class="small-btn-text">Chat</span>
                       </button>
@@ -13816,15 +13890,15 @@
                       </button>
                     </div>
                     <div class="magnifai-footer" style="width: 100%; display: flex; align-items: center; gap: 8px; justify-content: center; box-sizing: border-box; padding: 0 12px; opacity: 0.85;">
-                      <div class="footer-line" style="flex: 1; height: 1px; background: rgba(27,77,15,0.25);"></div>
-                      <div class="footer-text-wrap" style="display: flex; align-items: center; gap: 5px; color: #1b4d0f; font-size: 9.5px; font-weight: 700; white-space: nowrap;">
-                        <svg class="footer-shield" viewBox="0 0 24 24" style="width: 12px; height: 12px; fill: #2e7d32;">
+                      <div class="footer-line" style="flex: 1; height: 1px; background: ${color}40;"></div>
+                      <div class="footer-text-wrap" style="display: flex; align-items: center; gap: 5px; color: ${color}; font-size: 9.5px; font-weight: 700; white-space: nowrap;">
+                        <svg class="footer-shield" viewBox="0 0 24 24" style="width: 12px; height: 12px; fill: ${color};">
                           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                           <path fill="#fff" d="M10 14.5l-3-3 1.4-1.4 1.6 1.6 4-4 1.4 1.4-5.4 5.4z"/>
                         </svg>
                         <span>Powered By MagnifAI</span>
                       </div>
-                      <div class="footer-line" style="flex: 1; height: 1px; background: rgba(27,77,15,0.25);"></div>
+                      <div class="footer-line" style="flex: 1; height: 1px; background: ${color}40;"></div>
                     </div>
                   </div>
 
@@ -13838,10 +13912,10 @@
             ${styleHtml}
             <div class="preview-phone-shell">
               <div class="preview-screen">
-                <div class="preview-custom" style="${bgStyle}">
+                <div class="preview-custom" style="${bgStyle}; padding-bottom: ${customBtnLayout === 'stacked' ? '12px' : '18px'};">
                   <div class="preview-custom-overlay"></div>
-                  <div class="preview-custom-buttons-wrap" style="${flexDir}">
-                    <button type="button" class="preview-custom-btn chat-btn" style="background:${color}">
+                  <div class="preview-custom-buttons-wrap" style="${flexDir}; margin-bottom: ${btnPos}px; transform: scale(${btnSize}); transform-origin: bottom center; transition: all 0.15s ease;">
+                    <button type="button" class="preview-custom-btn chat-btn" style="background:${color}; box-shadow: 0 6px 18px ${color}44;">
                       <span class="preview-custom-btn-left">
                         <span class="preview-custom-btn-icon">💬</span>
                         <span class="preview-custom-btn-text">
@@ -13870,7 +13944,78 @@
       }
 
       container.innerHTML = previewHtml;
+
+      // Show/hide live controls inside template-preview modal
+      const customControls = document.getElementById('custom-preview-controls');
+      if (customControls) {
+        if (template === 'custom') {
+          customControls.style.display = 'flex';
+          document.getElementById('preview-btn-pos-slider').value = btnPos;
+          document.getElementById('preview-btn-pos-val').textContent = btnPos + 'px';
+          document.getElementById('preview-btn-size-slider').value = btnSize;
+          document.getElementById('preview-btn-size-val').textContent = btnSize + 'x';
+        } else {
+          customControls.style.display = 'none';
+        }
+      }
+
       openModal('template-preview');
+    }
+
+    function toggleTemplatePreviewButtonPlural() {
+      const val = document.getElementById('ag-cust-template-plural').value;
+      const btn = document.getElementById('ag-cust-template-preview-btn-plural');
+      if (btn) {
+        btn.style.display = val ? 'inline-flex' : 'none';
+      }
+    }
+
+    function updateLivePreviewBtnPosition(val) {
+      document.getElementById('preview-btn-pos-val').textContent = val + 'px';
+      
+      const isPlural = document.getElementById('ag-cust-template-plural') && document.getElementById('ag-cust-template-plural').offsetParent !== null;
+      if (isPlural) {
+        const el = document.getElementById('ag-cust-btn-position-plural');
+        if (el) {
+          el.value = val;
+          document.getElementById('ag-cust-btn-position-plural-val').textContent = val + 'px';
+        }
+      } else {
+        const el = document.getElementById('ag-cust-btn-position');
+        if (el) {
+          el.value = val;
+          document.getElementById('ag-cust-btn-position-val').textContent = val + 'px';
+        }
+      }
+      
+      const wraps = document.querySelectorAll('#template-preview-frame-container .custom-buttons-small-side-wrap, #template-preview-frame-container .preview-custom-buttons-wrap');
+      wraps.forEach(wrap => {
+        wrap.style.marginBottom = val + 'px';
+      });
+    }
+
+    function updateLivePreviewBtnSize(val) {
+      document.getElementById('preview-btn-size-val').textContent = val + 'x';
+      
+      const isPlural = document.getElementById('ag-cust-template-plural') && document.getElementById('ag-cust-template-plural').offsetParent !== null;
+      if (isPlural) {
+        const el = document.getElementById('ag-cust-btn-size-plural');
+        if (el) {
+          el.value = val;
+          document.getElementById('ag-cust-btn-size-plural-val').textContent = val + 'x';
+        }
+      } else {
+        const el = document.getElementById('ag-cust-btn-size');
+        if (el) {
+          el.value = val;
+          document.getElementById('ag-cust-btn-size-val').textContent = val + 'x';
+        }
+      }
+      
+      const wraps = document.querySelectorAll('#template-preview-frame-container .custom-buttons-small-side-wrap, #template-preview-frame-container .preview-custom-buttons-wrap');
+      wraps.forEach(wrap => {
+        wrap.style.transform = `scale(${val})`;
+      });
     }
 
     // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -20296,12 +20441,26 @@
             if (elPl && elPl.offsetParent !== null) return elPl.value.trim();
             return (el ? el.value.trim() : (elPl ? elPl.value.trim() : ''));
           })(),
-          custom_btn_layout: (() => {
+           custom_btn_layout: (() => {
             const el = document.getElementById('ag-cust-btn-layout');
             if (el && el.offsetParent !== null) return el.value;
             const elPl = document.getElementById('ag-cust-btn-layout-plural');
             if (elPl && elPl.offsetParent !== null) return elPl.value;
             return (el ? el.value : (elPl ? elPl.value : 'row'));
+          })(),
+          custom_btn_position: (() => {
+            const el = document.getElementById('ag-cust-btn-position');
+            if (el && el.offsetParent !== null) return parseInt(el.value) || 10;
+            const elPl = document.getElementById('ag-cust-btn-position-plural');
+            if (elPl && elPl.offsetParent !== null) return parseInt(elPl.value) || 10;
+            return (el ? parseInt(el.value) : (elPl ? parseInt(elPl.value) : 10));
+          })(),
+          custom_btn_size: (() => {
+            const el = document.getElementById('ag-cust-btn-size');
+            if (el && el.offsetParent !== null) return parseFloat(el.value) || 1.0;
+            const elPl = document.getElementById('ag-cust-btn-size-plural');
+            if (elPl && elPl.offsetParent !== null) return parseFloat(elPl.value) || 1.0;
+            return (el ? parseFloat(el.value) : (elPl ? parseFloat(elPl.value) : 1.0));
           })(),
           qa_pairs: (() => {
             const qaPairs = [];
@@ -20405,6 +20564,7 @@
       }
       if (document.getElementById('ag-cust-template-plural')) {
         document.getElementById('ag-cust-template-plural').value = a.customization.template || '';
+        toggleTemplatePreviewButtonPlural();
       }
       if (document.getElementById('ag-cust-bg-image')) {
         document.getElementById('ag-cust-bg-image').value = a.customization.custom_bg_url || '';
@@ -20418,6 +20578,28 @@
       if (document.getElementById('ag-cust-btn-layout-plural')) {
         document.getElementById('ag-cust-btn-layout-plural').value = a.customization.custom_btn_layout || 'row';
       }
+
+      // Populate position & size sliders
+      const posVal = (a.customization.custom_btn_position !== undefined) ? a.customization.custom_btn_position : 10;
+      const sizeVal = (a.customization.custom_btn_size !== undefined) ? a.customization.custom_btn_size : 1.0;
+
+      if (document.getElementById('ag-cust-btn-position')) {
+        document.getElementById('ag-cust-btn-position').value = posVal;
+        document.getElementById('ag-cust-btn-position-val').textContent = posVal + 'px';
+      }
+      if (document.getElementById('ag-cust-btn-position-plural')) {
+        document.getElementById('ag-cust-btn-position-plural').value = posVal;
+        document.getElementById('ag-cust-btn-position-plural-val').textContent = posVal + 'px';
+      }
+      if (document.getElementById('ag-cust-btn-size')) {
+        document.getElementById('ag-cust-btn-size').value = sizeVal;
+        document.getElementById('ag-cust-btn-size-val').textContent = sizeVal + 'x';
+      }
+      if (document.getElementById('ag-cust-btn-size-plural')) {
+        document.getElementById('ag-cust-btn-size-plural').value = sizeVal;
+        document.getElementById('ag-cust-btn-size-plural-val').textContent = sizeVal + 'x';
+      }
+
       toggleCustomTemplateOptions();
       if (document.getElementById('ag-response-lang')) {
         document.getElementById('ag-response-lang').value = a.system_config.response_language || 'default';

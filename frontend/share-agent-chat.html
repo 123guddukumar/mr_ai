@@ -2410,18 +2410,31 @@ async function loadAgent() {
         }
         
         const customBtnLayout = (d.customization && d.customization.custom_btn_layout) || 'row';
+        const btnPos = (d.customization && d.customization.custom_btn_position !== undefined) ? parseInt(d.customization.custom_btn_position) : 10;
+        const btnSize = (d.customization && d.customization.custom_btn_size !== undefined) ? parseFloat(d.customization.custom_btn_size) : 1.0;
+
         const btnWrap = document.getElementById('custom-buttons-wrap');
         const btnWrapSmallSide = document.getElementById('custom-buttons-small-side');
         
         if (customBtnLayout === 'small_side') {
           if (btnWrap) btnWrap.style.display = 'none';
-          if (btnWrapSmallSide) btnWrapSmallSide.style.display = 'flex';
+          if (btnWrapSmallSide) {
+            btnWrapSmallSide.style.display = 'flex';
+            btnWrapSmallSide.style.marginBottom = `${btnPos}px`;
+            btnWrapSmallSide.style.transform = `scale(${btnSize})`;
+            btnWrapSmallSide.style.transformOrigin = 'bottom center';
+            btnWrapSmallSide.style.transition = 'all 0.15s ease';
+          }
           tContainer.style.paddingBottom = '6px';
         } else {
-          tContainer.style.paddingBottom = '18px';
+          tContainer.style.paddingBottom = (customBtnLayout === 'stacked' ? '12px' : '18px');
           if (btnWrapSmallSide) btnWrapSmallSide.style.display = 'none';
           if (btnWrap) {
             btnWrap.style.display = 'flex';
+            btnWrap.style.marginBottom = `${btnPos}px`;
+            btnWrap.style.transform = `scale(${btnSize})`;
+            btnWrap.style.transformOrigin = 'bottom center';
+            btnWrap.style.transition = 'all 0.15s ease';
             if (customBtnLayout === 'stacked') {
               btnWrap.style.flexDirection = 'column';
               btnWrap.style.alignItems = 'stretch';
@@ -2436,6 +2449,28 @@ async function loadAgent() {
         if (chatBtn) {
           chatBtn.style.background = themeColor;
           chatBtn.style.boxShadow = `0 6px 18px ${themeColor}44`;
+        }
+
+        const chatBtnSmall = tContainer.querySelector('.chat-btn-small');
+        if (chatBtnSmall) {
+          chatBtnSmall.style.background = themeColor;
+          chatBtnSmall.style.boxShadow = `0 6px 18px ${themeColor}44`;
+        }
+
+        const footerLines = tContainer.querySelectorAll('.footer-line');
+        footerLines.forEach(el => {
+          el.style.background = themeColor + '40';
+        });
+
+        const footerTextWrap = tContainer.querySelector('.footer-text-wrap');
+        if (footerTextWrap) {
+          footerTextWrap.style.color = themeColor;
+        }
+
+        const footerShield = tContainer.querySelector('.footer-shield');
+        if (footerShield) {
+          footerShield.style.fill = themeColor;
+          footerShield.style.color = themeColor;
         }
       }
     } else {

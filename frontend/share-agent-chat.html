@@ -2230,6 +2230,17 @@ async function loadAgent() {
     const logoUrl = (d.customization && d.customization.logo_url) || '';
     const themeColor = (d.customization && d.customization.color) || '#ff7a00';
     
+    // Dynamically set tab favicon to agent's logo
+    if (logoUrl) {
+      let link = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = logoUrl;
+    }
+    
     if (template === 'template1') {
       if (lp) lp.classList.add('has-template', 't1-theme');
       const tContainer = document.getElementById('landing-template-1');

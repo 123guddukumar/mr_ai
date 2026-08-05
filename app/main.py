@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
@@ -161,8 +161,72 @@ if os.path.exists(frontend_path):
         return FileResponse(os.path.join(frontend_path, "memory-chat.html"))
 
     @app.get("/agent-chat", include_in_schema=False)
-    async def agent_chat_page():
-        return FileResponse(os.path.join(frontend_path, "agent-chat.html"))
+    async def agent_chat_page(id: str = None):
+        html_path = os.path.join(frontend_path, "agent-chat.html")
+        if not os.path.exists(html_path):
+            return FileResponse(html_path)
+            
+        brand_name = "AI Agent"
+        if id:
+            from app.core.database import get_session_local
+            from app.core.models import Agent
+            import json
+            db = get_session_local()()
+            try:
+                agent = db.query(Agent).filter(Agent.agent_id == id).first()
+                if agent:
+                    try:
+                        c_cfg = json.loads(agent.customization_json or "{}")
+                        brand_name = c_cfg.get("brand_name") or agent.name or "AI Agent"
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            finally:
+                db.close()
+                
+        try:
+            with open(html_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            content = content.replace("{brand_name}", brand_name)
+            return HTMLResponse(content)
+        except Exception:
+            return FileResponse(html_path)
+
+    @app.get("/share-agent-chat.html", include_in_schema=False)
+    @app.get("/share-agent-chat", include_in_schema=False)
+    async def share_agent_chat_page(id: str = None):
+        html_path = os.path.join(frontend_path, "share-agent-chat.html")
+        if not os.path.exists(html_path):
+            return FileResponse(html_path)
+            
+        brand_name = "AI Agent"
+        if id:
+            from app.core.database import get_session_local
+            from app.core.models import Agent
+            import json
+            db = get_session_local()()
+            try:
+                agent = db.query(Agent).filter(Agent.agent_id == id).first()
+                if agent:
+                    try:
+                        c_cfg = json.loads(agent.customization_json or "{}")
+                        brand_name = c_cfg.get("brand_name") or agent.name or "AI Agent"
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            finally:
+                db.close()
+                
+        try:
+            with open(html_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            content = content.replace("{brand_name}", brand_name)
+            return HTMLResponse(content)
+        except Exception:
+            return FileResponse(html_path)
+
 
     @app.get("/memory-chat-public", include_in_schema=False)
     async def memory_chat_public_page():

@@ -6442,31 +6442,13 @@
         };
 
         audio.onerror = (e) => {
-          clearInterval(subtitleInterval);
-          window.currentlySpokenText = "";
-          console.warn("Backend TTS audio failed...", e);
-          // toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
-          if (chatMode === 'v2v') {
-            status.textContent = 'Listening…';
-            isListening = true;
-            document.getElementById('vo-btn').classList.add('active');
-            document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
-          }
+          console.warn("Backend TTS audio failed, falling back to local speech...", e);
+          speakLocalSpeech(text);
         };
 
         audio.play().catch(err => {
-          clearInterval(subtitleInterval);
-          window.currentlySpokenText = "";
-          console.warn("Audio play failed...", err);
-          // toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
-          if (chatMode === 'v2v') {
-            status.textContent = 'Listening…';
-            isListening = true;
-            document.getElementById('vo-btn').classList.add('active');
-            document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
-          }
+          console.warn("Audio play failed, falling back to local speech...", err);
+          speakLocalSpeech(text);
         });
       } else {
         speakLocalSpeech(text);

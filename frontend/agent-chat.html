@@ -17,7 +17,7 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AI Agent</title>
+  <title>{brand_name}</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -4375,7 +4375,7 @@
 
         // Set Page Title
         const brandName = (d.customization && d.customization.brand_name) || 'VectorizeAI';
-        document.title = (isRoot ? '👑 ' : '') + brandName + ' - AI Agent';
+        document.title = (isRoot ? '👑 ' : '') + brandName;
 
         // Display Brand Name in navbar status
         if (brandName && brandName !== 'VectorizeAI') {
@@ -6429,7 +6429,7 @@
           clearInterval(subtitleInterval);
           window.currentlySpokenText = "";
           console.warn("Backend TTS audio failed...", e);
-          toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
+          // toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
             isListening = true;
@@ -6443,7 +6443,7 @@
           clearInterval(subtitleInterval);
           window.currentlySpokenText = "";
           console.warn("Audio play failed...", err);
-          toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
+          // toast('⚠️ Voice output failed. Check your API key or quota.', 'err');
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
             isListening = true;

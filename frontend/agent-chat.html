@@ -5913,7 +5913,9 @@
       const win = document.getElementById('chat-win');
       if (m === 'v2v') {
         vo.classList.add('active'); win.style.opacity = '0.3'; win.style.pointerEvents = 'none';
-        if (_agentData.starting_message) speakText(_agentData.starting_message);
+        if (_agentData.starting_message && !window.currentlySpokenText) {
+          speakText(_agentData.starting_message);
+        }
       }
       else { vo.classList.remove('active'); win.style.opacity = '1'; win.style.pointerEvents = 'auto'; window.speechSynthesis?.cancel(); }
     }
@@ -6279,7 +6281,9 @@
 
           mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0 && dgSocket && dgSocket.readyState === WebSocket.OPEN) {
-              dgSocket.send(event.data);
+              if (isListening) {
+                dgSocket.send(event.data);
+              }
             }
           };
 
@@ -6421,11 +6425,10 @@
             }
             showSubtitles(text, delay);
 
-            // Turn microphone OFF during playback to prevent self-echo
+            // Keep WebSocket alive but ignore microphone bytes
             isListening = false;
             document.getElementById('vo-btn').classList.remove('active');
             document.getElementById('vo-orb').classList.remove('listening');
-            stopRecognition();
           }
         };
 
@@ -6434,10 +6437,13 @@
           window.currentlySpokenText = "";
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
+            speechTranscript = '';
+            currentInterim = '';
+            const trans = document.getElementById('vo-transcript');
+            if (trans) trans.innerHTML = `<i>Listening…</i>`;
             isListening = true;
             document.getElementById('vo-btn').classList.add('active');
             document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
           }
         };
 
@@ -6530,10 +6536,13 @@
           window.currentlySpokenText = "";
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
+            speechTranscript = '';
+            currentInterim = '';
+            const trans = document.getElementById('vo-transcript');
+            if (trans) trans.innerHTML = `<i>Listening…</i>`;
             isListening = true;
             document.getElementById('vo-btn').classList.add('active');
             document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
           }
           return;
         }
@@ -6550,11 +6559,10 @@
             started = true;
             if (chatMode === 'v2v') {
               showSubtitles(text, 380);
-              // Turn microphone OFF during playback to prevent self-echo
+              // Mute mic inputs during play to prevent self-echo but keep websocket alive
               isListening = false;
               document.getElementById('vo-btn').classList.remove('active');
               document.getElementById('vo-orb').classList.remove('listening');
-              stopRecognition();
             }
           };
         }
@@ -6566,10 +6574,13 @@
           window.currentlySpokenText = "";
           if (chatMode === 'v2v') {
             status.textContent = 'Listening…';
+            speechTranscript = '';
+            currentInterim = '';
+            const trans = document.getElementById('vo-transcript');
+            if (trans) trans.innerHTML = `<i>Listening…</i>`;
             isListening = true;
             document.getElementById('vo-btn').classList.add('active');
             document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
           }
         };
 

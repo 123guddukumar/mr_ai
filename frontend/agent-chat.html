@@ -6449,13 +6449,10 @@
         window.currentlySpokenText = "";
         if (chatMode === 'v2v') {
           status.textContent = 'Listening…';
-          speechTranscript = '';
-          currentInterim = '';
-          const trans = document.getElementById('vo-transcript');
-          if (trans) trans.innerHTML = `<i>Listening…</i>`;
-          isListening = true;
           document.getElementById('vo-btn').classList.add('active');
           document.getElementById('vo-orb').classList.add('listening');
+          // startRecognition handles keepalive: reuse open WS or reconnect if closed
+          startRecognition();
         }
       };
 
@@ -6465,13 +6462,9 @@
         window.currentlySpokenText = "";
         if (chatMode === 'v2v') {
           status.textContent = 'Listening…';
-          speechTranscript = '';
-          currentInterim = '';
-          const trans = document.getElementById('vo-transcript');
-          if (trans) trans.innerHTML = `<i>Listening…</i>`;
-          isListening = true;
           document.getElementById('vo-btn').classList.add('active');
           document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
         }
       };
 
@@ -6481,13 +6474,9 @@
         window.currentlySpokenText = "";
         if (chatMode === 'v2v') {
           status.textContent = 'Listening…';
-          speechTranscript = '';
-          currentInterim = '';
-          const trans = document.getElementById('vo-transcript');
-          if (trans) trans.innerHTML = `<i>Listening…</i>`;
-          isListening = true;
           document.getElementById('vo-btn').classList.add('active');
           document.getElementById('vo-orb').classList.add('listening');
+          startRecognition();
         }
       });
     }

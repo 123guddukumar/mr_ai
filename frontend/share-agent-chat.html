@@ -3731,9 +3731,11 @@ function deduplicateText(text) {
 function resetSilenceTimer() {
   clearTimeout(silenceTimer);
 
+  // 1500ms silence → full sentence collected, then send
   silenceTimer = setTimeout(() => {
-    const rawCleaned = cleanSpeechText(speechTranscript);
-    const finalCleaned = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawCleaned))).trim();
+    const fullText = (speechTranscript + (currentInterim ? ' ' + currentInterim : '')).trim();
+    const rawCleaned = cleanSpeechText(fullText);
+    const finalCleaned = rawCleaned.trim();
     if (finalCleaned) {
       console.log("Silence detected. Sending message:", finalCleaned);
 
@@ -3741,15 +3743,18 @@ function resetSilenceTimer() {
       if (trans) trans.innerHTML = `<b>${finalCleaned}</b>`;
       document.getElementById('chat-input').value = finalCleaned;
 
+      // Reset transcript buffers for next turn
+      speechTranscript = '';
+      currentInterim = '';
+
       isListening = false;
       document.getElementById('vo-btn').classList.remove('active');
       document.getElementById('vo-orb').classList.remove('listening');
       document.getElementById('vo-status').textContent = 'Processing…';
 
-      stopRecognition();
       sendMsg();
     }
-  }, 800);
+  }, 1500);
 }
 
 let nativeRecognition = null;
@@ -3826,17 +3831,28 @@ function startNativeRecognition() {
 
 function startRecognition() {
   const trans = document.getElementById('vo-transcript');
+
+  // Reset transcript buffers for this listening session
+  speechTranscript = '';
+  currentInterim = '';
+  clearTimeout(silenceTimer);
+
+  // If WebSocket already open and recording, just reset buffers (keep-alive)
+  if (dgSocket && dgSocket.readyState === WebSocket.OPEN && mediaRecorder && mediaRecorder.state === 'recording') {
+    isListening = true;
+    if (trans && chatMode === 'v2v') trans.innerHTML = `<i>Listening…</i>`;
+    return;
+  }
+
+  // Close stale socket if any
   if (dgSocket) {
     try { dgSocket.close(); } catch (e) { }
+    dgSocket = null;
   }
   if (nativeRecognition) {
     try { nativeRecognition.stop(); } catch (e) {}
     nativeRecognition = null;
   }
-
-  speechTranscript = '';
-  currentInterim = '';
-  clearTimeout(silenceTimer);
 
   const loc = window.location;
   let wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -3955,12 +3971,17 @@ function startRecognition() {
 }
 
 function stopRecognition() {
+  // Called only when voice mode is fully exited (not between turns)
   clearTimeout(silenceTimer);
+  speechTranscript = '';
+  currentInterim = '';
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try { mediaRecorder.stop(); } catch(e){}
+    mediaRecorder = null;
   }
   if (audioStream) {
     audioStream.getTracks().forEach(track => track.stop());
+    audioStream = null;
   }
   if (dgSocket) {
     try {
@@ -3969,34 +3990,33 @@ function stopRecognition() {
     } catch(e){}
     dgSocket = null;
   }
+  if (nativeRecognition) {
+    try { nativeRecognition.stop(); } catch(e){}
+    nativeRecognition = null;
+  }
 }
 
 async function speakText(text) {
-  if(!window.speechSynthesis) return;
-  speechSynthesis.cancel();
+  // Cancel any ongoing speech
+  window.speechSynthesis?.cancel();
   clearInterval(subtitleInterval);
   window.currentlySpokenText = text;
-  
+
   const status = document.getElementById('vo-status');
-  if(chatMode === 'v2v') {
+  if (chatMode === 'v2v') {
     status.textContent = 'Speaking…';
   }
 
-  const cfg = _agentData.voice_config || {};
-  const provider = (cfg.provider || 'mrai').toLowerCase();
-  
-  if (provider === 'elevenlabs' || provider === 'sarvam' || provider === 'smallestai') {
-    // Stop local speech first
-    window.speechSynthesis?.cancel();
-    
-    // Play backend audio stream
-    const audioUrl = BACKEND_URL + `/api/agents/${AGENT_ID}/speak?text=${encodeURIComponent(text)}`;
-    if (window.currentAudio) {
-      window.currentAudio.pause();
-      window.currentAudio = null;
-    }
-    const audio = new Audio(audioUrl);
-    window.currentAudio = audio;
+  // ALWAYS use backend TTS — never use browser SpeechSynthesis for output
+  const audioUrl = BACKEND_URL + `/api/agents/${AGENT_ID}/speak?text=${encodeURIComponent(text)}`;
+  if (window.currentAudio) {
+    window.currentAudio.pause();
+    window.currentAudio = null;
+  }
+  const audio = new Audio(audioUrl);
+  window.currentAudio = audio;
+
+  if (true) {  // backend TTS block (always)
     
     audio.onplaying = () => {
       if(chatMode === 'v2v') {
@@ -4018,7 +4038,7 @@ async function speakText(text) {
     audio.onended = () => {
       clearInterval(subtitleInterval);
       window.currentlySpokenText = "";
-      if(chatMode === 'v2v') {
+      if (chatMode === 'v2v') {
         status.textContent = 'Listening…';
         speechTranscript = '';
         currentInterim = '';
@@ -4031,18 +4051,39 @@ async function speakText(text) {
     };
     
     audio.onerror = (e) => {
-      console.warn("Backend TTS audio failed, falling back to local speech...", e);
-      speakLocalSpeech(text);
+      console.warn("Backend TTS audio failed:", e);
+      clearInterval(subtitleInterval);
+      window.currentlySpokenText = "";
+      if (chatMode === 'v2v') {
+        status.textContent = 'Listening…';
+        speechTranscript = '';
+        currentInterim = '';
+        const trans = document.getElementById('vo-transcript');
+        if (trans) trans.innerHTML = `<i>Listening…</i>`;
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+      }
     };
     
     audio.play().catch(err => {
-      console.warn("Audio play failed, falling back to local speech...", err);
-      speakLocalSpeech(text);
+      console.warn("Audio play failed:", err);
+      clearInterval(subtitleInterval);
+      window.currentlySpokenText = "";
+      if (chatMode === 'v2v') {
+        status.textContent = 'Listening…';
+        speechTranscript = '';
+        currentInterim = '';
+        const trans = document.getElementById('vo-transcript');
+        if (trans) trans.innerHTML = `<i>Listening…</i>`;
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+      }
     });
-  } else {
-    speakLocalSpeech(text);
   }
 }
+
 
 function speakLocalSpeech(text) {
   const status = document.getElementById('vo-status');

@@ -3536,6 +3536,10 @@ function isSelfEcho(transcript, spokenText) {
 }
 
 function toggleVoice() {
+  if (!window.isSecureContext) {
+    toast("⚠️ Voice chat requires a secure connection (HTTPS) or localhost.", "err");
+    return;
+  }
   isListening = !isListening;
   const btn = document.getElementById('vo-btn');
   const orb = document.getElementById('vo-orb');
@@ -3831,36 +3835,38 @@ function startRecognition() {
   currentInterim = '';
   clearTimeout(silenceTimer);
 
-  const loc = window.location;
-  let wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-  let wsUrl = wsProto + '//' + loc.host + '/api/agents/ws/transcribe';
-  if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) {
-    const cleanUrl = BACKEND_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (BACKEND_URL.startsWith('https://')) wsProto = 'wss:';
-    else if (BACKEND_URL.startsWith('http://')) wsProto = 'ws:';
-    wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
-  }
+  // Request microphone access first
+  navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 48000,
+      channelCount: 1
+    }
+  }).then(stream => {
+    audioStream = stream;
 
-  try {
-    dgSocket = new WebSocket(wsUrl);
-  } catch (err) {
-    console.warn("Failed to create Deepgram WebSocket, falling back to Native SpeechRecognition:", err);
-    startNativeRecognition();
-    return;
-  }
+    const loc = window.location;
+    let wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+    let wsUrl = wsProto + '//' + loc.host + '/api/agents/ws/transcribe';
+    if (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) {
+      const cleanUrl = BACKEND_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      if (BACKEND_URL.startsWith('https://')) wsProto = 'wss:';
+      else if (BACKEND_URL.startsWith('http://')) wsProto = 'ws:';
+      wsUrl = wsProto + '//' + cleanUrl + '/api/agents/ws/transcribe';
+    }
 
-  dgSocket.onopen = async () => {
-    console.log("Deepgram WS connected!");
     try {
-      audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1
-        }
-      });
+      dgSocket = new WebSocket(wsUrl);
+    } catch (err) {
+      console.warn("Failed to create Deepgram WebSocket, falling back to Native SpeechRecognition:", err);
+      startNativeRecognition();
+      return;
+    }
+
+    dgSocket.onopen = () => {
+      console.log("Deepgram WS connected!");
       let mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'audio/ogg';
@@ -3879,70 +3885,80 @@ function startRecognition() {
       if (chatMode === 'v2v') {
         trans.innerHTML = `<i>Listening…</i>`;
       }
-    } catch (err) {
-      console.error("Mic access denied or error:", err);
-      toast("❌ Microphone access denied", "err");
-      toggleVoice();
-    }
-  };
+    };
 
-  dgSocket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      const channel = data.channel || (data.results && data.results.channels && data.results.channels[0]);
-      if (!channel) return;
+    dgSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const channel = data.channel || (data.results && data.results.channels && data.results.channels[0]);
+        if (!channel) return;
 
-      const alternatives = channel.alternatives || [];
-      if (alternatives.length === 0) return;
+        const alternatives = channel.alternatives || [];
+        if (alternatives.length === 0) return;
 
-      const transcript = alternatives[0].transcript || '';
-      const isFinal = data.is_final;
+        const transcript = alternatives[0].transcript || '';
+        const isFinal = data.is_final;
 
-      if (transcript.trim()) {
-        if (isSelfEcho(transcript, window.currentlySpokenText)) {
-          return;
-        }
-        resetSilenceTimer();
-
-        if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
-          console.log("Barge-In detected! User started speaking. Interrupting bot voice...");
-          if (window.currentAudio) {
-            window.currentAudio.pause();
-            window.currentAudio = null;
+        if (transcript.trim()) {
+          if (isSelfEcho(transcript, window.currentlySpokenText)) {
+            return;
           }
-          if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-          }
-          clearInterval(subtitleInterval);
-          const status = document.getElementById('vo-status');
-          if (chatMode === 'v2v') {
-            status.textContent = 'Listening…';
-          }
-        }
+          resetSilenceTimer();
 
-        if (isFinal) {
-          speechTranscript += (speechTranscript ? ' ' : '') + transcript;
-          currentInterim = '';
-        } else {
-          currentInterim = transcript;
+          if (window.currentAudio || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+            console.log("Barge-In detected! User started speaking. Interrupting bot voice...");
+            if (window.currentAudio) {
+              window.currentAudio.pause();
+              window.currentAudio = null;
+            }
+            if (window.speechSynthesis) {
+              window.speechSynthesis.cancel();
+            }
+            clearInterval(subtitleInterval);
+            const status = document.getElementById('vo-status');
+            if (chatMode === 'v2v') {
+              status.textContent = 'Listening…';
+            }
+          }
+
+          if (isFinal) {
+            speechTranscript += (speechTranscript ? ' ' : '') + transcript;
+            currentInterim = '';
+          } else {
+            currentInterim = transcript;
+          }
+          
+          const rawDisplay = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
+          const display = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawDisplay)));
+          trans.innerHTML = `<span>${display}</span>`;
         }
-        
-        const rawDisplay = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
-        const display = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawDisplay)));
-        trans.innerHTML = `<span>${display}</span>`;
+      } catch (e) {
+        console.error("Error parsing Deepgram message:", e);
       }
-    } catch (e) {
-      console.error("Error parsing Deepgram message:", e);
-    }
-  };
+    };
 
-  dgSocket.onerror = (e) => {
-    console.error("Deepgram WS error:", e);
-  };
+    dgSocket.onerror = (e) => {
+      console.error("Deepgram WS error, falling back to Native SpeechRecognition...", e);
+      if (dgSocket) {
+        try { dgSocket.close(); } catch(err) {}
+        dgSocket = null;
+      }
+      startNativeRecognition();
+    };
 
-  dgSocket.onclose = () => {
-    console.log("Deepgram WS connection closed.");
-  };
+    dgSocket.onclose = () => {
+      console.log("Deepgram WS connection closed.");
+      if (isListening && !nativeRecognition) {
+        console.warn("Deepgram WS closed while listening. Falling back to native...");
+        startNativeRecognition();
+      }
+    };
+
+  }).catch(err => {
+    console.error("Mic access denied or error:", err);
+    toast("❌ Microphone access denied or not connected", "err");
+    toggleVoice();
+  });
 }
 
 function stopRecognition() {

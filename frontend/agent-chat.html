@@ -6421,11 +6421,11 @@
             }
             showSubtitles(text, delay);
 
-            // Turn microphone back on during play so user can interrupt (Barge-In)
-            isListening = true;
-            document.getElementById('vo-btn').classList.add('active');
-            document.getElementById('vo-orb').classList.add('listening');
-            startRecognition();
+            // Turn microphone OFF during playback to prevent self-echo
+            isListening = false;
+            document.getElementById('vo-btn').classList.remove('active');
+            document.getElementById('vo-orb').classList.remove('listening');
+            stopRecognition();
           }
         };
 
@@ -6457,82 +6457,136 @@
 
     function speakLocalSpeech(text) {
       const status = document.getElementById('vo-status');
-      const u = new SpeechSynthesisUtterance(text);
       const cfg = _agentData.voice_config || {};
       const voiceName = (cfg.voice_name || '').toLowerCase();
-      const voices = speechSynthesis.getVoices();
-      const isHindi = text.match(/[\u0900-\u097F]/);
+      const isHindi = /[\u0900-\u097F]/.test(text);
+      const isMobileBrowser = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-      let v = null;
-      if (voices.length > 0) {
-        if (voiceName) {
-          v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
+      function getVoice() {
+        const voices = speechSynthesis.getVoices();
+        let v = null;
+        if (voices.length > 0) {
+          if (voiceName) {
+            v = voices.find(vo => vo.name.toLowerCase().includes(voiceName) || vo.lang.toLowerCase().includes(voiceName));
+            if (!v) {
+              if (voiceName === 'natural') v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
+              else if (voiceName === 'friendly') v = voices.find(vo => vo.name.toLowerCase().includes('zira') || vo.name.toLowerCase().includes('samantha') || vo.name.toLowerCase().includes('female'));
+              else if (voiceName === 'pro') v = voices.find(vo => vo.name.toLowerCase().includes('david') || vo.name.toLowerCase().includes('mark') || vo.name.toLowerCase().includes('male'));
+            }
+          }
           if (!v) {
-            if (voiceName === 'natural') {
-              v = voices.find(vo => vo.name.toLowerCase().includes('google') || vo.name.toLowerCase().includes('natural'));
-            } else if (voiceName === 'friendly') {
-              v = voices.find(vo => vo.name.toLowerCase().includes('zira') || vo.name.toLowerCase().includes('samantha') || vo.name.toLowerCase().includes('female'));
-            } else if (voiceName === 'pro') {
-              v = voices.find(vo => vo.name.toLowerCase().includes('david') || vo.name.toLowerCase().includes('mark') || vo.name.toLowerCase().includes('male'));
+            if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
+            else v = voices.find(vo => vo.lang.startsWith('en'));
+          }
+        }
+        return v;
+      }
+
+      // Split text into natural sentence-level chunks
+      let CHUNK_SIZE = 250;
+      if (isHindi) {
+        CHUNK_SIZE = isMobileBrowser ? 80 : 150;
+      } else {
+        CHUNK_SIZE = isMobileBrowser ? 120 : 250;
+      }
+
+      function splitChunks(txt, maxLen) {
+        const sentences = txt.match(/[^.!?।\n]+[.!?।\n]?/g) || [txt];
+        const chunks = [];
+        let cur = '';
+        
+        for (let s of sentences) {
+          if (s.length > maxLen) {
+            if (cur.trim()) { chunks.push(cur.trim()); cur = ''; }
+            const subParts = s.split(/[,，;；、]/);
+            for (let part of subParts) {
+              if ((cur + part).length > maxLen && cur.trim()) {
+                chunks.push(cur.trim());
+                cur = part;
+              } else {
+                cur += (cur ? ', ' : '') + part;
+              }
+            }
+          } else {
+            if ((cur + s).length > maxLen && cur.trim()) {
+              chunks.push(cur.trim());
+              cur = s;
+            } else {
+              cur += s;
             }
           }
         }
-        if (!v) {
-          if (isHindi) v = voices.find(vo => vo.lang.startsWith('hi'));
-          else v = voices.find(vo => vo.lang.startsWith('en'));
+        if (cur.trim()) chunks.push(cur.trim());
+        return chunks;
+      }
+
+      const chunks = splitChunks(text, CHUNK_SIZE);
+      let chunkIdx = 0;
+      let started = false;
+
+      function speakChunk() {
+        if (chunkIdx >= chunks.length) {
+          clearInterval(subtitleInterval);
+          window.currentlySpokenText = "";
+          if (chatMode === 'v2v') {
+            status.textContent = 'Listening…';
+            isListening = true;
+            document.getElementById('vo-btn').classList.add('active');
+            document.getElementById('vo-orb').classList.add('listening');
+            startRecognition();
+          }
+          return;
+        }
+
+        const chunk = chunks[chunkIdx++];
+        const u = new SpeechSynthesisUtterance(chunk);
+        const v = getVoice();
+        if (v) u.voice = v;
+        u.lang = isHindi ? 'hi-IN' : 'en-US';
+        u.rate = 1.0;
+
+        if (!started) {
+          u.onstart = () => {
+            started = true;
+            if (chatMode === 'v2v') {
+              showSubtitles(text, 380);
+              // Turn microphone OFF during playback to prevent self-echo
+              isListening = false;
+              document.getElementById('vo-btn').classList.remove('active');
+              document.getElementById('vo-orb').classList.remove('listening');
+              stopRecognition();
+            }
+          };
+        }
+
+        u.onend = () => { speakChunk(); };
+        u.onerror = (e) => {
+          if (e.error === 'interrupted' || e.error === 'canceled') { speakChunk(); return; }
+          clearInterval(subtitleInterval);
+          window.currentlySpokenText = "";
+          if (chatMode === 'v2v') {
+            status.textContent = 'Listening…';
+            isListening = true;
+            document.getElementById('vo-btn').classList.add('active');
+            document.getElementById('vo-orb').classList.add('listening');
+            startRecognition();
+          }
+        };
+
+        speechSynthesis.speak(u);
+
+        // iOS keepalive
+        if (isMobileBrowser) {
+          setTimeout(() => {
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+              speechSynthesis.pause(); speechSynthesis.resume();
+            }
+          }, 8000);
         }
       }
 
-      if (v) u.voice = v;
-      u.lang = isHindi ? 'hi-IN' : 'en-US';
-      u.rate = 1.0;
-
-      u.onstart = () => {
-        if (chatMode === 'v2v') {
-          showSubtitles(text, 380);
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
-        }
-      };
-
-      u.onend = () => {
-        clearInterval(subtitleInterval);
-        window.currentlySpokenText = "";
-        if (chatMode === 'v2v') {
-          status.textContent = 'Listening…';
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
-        }
-      };
-
-      u.onerror = (e) => {
-        clearInterval(subtitleInterval);
-        window.currentlySpokenText = "";
-        if (chatMode === 'v2v') {
-          status.textContent = 'Listening…';
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
-        }
-      };
-
-      u.onerror = (e) => {
-        clearInterval(subtitleInterval);
-        if (chatMode === 'v2v') {
-          status.textContent = 'Listening…';
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
-        }
-      };
-
-      speechSynthesis.speak(u);
+      speechSynthesis.cancel();
+      speakChunk();
     }
 
     function toast(msg, type) {

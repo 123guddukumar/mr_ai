@@ -4004,11 +4004,11 @@ async function speakText(text) {
         }
         showSubtitles(text, delay);
         
-        // Turn microphone back on during play so user can interrupt (Barge-In)
-        isListening = true;
-        document.getElementById('vo-btn').classList.add('active');
-        document.getElementById('vo-orb').classList.add('listening');
-        startRecognition();
+        // Turn microphone OFF during playback to prevent self-echo
+        isListening = false;
+        document.getElementById('vo-btn').classList.remove('active');
+        document.getElementById('vo-orb').classList.remove('listening');
+        stopRecognition();
       }
     };
 
@@ -4065,15 +4065,39 @@ function speakLocalSpeech(text) {
     return v;
   }
 
-  // Split text into natural sentence-level chunks (mobile safe)
-  const CHUNK_SIZE = isMobileBrowser ? 160 : 5000;
+  // Split text into natural sentence-level chunks
+  let CHUNK_SIZE = 250;
+  if (isHindi) {
+    CHUNK_SIZE = isMobileBrowser ? 80 : 150;
+  } else {
+    CHUNK_SIZE = isMobileBrowser ? 120 : 250;
+  }
+
   function splitChunks(txt, maxLen) {
-    const sentences = txt.match(/[^.!?\n]+[.!?\n]?/g) || [txt];
+    const sentences = txt.match(/[^.!?।\n]+[.!?।\n]?/g) || [txt];
     const chunks = [];
     let cur = '';
-    for (const s of sentences) {
-      if ((cur + s).length > maxLen && cur.trim()) { chunks.push(cur.trim()); cur = s; }
-      else { cur += s; }
+    
+    for (let s of sentences) {
+      if (s.length > maxLen) {
+        if (cur.trim()) { chunks.push(cur.trim()); cur = ''; }
+        const subParts = s.split(/[,，;；、]/);
+        for (let part of subParts) {
+          if ((cur + part).length > maxLen && cur.trim()) {
+            chunks.push(cur.trim());
+            cur = part;
+          } else {
+            cur += (cur ? ', ' : '') + part;
+          }
+        }
+      } else {
+        if ((cur + s).length > maxLen && cur.trim()) {
+          chunks.push(cur.trim());
+          cur = s;
+        } else {
+          cur += s;
+        }
+      }
     }
     if (cur.trim()) chunks.push(cur.trim());
     return chunks;
@@ -4086,9 +4110,17 @@ function speakLocalSpeech(text) {
   function speakChunk() {
     if (chunkIdx >= chunks.length) {
       clearInterval(subtitleInterval);
-      if (chatMode === 'v2v') status.textContent = 'Listening\u2026';
+      window.currentlySpokenText = "";
+      if (chatMode === 'v2v') {
+        status.textContent = 'Listening…';
+        isListening = true;
+        document.getElementById('vo-btn').classList.add('active');
+        document.getElementById('vo-orb').classList.add('listening');
+        startRecognition();
+      }
       return;
     }
+
     const chunk = chunks[chunkIdx++];
     const u = new SpeechSynthesisUtterance(chunk);
     const v = getVoice();
@@ -4101,10 +4133,11 @@ function speakLocalSpeech(text) {
         started = true;
         if (chatMode === 'v2v') {
           showSubtitles(text, 380);
-          isListening = true;
-          document.getElementById('vo-btn').classList.add('active');
-          document.getElementById('vo-orb').classList.add('listening');
-          startRecognition();
+          // Turn microphone OFF during playback to prevent self-echo
+          isListening = false;
+          document.getElementById('vo-btn').classList.remove('active');
+          document.getElementById('vo-orb').classList.remove('listening');
+          stopRecognition();
         }
       };
     }
@@ -4115,7 +4148,7 @@ function speakLocalSpeech(text) {
       clearInterval(subtitleInterval);
       window.currentlySpokenText = "";
       if (chatMode === 'v2v') {
-        status.textContent = 'Listening\u2026';
+        status.textContent = 'Listening…';
         isListening = true;
         document.getElementById('vo-btn').classList.add('active');
         document.getElementById('vo-orb').classList.add('listening');
@@ -4125,13 +4158,13 @@ function speakLocalSpeech(text) {
 
     speechSynthesis.speak(u);
 
-    // iOS WebKit keepalive: prevent auto-cancel on long text
+    // iOS keepalive
     if (isMobileBrowser) {
       setTimeout(() => {
         if (speechSynthesis.speaking && !speechSynthesis.paused) {
           speechSynthesis.pause(); speechSynthesis.resume();
         }
-      }, 9000);
+      }, 8000);
     }
   }
 

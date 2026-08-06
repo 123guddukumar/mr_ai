@@ -188,6 +188,7 @@ if os.path.exists(frontend_path):
         try:
             with open(html_path, "r", encoding="utf-8") as f:
                 content = f.read()
+            content = content.replace("<title>AI Agent</title>", f"<title>{brand_name}</title>")
             content = content.replace("{brand_name}", brand_name)
             return HTMLResponse(content)
         except Exception:
@@ -222,6 +223,7 @@ if os.path.exists(frontend_path):
         try:
             with open(html_path, "r", encoding="utf-8") as f:
                 content = f.read()
+            content = content.replace("<title>AI Agent</title>", f"<title>{brand_name}</title>")
             content = content.replace("{brand_name}", brand_name)
             return HTMLResponse(content)
         except Exception:

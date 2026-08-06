@@ -17,10 +17,10 @@
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{brand_name}</title>
+  <title>No Brand</title>
   <script>
     if (document.title.includes('{brand_name}') || document.title.includes('brand_name')) {
-      document.title = "AI Agent";
+      document.title = "No Brand";
     }
   </script>
   <link
@@ -3634,7 +3634,7 @@
         <!-- <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
           <i data-lucide="mic"></i> Talk
         </button> -->
-        <button class="landing-btn btn-talk">
+        <button class="landing-btn btn-talk" style="pointer-events: none;">
           <i data-lucide="mic"></i> Comming...
         </button>
         <a class="landing-btn btn-chat" id="landing-whatsapp-link" href="#" target="_blank"
@@ -3686,7 +3686,7 @@
           </span>
           <span class="t1-arrow">›</span>
         </button>
-        <button class="t1-btn btn-talk" onclick="startChatFromLanding('v2v')">
+        <!-- <button class="t1-btn btn-talk" onclick="startChatFromLanding('v2v')">
           <span class="t1-btn-left">
             <span class="t1-btn-icon-circle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
@@ -3698,6 +3698,21 @@
               </svg>
             </span>
             <span class="t1-btn-label">Talk with AI Assistant</span>
+          </span>
+          <span class="t1-arrow">›</span>
+        </button> -->
+        <button class="t1-btn btn-talk" style="pointer-events: none;">
+          <span class="t1-btn-left">
+            <span class="t1-btn-icon-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                <path
+                  d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z">
+                </path>
+              </svg>
+            </span>
+            <span class="t1-btn-label">Comming..</span>
           </span>
           <span class="t1-arrow">›</span>
         </button>
@@ -3758,7 +3773,7 @@
         <div class="t2-buttons">
           <button class="t2-btn btn-chat" onclick="startChatFromLanding('text')">💬 Chat</button>
           <!-- <button class="t2-btn btn-talk" onclick="startChatFromLanding('v2v')">🎧 Talk</button> -->
-           <button class="t2-btn btn-talk">🎧 Comming..</button>
+           <button class="t2-btn btn-talk" style="pointer-events: none;">🎧 Comming..</button>
         </div>
         <div class="t2-footer">
           <span>🛡️</span>
@@ -3802,7 +3817,7 @@
             </span>
             <span class="t3-arrow">›</span>
           </button>
-          <button class="t3-btn btn-talk" onclick="startChatFromLanding('v2v')">
+          <button class="t3-btn btn-talk" style="pointer-events: none;">
             <span class="t3-btn-left">
               <span class="t3-btn-icon">🎧</span>
               <span class="t3-btn-text">
@@ -3832,7 +3847,7 @@
           </span>
           <span class="custom-arrow">›</span>
         </button>
-        <button class="custom-btn talk-btn" onclick="startChatFromLanding('v2v')">
+        <button class="custom-btn talk-btn" style="pointer-events: none;">
           <span class="custom-btn-left">
             <span class="custom-btn-icon">🎧</span>
             <span class="custom-btn-text">
@@ -3855,7 +3870,7 @@
               <span class="small-btn-text">Chat</span>
             </span>
           </button>
-          <button class="small-btn talk-btn-small" onclick="startChatFromLanding('v2v')">
+          <button class="small-btn talk-btn-small" style="pointer-events: none;">
             <span class="small-btn-content">
               <span class="small-btn-icon">🎧</span>
               <!-- <span class="small-btn-text">Talk</span> -->
@@ -4415,11 +4430,11 @@
         document.getElementById('hero-desc').textContent = d.description || 'Ready to help.';
 
         // Set Page Title
-        const brandName = (d.customization && d.customization.brand_name) || 'VectorizeAI';
+        const brandName = (d.customization && d.customization.brand_name) || d.name || 'No Brand';
         document.title = (isRoot ? '👑 ' : '') + brandName;
 
         // Display Brand Name in navbar status
-        if (brandName && brandName !== 'VectorizeAI') {
+        if (brandName && brandName !== 'VectorizeAI' && brandName !== 'No Brand') {
           const statusEl = document.querySelector('.ag-status');
           if (statusEl) statusEl.textContent = 'Online • ';
         }

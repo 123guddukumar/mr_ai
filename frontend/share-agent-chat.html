@@ -16,10 +16,10 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>No Brand</title>
+<title>{brand_name}</title>
 <script>
   if (document.title.includes('{brand_name}') || document.title.includes('brand_name')) {
-    document.title = "No Brand";
+    document.title = "no brand";
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1697,10 +1697,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
       <button class="landing-btn btn-chat" onclick="startChatFromLanding('text')">
         <i data-lucide="message-square"></i> Chat
       </button>
-      <!-- <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
-        <i data-lucide="mic"></i> Talk
-      </button> -->
-      <button class="landing-btn btn-talk" style="pointer-events: none;">
+      <button class="landing-btn btn-talk" onclick="startChatFromLanding('v2v')">
         <i data-lucide="mic"></i> Comming...
       </button>
       <a class="landing-btn btn-chat" id="landing-whatsapp-link" href="#" target="_blank" style="display:none; background:#10b981; color:#ffffff; border:none; text-decoration:none; align-items:center; justify-content:center; gap:8px;">
@@ -1750,19 +1747,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
         </span>
         <span class="t1-arrow">›</span>
       </button>
-      <!-- <button class="t1-btn btn-talk" onclick="startChatFromLanding('v2v')">
+      <button class="t1-btn btn-talk" onclick="startChatFromLanding('v2v')">
         <span class="t1-btn-left">
           <span class="t1-btn-icon-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-          </span>
-          <span class="t1-btn-label">Talk with AI Assistant</span>
-        </span>
-        <span class="t1-arrow">›</span>
-      </button> -->
-      <button class="t1-btn btn-talk" style="pointer-events: none;">
-        <span class="t1-btn-left">
-          <span class="t1-btn-icon-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" x2="12" y1="19" y2="22"></line>
+            </svg>
           </span>
           <span class="t1-btn-label">Comming..</span>
         </span>
@@ -1823,8 +1815,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
       </div>
       <div class="t2-buttons">
         <button class="t2-btn btn-chat" onclick="startChatFromLanding('text')">💬 Chat</button>
-        <!-- <button class="t2-btn btn-talk" onclick="startChatFromLanding('v2v')">🎧 Talk</button> -->
-        <button class="t2-btn btn-talk" style="pointer-events: none;">🎧 Comming..</button>
+        <button class="t2-btn btn-talk" onclick="startChatFromLanding('v2v')">🎙️ Comming..</button>
       </div>
       <div class="t2-footer">
         <span>🛡️</span>
@@ -1868,12 +1859,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
           </span>
           <span class="t3-arrow">›</span>
         </button>
-        <button class="t3-btn btn-talk" style="pointer-events: none;">
+        <button class="t3-btn btn-talk" onclick="startChatFromLanding('v2v')">
           <span class="t3-btn-left">
-            <span class="t3-btn-icon">🎧</span>
+            <span class="t3-btn-icon">🎙️</span>
             <span class="t3-btn-text">
-              <!-- <strong>Voice Assistant</strong>
-              <span>Talk to AI</span> -->
               <strong>Voice Assistant</strong>
               <span>Comming..</span>
             </span>
@@ -1898,12 +1887,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
         </span>
         <span class="custom-arrow">›</span>
       </button>
-      <button class="custom-btn talk-btn" style="pointer-events: none;">
+      <button class="custom-btn talk-btn" onclick="startChatFromLanding('v2v')">
         <span class="custom-btn-left">
-          <span class="custom-btn-icon">🎧</span>
+          <span class="custom-btn-icon">🎙️</span>
           <span class="custom-btn-text">
-            <!-- <strong>Voice Assistant</strong>
-            <span>Talk to AI</span> -->
             <strong>Voice Assistant</strong>
             <span>Comming..</span>
           </span>
@@ -1921,10 +1908,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
             <span class="small-btn-text">Chat</span>
           </span>
         </button>
-        <button class="small-btn talk-btn-small" style="pointer-events: none;">
+        <button class="small-btn talk-btn-small" onclick="startChatFromLanding('v2v')">
           <span class="small-btn-content">
-            <span class="small-btn-icon">🎧</span>
-            <!-- <span class="small-btn-text">Talk</span> -->
+            <span class="small-btn-icon">🎙️</span>
             <span class="small-btn-text">Comming..</span>
           </span>
         </button>
@@ -2224,11 +2210,11 @@ async function loadAgent() {
     document.getElementById('hero-desc').textContent = d.description || 'Ready to help.';
     
     // Set Page Title
-    const brandName = (d.customization && d.customization.brand_name) || d.name || 'No Brand';
+    const brandName = (d.customization && d.customization.brand_name) || 'no brand';
     document.title = brandName;
 
     // Display Brand Name in navbar status
-    if (brandName && brandName !== 'VectorizeAI' && brandName !== 'No Brand') {
+    if (brandName && brandName !== 'no brand') {
       const statusEl = document.querySelector('.ag-status');
       if (statusEl) statusEl.textContent = 'Online • ';
     }
@@ -3528,9 +3514,11 @@ function setMode(m) {
   const win = document.getElementById('chat-win');
   if(m === 'v2v') { 
     vo.classList.add('active'); win.style.opacity = '0.3'; win.style.pointerEvents = 'none'; 
-    if(_agentData.starting_message && !window.currentlySpokenText) {
-      speakText(_agentData.starting_message);
-    }
+    document.getElementById('vo-status').textContent = 'Coming Soon';
+    document.getElementById('vo-sub').textContent = 'Voice Assistant feature is coming soon!';
+    document.getElementById('vo-transcript').innerHTML = '<i>We are working on voice features. Stay tuned!</i>';
+    const timerEl = document.getElementById('vo-timer');
+    if(timerEl) timerEl.style.display = 'none';
   }
   else { vo.classList.remove('active'); win.style.opacity = '1'; win.style.pointerEvents = 'auto'; window.speechSynthesis?.cancel(); }
 }
@@ -3561,23 +3549,10 @@ function isSelfEcho(transcript, spokenText) {
 }
 
 function toggleVoice() {
-  isListening = !isListening;
-  const btn = document.getElementById('vo-btn');
-  const orb = document.getElementById('vo-orb');
   const status = document.getElementById('vo-status');
-  if(isListening) {
-    window.speechSynthesis?.cancel(); // Stop talking if we start listening
-    btn.classList.add('active');
-    orb.classList.add('listening');
-    status.textContent = 'Listening…';
-    document.getElementById('vo-transcript').innerHTML = '<i>Listening…</i>';
-    startRecognition();
-  } else {
-    btn.classList.remove('active');
-    orb.classList.remove('listening');
-    status.textContent = 'Tap to Speak';
-    stopRecognition();
-  }
+  if (status) status.textContent = 'Coming Soon';
+  const trans = document.getElementById('vo-transcript');
+  if (trans) trans.innerHTML = '<i>Voice Assistant coming soon!</i>';
 }
 
 function cleanSpeechText(txt) {
@@ -3848,6 +3823,7 @@ function startNativeRecognition() {
 }
 
 function startRecognition() {
+  return;
   const trans = document.getElementById('vo-transcript');
 
   // Reset transcript buffers for this listening session
@@ -4015,6 +3991,7 @@ function stopRecognition() {
 }
 
 async function speakText(text) {
+  return;
   // Cancel any ongoing speech
   window.speechSynthesis?.cancel();
   clearInterval(subtitleInterval);

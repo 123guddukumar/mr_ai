@@ -166,7 +166,7 @@ if os.path.exists(frontend_path):
         if not os.path.exists(html_path):
             return FileResponse(html_path)
             
-        brand_name = "No Brand"
+        brand_name = "no brand"
         if id:
             from app.core.database import get_session_local
             from app.core.models import Agent
@@ -177,7 +177,7 @@ if os.path.exists(frontend_path):
                 if agent:
                     try:
                         c_cfg = json.loads(agent.customization_json or "{}")
-                        brand_name = c_cfg.get("brand_name") or agent.name or "No Brand"
+                        brand_name = c_cfg.get("brand_name") or agent.name or "no brand"
                     except Exception:
                         pass
             except Exception:
@@ -188,7 +188,6 @@ if os.path.exists(frontend_path):
         try:
             with open(html_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            content = content.replace("<title>No Brand</title>", f"<title>{brand_name}</title>")
             content = content.replace("{brand_name}", brand_name)
             return HTMLResponse(content)
         except Exception:
@@ -201,7 +200,7 @@ if os.path.exists(frontend_path):
         if not os.path.exists(html_path):
             return FileResponse(html_path)
             
-        brand_name = "No Brand"
+        brand_name = "no brand"
         if id:
             from app.core.database import get_session_local
             from app.core.models import Agent
@@ -212,7 +211,7 @@ if os.path.exists(frontend_path):
                 if agent:
                     try:
                         c_cfg = json.loads(agent.customization_json or "{}")
-                        brand_name = c_cfg.get("brand_name") or agent.name or "No Brand"
+                        brand_name = c_cfg.get("brand_name") or agent.name or "no brand"
                     except Exception:
                         pass
             except Exception:
@@ -223,7 +222,6 @@ if os.path.exists(frontend_path):
         try:
             with open(html_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            content = content.replace("<title>No Brand</title>", f"<title>{brand_name}</title>")
             content = content.replace("{brand_name}", brand_name)
             return HTMLResponse(content)
         except Exception:

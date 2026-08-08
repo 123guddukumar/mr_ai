@@ -2396,3 +2396,277 @@ async def get_daily_plans_analysis(
         return {}
 
     return analysis_record.to_dict()
+
+
+@router.get("/root-agent/pings/stats")
+async def get_root_pings_stats(
+    period: str = Query("today"), # today | yesterday | this_week | all
+    start_date: Optional[str] = Query(None), # YYYY-MM-DD
+    end_date: Optional[str] = Query(None), # YYYY-MM-DD
+    x_app_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Computes comparative stats for pings, sources, outcomes and sub-agents.
+    """
+    from app.core.models import AgentFeedback
+    
+    client = _get_owner_client(x_app_token, db)
+    client_id = client["client_id"]
+
+    # Fetch client's agents
+    agents = db.query(Agent).filter(Agent.client_id == client_id).all()
+    agent_ids = [a.agent_id for a in agents]
+    
+    if not agent_ids:
+        return {
+            "total_pings": {"count": 0, "growth": "0%", "growth_text": "0% vs Previous", "is_positive": True},
+            "conversations": {"count": 0, "growth": "0%", "growth_text": "0% vs Previous", "is_positive": True},
+            "sources": {
+                "whatsapp": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "chats": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "calls": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "widgets": {"count": 0, "growth": "0% ↑", "is_positive": True}
+            },
+            "outcomes": {
+                "meetings": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "enquiry": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "support": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "feedback": {"count": 0, "growth": "0% ↑", "is_positive": True},
+                "others": {"count": 0, "growth": "0% ↑", "is_positive": True}
+            },
+            "agents": []
+        }
+
+    now = datetime.utcnow()
+    prev_label = "Previous"
+    if start_date and end_date:
+        try:
+            curr_start = datetime.strptime(start_date, "%Y-%m-%d")
+            curr_end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            duration = curr_end - curr_start
+            prev_start = curr_start - duration
+            prev_end = curr_start
+            prev_label = "Prev Period"
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    elif period == "yesterday":
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        curr_start = today_midnight - timedelta(days=1)
+        curr_end = today_midnight
+        prev_start = today_midnight - timedelta(days=2)
+        prev_end = today_midnight - timedelta(days=1)
+        prev_label = "Day Before"
+    elif period == "this_week":
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        curr_start = today_midnight - timedelta(days=now.weekday())
+        curr_end = now
+        prev_start = curr_start - timedelta(days=7)
+        prev_end = curr_start
+        prev_label = "Prev Week"
+    elif period == "all":
+        curr_start = None
+        curr_end = None
+        prev_start = None
+        prev_end = None
+        prev_label = "Previous"
+    else: # Default is "today"
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        curr_start = today_midnight
+        curr_end = now
+        prev_start = today_midnight - timedelta(days=1)
+        prev_end = today_midnight
+        prev_label = "Yesterday"
+
+    # Query current sessions
+    curr_sess_q = db.query(AgentPublicSession).filter(AgentPublicSession.agent_id.in_(agent_ids))
+    if curr_start:
+        curr_sess_q = curr_sess_q.filter(AgentPublicSession.created_at >= curr_start)
+    if curr_end:
+        curr_sess_q = curr_sess_q.filter(AgentPublicSession.created_at < curr_end)
+    curr_sessions = curr_sess_q.all()
+
+    # Query previous sessions
+    prev_sessions = []
+    if prev_start and prev_end:
+        prev_sess_q = db.query(AgentPublicSession).filter(AgentPublicSession.agent_id.in_(agent_ids))
+        prev_sess_q = prev_sess_q.filter(AgentPublicSession.created_at >= prev_start)
+        prev_sess_q = prev_sess_q.filter(AgentPublicSession.created_at < prev_end)
+        prev_sessions = prev_sess_q.all()
+
+    # Query current messages (Total Pings where role == 'user')
+    curr_msgs_q = db.query(AgentPublicMessage).join(AgentPublicSession).filter(
+        AgentPublicSession.agent_id.in_(agent_ids),
+        AgentPublicMessage.role == "user"
+    )
+    if curr_start:
+        curr_msgs_q = curr_msgs_q.filter(AgentPublicMessage.created_at >= curr_start)
+    if curr_end:
+        curr_msgs_q = curr_msgs_q.filter(AgentPublicMessage.created_at < curr_end)
+    curr_msg_count = curr_msgs_q.count()
+
+    # Query previous messages
+    prev_msg_count = 0
+    if prev_start and prev_end:
+        prev_msgs_q = db.query(AgentPublicMessage).join(AgentPublicSession).filter(
+            AgentPublicSession.agent_id.in_(agent_ids),
+            AgentPublicMessage.role == "user"
+        )
+        prev_msgs_q = prev_msgs_q.filter(AgentPublicMessage.created_at >= prev_start)
+        prev_msgs_q = prev_msgs_q.filter(AgentPublicMessage.created_at < prev_end)
+        prev_msg_count = prev_msgs_q.count()
+
+    # Query meetings scheduled
+    curr_meetings_q = db.query(RootMeeting).filter(RootMeeting.client_id == client_id)
+    if curr_start:
+        curr_meetings_q = curr_meetings_q.filter(RootMeeting.created_at >= curr_start)
+    if curr_end:
+        curr_meetings_q = curr_meetings_q.filter(RootMeeting.created_at < curr_end)
+    curr_meeting_count = curr_meetings_q.count()
+
+    prev_meeting_count = 0
+    if prev_start and prev_end:
+        prev_meetings_q = db.query(RootMeeting).filter(RootMeeting.client_id == client_id)
+        prev_meetings_q = prev_meetings_q.filter(RootMeeting.created_at >= prev_start)
+        prev_meetings_q = prev_meetings_q.filter(RootMeeting.created_at < prev_end)
+        prev_meeting_count = prev_meetings_q.count()
+
+    # Query feedback submitted
+    curr_feedback_q = db.query(AgentFeedback).filter(AgentFeedback.agent_id.in_(agent_ids))
+    if curr_start:
+        curr_feedback_q = curr_feedback_q.filter(AgentFeedback.created_at >= curr_start)
+    if curr_end:
+        curr_feedback_q = curr_feedback_q.filter(AgentFeedback.created_at < curr_end)
+    curr_feedback_count = curr_feedback_q.count()
+
+    prev_feedback_count = 0
+    if prev_start and prev_end:
+        prev_feedback_q = db.query(AgentFeedback).filter(AgentFeedback.agent_id.in_(agent_ids))
+        prev_feedback_q = prev_feedback_q.filter(AgentFeedback.created_at >= prev_start)
+        prev_feedback_q = prev_feedback_q.filter(AgentFeedback.created_at < prev_end)
+        prev_feedback_count = prev_feedback_q.count()
+
+    # Source & Outcome Classifier Helper
+    def get_source_and_category(session):
+        sid = (session.session_id or "")
+        dname = (session.device_name or "").lower()
+        
+        # Source Classification
+        if sid.startswith("wa_") or "whatsapp" in dname:
+            source = "whatsapp"
+        elif sid.startswith("tel_") or "voice call" in dname or "call" in dname:
+            source = "calls"
+        elif sid.startswith("wid_") or "widget" in dname:
+            source = "widgets"
+        else:
+            source = "chats"
+            
+        # Outcome Category Classification
+        category = "others"
+        if session.analysis_json:
+            try:
+                js = json.loads(session.analysis_json)
+                cat = (js.get("category") or "").lower()
+                if "meeting" in cat:
+                    category = "meetings"
+                elif cat in ["marketing", "calling", "enquiry"]:
+                    category = "enquiry"
+                elif cat in ["support", "help"]:
+                    category = "support"
+                elif cat in ["feedback", "report"]:
+                    category = "feedback"
+            except:
+                pass
+        return source, category
+
+    # Aggregate current stats
+    curr_sources = {"whatsapp": 0, "chats": 0, "calls": 0, "widgets": 0}
+    curr_categories = {"meetings": 0, "enquiry": 0, "support": 0, "feedback": 0, "others": 0}
+    for s in curr_sessions:
+        src, cat = get_source_and_category(s)
+        curr_sources[src] += 1
+        curr_categories[cat] += 1
+
+    # Aggregate previous stats
+    prev_sources = {"whatsapp": 0, "chats": 0, "calls": 0, "widgets": 0}
+    prev_categories = {"meetings": 0, "enquiry": 0, "support": 0, "feedback": 0, "others": 0}
+    for s in prev_sessions:
+        src, cat = get_source_and_category(s)
+        prev_sources[src] += 1
+        prev_categories[cat] += 1
+
+    # Adjust meetings and feedback with direct table count aggregates
+    curr_categories["meetings"] = max(curr_categories["meetings"], curr_meeting_count)
+    prev_categories["meetings"] = max(prev_categories["meetings"], prev_meeting_count)
+    curr_categories["feedback"] = max(curr_categories["feedback"], curr_feedback_count)
+    prev_categories["feedback"] = max(prev_categories["feedback"], prev_feedback_count)
+
+    # Growth helper logic
+    def calc_growth_card(curr, prev):
+        if prev > 0:
+            val = round(((curr - prev) / prev) * 100)
+            is_pos = val >= 0
+            sign = "↑" if is_pos else "↓"
+            return {
+                "count": curr,
+                "growth": f"{sign} {abs(val)}%",
+                "growth_text": f"{sign} {abs(val)}% vs {prev_label}",
+                "is_positive": is_pos
+            }
+        else:
+            return {
+                "count": curr,
+                "growth": "↑ 100%" if curr > 0 else "0%",
+                "growth_text": f"↑ 100% vs {prev_label}" if curr > 0 else f"0% vs {prev_label}",
+                "is_positive": True
+            }
+
+    def calc_growth_simple(curr, prev):
+        if prev > 0:
+            val = round(((curr - prev) / prev) * 100)
+            is_pos = val >= 0
+            sign = "↑" if is_pos else "↓"
+            return {
+                "count": curr,
+                "growth": f"{abs(val)}% {sign}",
+                "is_positive": is_pos
+            }
+        else:
+            return {
+                "count": curr,
+                "growth": "100% ↑" if curr > 0 else "0% ↑",
+                "is_positive": True
+            }
+
+    # Build response data structure
+    res_data = {
+        "total_pings": calc_growth_card(curr_msg_count, prev_msg_count),
+        "conversations": calc_growth_card(len(curr_sessions), len(prev_sessions)),
+        "sources": {
+            k: calc_growth_simple(curr_sources[k], prev_sources[k]) for k in curr_sources
+        },
+        "outcomes": {
+            k: calc_growth_simple(curr_categories[k], prev_categories[k]) for k in curr_categories
+        },
+        "agents": []
+    }
+
+    # Aggregate Monitored Sub-Agents
+    for a in agents:
+        sa_sess_q = db.query(AgentPublicSession).filter(AgentPublicSession.agent_id == a.agent_id)
+        if curr_start:
+            sa_sess_q = sa_sess_q.filter(AgentPublicSession.created_at >= curr_start)
+        if curr_end:
+            sa_sess_q = sa_sess_q.filter(AgentPublicSession.created_at < curr_end)
+        sa_sess_count = sa_sess_q.count()
+        
+        res_data["agents"].append({
+            "agent_id": a.agent_id,
+            "name": a.name,
+            "category": a.category,
+            "is_active": a.is_active,
+            "is_root": a.is_root,
+            "total_visitors": sa_sess_count
+        })
+
+    return res_data

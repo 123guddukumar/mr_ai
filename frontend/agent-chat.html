@@ -2629,6 +2629,37 @@
       display: flex;
     }
 
+    /* Ping Panel */
+    #ping-section {
+      display: none;
+      flex-direction: column;
+      width: 340px;
+      min-width: 300px;
+      max-width: 340px;
+      height: 100%;
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+      animation: pingSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes pingSlideIn {
+      from {
+        opacity: 0;
+        transform: translateX(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    #ping-section.visible {
+      display: flex;
+    }
+
     /* Planner Header */
     .planner-header {
       display: flex;
@@ -3393,7 +3424,7 @@
     }
 
     @media (max-width: 900px) {
-      #planner-section {
+      #planner-section, #ping-section {
         position: fixed;
         right: 0;
         top: 0;
@@ -3404,7 +3435,7 @@
         box-shadow: -10px 0 40px rgba(0, 0, 0, 0.3);
       }
 
-      #planner-section.visible {
+      #planner-section.visible, #ping-section.visible {
         transform: translateX(0);
         display: flex;
       }
@@ -3961,6 +3992,9 @@
         <button id="float-planner-btn" onclick="togglePlanner()" style="width: 44px; height: 44px; border-radius: 50%; background: #f59e0b; border: none; color: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" title="Toggle Daily Planner">
           <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
         </button>
+        <button id="float-ping-btn" onclick="togglePingPanel()" style="width: 44px; height: 44px; border-radius: 50%; background: #10b981; border: none; color: #fff; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" title="Toggle Ping Analytics">
+          <i data-lucide="activity" style="width: 18px; height: 18px;"></i>
+        </button>
       </div>
 
       <div class="chat-window" id="chat-win">
@@ -4062,6 +4096,177 @@
           <div class="plan-empty-text">No plans yet</div>
           <div class="plan-empty-sub">Click "+ Add Plan" to create your first plan!</div>
         </div>
+      </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════════
+     PING ANALYTICS PANEL (Root Agent Only) 📈
+     ═══════════════════════════════════════════ -->
+    <aside id="ping-section">
+      <!-- Header -->
+      <div class="ping-header" style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px 12px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--bg2);">
+        <div>
+          <div style="font-size:16px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:6px;">📈 Ping Dashboard</div>
+          <div id="ping-date-label" style="font-size:11px; color:var(--text3); font-weight:600; margin-top:2px;">Today</div>
+        </div>
+        <div style="position:relative; display:inline-block;">
+          <button onclick="togglePingDateRangeDropdown(event)" style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); font-size:11px; font-weight:700; padding:6px 10px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.2s;" title="Select Period">
+            📅 <span id="ping-selected-period">Today</span> ▾
+          </button>
+          <div id="ping-period-dropdown" class="dropdown-menu" style="display:none; position:absolute; right:0; top:36px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; min-width:130px; box-shadow:0 10px 25px rgba(0,0,0,0.3); z-index:1002; overflow:hidden;">
+            <button class="dropdown-item" onclick="setPingPeriod('today')" style="width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text); text-align:left; font-size:12.5px; font-weight:600; cursor:pointer; transition:all 0.2s;">Today</button>
+            <button class="dropdown-item" onclick="setPingPeriod('yesterday')" style="width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text); text-align:left; font-size:12.5px; font-weight:600; cursor:pointer; border-top:1px solid var(--border); transition:all 0.2s;">Yesterday</button>
+            <button class="dropdown-item" onclick="setPingPeriod('this_week')" style="width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text); text-align:left; font-size:12.5px; font-weight:600; cursor:pointer; border-top:1px solid var(--border); transition:all 0.2s;">This Week</button>
+            <button class="dropdown-item" onclick="setPingPeriod('all')" style="width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text); text-align:left; font-size:12.5px; font-weight:600; cursor:pointer; border-top:1px solid var(--border); transition:all 0.2s;">All Time</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Scroll Wrapper -->
+      <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px;">
+        
+        <!-- Overall Pings -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:12px; font-weight:800; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px;">Overall Pings</div>
+          <div style="display:flex; gap:10px;">
+            <!-- Total Pings Card -->
+            <div style="flex:1; background:rgba(168,85,247,0.06); border-left:3px solid #a855f7; border-radius:12px; padding:12px 14px;">
+              <div style="font-size:11px; color:var(--text3); font-weight:600;">Total Pings</div>
+              <div id="ping-total-count" style="font-size:24px; font-weight:800; margin:6px 0 4px; color:var(--text);">0</div>
+              <div id="ping-total-growth" style="font-size:10px; font-weight:700; color:#10b981; display:flex; align-items:center; gap:2px;">↑ 0% vs Yesterday</div>
+            </div>
+            <!-- Conversation Card -->
+            <div style="flex:1; background:rgba(16,185,129,0.06); border-left:3px solid #10b981; border-radius:12px; padding:12px 14px;">
+              <div style="font-size:11px; color:var(--text3); font-weight:600;">Conversation</div>
+              <div id="ping-conv-count" style="font-size:24px; font-weight:800; margin:6px 0 4px; color:var(--text);">0</div>
+              <div id="ping-conv-growth" style="font-size:10px; font-weight:700; color:#10b981; display:flex; align-items:center; gap:2px;">↑ 0% vs Yesterday</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- By Source -->
+        <div style="background:rgba(59,130,246,0.04); border:1px solid rgba(59,130,246,0.12); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:12px; font-weight:800; color:#3b82f6; text-transform:uppercase; letter-spacing:0.5px;">By Source</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
+            <!-- WhatsApp -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <span style="font-size:16px;">🟢</span>
+              <span style="font-size:10px; font-weight:700; margin:4px 0 2px; color:var(--text3);">WhatsApp</span>
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--text);">
+                <span id="ping-src-wa">0</span>
+                <span id="ping-src-wa-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+              </div>
+            </div>
+            <!-- Chats -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <span style="font-size:16px;">💬</span>
+              <span style="font-size:10px; font-weight:700; margin:4px 0 2px; color:var(--text3);">Chats</span>
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--text);">
+                <span id="ping-src-chat">0</span>
+                <span id="ping-src-chat-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+              </div>
+            </div>
+            <!-- Calls -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <span style="font-size:16px;">📞</span>
+              <span style="font-size:10px; font-weight:700; margin:4px 0 2px; color:var(--text3);">Calls</span>
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--text);">
+                <span id="ping-src-call">0</span>
+                <span id="ping-src-call-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+              </div>
+            </div>
+            <!-- Widgets -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 4px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <span style="font-size:16px;">🎛️</span>
+              <span style="font-size:10px; font-weight:700; margin:4px 0 2px; color:var(--text3);">Widgets</span>
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:var(--text);">
+                <span id="ping-src-widget">0</span>
+                <span id="ping-src-widget-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outcome Breakdown -->
+        <div style="background:rgba(245,158,11,0.03); border:1px solid rgba(245,158,11,0.12); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:12px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px;">Outcome Breakdown</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Grid row 1 -->
+            <div style="display:flex; gap:8px;">
+              <!-- Meetings -->
+              <div style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:14px;">📅</span>
+                  <span style="font-size:11px; font-weight:700; color:var(--text2);">Meetings</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:4px;">
+                  <span id="ping-out-meet">0</span>
+                  <span id="ping-out-meet-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+                </div>
+              </div>
+              <!-- Enquiry -->
+              <div style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:14px;">❓</span>
+                  <span style="font-size:11px; font-weight:700; color:var(--text2);">Enquiry</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:4px;">
+                  <span id="ping-out-enquiry">0</span>
+                  <span id="ping-out-enquiry-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+                </div>
+              </div>
+            </div>
+            <!-- Grid row 2 -->
+            <div style="display:flex; gap:8px;">
+              <!-- Support -->
+              <div style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:14px;">🛠️</span>
+                  <span style="font-size:11px; font-weight:700; color:var(--text2);">Support</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:4px;">
+                  <span id="ping-out-support">0</span>
+                  <span id="ping-out-support-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+                </div>
+              </div>
+              <!-- Feedback -->
+              <div style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:14px;">⭐</span>
+                  <span style="font-size:11px; font-weight:700; color:var(--text2);">Feedback</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:4px;">
+                  <span id="ping-out-feedback">0</span>
+                  <span id="ping-out-feedback-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+                </div>
+              </div>
+            </div>
+            <!-- Others -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:14px;">💬</span>
+                <span style="font-size:11px; font-weight:700; color:var(--text2);">Others</span>
+              </div>
+              <div style="font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:4px;">
+                <span id="ping-out-others">0</span>
+                <span id="ping-out-others-growth" style="font-size:9px; color:#10b981;">0% ↑</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Agents list -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div style="font-size:12px; font-weight:800; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px;">AI Agents</div>
+            <span style="font-size:11px; font-weight:700; color:var(--accent); cursor:pointer;">View All ›</span>
+          </div>
+          <div id="ping-agents-list" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Loaded dynamically -->
+            <div style="font-size:11px; text-align:center; color:var(--text3); padding:10px;">No agents found.</div>
+          </div>
+        </div>
+
       </div>
     </aside>
 
@@ -6976,6 +7181,12 @@
         toggleBtn.style.setProperty('display', 'inline-flex', 'important');
       }
 
+      // Show ping floating button
+      const pingBtn = document.getElementById('float-ping-btn');
+      if (pingBtn) {
+        pingBtn.style.setProperty('display', 'inline-flex', 'important');
+      }
+
       // Update today label
       const todayLabel = document.getElementById('planner-today-label');
       if (todayLabel) {
@@ -7004,6 +7215,7 @@
     }
 
     function showPlannerPanel() {
+      if (typeof hidePingPanel === 'function') hidePingPanel();
       const panel = document.getElementById('planner-section');
       const fab = document.getElementById('add-plan-fab');
       const toggleBtn = document.getElementById('planner-toggle-btn');
@@ -8390,6 +8602,163 @@
       sessionStorage.setItem('ag_session_id_' + AGENT_ID, sessionId);
 
       loadRootAgentSessions();
+    }
+
+    // ── Ping Analytics State ──
+    let _pingActive = false;
+    let _pingPeriod = 'today';
+
+    function togglePingDateRangeDropdown(e) {
+      e.stopPropagation();
+      const dd = document.getElementById('ping-period-dropdown');
+      if (dd) {
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', () => {
+      const dd = document.getElementById('ping-period-dropdown');
+      if (dd) dd.style.display = 'none';
+    });
+
+    function setPingPeriod(period) {
+      _pingPeriod = period;
+      const label = document.getElementById('ping-selected-period');
+      if (label) {
+        const labels = { today: 'Today', yesterday: 'Yesterday', this_week: 'This Week', all: 'All Time' };
+        label.textContent = labels[period] || 'Period';
+      }
+      
+      const dateLabel = document.getElementById('ping-date-label');
+      if (dateLabel) {
+        const labelsLong = { today: 'Today\'s Activity', yesterday: 'Yesterday\'s Activity', this_week: 'This Week\'s Summary', all: 'Overall Metrics' };
+        dateLabel.textContent = labelsLong[period] || 'Activity';
+      }
+      
+      loadPingStats(period);
+    }
+
+    async function loadPingStats(period) {
+      try {
+        const r = await fetch(`/api/root-agent/pings/stats?period=${period}`, { headers: hdrs() });
+        if (r.ok) {
+          const stats = await r.json();
+          renderPingStats(stats);
+        }
+      } catch (e) {
+        console.error("Failed to load ping statistics:", e);
+      }
+    }
+
+    function renderPingStats(stats) {
+      // 1. Overall stats
+      document.getElementById('ping-total-count').textContent = stats.total_pings.count;
+      document.getElementById('ping-total-growth').textContent = stats.total_pings.growth_text;
+      document.getElementById('ping-total-growth').style.color = stats.total_pings.is_positive ? '#10b981' : '#ef4444';
+      
+      document.getElementById('ping-conv-count').textContent = stats.conversations.count;
+      document.getElementById('ping-conv-growth').textContent = stats.conversations.growth_text;
+      document.getElementById('ping-conv-growth').style.color = stats.conversations.is_positive ? '#10b981' : '#ef4444';
+
+      // 2. Sources
+      const srcs = stats.sources || {};
+      document.getElementById('ping-src-wa').textContent = srcs.whatsapp?.count || 0;
+      document.getElementById('ping-src-wa-growth').textContent = srcs.whatsapp?.growth || '0% ↑';
+      document.getElementById('ping-src-wa-growth').style.color = srcs.whatsapp?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-src-chat').textContent = srcs.chats?.count || 0;
+      document.getElementById('ping-src-chat-growth').textContent = srcs.chats?.growth || '0% ↑';
+      document.getElementById('ping-src-chat-growth').style.color = srcs.chats?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-src-call').textContent = srcs.calls?.count || 0;
+      document.getElementById('ping-src-call-growth').textContent = srcs.calls?.growth || '0% ↑';
+      document.getElementById('ping-src-call-growth').style.color = srcs.calls?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-src-widget').textContent = srcs.widgets?.count || 0;
+      document.getElementById('ping-src-widget-growth').textContent = srcs.widgets?.growth || '0% ↑';
+      document.getElementById('ping-src-widget-growth').style.color = srcs.widgets?.is_positive ? '#10b981' : '#ef4444';
+
+      // 3. Outcomes
+      const outs = stats.outcomes || {};
+      document.getElementById('ping-out-meet').textContent = outs.meetings?.count || 0;
+      document.getElementById('ping-out-meet-growth').textContent = outs.meetings?.growth || '0% ↑';
+      document.getElementById('ping-out-meet-growth').style.color = outs.meetings?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-out-enquiry').textContent = outs.enquiry?.count || 0;
+      document.getElementById('ping-out-enquiry-growth').textContent = outs.enquiry?.growth || '0% ↑';
+      document.getElementById('ping-out-enquiry-growth').style.color = outs.enquiry?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-out-support').textContent = outs.support?.count || 0;
+      document.getElementById('ping-out-support-growth').textContent = outs.support?.growth || '0% ↑';
+      document.getElementById('ping-out-support-growth').style.color = outs.support?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-out-feedback').textContent = outs.feedback?.count || 0;
+      document.getElementById('ping-out-feedback-growth').textContent = outs.feedback?.growth || '0% ↑';
+      document.getElementById('ping-out-feedback-growth').style.color = outs.feedback?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('ping-out-others').textContent = outs.others?.count || 0;
+      document.getElementById('ping-out-others-growth').textContent = outs.others?.growth || '0% ↑';
+      document.getElementById('ping-out-others-growth').style.color = outs.others?.is_positive ? '#10b981' : '#ef4444';
+
+      // 4. Sub-Agents
+      const listContainer = document.getElementById('ping-agents-list');
+      if (listContainer) {
+        if (!stats.agents || stats.agents.length === 0) {
+          listContainer.innerHTML = '<div style="font-size:11px; text-align:center; color:var(--text3); padding:10px;">No sub-agents found.</div>';
+        } else {
+          listContainer.innerHTML = stats.agents.map(sa => {
+            const label = sa.is_root ? '👑 Root' : '🤖 Sub';
+            const catLabel = sa.category || 'assistant';
+            return `
+              <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  <span style="font-size:11.5px; font-weight:800; color:var(--text);">${escHtml(sa.name)}</span>
+                  <span style="font-size:9.5px; color:var(--text3); font-weight:700;">${label} · ${escHtml(catLabel)}</span>
+                </div>
+                <span style="color:var(--accent); font-weight:800; font-size:10.5px; display:inline-flex; align-items:center; gap:2px;">
+                  👥 ${sa.total_visitors}
+                </span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+    }
+
+    function showPingPanel() {
+      // Hide planner panel if open
+      hidePlannerPanel();
+      
+      const panel = document.getElementById('ping-section');
+      if (panel) { panel.classList.add('visible'); }
+      
+      const floatBtn = document.getElementById('float-ping-btn');
+      if (floatBtn) {
+        floatBtn.style.background = '#eab308'; // Active state yellow
+        floatBtn.style.color = '#000';
+      }
+      
+      _pingActive = true;
+      loadPingStats(_pingPeriod);
+    }
+
+    function hidePingPanel() {
+      const panel = document.getElementById('ping-section');
+      if (panel) panel.classList.remove('visible');
+      
+      const floatBtn = document.getElementById('float-ping-btn');
+      if (floatBtn) {
+        floatBtn.style.background = '#10b981'; // Inactive green
+        floatBtn.style.color = '#fff';
+      }
+      
+      _pingActive = false;
+    }
+
+    function togglePingPanel() {
+      if (_pingActive) hidePingPanel();
+      else showPingPanel();
     }
   </script>
 

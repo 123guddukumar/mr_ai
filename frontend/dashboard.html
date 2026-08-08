@@ -3648,6 +3648,8 @@
       <div class="sb-section-title">Main</div>
       <div class="sb-item active" id="nav-dashboard" onclick="showPanel('dashboard')"><span class="sb-icon"><i
             data-lucide="layout-dashboard"></i></span><span class="sb-label">Overview</span></div>
+      <div class="sb-item" id="nav-ping" onclick="showPanel('ping')"><span class="sb-icon"><i
+            data-lucide="activity"></i></span><span class="sb-label">Ping Analytics</span></div>
       <div class="sb-item" id="nav-user" onclick="showPanel('user')"><span class="sb-icon"><i
             data-lucide="users"></i></span><span class="sb-label">Users</span></div>
       <div class="sb-item" id="nav-agent" onclick="showPanel('agent')"><span class="sb-icon"><i
@@ -4089,6 +4091,181 @@
           </div>
         </div>
       </div><!-- /panel-user -->
+
+
+      <!-- ── PING PANEL ── -->
+      <div class="panel" id="panel-ping">
+        
+        <!-- Header Controls (Preset Filters and Date Range picker) -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div>
+              <div class="card-title">📈 Ping Analytics Dashboard</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px;">Real-time statistics, sources, and conversation performance.</div>
+            </div>
+            
+            <!-- Filter Tabs -->
+            <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;background:var(--bg3);padding:4px;border-radius:12px;border:1px solid var(--border);">
+              <button class="db-pf-btn-preset active" id="db-ping-tab-today" onclick="changeDbPingPeriod('today', this)" style="background:var(--accent);color:#fff;border:none;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;">Today</button>
+              <button class="db-pf-btn-preset" id="db-ping-tab-yesterday" onclick="changeDbPingPeriod('yesterday', this)" style="background:transparent;color:var(--text2);border:none;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;">Yesterday</button>
+              <button class="db-pf-btn-preset" id="db-ping-tab-this_week" onclick="changeDbPingPeriod('this_week', this)" style="background:transparent;color:var(--text2);border:none;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;">This Week</button>
+              <button class="db-pf-btn-preset" id="db-ping-tab-all" onclick="changeDbPingPeriod('all', this)" style="background:transparent;color:var(--text2);border:none;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;">All Time</button>
+            </div>
+            
+            <!-- Custom Date Range Picker -->
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg3);padding:4px 10px;border-radius:12px;border:1px solid var(--border);">
+              <label style="font-size:11px;font-weight:700;color:var(--text3);">Range:</label>
+              <input type="date" id="db-ping-start-date" style="background:transparent;border:none;color:var(--text2);font-size:11px;font-weight:600;outline:none;" onchange="triggerDbPingCustomRange()">
+              <span style="color:var(--text3);font-size:11px;">to</span>
+              <input type="date" id="db-ping-end-date" style="background:transparent;border:none;color:var(--text2);font-size:11px;font-weight:600;outline:none;" onchange="triggerDbPingCustomRange()">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 Column Layout for Stats -->
+        <div style="display:grid;grid-template-columns:1.5fr 2fr 1.5fr;gap:16px;align-items:start;">
+          
+          <!-- Left Column: Overall Pings -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card" style="padding:20px;border-top:4px solid #a855f7;">
+              <div style="font-size:12px;font-weight:800;color:#a855f7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Total Pings</div>
+              <div id="db-ping-total-count" style="font-size:36px;font-weight:800;color:var(--text);">0</div>
+              <div id="db-ping-total-growth" style="font-size:12px;font-weight:700;color:#10b981;margin-top:8px;display:flex;align-items:center;gap:4px;">
+                ↑ 0% vs Yesterday
+              </div>
+            </div>
+            
+            <div class="card" style="padding:20px;border-top:4px solid #10b981;">
+              <div style="font-size:12px;font-weight:800;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Conversations</div>
+              <div id="db-ping-conv-count" style="font-size:36px;font-weight:800;color:var(--text);">0</div>
+              <div id="db-ping-conv-growth" style="font-size:12px;font-weight:700;color:#10b981;margin-top:8px;display:flex;align-items:center;gap:4px;">
+                ↑ 0% vs Yesterday
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle Column: Sources & Outcomes -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- By Source -->
+            <div class="card" style="padding:18px;">
+              <div class="card-title" style="margin-bottom:14px;color:#3b82f6;display:flex;align-items:center;gap:6px;">🎛️ Distribution By Source</div>
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+                <!-- WhatsApp -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+                  <span style="font-size:24px;">🟢</span>
+                  <div style="font-size:11px;font-weight:700;color:var(--text3);margin:6px 0 2px;">WhatsApp</div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:var(--text);">
+                    <span id="db-ping-src-wa">0</span>
+                    <span id="db-ping-src-wa-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Chats -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+                  <span style="font-size:24px;">💬</span>
+                  <div style="font-size:11px;font-weight:700;color:var(--text3);margin:6px 0 2px;">Web Chats</div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:var(--text);">
+                    <span id="db-ping-src-chat">0</span>
+                    <span id="db-ping-src-chat-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Calls -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+                  <span style="font-size:24px;">📞</span>
+                  <div style="font-size:11px;font-weight:700;color:var(--text3);margin:6px 0 2px;">Voice Calls</div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:var(--text);">
+                    <span id="db-ping-src-call">0</span>
+                    <span id="db-ping-src-call-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Widgets -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+                  <span style="font-size:24px;">🎛️</span>
+                  <div style="font-size:11px;font-weight:700;color:var(--text3);margin:6px 0 2px;">Embed Widgets</div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:var(--text);">
+                    <span id="db-ping-src-widget">0</span>
+                    <span id="db-ping-src-widget-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Outcome Breakdown -->
+            <div class="card" style="padding:18px;">
+              <div class="card-title" style="margin-bottom:14px;color:#f59e0b;display:flex;align-items:center;gap:6px;">🎯 Conversation Outcome Breakdown</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <!-- Meetings -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">📅</span>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">Meetings Scheduled</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;">
+                    <span id="db-ping-out-meet">0</span>
+                    <span id="db-ping-out-meet-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Enquiry -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">❓</span>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">Product Enquiries</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;">
+                    <span id="db-ping-out-enquiry">0</span>
+                    <span id="db-ping-out-enquiry-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Support -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">🛠️</span>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">Support Issues</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;">
+                    <span id="db-ping-out-support">0</span>
+                    <span id="db-ping-out-support-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Feedback -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">⭐</span>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">User Feedbacks</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;">
+                    <span id="db-ping-out-feedback">0</span>
+                    <span id="db-ping-out-feedback-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+                <!-- Others -->
+                <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">💬</span>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">General Discussions</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;">
+                    <span id="db-ping-out-others">0</span>
+                    <span id="db-ping-out-others-growth" style="font-size:11px;color:#10b981;">0% ↑</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Monitored Agents -->
+          <div class="card" style="padding:18px;">
+            <div class="card-title" style="margin-bottom:14px;color:var(--text);display:flex;align-items:center;justify-content:space-between;">
+              <span>🤖 Monitored AI Agents</span>
+              <span style="font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;">View All ›</span>
+            </div>
+            <div id="db-ping-agents-list" style="display:flex;flex-direction:column;gap:10px;">
+              <!-- Loaded dynamically -->
+              <div style="font-size:12px;text-align:center;color:var(--text3);padding:20px;">No agents registered.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
 
 
       <!-- ── HISTORY PANEL ── -->
@@ -14053,6 +14230,7 @@
       ugc: { title: 'UGC Creator Studio', sub: 'Upload local videos and enhance them with AI pipelines' },
       'ugc-request': { title: 'UGC Request Manager', sub: 'Manage and edit video requests received via the developer API' },
       'ads': { title: '🎯 Ads Generator', sub: 'Create AI-powered ads for any platform in one click' },
+      ping: { title: '📈 Ping Analytics', sub: 'Root agent statistics, sources, and conversation performance' },
     };
     function showPanel(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -14078,6 +14256,7 @@
       if (id === 'ugc') loadUgcJobs();
       if (id === 'ugc-request') loadUgcRequestJobs();
       if (id === 'ads') initAdsPanel();
+      if (id === 'ping') loadDbPingStats('today');
 
       function startProgress(type) {
         const overlay = document.getElementById('gen-loading-overlay');
@@ -37173,6 +37352,136 @@ Also include a "meta" object at the end:
     function closeMeetingDetailsModal() {
       const modal = document.getElementById('meeting-details-modal');
       if (modal) modal.classList.remove('open');
+    }
+
+    // ── Ping Analytics Dashboard Javascript ──
+    let _dbPingPeriod = 'today';
+
+    function changeDbPingPeriod(period, btn) {
+      _dbPingPeriod = period;
+      
+      // Update active button styling
+      document.querySelectorAll('.db-pf-btn-preset').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text2)';
+      });
+      btn.style.background = 'var(--accent)';
+      btn.style.color = '#fff';
+      
+      // Clear inputs
+      document.getElementById('db-ping-start-date').value = '';
+      document.getElementById('db-ping-end-date').value = '';
+
+      loadDbPingStats(period);
+    }
+
+    async function triggerDbPingCustomRange() {
+      const start = document.getElementById('db-ping-start-date').value;
+      const end = document.getElementById('db-ping-end-date').value;
+      if (!start || !end) return;
+
+      // Reset preset active button styling
+      document.querySelectorAll('.db-pf-btn-preset').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text2)';
+      });
+
+      try {
+        const r = await fetch(`/api/root-agent/pings/stats?start_date=${start}&end_date=${end}`, { headers: hdrs() });
+        if (r.ok) {
+          const stats = await r.json();
+          renderDbPingStats(stats);
+        }
+      } catch (e) {
+        console.error("Failed to load custom range ping statistics:", e);
+      }
+    }
+
+    async function loadDbPingStats(period) {
+      try {
+        const r = await fetch(`/api/root-agent/pings/stats?period=${period}`, { headers: hdrs() });
+        if (r.ok) {
+          const stats = await r.json();
+          renderDbPingStats(stats);
+        }
+      } catch (e) {
+        console.error("Failed to load ping statistics:", e);
+      }
+    }
+
+    function renderDbPingStats(stats) {
+      // 1. Overall stats
+      document.getElementById('db-ping-total-count').textContent = stats.total_pings.count;
+      document.getElementById('db-ping-total-growth').textContent = stats.total_pings.growth_text;
+      document.getElementById('db-ping-total-growth').style.color = stats.total_pings.is_positive ? '#10b981' : '#ef4444';
+      
+      document.getElementById('db-ping-conv-count').textContent = stats.conversations.count;
+      document.getElementById('db-ping-conv-growth').textContent = stats.conversations.growth_text;
+      document.getElementById('db-ping-conv-growth').style.color = stats.conversations.is_positive ? '#10b981' : '#ef4444';
+
+      // 2. Sources
+      const srcs = stats.sources || {};
+      document.getElementById('db-ping-src-wa').textContent = srcs.whatsapp?.count || 0;
+      document.getElementById('db-ping-src-wa-growth').textContent = srcs.whatsapp?.growth || '0% ↑';
+      document.getElementById('db-ping-src-wa-growth').style.color = srcs.whatsapp?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-src-chat').textContent = srcs.chats?.count || 0;
+      document.getElementById('db-ping-src-chat-growth').textContent = srcs.chats?.growth || '0% ↑';
+      document.getElementById('db-ping-src-chat-growth').style.color = srcs.chats?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-src-call').textContent = srcs.calls?.count || 0;
+      document.getElementById('db-ping-src-call-growth').textContent = srcs.calls?.growth || '0% ↑';
+      document.getElementById('db-ping-src-call-growth').style.color = srcs.calls?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-src-widget').textContent = srcs.widgets?.count || 0;
+      document.getElementById('db-ping-src-widget-growth').textContent = srcs.widgets?.growth || '0% ↑';
+      document.getElementById('db-ping-src-widget-growth').style.color = srcs.widgets?.is_positive ? '#10b981' : '#ef4444';
+
+      // 3. Outcomes
+      const outs = stats.outcomes || {};
+      document.getElementById('db-ping-out-meet').textContent = outs.meetings?.count || 0;
+      document.getElementById('db-ping-out-meet-growth').textContent = outs.meetings?.growth || '0% ↑';
+      document.getElementById('db-ping-out-meet-growth').style.color = outs.meetings?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-out-enquiry').textContent = outs.enquiry?.count || 0;
+      document.getElementById('db-ping-out-enquiry-growth').textContent = outs.enquiry?.growth || '0% ↑';
+      document.getElementById('db-ping-out-enquiry-growth').style.color = outs.enquiry?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-out-support').textContent = outs.support?.count || 0;
+      document.getElementById('db-ping-out-support-growth').textContent = outs.support?.growth || '0% ↑';
+      document.getElementById('db-ping-out-support-growth').style.color = outs.support?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-out-feedback').textContent = outs.feedback?.count || 0;
+      document.getElementById('db-ping-out-feedback-growth').textContent = outs.feedback?.growth || '0% ↑';
+      document.getElementById('db-ping-out-feedback-growth').style.color = outs.feedback?.is_positive ? '#10b981' : '#ef4444';
+
+      document.getElementById('db-ping-out-others').textContent = outs.others?.count || 0;
+      document.getElementById('db-ping-out-others-growth').textContent = outs.others?.growth || '0% ↑';
+      document.getElementById('db-ping-out-others-growth').style.color = outs.others?.is_positive ? '#10b981' : '#ef4444';
+
+      // 4. Sub-Agents
+      const listContainer = document.getElementById('db-ping-agents-list');
+      if (listContainer) {
+        if (!stats.agents || stats.agents.length === 0) {
+          listContainer.innerHTML = '<div style="font-size:12px; text-align:center; color:var(--text3); padding:20px;">No sub-agents registered.</div>';
+        } else {
+          listContainer.innerHTML = stats.agents.map(sa => {
+            const label = sa.is_root ? '👑 Root' : '🤖 Sub';
+            const catLabel = sa.category || 'assistant';
+            return `
+              <div style="background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:13px; font-weight:800; color:var(--text);">${escHtml(sa.name)}</span>
+                  <span style="font-size:10px; color:var(--text3); font-weight:700;">${label} · ${escHtml(catLabel)}</span>
+                </div>
+                <span style="color:var(--accent); font-weight:800; font-size:12px; display:inline-flex; align-items:center; gap:2px;">
+                  👥 ${sa.total_visitors} Visitors
+                </span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
     }
   </script>
 

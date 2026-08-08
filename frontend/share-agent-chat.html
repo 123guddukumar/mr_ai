@@ -2662,7 +2662,7 @@ let currentCalDate = new Date();
 
 async function fetchBookedDates() {
   try {
-    const r = await fetch(`/api/agents/${AGENT_ID}/booked-dates`);
+    const r = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/booked-dates`);
     if (r.ok) {
       const data = await r.json();
       bookedDates = data.booked_dates || [];
@@ -3100,7 +3100,7 @@ async function openMeetingCalendarModal(phone) {
 
     let success = false;
     try {
-      const res = await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
+      const res = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/book-meeting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3135,7 +3135,7 @@ async function openMeetingCalendarModal(phone) {
 async function checkSessionAction() {
   if (!AGENT_ID || !deviceId || !isPublic) return;
   try {
-    const url = `/api/agents/${AGENT_ID}/session-status?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+    const url = BACKEND_URL + `/api/agents/${AGENT_ID}/session-status?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
     const r = await fetch(url);
     if (r.ok) {
       const data = await r.json();
@@ -3154,7 +3154,7 @@ async function loadPublicHistory() {
   if (!sessionId) return false;
   if (!isPublic || !AGENT_ID || !deviceId) return false;
   try {
-    const url = `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+    const url = BACKEND_URL + `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
     const r = await fetch(url);
     if (!r.ok) return false;
     const data = await r.json();
@@ -4445,7 +4445,7 @@ async function submitFeedback() {
   btn.textContent = 'Sending...';
 
   try {
-    const r = await fetch(`/api/agents/${AGENT_ID}/feedback`, {
+    const r = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

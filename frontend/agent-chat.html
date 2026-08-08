@@ -4417,6 +4417,7 @@
   </div>
 
   <script>
+    const BACKEND_URL = "https://vectorize.diintech.com";
     let session = {};
     let isPublic = true; // Always guest/public mode so Lead Capture and Visitor Logs trigger during testing
     try {
@@ -4511,7 +4512,7 @@
 
     async function loadAgent() {
       try {
-        let url = isPublic ? `/api/agents/${AGENT_ID}/public-info` : `/api/agents/${AGENT_ID}`;
+        let url = isPublic ? (BACKEND_URL + `/api/agents/${AGENT_ID}/public-info`) : (BACKEND_URL + `/api/agents/${AGENT_ID}`);
         let r = await fetch(url, { headers: hdrs() });
 
         // Automatically fall back to public guest mode if private loading fails
@@ -4538,7 +4539,7 @@
             deviceName = getDeviceName();
           }
 
-          url = `/api/agents/${AGENT_ID}/public-info`;
+          url = BACKEND_URL + `/api/agents/${AGENT_ID}/public-info`;
           r = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
         }
 
@@ -5088,7 +5089,7 @@
 
     async function fetchBookedDates() {
       try {
-        const r = await fetch(`/api/agents/${AGENT_ID}/booked-dates`);
+        const r = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/booked-dates`);
         if (r.ok) {
           const data = await r.json();
           bookedDates = data.booked_dates || [];
@@ -5528,7 +5529,7 @@
 
         let success = false;
         try {
-          const res = await fetch(`/api/agents/${AGENT_ID}/book-meeting`, {
+          const res = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/book-meeting`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -5563,7 +5564,7 @@
     async function checkSessionAction() {
       if (!AGENT_ID || !deviceId || !isPublic) return;
       try {
-        const url = `/api/agents/${AGENT_ID}/session-status?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+        const url = BACKEND_URL + `/api/agents/${AGENT_ID}/session-status?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
         const r = await fetch(url);
         if (r.ok) {
           const data = await r.json();
@@ -5581,7 +5582,7 @@
     async function loadPublicHistory() {
       if (_agentData && _agentData.is_root) {
         try {
-          const url = sessionId ? `/api/root-agent/history?session_id=${encodeURIComponent(sessionId)}` : '/api/root-agent/history';
+          const url = sessionId ? (BACKEND_URL + `/api/root-agent/history?session_id=${encodeURIComponent(sessionId)}`) : (BACKEND_URL + '/api/root-agent/history');
           const r = await fetch(url, { headers: hdrs() });
           if (r.ok) {
             const data = await r.json();
@@ -5608,7 +5609,7 @@
       if (!sessionId) return false;
       if (!isPublic || !AGENT_ID || !deviceId) return false;
       try {
-        const url = `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
+        const url = BACKEND_URL + `/api/agents/${AGENT_ID}/public-history?device_id=${encodeURIComponent(deviceId)}&session_id=${encodeURIComponent(sessionId || '')}`;
         const r = await fetch(url);
         if (!r.ok) return false;
         const data = await r.json();
@@ -5884,7 +5885,7 @@
       });
       try {
         const isRoot = _agentData && (_agentData.is_root || _agentData.category === 'root_assistant');
-        let url = isPublic ? `/api/agents/${AGENT_ID}/public-ask` : `/api/agents/${AGENT_ID}/ask`;
+        let url = isPublic ? (BACKEND_URL + `/api/agents/${AGENT_ID}/public-ask`) : (BACKEND_URL + `/api/agents/${AGENT_ID}/ask`);
         let bodyObj = isPublic ? {
           question: text,
           session_id: sessionId,
@@ -5898,7 +5899,7 @@
         };
 
         if (isRoot) {
-          url = '/api/root-agent/chat';
+          url = BACKEND_URL + '/api/root-agent/chat';
           bodyObj = {
             message: text,
             history: history.slice(-6),
@@ -7036,7 +7037,7 @@
       btn.textContent = 'Sending...';
 
       try {
-        const r = await fetch(`/api/agents/${AGENT_ID}/feedback`, {
+        const r = await fetch(BACKEND_URL + `/api/agents/${AGENT_ID}/feedback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

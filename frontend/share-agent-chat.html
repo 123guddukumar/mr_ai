@@ -3121,6 +3121,7 @@ async function openMeetingCalendarModal(phone) {
     
     if (success) {
       closeMeetingCalendarModal();
+      dismissActionBanner();
       appendMessage('assistant', `🎉 **Congratulations!** Your meeting schedule slot is booked successfully for **${dateFormatted}** at **${selectedTimeStr}**.`);
     } else {
       alert("⚠️ Booking failed. Please try again.");

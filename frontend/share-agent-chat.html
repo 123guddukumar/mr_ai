@@ -121,7 +121,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .toast-wall{position:fixed;top:24px;right:24px;display:flex;flex-direction:column;gap:10px;z-index:2000}
 .toast-card{padding:14px 24px;border-radius:16px;font-size:13px;font-weight:700;background:var(--bg2);border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.7)}
 .toast-card.err{border-color:var(--red);color:var(--red)}
-.vo-transcript{margin-top:20px;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--border);max-width:80%;font-style:italic;color:var(--text2);font-size:14px;min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center}
+.vo-transcript {
+  margin-top: 20px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 80%;
+  width: 320px;
+  height: 44px; /* Fixed height for exactly two lines of text */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  line-height: 18px;
+  font-style: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
 
 /* Feedback & Report Modal */
 .modal-overlay {
@@ -3507,6 +3526,88 @@ function removeTyping(el) { if(el && el.parentNode) el.parentNode.removeChild(el
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,180)+'px'; }
 function handleKey(e) { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
 
+function limitToLastWords(text, maxWords) {
+  if (!text) return "";
+  const words = text.split(/\s+/).filter(w => w.trim().length > 0);
+  if (words.length <= maxWords) return text;
+  return "..." + words.slice(words.length - maxWords).join(" ");
+}
+
+async function pollVoiceTranscript() {
+  if (!window.uniqueVoiceSessionId || !AGENT_ID) return;
+  try {
+    const res = await fetch(`/api/agents/${AGENT_ID}/voice-transcript/${window.uniqueVoiceSessionId}`);
+    if (res.ok) {
+      const data = await res.json();
+      const voTranscript = document.getElementById('vo-transcript');
+      if (voTranscript) {
+        if (data.assistant) {
+          voTranscript.textContent = limitToLastWords(data.assistant, 12);
+        } else if (data.user) {
+          voTranscript.innerHTML = '<i>You: ' + limitToLastWords(data.user, 10) + '</i>';
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error polling voice transcript:", e);
+  }
+}
+
+let dograhListenersBound = false;
+function bindDograhListeners() {
+  if (dograhListenersBound || !window.DograhWidget) return;
+  
+  window.DograhWidget.onStatusChange((status) => {
+    console.log("Dograh call status changed:", status);
+    const voStatus = document.getElementById('vo-status');
+    const voSub = document.getElementById('vo-sub');
+    const voTranscript = document.getElementById('vo-transcript');
+    const voOrb = document.getElementById('vo-orb');
+    
+    const prevStatus = window.dograhLastStatus;
+    window.dograhLastStatus = status;
+    
+    if (status === 'connecting') {
+      if (voStatus) voStatus.textContent = 'Connecting...';
+      if (voSub) voSub.textContent = 'Setting up secure audio line...';
+      if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
+    } else if (status === 'connected') {
+      if (voStatus) voStatus.textContent = 'Voice Call Connected';
+      if (voSub) voSub.textContent = 'Speak now, AI is listening...';
+      if (voTranscript) voTranscript.innerHTML = '<i>Line connected. Ask questions about your database!</i>';
+      if (voOrb) {
+        voOrb.style.animation = 'pulse 2.3s infinite';
+        voOrb.style.background = 'var(--green)';
+      }
+      // Start polling live transcripts
+      clearInterval(window.voiceTranscriptInterval);
+      window.voiceTranscriptInterval = setInterval(pollVoiceTranscript, 800);
+    } else if (status === 'failed') {
+      if (voStatus) voStatus.textContent = 'Connection Failed';
+      if (voSub) voSub.textContent = 'Failed to connect. Please check microphone/network settings.';
+      if (voOrb) {
+        voOrb.style.animation = 'none';
+        voOrb.style.background = 'var(--red)';
+      }
+      clearInterval(window.voiceTranscriptInterval);
+    } else if (status === 'idle') {
+      clearInterval(window.voiceTranscriptInterval);
+      // Disconnected - return UI to text mode only if the call was actively connected (representing a normal hangup)
+      if (prevStatus === 'connected') {
+        setMode('text');
+      }
+    }
+  });
+  
+  window.DograhWidget.onError((err) => {
+    console.error("Dograh widget error:", err);
+    const voSub = document.getElementById('vo-sub');
+    if (voSub) voSub.textContent = 'Error: ' + (err.message || err);
+  });
+  
+  dograhListenersBound = true;
+}
+
 function setMode(m) {
   chatMode = m;
   document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('active'));
@@ -3515,13 +3616,46 @@ function setMode(m) {
   const win = document.getElementById('chat-win');
   if(m === 'v2v') { 
     vo.classList.add('active'); win.style.opacity = '0.3'; win.style.pointerEvents = 'none'; 
-    document.getElementById('vo-status').textContent = 'Coming Soon';
-    document.getElementById('vo-sub').textContent = 'Voice Assistant feature is coming soon!';
-    document.getElementById('vo-transcript').innerHTML = '<i>We are working on voice features. Stay tuned!</i>';
+    document.getElementById('vo-status').textContent = 'Connecting...';
+    document.getElementById('vo-sub').textContent = 'Connecting to Voice Agent...';
+    document.getElementById('vo-transcript').innerHTML = '<i>Requesting audio channel...</i>';
     const timerEl = document.getElementById('vo-timer');
     if(timerEl) timerEl.style.display = 'none';
+    
+    // Bind listeners and start call
+    if (window.DograhWidget) {
+      bindDograhListeners();
+      window.DograhWidget.start().catch(err => {
+        document.getElementById('vo-status').textContent = 'Error Starting';
+        document.getElementById('vo-sub').textContent = err.message || 'Could not start call';
+      });
+    } else {
+      // If widget is still loading, wait a bit
+      setTimeout(() => {
+        if (window.DograhWidget) {
+          bindDograhListeners();
+          window.DograhWidget.start().catch(err => {
+            document.getElementById('vo-status').textContent = 'Error Starting';
+            document.getElementById('vo-sub').textContent = err.message || 'Could not start call';
+          });
+        } else {
+          document.getElementById('vo-status').textContent = 'Widget Loading...';
+          document.getElementById('vo-sub').textContent = 'Please wait or refresh the page.';
+        }
+      }, 1000);
+    }
   }
-  else { vo.classList.remove('active'); win.style.opacity = '1'; win.style.pointerEvents = 'auto'; window.speechSynthesis?.cancel(); }
+  else { 
+    vo.classList.remove('active'); 
+    win.style.opacity = '1'; 
+    win.style.pointerEvents = 'auto'; 
+    window.speechSynthesis?.cancel(); 
+    
+    // Stop Dograh call if active
+    if (window.DograhWidget) {
+      window.DograhWidget.stop();
+    }
+  }
 }
 
 window.currentlySpokenText = "";
@@ -3550,10 +3684,14 @@ function isSelfEcho(transcript, spokenText) {
 }
 
 function toggleVoice() {
-  const status = document.getElementById('vo-status');
-  if (status) status.textContent = 'Coming Soon';
-  const trans = document.getElementById('vo-transcript');
-  if (trans) trans.innerHTML = '<i>Voice Assistant coming soon!</i>';
+  if (window.DograhWidget) {
+    const state = window.DograhWidget.getState();
+    if (state && (state.connectionStatus === 'connected' || state.connectionStatus === 'connecting')) {
+      setMode('text');
+    } else {
+      setMode('v2v');
+    }
+  }
 }
 
 function cleanSpeechText(txt) {
@@ -4297,9 +4435,7 @@ function startChatFromLanding(mode) {
     }, 350);
   }
 
-  if (mode === 'v2v') {
-    setTimeout(() => { if (!isListening) toggleVoice(); }, 700);
-  }
+  // Starting mode is handled entirely by setMode without extra triggers
 }
 
 window.addEventListener('resize', checkShowLandingPage);
@@ -4542,5 +4678,36 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
+
+<!-- Dograh Widget -->
+<style>
+  /* Force hide any floating button/container that the Dograh widget script tries to render */
+  #dograh-widget-root, .dograh-widget-container, #dograh-widget-cta, iframe[src*="dograh-widget"] {
+    display: none !important;
+  }
+</style>
+<script>
+  (function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = 'https://diinvoicepilot.duckdns.org/embed/dograh-widget.js?token=emb_8g0Lg34pMyKNlPWPiwLgcn18Gh8d4swgjCkSTFc0I9o&environment=production&apiEndpoint=https://diinvoicepilot.duckdns.org';
+    
+    // Dynamically read agent id query parameter from URL and initialize unique voice session ID
+    var urlParams = new URLSearchParams(window.location.search);
+    var agentId = urlParams.get('id') || '';
+    window.uniqueVoiceSessionId = 'vsession-' + Math.random().toString(36).substring(2, 15);
+    
+    js.setAttribute('data-dograh-context', JSON.stringify({
+      page_url: window.location.href,
+      today: new Date().toISOString().slice(0, 10),
+      agent_id: agentId,
+      session_id: window.uniqueVoiceSessionId
+    }));
+    js.async = true;
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'dograh-widget'));
+</script>
+
 </body>
 </html>

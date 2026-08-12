@@ -1932,6 +1932,7 @@ class AgentPublicAskReq(BaseModel):
     file_url: Optional[str] = None
     file_name: Optional[str] = None
     file_type: Optional[str] = None
+    history_override: Optional[list] = None
 
 
 @router.get("/agents/{agent_id}/public-info", tags=["Agents & DataStores"])
@@ -2254,11 +2255,14 @@ async def api_agent_public_ask(agent_id: str, req: AgentPublicAskReq, db: Sessio
                 answer = raw_answer
         else:
             # Standard chat RAG logic
-            db_history_msgs = db.query(AgentPublicMessage).filter(
-                AgentPublicMessage.session_id == req.session_id
-            ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
+            if getattr(req, "history_override", None) is not None:
+                history_list = req.history_override
+            else:
+                db_history_msgs = db.query(AgentPublicMessage).filter(
+                    AgentPublicMessage.session_id == req.session_id
+                ).order_by(AgentPublicMessage.created_at.asc()).all()[:-1]
 
-            history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
+                history_list = [{"role": m.role, "content": m.content} for m in db_history_msgs[-6:]]
             try: ds_ids = json.loads(agent.datastores_json or "[]")
             except: ds_ids = []
 
@@ -3223,4 +3227,444 @@ async def api_analyze_device_sessions(
     analyzed["session_count"] = len(sessions)
     analyzed["total_messages"] = total_messages
     return analyzed
+
+# OpenAI compatibility models
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    messages: List[ChatMessage]
+    stream: Optional[bool] = False
+    model: Optional[str] = "default"
+
+voice_transcripts = {}
+
+def save_voice_chat_to_db(db: Session, agent_id: str, session_id: str, user_text: str, assistant_text: str):
+    try:
+        from app.core.models import AgentPublicSession, AgentPublicMessage
+        session = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == session_id).first()
+        if not session:
+            session = AgentPublicSession(
+                session_id=session_id,
+                agent_id=agent_id,
+                device_id="dograh-voice-client",
+                device_name="Voice Call"
+            )
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+        else:
+            session.updated_at = datetime.utcnow()
+            db.commit()
+            
+        if user_text:
+            user_msg = AgentPublicMessage(
+                session_id=session_id,
+                role="user",
+                content=user_text
+            )
+            db.add(user_msg)
+            
+        if assistant_text:
+            asst_msg = AgentPublicMessage(
+                session_id=session_id,
+                role="assistant",
+                content=assistant_text
+            )
+            db.add(asst_msg)
+            
+        db.commit()
+        logger.info(f"Saved voice chat turn to DB for session {session_id}")
+    except Exception as e:
+        logger.error(f"Failed to save voice chat turn to DB: {e}")
+
+@router.post("/agents/{agent_id}/chat/completions", tags=["Agents & DataStores"])
+async def api_agent_openai_compatible_chat(
+    agent_id: str,
+    req: ChatCompletionRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    from fastapi.responses import StreamingResponse
+    import uuid
+    import asyncio
+    import re
+    import json
+    from datetime import datetime
+    from app.services.llm import get_llm_async_client
+    
+    # Extract agent ID dynamically from the system message if provided in the Dograh workflow context
+    parsed_agent_id = None
+    parsed_session_id = None
+    for msg in req.messages:
+        if msg.role == "system":
+            match = re.search(r'agent_id["\'\s:=]+([a-f0-9]{8,})', msg.content, re.IGNORECASE)
+            if match:
+                parsed_agent_id = match.group(1)
+                logger.info(f"Dynamically routing request to Agent ID: {parsed_agent_id} (parsed from system context)")
+            
+            match_session = re.search(r'session_id["\'\s:=]+(vsession-[a-z0-9]+)', msg.content, re.IGNORECASE)
+            if match_session:
+                parsed_session_id = match_session.group(1)
+                logger.info(f"Parsed voice session ID: {parsed_session_id}")
+            break
+
+    active_agent_id = parsed_agent_id or agent_id
+
+    # Check if this is the initial greeting generation turn (no user messages in history yet)
+    is_greeting_turn = not any(msg.role == "user" for msg in req.messages)
+    
+    if is_greeting_turn:
+        from app.core.models import Agent
+        agent_obj = db.query(Agent).filter(Agent.agent_id == active_agent_id).first()
+        answer = agent_obj.starting_message if (agent_obj and agent_obj.starting_message) else "Hello! How can I help you today?"
+        logger.info(f"Greeting turn: Served starting message for Agent ID {active_agent_id}: '{answer}'")
+        
+        if parsed_session_id:
+            voice_transcripts[parsed_session_id] = {
+                "user": "",
+                "assistant": answer
+            }
+            save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_text="", assistant_text=answer)
+        
+        # Stream the starting greeting word-by-word with a simulated tiny delay to starting playing audio
+        if req.stream:
+            async def stream_greeting_generator():
+                chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+                created_time = int(datetime.utcnow().timestamp())
+                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
+                words = answer.split(" ")
+                for i, word in enumerate(words):
+                    if await request.is_disconnected():
+                        break
+                    space = " " if i > 0 else ""
+                    yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'content': space + word}, 'finish_reason': None}]})}\n\n"
+                    await asyncio.sleep(0.01)
+                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(stream_greeting_generator(), media_type="text/event-stream")
+        else:
+            return {
+                "id": f"chatcmpl-{uuid.uuid4().hex}",
+                "object": "chat.completion",
+                "created": int(datetime.utcnow().timestamp()),
+                "model": req.model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}]
+            }
+            
+    # Non-greeting turn: Process user input
+    user_msg = ""
+    for msg in reversed(req.messages):
+        if msg.role == "user":
+            user_msg = msg.content
+            break
+    if not user_msg:
+        user_msg = "hello"
+        
+    if parsed_session_id:
+        voice_transcripts[parsed_session_id] = {
+            "user": user_msg,
+            "assistant": ""
+        }
+        
+    # Extract history override
+    history_override = []
+    user_skipped = False
+    for msg in req.messages:
+        if msg.role == "system":
+            continue
+        if msg.role == "user" and msg.content == user_msg and not user_skipped:
+            user_skipped = True
+            continue
+        history_override.append({"role": msg.role, "content": msg.content})
+    history_override = history_override[-6:]
+    
+    # If streaming is requested and the provider is Groq or Gemini, run real-time streaming to reduce latency
+    if req.stream:
+        from app.core.models import Agent
+        from app.core.config import settings
+        import httpx
+        
+        agent_obj = db.query(Agent).filter(Agent.agent_id == active_agent_id).first()
+        if agent_obj:
+            try: s_cfg = json.loads(agent_obj.system_config_json or "{}")
+            except: s_cfg = {}
+            provider = s_cfg.get('provider', 'gemini')
+            model = s_cfg.get('model', 'gemini-3.5-flash')
+            api_key = s_cfg.get('api_key', '')
+            
+            # Fetch default keys if not set
+            if provider == "groq":
+                if api_key and (api_key.startswith("sk-") or api_key.startswith("AIzaSy")):
+                    api_key = ""
+                api_key = api_key or settings.GROQ_API_KEY
+            elif provider == "gemini":
+                if api_key and (api_key.startswith("sk-") or api_key.startswith("gsk_")):
+                    api_key = ""
+                api_key = api_key or settings.GEMINI_API_KEY
+                
+            # Perform RAG retrieval to construct system prompt context
+            try: ds_ids = json.loads(agent_obj.datastores_json or "[]")
+            except: ds_ids = []
+            try: custom_cfg = json.loads(agent_obj.customization_json or "{}")
+            except: custom_cfg = {}
+            qa_pairs = custom_cfg.get("qa_pairs", [])
+            
+            from app.services.embedder import embed_query
+            from app.services.vector_store import get_vector_store
+            from app.services.llm import build_context_and_sources
+            
+            query_emb = embed_query(user_msg)
+            results = get_vector_store().search_combined(query_emb, agent_id=active_agent_id, datastore_ids=ds_ids, top_k=5)
+            relevant_results = [res for res in results if res[1] > 0.35]
+            context, _ = build_context_and_sources(relevant_results)
+            
+            if qa_pairs:
+                qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]
+                qa_context = "--- CONFIGURED TRAINING Q&A PAIRS ---\n" + "\n\n".join(qa_context_parts) + "\n--- END OF TRAINING Q&A PAIRS ---\n\n"
+                context = qa_context + (context or "")
+                
+            # Build prompts matching active_agent settings
+            response_lang = s_cfg.get("response_language", "default")
+            if response_lang == "hindi":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in Hindi (हिंदी) only, using the Devanagari script (हिंदी लिपि). Regardless of what language the user writes in, you MUST reply in Hindi using Devanagari script. Do NOT use Romanized Hinglish for responses."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in Hindi (Devanagari script) only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in Hindi (Devanagari script) only."
+            elif response_lang == "english":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in English only. Regardless of what language the user writes in, you MUST reply in English."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate it and respond in English only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in English only."
+            elif response_lang == "hinglish":
+                lang_rule = "LANGUAGE RULE: You MUST always respond in Hinglish only (Hindi language written using the English/Latin alphabet). Regardless of what language the user writes in, you MUST reply in Hinglish. Do NOT use Hindi Devanagari script."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: Regardless of the language of the context information, you MUST translate/transliterate it and respond in Hinglish only."
+                greeting_rule = "GREETING RULE: Always reply to greetings in Hinglish only."
+            else:
+                lang_rule = "LANGUAGE RULE: Respond ONLY in the same language the user uses. If asked in English, reply in English. If asked in Hindi, reply in Hindi using Devanagari script only."
+                context_lang_rule = "CONTEXT LANGUAGE RULE: The context files might be in a different language than the user's question. You MUST translate the context information and respond in the same language as the user's question."
+                greeting_rule = "GREETING RULE: Reply to greetings in the SAME language the user used."
+                
+            identity = (
+                f"You are {agent_obj.name}. {agent_obj.personality}\n"
+                f"{lang_rule}\n"
+                f"{context_lang_rule}\n"
+                f"{greeting_rule}\n"
+                f"CORE INSTRUCTIONS: {s_cfg.get('system_prompt', '')}\n"
+                f"RESPONSE STYLE: Be natural, conversational and helpful.\n"
+            )
+            
+            system_prompt = identity
+            if context:
+                system_prompt = (
+                    f"{identity}\n\n"
+                    f"--- KNOWLEDGE BASE CONTEXT ---\n"
+                    f"{context}\n"
+                    f"--- END OF CONTEXT ---\n\n"
+                    f"CRITICAL INSTRUCTIONS:\n"
+                    f"1. Prioritize answering based on the provided context if it contains the answer.\n"
+                    f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
+                )
+                
+            # If using Groq, execute real SSE stream forwarding
+            if provider == "groq" and api_key:
+                msgs = [{"role": "system", "content": system_prompt}]
+                for t in history_override:
+                    msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+                msgs.append({"role": "user", "content": user_msg})
+                
+                payload = {
+                    "model": model,
+                    "messages": msgs,
+                    "temperature": 0.1,
+                    "max_tokens": 1024,
+                    "stream": True
+                }
+                hdrs = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                async def groq_stream_generator():
+                    full_reply = []
+                    client = get_llm_async_client()
+                    async with client.stream("POST", "https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if await request.is_disconnected():
+                                logger.info("Client disconnected. Aborting Groq stream.")
+                                break
+                            if line.strip():
+                                yield line + "\n\n"
+                                try:
+                                    if line.startswith("data: "):
+                                        data_str = line[6:]
+                                        if data_str.strip() != "[DONE]":
+                                            data = json.loads(data_str)
+                                            delta = data["choices"][0]["delta"]
+                                            if "content" in delta:
+                                                txt = delta["content"]
+                                                full_reply.append(txt)
+                                                if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                    voice_transcripts[parsed_session_id]["assistant"] += txt
+                                except Exception:
+                                    pass
+                    
+                    # Stream finished, save to DB
+                    assistant_text = "".join(full_reply)
+                    if parsed_session_id:
+                        save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                        
+                return StreamingResponse(groq_stream_generator(), media_type="text/event-stream")
+                
+            # If using Gemini, execute streaming and translate to OpenAI format
+            elif provider == "gemini" and api_key:
+                contents = []
+                for t in history_override:
+                    contents.append({"role": "user" if t.get("role") == "user" else "model",
+                                     "parts": [{"text": t.get("content", "")}]})
+                contents.append({"role": "user", "parts": [{"text": user_msg}]})
+                
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}"
+                payload = {
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": contents,
+                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4096}
+                }
+                
+                async def gemini_stream_generator():
+                    chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+                    created_time = int(datetime.utcnow().timestamp())
+                    yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': model, 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
+                    
+                    full_reply = []
+                    client = get_llm_async_client()
+                    async with client.stream("POST", url, json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if await request.is_disconnected():
+                                logger.info("Client disconnected. Aborting Gemini stream.")
+                                break
+                            if not line.strip():
+                                continue
+                            cleaned = line.strip().lstrip(',[').rstrip(',]')
+                            if not cleaned:
+                                continue
+                            try:
+                                data = json.loads(cleaned)
+                                delta_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                                if delta_text:
+                                    full_reply.append(delta_text)
+                                    if parsed_session_id and parsed_session_id in voice_transcripts:
+                                        voice_transcripts[parsed_session_id]["assistant"] += delta_text
+                                        
+                                    chunk = {
+                                        "id": chunk_id,
+                                        "object": "chat.completion.chunk",
+                                        "created": created_time,
+                                        "model": model,
+                                        "choices": [{
+                                            "index": 0,
+                                            "delta": {"content": delta_text},
+                                            "finish_reason": None
+                                        }]
+                                    }
+                                    yield f"data: {json.dumps(chunk)}\n\n"
+                            except Exception:
+                                pass
+                    yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    
+                    # Stream finished, save to DB
+                    assistant_text = "".join(full_reply)
+                    if parsed_session_id:
+                        save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                        
+                return StreamingResponse(gemini_stream_generator(), media_type="text/event-stream")
+
+    # Fallback to synchronous query logic if not streaming or other provider
+    ask_req = AgentPublicAskReq(
+        question=user_msg,
+        session_id=f"dograh-session-{active_agent_id[:6]}",
+        device_id="dograh-voice-client",
+        is_voice=True,
+        history_override=history_override
+    )
+    result = await api_agent_public_ask(agent_id=active_agent_id, req=ask_req, db=db)
+    answer = result.get("answer") or result.get("content") or "I could not retrieve an answer."
+    
+    if parsed_session_id:
+        save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, answer)
+        
+    if req.stream:
+        async def stream_fallback_generator():
+            chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+            created_time = int(datetime.utcnow().timestamp())
+            yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
+            
+            # Yield response split by words with a tiny delay to simulate low-latency streaming
+            words = answer.split(" ")
+            for i, word in enumerate(words):
+                space = " " if i > 0 else ""
+                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'content': space + word}, 'finish_reason': None}]})}\n\n"
+                await asyncio.sleep(0.02)
+                
+            # Finish delta
+            yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+            yield "data: [DONE]\n\n"
+            
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+    else:
+        # Non-streaming response format
+        return {
+            "id": f"chatcmpl-{uuid.uuid4().hex}",
+            "object": "chat.completion",
+            "created": int(datetime.utcnow().timestamp()),
+            "model": req.model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": answer
+                    },
+                    "finish_reason": "stop"
+                }
+            ]
+        }
+
+
+@router.get("/agents/{agent_id}/models", tags=["Agents & DataStores"])
+async def api_agent_openai_compatible_models(agent_id: str):
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "default",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "custom"
+            },
+            {
+                "id": "gpt-4.1",
+                "object": "model",
+                "created": 1686935002,
+                "owned_by": "custom"
+            }
+        ]
+    }
+
+
+@router.get("/agents/{agent_id}", tags=["Agents & DataStores"])
+async def api_agent_openai_base_check(agent_id: str):
+    return {"message": "OpenAI-compatible RAG server is running."}
+
+
+@router.get("/agents/{agent_id}/voice-transcript/{session_id}", tags=["Agents & DataStores"])
+async def api_get_voice_transcript(agent_id: str, session_id: str):
+    data = voice_transcripts.get(session_id)
+    if not data:
+        return {"user": "", "assistant": ""}
+    return data
+
+
 

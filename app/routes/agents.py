@@ -3312,6 +3312,31 @@ async def api_agent_openai_compatible_chat(
 
     active_agent_id = parsed_agent_id or agent_id
 
+    # Connection Validation Fallback for Dograh Dashboard Test Request
+    if active_agent_id == "chat":
+        answer = "Connection successful. OpenAI compatible agent completions server is active."
+        if req.stream:
+            async def stream_mock_generator():
+                chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+                created_time = int(datetime.utcnow().timestamp())
+                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
+                words = answer.split(" ")
+                for i, word in enumerate(words):
+                    space = " " if i > 0 else ""
+                    yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'content': space + word}, 'finish_reason': None}]})}\n\n"
+                    await asyncio.sleep(0.01)
+                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(stream_mock_generator(), media_type="text/event-stream")
+        else:
+            return {
+                "id": f"chatcmpl-{uuid.uuid4().hex}",
+                "object": "chat.completion",
+                "created": int(datetime.utcnow().timestamp()),
+                "model": req.model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}]
+            }
+
     # Check if this is the initial greeting generation turn (no user messages in history yet)
     is_greeting_turn = not any(msg.role == "user" for msg in req.messages)
     

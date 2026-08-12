@@ -3313,7 +3313,7 @@ async def api_agent_openai_compatible_chat(
     active_agent_id = parsed_agent_id or agent_id
 
     # Connection Validation Fallback for Dograh Dashboard Test Request
-    if active_agent_id == "chat":
+    if active_agent_id in ("chat", "v1", "models"):
         answer = "Connection successful. OpenAI compatible agent completions server is active."
         if req.stream:
             async def stream_mock_generator():

@@ -3566,34 +3566,48 @@ async def api_agent_openai_compatible_chat(
                 }
                 
                 async def groq_stream_generator():
+                    chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+                    created_time = int(datetime.utcnow().timestamp())
                     full_reply = []
-                    client = get_llm_async_client()
-                    async with client.stream("POST", "https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload) as response:
-                        response.raise_for_status()
-                        async for line in response.aiter_lines():
-                            if await request.is_disconnected():
-                                logger.info("Client disconnected. Aborting Groq stream.")
-                                break
-                            if line.strip():
-                                yield line + "\n\n"
-                                try:
-                                    if line.startswith("data: "):
-                                        data_str = line[6:]
-                                        if data_str.strip() != "[DONE]":
-                                            data = json.loads(data_str)
-                                            delta = data["choices"][0]["delta"]
-                                            if "content" in delta:
-                                                txt = delta["content"]
-                                                full_reply.append(txt)
-                                                if parsed_session_id and parsed_session_id in voice_transcripts:
-                                                    voice_transcripts[parsed_session_id]["assistant"] += txt
-                                except Exception:
-                                    pass
+                    try:
+                        client = get_llm_async_client()
+                        async with client.stream("POST", "https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload) as response:
+                            response.raise_for_status()
+                            async for line in response.aiter_lines():
+                                if await request.is_disconnected():
+                                    logger.info("Client disconnected. Aborting Groq stream.")
+                                    break
+                                if line.strip():
+                                    yield line + "\n\n"
+                                    try:
+                                        if line.startswith("data: "):
+                                            data_str = line[6:]
+                                            if data_str.strip() != "[DONE]":
+                                                data = json.loads(data_str)
+                                                delta = data["choices"][0]["delta"]
+                                                if "content" in delta:
+                                                    txt = delta["content"]
+                                                    full_reply.append(txt)
+                                                    if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                        voice_transcripts[parsed_session_id]["assistant"] += txt
+                                    except Exception:
+                                        pass
+                    except Exception as groq_err:
+                        logger.error(f"Groq streaming error for agent {active_agent_id}: {groq_err}")
+                        # Yield graceful stop so Dograh pipeline doesn't crash
+                        err_text = "I'm sorry, I had trouble processing that. Please try again."
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': err_text}, 'finish_reason': None}]})}\n\n"
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
                     
                     # Stream finished, save to DB
-                    assistant_text = "".join(full_reply)
-                    if parsed_session_id:
-                        save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                    try:
+                        assistant_text = "".join(full_reply)
+                        if parsed_session_id:
+                            save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                    except Exception as db_err:
+                        logger.warning(f"DB save error (non-fatal): {db_err}")
                         
                 return StreamingResponse(groq_stream_generator(), media_type="text/event-stream")
                 
@@ -3618,47 +3632,50 @@ async def api_agent_openai_compatible_chat(
                     yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': model, 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
                     
                     full_reply = []
-                    client = get_llm_async_client()
-                    async with client.stream("POST", url, json=payload) as response:
-                        response.raise_for_status()
-                        async for line in response.aiter_lines():
-                            if await request.is_disconnected():
-                                logger.info("Client disconnected. Aborting Gemini stream.")
-                                break
-                            if not line.strip():
-                                continue
-                            cleaned = line.strip().lstrip(',[').rstrip(',]')
-                            if not cleaned:
-                                continue
-                            try:
-                                data = json.loads(cleaned)
-                                delta_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                                if delta_text:
-                                    full_reply.append(delta_text)
-                                    if parsed_session_id and parsed_session_id in voice_transcripts:
-                                        voice_transcripts[parsed_session_id]["assistant"] += delta_text
-                                        
-                                    chunk = {
-                                        "id": chunk_id,
-                                        "object": "chat.completion.chunk",
-                                        "created": created_time,
-                                        "model": model,
-                                        "choices": [{
-                                            "index": 0,
-                                            "delta": {"content": delta_text},
-                                            "finish_reason": None
-                                        }]
-                                    }
-                                    yield f"data: {json.dumps(chunk)}\n\n"
-                            except Exception:
-                                pass
+                    try:
+                        client = get_llm_async_client()
+                        async with client.stream("POST", url, json=payload) as response:
+                            response.raise_for_status()
+                            async for line in response.aiter_lines():
+                                if await request.is_disconnected():
+                                    logger.info("Client disconnected. Aborting Gemini stream.")
+                                    break
+                                if not line.strip():
+                                    continue
+                                cleaned = line.strip().lstrip(',[').rstrip(',]')
+                                if not cleaned:
+                                    continue
+                                try:
+                                    data = json.loads(cleaned)
+                                    delta_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                                    if delta_text:
+                                        full_reply.append(delta_text)
+                                        if parsed_session_id and parsed_session_id in voice_transcripts:
+                                            voice_transcripts[parsed_session_id]["assistant"] += delta_text
+                                        chunk = {
+                                            "id": chunk_id, "object": "chat.completion.chunk",
+                                            "created": created_time, "model": model,
+                                            "choices": [{"index": 0, "delta": {"content": delta_text}, "finish_reason": None}]
+                                        }
+                                        yield f"data: {json.dumps(chunk)}\n\n"
+                                except Exception:
+                                    pass
+                    except Exception as gem_err:
+                        logger.error(f"Gemini streaming error for agent {active_agent_id}: {gem_err}")
+                        # Yield graceful stop so Dograh pipeline doesn't crash
+                        err_text = "I'm sorry, I had trouble processing that. Please try again."
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': model, 'choices': [{'index': 0, 'delta': {'content': err_text}, 'finish_reason': None}]})}\n\n"
+
                     yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
                     yield "data: [DONE]\n\n"
                     
                     # Stream finished, save to DB
-                    assistant_text = "".join(full_reply)
-                    if parsed_session_id:
-                        save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                    try:
+                        assistant_text = "".join(full_reply)
+                        if parsed_session_id:
+                            save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                    except Exception as db_err:
+                        logger.warning(f"DB save error (non-fatal): {db_err}")
                         
                 return StreamingResponse(gemini_stream_generator(), media_type="text/event-stream")
 

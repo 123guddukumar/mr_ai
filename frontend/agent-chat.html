@@ -6203,7 +6203,7 @@
         window.dograhLastStatus = status;
         
         if (status === 'connecting') {
-          // Keep voice overlay OPEN during mic permission request — do NOT close it
+          // Keep voice overlay OPEN — do NOT close it during mic permission or reconnect
           const vo = document.getElementById('vo-overlay');
           if (vo && !vo.classList.contains('active')) {
             vo.classList.add('active');
@@ -6213,6 +6213,8 @@
           if (voStatus) voStatus.textContent = 'Connecting...';
           if (voSub) voSub.textContent = 'Requesting microphone access...';
           if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
+          // Record when this connecting attempt started
+          window.dograhConnectStartTime = Date.now();
         } else if (status === 'connected') {
           // Ensure overlay stays visible
           const vo = document.getElementById('vo-overlay');
@@ -6226,26 +6228,61 @@
             voOrb.style.animation = 'pulse 2.3s infinite';
             voOrb.style.background = 'var(--green)';
           }
+          window.dograhConnectedTime = Date.now();
           // Start polling live transcripts
           clearInterval(window.voiceTranscriptInterval);
           window.voiceTranscriptInterval = setInterval(pollVoiceTranscript, 800);
         } else if (status === 'failed') {
           if (voStatus) voStatus.textContent = 'Connection Failed';
-          if (voSub) voSub.textContent = 'Failed to connect. Please check microphone/network settings.';
+          if (voSub) voSub.textContent = 'Failed to connect. Please check microphone/network.';
           if (voOrb) {
             voOrb.style.animation = 'none';
             voOrb.style.background = 'var(--red)';
           }
           clearInterval(window.voiceTranscriptInterval);
-          // On failure, close overlay after 2.5s
-          setTimeout(() => { setMode('text'); }, 2500);
+          // Auto-retry once after 2s, otherwise close
+          if (!window.dograhAutoRetryCount) window.dograhAutoRetryCount = 0;
+          if (window.dograhAutoRetryCount < 2) {
+            window.dograhAutoRetryCount++;
+            if (voStatus) voStatus.textContent = 'Reconnecting...';
+            if (voSub) voSub.textContent = `Retry ${window.dograhAutoRetryCount}/2...`;
+            setTimeout(() => {
+              if (window.DograhWidget && chatMode === 'v2v') {
+                window.DograhWidget.start().catch(e => console.error('Retry failed:', e));
+              }
+            }, 2000);
+          } else {
+            window.dograhAutoRetryCount = 0;
+            setTimeout(() => { setMode('text'); }, 2500);
+          }
         } else if (status === 'idle') {
           clearInterval(window.voiceTranscriptInterval);
-          // ONLY go back to text mode if the call was actively connected (normal hangup)
-          // DO NOT close overlay if we were just 'connecting' (mic permission dialog was shown)
+          
           if (prevStatus === 'connected') {
-            setMode('text');
+            // Check if call dropped very quickly — rtf-pipeline-error causes this
+            const connectedDuration = Date.now() - (window.dograhConnectedTime || 0);
+            const autoRetry = !window.dograhAutoRetryCount ? 0 : window.dograhAutoRetryCount;
+            
+            if (connectedDuration < 8000 && autoRetry < 3) {
+              // Call dropped in less than 8s — likely a pipeline error — auto-reconnect
+              window.dograhAutoRetryCount = autoRetry + 1;
+              if (voStatus) voStatus.textContent = 'Reconnecting...';
+              if (voSub) voSub.textContent = `Network hiccup, retrying (${window.dograhAutoRetryCount}/3)...`;
+              if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
+              if (voTranscript) voTranscript.innerHTML = '<span class="vo-tx-inner"><i>Reconnecting...</i></span>';
+              window.dograhLastStatus = 'connecting'; // treat as still in connecting phase
+              setTimeout(() => {
+                if (window.DograhWidget && chatMode === 'v2v') {
+                  window.DograhWidget.start().catch(e => console.error('Auto-reconnect failed:', e));
+                }
+              }, 1500);
+            } else {
+              // Normal hangup or too many retries — close overlay
+              window.dograhAutoRetryCount = 0;
+              setMode('text');
+            }
           }
+          // If prevStatus was 'connecting', do NOT close the overlay — mic permission was shown
         }
       });
       
@@ -7066,12 +7103,18 @@
         const msg = window._pendingStartingMessage;
         window._pendingStartingMessage = null;
         setTimeout(() => {
+          // Always show in chat window as text
           appendMessage('assistant', msg);
-          if (mode === 'v2v') speakText(msg);
-        }, 350);
+          if (mode === 'v2v') {
+            // In voice mode: show starting message as subtitle in overlay transcript
+            // Dograh handles TTS automatically — just show the text in the transcript box
+            const voTranscript = document.getElementById('vo-transcript');
+            if (voTranscript) {
+              voTranscript.innerHTML = `<span class="vo-tx-inner">${msg.slice(0, 80)}${msg.length > 80 ? '...' : ''}</span>`;
+            }
+          }
+        }, 400);
       }
-
-      // Starting mode is handled entirely by setMode without extra triggers
     }
 
     window.addEventListener('resize', checkShowLandingPage);

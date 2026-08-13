@@ -173,6 +173,67 @@ def embed_agent_id_in_existing_dograh_workflow(dograh_workflow_id: int, agent_id
     return sync_agent_prompt_to_dograh(agent_id, dograh_workflow_id, "")
 
 
+def sync_voice_config_only(voice_id: str, elevenlabs_api_key: str) -> bool:
+    """
+    Dynamically update the TTS voice configuration of the shared Dograh workflow
+    right before the call starts.
+    """
+    try:
+        # Fetch current config to preserve system parameters
+        current = _dograh_request("GET", "/api/v1/workflow/fetch/3")
+        current_wc = current.get('workflow_configurations', {})
+        pipeline = current_wc.get('model_configuration_v2_override', {}).get('byok', {}).get('pipeline', {})
+        
+        llm = pipeline.get('llm', {})
+        stt = pipeline.get('stt', {})
+        
+        # Real unmasked API keys to prevent placeholder stars from corrupting connection
+        llm_key = "sk-mr-ai-voice-routing"
+        stt_key = "5d3770e0a1b4aa755f6d799839bb62ba5561a868"
+        
+        update_payload = {
+            "workflow_configurations": {
+                "model_configuration_v2_override": {
+                    "version": 2,
+                    "mode": "byok",
+                    "byok": {
+                        "mode": "pipeline",
+                        "pipeline": {
+                            "llm": {
+                                "provider": "openai",
+                                "api_key": llm_key,
+                                "model": llm.get('model', 'd6b54c1e63290e77'),
+                                "base_url": llm.get('base_url', 'https://vectorize.diintech.com/api/agents')
+                            },
+                            "tts": {
+                                "provider": "elevenlabs",
+                                "api_key": elevenlabs_api_key,
+                                "voice": voice_id,
+                                "speed": 1.0,
+                                "model": "eleven_turbo_v2",
+                                "base_url": "https://api.elevenlabs.io"
+                            },
+                            "stt": {
+                                "provider": "deepgram",
+                                "api_key": stt_key,
+                                "model": stt.get('model', 'nova-3-general'),
+                                "language": stt.get('language', 'multi')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        _dograh_request("PUT", "/api/v1/workflow/3", update_payload)
+        _dograh_request("POST", "/api/v1/workflow/3/publish")
+        logger.info(f"Successfully synced voice config to Dograh: voice_id={voice_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to sync voice config only to Dograh: {e}")
+        return False
+
+
 if __name__ == "__main__":
     # Test: embed agent_id in existing workflow 3
     success = embed_agent_id_in_existing_dograh_workflow(3, "d6b54c1e63290e77")

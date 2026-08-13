@@ -3694,16 +3694,13 @@ function setMode(m) {
     // Unlock browser audio context immediately on user click
     unlockAudioContext();
 
-    // Bind listeners and start call
-    if (window.DograhWidget) {
-      bindDograhListeners();
-      window.DograhWidget.start().catch(err => {
-        document.getElementById('vo-status').textContent = 'Error Starting';
-        document.getElementById('vo-sub').textContent = err.message || 'Could not start call';
-      });
-    } else {
-      // If widget is still loading, wait a bit
-      setTimeout(() => {
+    // Dynamically sync and prepare the correct voice configurations on Dograh right before starting the call
+    fetch(`/api/agents/${AGENT_ID}/prepare-voice-call`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Voice call prepared successfully:", data);
+        
+        // Bind listeners and start call
         if (window.DograhWidget) {
           bindDograhListeners();
           window.DograhWidget.start().catch(err => {
@@ -3711,11 +3708,32 @@ function setMode(m) {
             document.getElementById('vo-sub').textContent = err.message || 'Could not start call';
           });
         } else {
-          document.getElementById('vo-status').textContent = 'Widget Loading...';
-          document.getElementById('vo-sub').textContent = 'Please wait or refresh the page.';
+          // If widget is still loading, wait a bit
+          setTimeout(() => {
+            if (window.DograhWidget) {
+              bindDograhListeners();
+              window.DograhWidget.start().catch(err => {
+                document.getElementById('vo-status').textContent = 'Error Starting';
+                document.getElementById('vo-sub').textContent = err.message || 'Could not start call';
+              });
+            } else {
+              document.getElementById('vo-status').textContent = 'Widget Loading...';
+              document.getElementById('vo-sub').textContent = 'Please wait or refresh the page.';
+            }
+          }, 1000);
         }
-      }, 1000);
-    }
+      })
+      .catch(err => {
+        console.error("Failed to prepare voice call:", err);
+        // Fallback: start call anyway even if sync fails
+        if (window.DograhWidget) {
+          bindDograhListeners();
+          window.DograhWidget.start().catch(e => {
+            document.getElementById('vo-status').textContent = 'Error Starting';
+            document.getElementById('vo-sub').textContent = e.message || 'Could not start call';
+          });
+        }
+      });
   }
   else { 
     vo.classList.remove('active'); 

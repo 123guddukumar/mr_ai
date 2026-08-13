@@ -3818,4 +3818,38 @@ async def api_get_voice_transcript(agent_id: str, session_id: str):
     return data
 
 
+@router.post("/agents/{agent_id}/prepare-voice-call", tags=["Agents & DataStores"])
+async def api_prepare_voice_call(agent_id: str, db: Session = Depends(get_db)):
+    """
+    Dynamically sync and publish the selected agent's voice configurations
+    to the shared Dograh voice workflow right before the call session starts.
+    """
+    from app.core.models import Agent
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.is_active == True).first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+        
+    try:
+        vc = json.loads(agent.voice_config_json or "{}")
+    except Exception:
+        vc = {}
+
+    # Defaults to Alice (working free tier voice) and standard key
+    voice_id = "Xb7hH8MSUJpSbSDYk0k2" 
+    api_key = "sk_cd1566bdbc7c80d5295f6340039775a8a1badff28ce0961b"
+
+    provider = str(vc.get("provider") or "").lower()
+    
+    # If agent uses ElevenLabs, override custom credentials dynamically
+    if provider == "elevenlabs" or str(vc.get("api_key") or "").startswith("sk_"):
+        voice_id = vc.get("voice_id") or vc.get("voice_name") or voice_id
+        api_key = vc.get("api_key") or api_key
+
+    from app.services.dograh_service import sync_voice_config_only
+    success = await asyncio.to_thread(sync_voice_config_only, voice_id, api_key)
+    
+    return {"success": success, "voice_id": voice_id}
+
+
+
 

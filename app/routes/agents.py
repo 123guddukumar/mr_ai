@@ -3333,7 +3333,17 @@ async def api_agent_openai_compatible_chat(
 
     active_agent_id = parsed_agent_id or agent_id
 
-    # Connection Validation Fallback for Dograh Dashboard Test Request
+    # Also try to extract agent ID from Authorization Bearer token
+    # This supports the pattern: Base URL = /api/agents, API Key = <agent_id>
+    if active_agent_id in ("chat", "v1", "models"):
+        auth_hdr = request.headers.get("authorization", "")
+        if auth_hdr.lower().startswith("bearer "):
+            bearer_tok = auth_hdr[7:].strip()
+            if re.match(r'^[a-f0-9]{8,32}$', bearer_tok, re.IGNORECASE):
+                active_agent_id = bearer_tok
+                logger.info(f"Routing via Bearer token agent ID: {active_agent_id}")
+
+    # Connection Validation Fallback — only if still no real agent ID resolved
     if active_agent_id in ("chat", "v1", "models"):
         answer = "Connection successful. OpenAI compatible agent completions server is active."
         if req.stream:
@@ -3685,8 +3695,34 @@ async def api_agent_openai_compatible_chat_common(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    """
+    Common OpenAI-compatible completions endpoint for Dograh and 3rd party integrations.
+    
+    Per-agent routing via Bearer token:
+    - Set Base URL: https://vectorize.diintech.com/api/agents  (same for ALL agents)
+    - Set API Key:  <your_agent_id>  (e.g. 9817acf6f7c40d3f)
+    
+    Dograh sends: Authorization: Bearer 9817acf6f7c40d3f
+    We extract the agent ID and route to the correct agent automatically.
+    """
+    # Extract agent ID from Authorization: Bearer <agent_id>
+    auth_header = request.headers.get("authorization", "")
+    bearer_agent_id = None
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+        # Check if it looks like a real agent ID (hex string 8-32 chars)
+        # Real agent IDs are hex strings like 9817acf6f7c40d3f
+        # Dummy keys like sk-dummy-... or validation tokens won't match
+        import re as _re
+        if _re.match(r'^[a-f0-9]{8,32}$', token, _re.IGNORECASE):
+            bearer_agent_id = token
+            logger.info(f"Common completions: routing to agent {bearer_agent_id} via Bearer token")
+
+    # Route to specific agent if ID found in bearer token, else fall through to mock
+    routing_agent_id = bearer_agent_id or "chat"
+    
     return await api_agent_openai_compatible_chat(
-        agent_id="chat",
+        agent_id=routing_agent_id,
         req=req,
         request=request,
         db=db

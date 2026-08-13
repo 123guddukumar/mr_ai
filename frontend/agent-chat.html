@@ -4009,6 +4009,9 @@
         <div class="vo-transcript" id="vo-transcript"><span class="vo-tx-inner"><i>Waiting for speech…</i></span></div>
         <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
         <button class="vo-close-btn" onclick="setMode('text')"><i data-lucide="message-square"></i> Text Chat</button>
+        <button id="vo-retry-btn" onclick="voiceRetry()" style="display:none; margin-top:12px; padding:10px 24px; background:var(--accent); color:#fff; border:none; border-radius:24px; font-size:14px; font-weight:600; cursor:pointer; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(0,0,0,0.3);">
+          <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Try Again
+        </button>
       </div>
 
       <!-- Floating controls in bottom right -->
@@ -6203,7 +6206,7 @@
         window.dograhLastStatus = status;
         
         if (status === 'connecting') {
-          // Keep voice overlay OPEN — do NOT close it during mic permission or reconnect
+          // Keep voice overlay OPEN — do NOT close during mic permission
           const vo = document.getElementById('vo-overlay');
           if (vo && !vo.classList.contains('active')) {
             vo.classList.add('active');
@@ -6211,10 +6214,12 @@
             if (win) { win.style.opacity = '0.3'; win.style.pointerEvents = 'none'; }
           }
           if (voStatus) voStatus.textContent = 'Connecting...';
-          if (voSub) voSub.textContent = 'Requesting microphone access...';
-          if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
-          // Record when this connecting attempt started
-          window.dograhConnectStartTime = Date.now();
+          if (voSub) voSub.textContent = 'Please wait...';
+          if (voOrb) { voOrb.style.animation = 'pulse 1s infinite'; voOrb.style.background = ''; }
+          // Hide any previous retry button
+          const retryBtn = document.getElementById('vo-retry-btn');
+          if (retryBtn) retryBtn.style.display = 'none';
+          
         } else if (status === 'connected') {
           // Ensure overlay stays visible
           const vo = document.getElementById('vo-overlay');
@@ -6229,62 +6234,45 @@
             voOrb.style.background = 'var(--green)';
           }
           window.dograhConnectedTime = Date.now();
+          const retryBtn = document.getElementById('vo-retry-btn');
+          if (retryBtn) retryBtn.style.display = 'none';
           // Start polling live transcripts
           clearInterval(window.voiceTranscriptInterval);
           window.voiceTranscriptInterval = setInterval(pollVoiceTranscript, 800);
+          
         } else if (status === 'failed') {
-          if (voStatus) voStatus.textContent = 'Connection Failed';
-          if (voSub) voSub.textContent = 'Failed to connect. Please check microphone/network.';
-          if (voOrb) {
-            voOrb.style.animation = 'none';
-            voOrb.style.background = 'var(--red)';
-          }
           clearInterval(window.voiceTranscriptInterval);
-          // Auto-retry once after 2s, otherwise close
-          if (!window.dograhAutoRetryCount) window.dograhAutoRetryCount = 0;
-          if (window.dograhAutoRetryCount < 2) {
-            window.dograhAutoRetryCount++;
-            if (voStatus) voStatus.textContent = 'Reconnecting...';
-            if (voSub) voSub.textContent = `Retry ${window.dograhAutoRetryCount}/2...`;
-            setTimeout(() => {
-              if (window.DograhWidget && chatMode === 'v2v') {
-                window.DograhWidget.start().catch(e => console.error('Retry failed:', e));
-              }
-            }, 2000);
-          } else {
-            window.dograhAutoRetryCount = 0;
-            setTimeout(() => { setMode('text'); }, 2500);
-          }
+          if (voStatus) voStatus.textContent = 'Connection Failed';
+          if (voSub) voSub.textContent = 'Could not connect microphone. Check permissions.';
+          if (voOrb) { voOrb.style.animation = 'none'; voOrb.style.background = 'var(--red)'; }
+          // Show retry button
+          const retryBtn = document.getElementById('vo-retry-btn');
+          if (retryBtn) retryBtn.style.display = 'flex';
+          
         } else if (status === 'idle') {
           clearInterval(window.voiceTranscriptInterval);
           
           if (prevStatus === 'connected') {
-            // Check if call dropped very quickly — rtf-pipeline-error causes this
+            // Call ended — check if it dropped quickly (pipeline error) or was a normal hangup
             const connectedDuration = Date.now() - (window.dograhConnectedTime || 0);
-            const autoRetry = !window.dograhAutoRetryCount ? 0 : window.dograhAutoRetryCount;
-            
-            if (connectedDuration < 8000 && autoRetry < 3) {
-              // Call dropped in less than 8s — likely a pipeline error — auto-reconnect
-              window.dograhAutoRetryCount = autoRetry + 1;
-              if (voStatus) voStatus.textContent = 'Reconnecting...';
-              if (voSub) voSub.textContent = `Network hiccup, retrying (${window.dograhAutoRetryCount}/3)...`;
-              if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
-              if (voTranscript) voTranscript.innerHTML = '<span class="vo-tx-inner"><i>Reconnecting...</i></span>';
-              window.dograhLastStatus = 'connecting'; // treat as still in connecting phase
-              setTimeout(() => {
-                if (window.DograhWidget && chatMode === 'v2v') {
-                  window.DograhWidget.start().catch(e => console.error('Auto-reconnect failed:', e));
-                }
-              }, 1500);
+            if (connectedDuration < 5000) {
+              // Quick drop — pipeline error. Show error in overlay, do NOT auto-retry
+              if (voStatus) voStatus.textContent = 'Voice Error';
+              if (voSub) voSub.textContent = 'Server pipeline failed. Please try again.';
+              if (voOrb) { voOrb.style.animation = 'none'; voOrb.style.background = 'var(--red)'; }
+              if (voTranscript) voTranscript.innerHTML = '<span class="vo-tx-inner"><i>rtf-pipeline-error from server</i></span>';
+              // Show retry button — user can manually retry
+              const retryBtn = document.getElementById('vo-retry-btn');
+              if (retryBtn) retryBtn.style.display = 'flex';
             } else {
-              // Normal hangup or too many retries — close overlay
-              window.dograhAutoRetryCount = 0;
+              // Normal hangup (call lasted > 5 seconds) — go back to text
               setMode('text');
             }
           }
-          // If prevStatus was 'connecting', do NOT close the overlay — mic permission was shown
+          // If prevStatus was 'connecting' — mic permission shown, do NOT close overlay
         }
       });
+
       
       window.DograhWidget.onError((err) => {
         console.error("Dograh widget error:", err);
@@ -6378,6 +6366,29 @@
         } else {
           setMode('v2v');
         }
+      }
+    }
+
+    function voiceRetry() {
+      // Hide retry button, reset state and restart call
+      const retryBtn = document.getElementById('vo-retry-btn');
+      if (retryBtn) retryBtn.style.display = 'none';
+      const voStatus = document.getElementById('vo-status');
+      const voSub = document.getElementById('vo-sub');
+      const voOrb = document.getElementById('vo-orb');
+      const voTranscript = document.getElementById('vo-transcript');
+      if (voStatus) voStatus.textContent = 'Reconnecting...';
+      if (voSub) voSub.textContent = 'Please wait...';
+      if (voOrb) { voOrb.style.animation = 'pulse 1s infinite'; voOrb.style.background = ''; }
+      if (voTranscript) voTranscript.innerHTML = '<span class="vo-tx-inner"><i>Connecting...</i></span>';
+      window.dograhLastStatus = null;
+      window.dograhConnectedTime = 0;
+      if (window.DograhWidget) {
+        window.DograhWidget.start().catch(e => {
+          if (voStatus) voStatus.textContent = 'Failed';
+          if (voSub) voSub.textContent = e.message || 'Could not start';
+          if (retryBtn) retryBtn.style.display = 'flex';
+        });
       }
     }
 

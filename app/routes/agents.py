@@ -210,7 +210,15 @@ async def api_create_agent(req: CreateAgentReq, x_app_token: Optional[str] = Hea
     return agent.to_dict()
 
 @router.get("/agents", tags=["Agents & DataStores"])
-async def api_list_agents(x_app_token: Optional[str] = Header(None, alias="X-App-Token"), db: Session = Depends(get_db)):
+async def api_list_agents(
+    request: Request,
+    x_app_token: Optional[str] = Header(None, alias="X-App-Token"),
+    db: Session = Depends(get_db)
+):
+    auth_header = request.headers.get("authorization", "")
+    if not x_app_token and auth_header.lower().startswith("bearer "):
+        return {"message": "OpenAI-compatible RAG server is running."}
+        
     client = _get_client(x_app_token, db)
     agents = get_agents(client["client_id"], db)
     return [a.to_dict() for a in agents]

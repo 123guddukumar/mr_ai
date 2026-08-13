@@ -3639,6 +3639,44 @@ function bindDograhListeners() {
   dograhListenersBound = true;
 }
 
+function unlockAudioContext() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      console.log("Web Audio API context resumed successfully.");
+    }
+  } catch (e) {
+    console.warn("Failed to unlock Web Audio API:", e);
+  }
+
+  let attempts = 0;
+  const pollAudio = setInterval(() => {
+    attempts++;
+    const audio = document.getElementById('dograh-widget-audio');
+    if (audio) {
+      audio.muted = false;
+      audio.play().then(() => {
+        console.log("SUCCESSFULLY UNLOCKED DOGRAH AUDIO!");
+        clearInterval(pollAudio);
+      }).catch(err => {
+        console.log("Polling dograh audio play attempt:", attempts);
+      });
+    }
+    if (attempts > 40) {
+      clearInterval(pollAudio);
+    }
+  }, 300);
+}
+
 function setMode(m) {
   chatMode = m;
   document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('active'));
@@ -3653,6 +3691,9 @@ function setMode(m) {
     const timerEl = document.getElementById('vo-timer');
     if(timerEl) timerEl.style.display = 'none';
     
+    // Unlock browser audio context immediately on user click
+    unlockAudioContext();
+
     // Bind listeners and start call
     if (window.DograhWidget) {
       bindDograhListeners();

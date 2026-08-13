@@ -207,7 +207,23 @@ async def api_create_agent(req: CreateAgentReq, x_app_token: Optional[str] = Hea
     db.add(agent)
     db.commit()
     db.refresh(agent)
+    
+    # Auto-provision Dograh voice agent in background (fire-and-forget)
+    try:
+        import asyncio
+        from app.services.dograh_service import provision_dograh_agent
+        agent_name = params.get('name', new_id)
+        system_prompt = params.get('system_prompt', '') or ''
+        # Schedule background provisioning (non-blocking)
+        asyncio.create_task(
+            asyncio.to_thread(provision_dograh_agent, new_id, agent_name, system_prompt)
+        )
+        logger.info(f"Dograh voice agent provisioning scheduled for agent {new_id}")
+    except Exception as e:
+        logger.warning(f"Dograh auto-provision skipped for {new_id}: {e}")
+    
     return agent.to_dict()
+
 
 # ── OpenAI-Compatible Public Routes (no auth needed, for Dograh/3rd party validation) ──
 

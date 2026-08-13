@@ -3693,7 +3693,7 @@ async def api_agent_openai_compatible_chat(
             yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
             yield "data: [DONE]\n\n"
             
-        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+        return StreamingResponse(stream_fallback_generator(), media_type="text/event-stream")
     else:
         # Non-streaming response format
         return {

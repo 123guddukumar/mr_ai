@@ -685,30 +685,29 @@
     }
 
     .vo-transcript {
-      margin-top: 24px;
-      padding: 14px 20px;
-      background: rgba(0, 0, 0, 0.45);
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      max-width: 90%;
-      width: 360px;
-      height: 52px; /* exactly 2 lines at 20px line-height + padding */
+      margin-top: 28px;
+      padding: 16px 24px;
+      background: rgba(15, 23, 42, 0.65);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      max-width: 95%;
+      width: 440px;
+      height: 72px; /* exactly 2 lines of 24px line-height + padding */
       overflow: hidden;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
       text-align: center;
       color: rgba(255, 255, 255, 1);
-      font-size: 15px;
+      font-size: 16.5px;
       line-height: 24px;
       font-style: normal;
-      font-weight: 500;
-      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      font-weight: 600;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       letter-spacing: 0.01em;
-      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
     }
     .vo-transcript::before {
@@ -6236,6 +6235,18 @@
           window.dograhConnectedTime = Date.now();
           const retryBtn = document.getElementById('vo-retry-btn');
           if (retryBtn) retryBtn.style.display = 'none';
+          
+          // Force play the dograh audio element to bypass mobile/safari autoplay browser policies
+          try {
+            const dograhAudio = document.getElementById('dograh-widget-audio');
+            if (dograhAudio) {
+              console.log("Forcing audio play to bypass browser policy...");
+              dograhAudio.play().catch(e => console.warn("Failed to autoplay audio:", e));
+            }
+          } catch(ae) {
+            console.warn("Autoplay handler error:", ae);
+          }
+
           // Start polling live transcripts
           clearInterval(window.voiceTranscriptInterval);
           window.voiceTranscriptInterval = setInterval(pollVoiceTranscript, 800);
@@ -6411,54 +6422,79 @@
       return t;
     }
 
-    let subtitleInterval;
-    // Max words that fit in 2 lines at ~15px font in 360px wide box
-    const MAX_SUBTITLE_WORDS = 14;
+    let displayedWords = [];
+    let currentSubtitleText = "";
+    let wordQueue = [];
+    let subtitleTimer = null;
 
-    function limitToLastWords(text, maxWords) {
-      const words = text.trim().split(/\s+/);
-      if (words.length <= maxWords) return text;
-      return words.slice(words.length - maxWords).join(' ');
+    function resetSubtitles() {
+      displayedWords = [];
+      currentSubtitleText = "";
+      wordQueue = [];
+      clearInterval(subtitleTimer);
+      subtitleTimer = null;
+      const trans = document.getElementById('vo-transcript');
+      if (trans) {
+        trans.innerHTML = '<span class="vo-tx-inner"><i>Waiting for speech…</i></span>';
+      }
     }
 
     function setTranscriptText(text, isItalic) {
       const trans = document.getElementById('vo-transcript');
       if (!trans) return;
-      const displayText = limitToLastWords(text, MAX_SUBTITLE_WORDS);
-      if (isItalic) {
-        trans.innerHTML = `<span class="vo-tx-inner"><i>${displayText}</i></span>`;
+      
+      const cleanTxt = cleanSpeechText(text);
+      if (cleanTxt === currentSubtitleText) return;
+      currentSubtitleText = cleanTxt;
+
+      const allWords = cleanTxt.split(/\s+/).filter(w => w.trim().length > 0);
+      if (allWords.length === 0) {
+        resetSubtitles();
+        return;
+      }
+
+      // Check if this update is incremental (new words added to the end)
+      const isIncremental = allWords.join(' ').startsWith(displayedWords.join(' '));
+      if (!isIncremental) {
+        // Reset and animate all words from scratch
+        displayedWords = [];
+        wordQueue = [...allWords];
       } else {
-        trans.innerHTML = `<span class="vo-tx-inner">${displayText}</span>`;
+        // Only queue the new words
+        const newWords = allWords.slice(displayedWords.length);
+        wordQueue.push(...newWords);
+      }
+
+      // Start the display loop if not already running
+      if (!subtitleTimer) {
+        const delay = isItalic ? 100 : 150; // faster for user speech, natural pace for agent
+        subtitleTimer = setInterval(() => {
+          if (wordQueue.length > 0) {
+            const nextWord = wordQueue.shift();
+            displayedWords.push(nextWord);
+            
+            // Limit to last 14 words to fit perfectly in 2 lines without overflowing
+            const shownWords = displayedWords.slice(-14);
+            const display = shownWords.join(' ');
+            
+            const inner = trans.querySelector('.vo-tx-inner');
+            const formatText = isItalic ? `<i>${display}</i>` : display;
+            if (inner) {
+              inner.innerHTML = formatText;
+            } else {
+              trans.innerHTML = `<span class="vo-tx-inner">${formatText}</span>`;
+            }
+          } else {
+            clearInterval(subtitleTimer);
+            subtitleTimer = null;
+          }
+        }, delay);
       }
     }
 
+    // Keep function name for backward compatibility or direct calls
     function showSubtitles(text, delayPerWord) {
-      const trans = document.getElementById('vo-transcript');
-      if (!trans) return;
-      clearInterval(subtitleInterval);
-
-      const cleanTxt = cleanSpeechText(text);
-      const words = cleanTxt.split(/\s+/).filter(w => w.trim().length > 0);
-      if (words.length === 0) return;
-
-      let currentIdx = 0;
-      trans.innerHTML = '<span class="vo-tx-inner"></span>';
-
-      const delay = delayPerWord || 380;
-
-      subtitleInterval = setInterval(() => {
-        if (currentIdx < words.length) {
-          currentIdx++;
-          // Show last MAX_SUBTITLE_WORDS words for rolling subtitle effect
-          const shown = words.slice(0, currentIdx);
-          const display = shown.slice(-MAX_SUBTITLE_WORDS).join(' ');
-          const inner = trans.querySelector('.vo-tx-inner');
-          if (inner) inner.textContent = display;
-          else trans.textContent = display;
-        } else {
-          clearInterval(subtitleInterval);
-        }
-      }, delay);
+      setTranscriptText(text, false);
     }
 
     let dgSocket;

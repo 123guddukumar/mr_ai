@@ -209,6 +209,19 @@ async def api_create_agent(req: CreateAgentReq, x_app_token: Optional[str] = Hea
     db.refresh(agent)
     return agent.to_dict()
 
+# ── OpenAI-Compatible Public Routes (no auth needed, for Dograh/3rd party validation) ──
+
+@router.get("/agents/models", tags=["Agents & DataStores"])
+async def api_agents_models_public():
+    """Public models list - required for Dograh base URL validation."""
+    return {
+        "object": "list",
+        "data": [
+            {"id": "default", "object": "model", "created": 1686935002, "owned_by": "custom"},
+            {"id": "gpt-4.1", "object": "model", "created": 1686935002, "owned_by": "custom"}
+        ]
+    }
+
 @router.get("/agents", tags=["Agents & DataStores"])
 async def api_list_agents(
     request: Request,

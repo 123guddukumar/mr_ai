@@ -3333,8 +3333,17 @@ async def api_agent_openai_compatible_chat(
 
     active_agent_id = parsed_agent_id or agent_id
 
-    # Also try to extract agent ID from Authorization Bearer token
-    # This supports the pattern: Base URL = /api/agents, API Key = <agent_id>
+    # ROUTING PRIORITY 1: Model field as agent ID (most scalable approach)
+    # In Dograh: set Model = <agent_id> (e.g. d6b54c1e63290e77)
+    # Works for 1 lakh agents with ONE shared base URL and API key
+    if active_agent_id in ("chat", "v1", "models"):
+        model_val = (req.model or "").strip()
+        if re.match(r'^[a-f0-9]{8,32}$', model_val, re.IGNORECASE):
+            active_agent_id = model_val
+            logger.info(f"Routing via model-name agent ID: {active_agent_id}")
+
+    # ROUTING PRIORITY 2: Bearer token as agent ID (fallback)
+    # In Dograh: set API Key = <agent_id> (e.g. d6b54c1e63290e77)
     if active_agent_id in ("chat", "v1", "models"):
         auth_hdr = request.headers.get("authorization", "")
         if auth_hdr.lower().startswith("bearer "):
@@ -3706,21 +3715,29 @@ async def api_agent_openai_compatible_chat_common(
     We extract the agent ID and route to the correct agent automatically.
     """
     # Extract agent ID from Authorization: Bearer <agent_id>
+    import re as _re
+
+    # ROUTING PRIORITY 1: Model field as agent ID
+    # Dograh config per agent: Model = d6b54c1e63290e77 (Enter Custom Value)
+    # Shared across ALL agents: Base URL + API Key stay the same
+    model_val = (req.model or "").strip()
+    model_agent_id = None
+    if _re.match(r'^[a-f0-9]{8,32}$', model_val, _re.IGNORECASE):
+        model_agent_id = model_val
+        logger.info(f"Common completions: routing to agent {model_agent_id} via model field")
+
+    # ROUTING PRIORITY 2: Bearer token as agent ID  
     auth_header = request.headers.get("authorization", "")
     bearer_agent_id = None
     if auth_header.lower().startswith("bearer "):
         token = auth_header[7:].strip()
-        # Check if it looks like a real agent ID (hex string 8-32 chars)
-        # Real agent IDs are hex strings like 9817acf6f7c40d3f
-        # Dummy keys like sk-dummy-... or validation tokens won't match
-        import re as _re
         if _re.match(r'^[a-f0-9]{8,32}$', token, _re.IGNORECASE):
             bearer_agent_id = token
             logger.info(f"Common completions: routing to agent {bearer_agent_id} via Bearer token")
 
-    # Route to specific agent if ID found in bearer token, else fall through to mock
-    routing_agent_id = bearer_agent_id or "chat"
-    
+    # Use first available routing, else fall back to mock validation response
+    routing_agent_id = model_agent_id or bearer_agent_id or "chat"
+
     return await api_agent_openai_compatible_chat(
         agent_id=routing_agent_id,
         req=req,

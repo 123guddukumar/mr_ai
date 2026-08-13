@@ -3666,6 +3666,20 @@ async def api_agent_openai_compatible_chat(
         }
 
 
+@router.post("/agents/chat/completions", tags=["Agents & DataStores"])
+async def api_agent_openai_compatible_chat_common(
+    req: ChatCompletionRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    return await api_agent_openai_compatible_chat(
+        agent_id="chat",
+        req=req,
+        request=request,
+        db=db
+    )
+
+
 @router.get("/agents/{agent_id}/models", tags=["Agents & DataStores"])
 async def api_agent_openai_compatible_models(agent_id: str):
     return {
@@ -3685,6 +3699,11 @@ async def api_agent_openai_compatible_models(agent_id: str):
             }
         ]
     }
+
+
+@router.get("/agents/models", tags=["Agents & DataStores"])
+async def api_agent_openai_compatible_models_common():
+    return await api_agent_openai_compatible_models(agent_id="models")
 
 
 @router.get("/agents/{agent_id}", tags=["Agents & DataStores"])

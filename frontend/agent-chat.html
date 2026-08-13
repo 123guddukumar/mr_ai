@@ -685,24 +685,47 @@
     }
 
     .vo-transcript {
-      margin-top: 20px;
-      padding: 10px 16px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      max-width: 80%;
-      width: 320px;
-      height: 44px; /* Fixed height for exactly two lines of text */
+      margin-top: 24px;
+      padding: 14px 20px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      max-width: 90%;
+      width: 360px;
+      height: 52px; /* exactly 2 lines at 20px line-height + padding */
       overflow: hidden;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       text-align: center;
-      color: rgba(255, 255, 255, 0.95);
-      font-size: 14px;
-      line-height: 18px;
+      color: rgba(255, 255, 255, 1);
+      font-size: 15px;
+      line-height: 24px;
       font-style: normal;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      font-weight: 500;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      letter-spacing: 0.01em;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .vo-transcript::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    }
+    .vo-transcript .vo-tx-inner {
+      width: 100%;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      word-break: break-word;
     }
 
     /* Feedback & Report Modal */
@@ -3983,7 +4006,7 @@
           0.0s</div>
         <div class="vo-sub" id="vo-sub">I am listening to your voice</div>
 
-        <div class="vo-transcript" id="vo-transcript"><i>Waiting for speech…</i></div>
+        <div class="vo-transcript" id="vo-transcript"><span class="vo-tx-inner"><i>Waiting for speech…</i></span></div>
         <button class="vo-mic-btn" id="vo-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
         <button class="vo-close-btn" onclick="setMode('text')"><i data-lucide="message-square"></i> Text Chat</button>
       </div>
@@ -6154,13 +6177,10 @@
         const res = await fetch(`/api/agents/${AGENT_ID}/voice-transcript/${window.uniqueVoiceSessionId}`);
         if (res.ok) {
           const data = await res.json();
-          const voTranscript = document.getElementById('vo-transcript');
-          if (voTranscript) {
-            if (data.assistant) {
-              voTranscript.textContent = limitToLastWords(data.assistant, 12);
-            } else if (data.user) {
-              voTranscript.innerHTML = '<i>You: ' + limitToLastWords(data.user, 10) + '</i>';
-            }
+          if (data.assistant) {
+            setTranscriptText(data.assistant, false);
+          } else if (data.user) {
+            setTranscriptText('You: ' + data.user, true);
           }
         }
       } catch (e) {
@@ -6183,13 +6203,25 @@
         window.dograhLastStatus = status;
         
         if (status === 'connecting') {
+          // Keep voice overlay OPEN during mic permission request — do NOT close it
+          const vo = document.getElementById('vo-overlay');
+          if (vo && !vo.classList.contains('active')) {
+            vo.classList.add('active');
+            const win = document.getElementById('chat-win');
+            if (win) { win.style.opacity = '0.3'; win.style.pointerEvents = 'none'; }
+          }
           if (voStatus) voStatus.textContent = 'Connecting...';
-          if (voSub) voSub.textContent = 'Setting up secure audio line...';
+          if (voSub) voSub.textContent = 'Requesting microphone access...';
           if (voOrb) voOrb.style.animation = 'pulse 1s infinite';
         } else if (status === 'connected') {
+          // Ensure overlay stays visible
+          const vo = document.getElementById('vo-overlay');
+          if (vo) vo.classList.add('active');
+          const win = document.getElementById('chat-win');
+          if (win) { win.style.opacity = '0.3'; win.style.pointerEvents = 'none'; }
           if (voStatus) voStatus.textContent = 'Voice Call Connected';
           if (voSub) voSub.textContent = 'Speak now, AI is listening...';
-          if (voTranscript) voTranscript.innerHTML = '<i>Line connected. Ask questions about your database!</i>';
+          if (voTranscript) voTranscript.innerHTML = '<span class="vo-tx-inner"><i>Connected — ask me anything!</i></span>';
           if (voOrb) {
             voOrb.style.animation = 'pulse 2.3s infinite';
             voOrb.style.background = 'var(--green)';
@@ -6205,9 +6237,12 @@
             voOrb.style.background = 'var(--red)';
           }
           clearInterval(window.voiceTranscriptInterval);
+          // On failure, close overlay after 2.5s
+          setTimeout(() => { setMode('text'); }, 2500);
         } else if (status === 'idle') {
           clearInterval(window.voiceTranscriptInterval);
-          // Disconnected - return UI to text mode only if the call was actively connected (representing a normal hangup)
+          // ONLY go back to text mode if the call was actively connected (normal hangup)
+          // DO NOT close overlay if we were just 'connecting' (mic permission dialog was shown)
           if (prevStatus === 'connected') {
             setMode('text');
           }
@@ -6329,6 +6364,26 @@
     }
 
     let subtitleInterval;
+    // Max words that fit in 2 lines at ~15px font in 360px wide box
+    const MAX_SUBTITLE_WORDS = 14;
+
+    function limitToLastWords(text, maxWords) {
+      const words = text.trim().split(/\s+/);
+      if (words.length <= maxWords) return text;
+      return words.slice(words.length - maxWords).join(' ');
+    }
+
+    function setTranscriptText(text, isItalic) {
+      const trans = document.getElementById('vo-transcript');
+      if (!trans) return;
+      const displayText = limitToLastWords(text, MAX_SUBTITLE_WORDS);
+      if (isItalic) {
+        trans.innerHTML = `<span class="vo-tx-inner"><i>${displayText}</i></span>`;
+      } else {
+        trans.innerHTML = `<span class="vo-tx-inner">${displayText}</span>`;
+      }
+    }
+
     function showSubtitles(text, delayPerWord) {
       const trans = document.getElementById('vo-transcript');
       if (!trans) return;
@@ -6339,14 +6394,19 @@
       if (words.length === 0) return;
 
       let currentIdx = 0;
-      trans.innerHTML = '';
+      trans.innerHTML = '<span class="vo-tx-inner"></span>';
 
-      const delay = delayPerWord || 400; // Fallback to 400ms if not provided
+      const delay = delayPerWord || 380;
 
       subtitleInterval = setInterval(() => {
         if (currentIdx < words.length) {
-          trans.innerHTML = words.slice(0, currentIdx + 1).join(' ');
           currentIdx++;
+          // Show last MAX_SUBTITLE_WORDS words for rolling subtitle effect
+          const shown = words.slice(0, currentIdx);
+          const display = shown.slice(-MAX_SUBTITLE_WORDS).join(' ');
+          const inner = trans.querySelector('.vo-tx-inner');
+          if (inner) inner.textContent = display;
+          else trans.textContent = display;
         } else {
           clearInterval(subtitleInterval);
         }
@@ -6552,8 +6612,7 @@
           
           const display = cleanSpeechText(speechTranscript + finalTranscript + (interimTranscript ? ' ' + interimTranscript : ''));
           const displayClean = cleanMixedScript(deduplicateText(removeSentenceRestarts(display)));
-          const trans = document.getElementById('vo-transcript');
-          if (trans) trans.innerHTML = `<span>${displayClean}</span>`;
+          setTranscriptText(displayClean, false);
           
           if (finalTranscript) {
             speechTranscript += (speechTranscript ? ' ' : '') + finalTranscript;
@@ -6702,7 +6761,7 @@
 
             const rawDisplay = cleanSpeechText(speechTranscript + (currentInterim ? ' ' + currentInterim : ''));
             const display = cleanMixedScript(deduplicateText(removeSentenceRestarts(rawDisplay)));
-            trans.innerHTML = `<span>${display}</span>`;
+            setTranscriptText(display, false);
           }
         } catch (e) {
           console.error("Error parsing Deepgram message:", e);

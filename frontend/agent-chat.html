@@ -9147,46 +9147,6 @@
     }
   </style>
   <script>
-    // Intercept WebSocket signaling to handle client-side voice interruption
-    (function() {
-      const OriginalWebSocket = window.WebSocket;
-      window.WebSocket = function(url, protocols) {
-        const ws = new OriginalWebSocket(url, protocols);
-        let originalOnMessage = null;
-        Object.defineProperty(ws, 'onmessage', {
-          get() { return originalOnMessage; },
-          set(fn) {
-            originalOnMessage = fn;
-            ws.addEventListener('message', (event) => {
-              try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'rtf-user-mute-started') {
-                  console.log("INTERCEPTED rtf-user-mute-started! Muting/Stopping bot audio playback for interruption...");
-                  const audio = document.getElementById('dograh-widget-audio');
-                  if (audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                  }
-                } else if (data.type === 'rtf-bot-text') {
-                  console.log("INTERCEPTED rtf-bot-text! Resuming bot audio playback...");
-                  const audio = document.getElementById('dograh-widget-audio');
-                  if (audio) {
-                    audio.play().catch(e => console.warn("Failed to resume audio on bot text:", e));
-                  }
-                }
-              } catch (e) {}
-              
-              // Forward message to the original handler so connection doesn't stall
-              if (typeof fn === 'function') {
-                fn.call(ws, event);
-              }
-            });
-          }
-        });
-        return ws;
-      };
-    })();
-
     (function(d, s, id) {
       var js, fjs = d.getElementsByTagName(s)[0];
       if (d.getElementById(id)) return;

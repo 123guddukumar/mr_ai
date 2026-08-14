@@ -9175,6 +9175,11 @@
                   }
                 }
               } catch (e) {}
+              
+              // Forward message to the original handler so connection doesn't stall
+              if (typeof fn === 'function') {
+                fn.call(ws, event);
+              }
             });
           }
         });

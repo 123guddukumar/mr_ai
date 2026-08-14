@@ -3611,6 +3611,74 @@ async def api_agent_openai_compatible_chat(
                         
                 return StreamingResponse(groq_stream_generator(), media_type="text/event-stream")
                 
+            # If using OpenAI, execute streaming directly from OpenAI API
+            elif provider == "openai" and api_key:
+                # Filter/check placeholder key formatting
+                if api_key and (api_key.startswith("sk-") and len(api_key) < 20):
+                    api_key = ""
+                api_key = api_key or settings.OPENAI_API_KEY
+                
+                msgs = [{"role": "system", "content": system_prompt}]
+                for t in history_override:
+                    msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+                msgs.append({"role": "user", "content": user_msg})
+                
+                payload = {
+                    "model": model,
+                    "messages": msgs,
+                    "temperature": 0.1,
+                    "max_tokens": 1024,
+                    "stream": True
+                }
+                hdrs = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                async def openai_stream_generator():
+                    chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+                    created_time = int(datetime.utcnow().timestamp())
+                    full_reply = []
+                    try:
+                        client = get_llm_async_client()
+                        async with client.stream("POST", "https://api.openai.com/v1/chat/completions", headers=hdrs, json=payload) as response:
+                            response.raise_for_status()
+                            async for line in response.aiter_lines():
+                                if await request.is_disconnected():
+                                    logger.info("Client disconnected. Aborting OpenAI stream.")
+                                    break
+                                if line.strip():
+                                    yield line + "\n\n"
+                                    try:
+                                        if line.startswith("data: "):
+                                            data_str = line[6:]
+                                            if data_str.strip() != "[DONE]":
+                                                data = json.loads(data_str)
+                                                delta = data["choices"][0]["delta"]
+                                                if "content" in delta:
+                                                    txt = delta["content"]
+                                                    full_reply.append(txt)
+                                                    if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                        voice_transcripts[parsed_session_id]["assistant"] += txt
+                                    except Exception:
+                                        pass
+                    except Exception as oa_err:
+                        logger.error(f"OpenAI streaming error for agent {active_agent_id}: {oa_err}")
+                        err_text = "I'm sorry, I had trouble processing that. Please try again."
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': err_text}, 'finish_reason': None}]})}\n\n"
+                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
+                    
+                    try:
+                        assistant_text = "".join(full_reply)
+                        if parsed_session_id:
+                            save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
+                    except Exception as db_err:
+                        logger.warning(f"DB save error (non-fatal): {db_err}")
+                        
+                return StreamingResponse(openai_stream_generator(), media_type="text/event-stream")
+                
             # If using Gemini, execute streaming and translate to OpenAI format
             elif provider == "gemini" and api_key:
                 contents = []

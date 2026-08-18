@@ -162,7 +162,9 @@ async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None
 
     def make_public_url(fn: str) -> str:
         host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
-        scheme = "https" if "ngrok" in host else (request.headers.get("x-forwarded-proto") or "http")
+        scheme = request.headers.get("x-forwarded-proto") or "https"
+        if "localhost" in host or "127.0.0.1" in host:
+            scheme = "http"
         return f"{scheme}://{host}/static/{fn}"
 
     async def get_accessible_url_async(local_path: str) -> str:

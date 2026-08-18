@@ -4081,7 +4081,6 @@ function startNativeRecognition() {
 }
 
 function startRecognition() {
-  return;
   const trans = document.getElementById('vo-transcript');
 
   // Reset transcript buffers for this listening session
@@ -4249,7 +4248,6 @@ function stopRecognition() {
 }
 
 async function speakText(text) {
-  return;
   // Cancel any ongoing speech
   window.speechSynthesis?.cancel();
   clearInterval(subtitleInterval);

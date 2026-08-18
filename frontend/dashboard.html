@@ -4252,15 +4252,27 @@
             </div>
           </div>
 
-          <!-- Right Column: Monitored Agents -->
-          <div class="card" style="padding:18px;">
-            <div class="card-title" style="margin-bottom:14px;color:var(--text);display:flex;align-items:center;justify-content:space-between;">
-              <span>🤖 Monitored AI Agents</span>
-              <span style="font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;">View All ›</span>
+          <!-- Right Column: Monitored Agents & Clients -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card" style="padding:18px;">
+              <div class="card-title" style="margin-bottom:14px;color:var(--text);display:flex;align-items:center;justify-content:space-between;">
+                <span>🤖 Monitored AI Agents</span>
+                <span style="font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;">View All ›</span>
+              </div>
+              <div id="db-ping-agents-list" style="display:flex;flex-direction:column;gap:10px;">
+                <!-- Loaded dynamically -->
+                <div style="font-size:12px;text-align:center;color:var(--text3);padding:20px;">No agents registered.</div>
+              </div>
             </div>
-            <div id="db-ping-agents-list" style="display:flex;flex-direction:column;gap:10px;">
-              <!-- Loaded dynamically -->
-              <div style="font-size:12px;text-align:center;color:var(--text3);padding:20px;">No agents registered.</div>
+
+            <div class="card" style="padding:18px;">
+              <div class="card-title" style="margin-bottom:14px;color:var(--text);display:flex;align-items:center;justify-content:space-between;">
+                <span>💼 Client Wise Breakdown</span>
+              </div>
+              <div id="db-ping-clients-list" style="display:flex;flex-direction:column;gap:10px;">
+                <!-- Loaded dynamically -->
+                <div style="font-size:12px;text-align:center;color:var(--text3);padding:20px;">No client stats available.</div>
+              </div>
             </div>
           </div>
 
@@ -37477,6 +37489,33 @@ Also include a "meta" object at the end:
                 <span style="color:var(--accent); font-weight:800; font-size:12px; display:inline-flex; align-items:center; gap:2px;">
                   👥 ${sa.total_visitors} Visitors
                 </span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 5. Clients Breakdown
+      const clientsContainer = document.getElementById('db-ping-clients-list');
+      if (clientsContainer) {
+        if (!stats.clients || stats.clients.length === 0) {
+          clientsContainer.innerHTML = '<div style="font-size:12px; text-align:center; color:var(--text3); padding:20px;">No client stats available.</div>';
+        } else {
+          clientsContainer.innerHTML = stats.clients.map(c => {
+            return `
+              <div style="background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:13px; font-weight:800; color:var(--text);">${escHtml(c.name)}</span>
+                  <span style="font-size:10px; color:var(--text3); font-weight:700;">💼 Client</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                  <span style="color:var(--accent); font-weight:800; font-size:12px;">
+                    📈 ${c.total_pings} Pings
+                  </span>
+                  <span style="color:#10b981; font-weight:800; font-size:11px;">
+                    📅 ${c.meetings_count} Meetings
+                  </span>
+                </div>
               </div>
             `;
           }).join('');

@@ -2435,7 +2435,8 @@ async def get_root_pings_stats(
                 "feedback": {"count": 0, "growth": "0% ↑", "is_positive": True},
                 "others": {"count": 0, "growth": "0% ↑", "is_positive": True}
             },
-            "agents": []
+            "agents": [],
+            "clients": []
         }
 
     now = datetime.utcnow()
@@ -2648,7 +2649,8 @@ async def get_root_pings_stats(
         "outcomes": {
             k: calc_growth_simple(curr_categories[k], prev_categories[k]) for k in curr_categories
         },
-        "agents": []
+        "agents": [],
+        "clients": []
     }
 
     # Aggregate Monitored Sub-Agents
@@ -2669,4 +2671,50 @@ async def get_root_pings_stats(
             "total_visitors": sa_sess_count
         })
 
+    # Aggregate Client-Wise Breakdown (Owner + Sub-clients)
+    clients_stats = []
+    parent_client_obj = db.query(Client).filter(Client.client_id == client_id).first()
+    if parent_client_obj:
+        clients_to_query = [parent_client_obj]
+        sub_clients = db.query(Client).filter(Client.created_by_client_id == client_id).all()
+        clients_to_query.extend(sub_clients)
+    else:
+        clients_to_query = []
+
+    for c in clients_to_query:
+        c_agents = db.query(Agent).filter(Agent.client_id == c.client_id).all()
+        c_agent_ids = [a.agent_id for a in c_agents]
+        
+        # Count meetings
+        c_meetings_q = db.query(RootMeeting).filter(RootMeeting.client_id == c.client_id)
+        if curr_start:
+            c_meetings_q = c_meetings_q.filter(RootMeeting.created_at >= curr_start)
+        if curr_end:
+            c_meetings_q = c_meetings_q.filter(RootMeeting.created_at < curr_end)
+        c_meetings_count = c_meetings_q.count()
+        
+        # Count pings
+        c_pings_count = 0
+        if c_agent_ids:
+            c_msgs_q = db.query(AgentPublicMessage).join(AgentPublicSession).filter(
+                AgentPublicSession.agent_id.in_(c_agent_ids),
+                AgentPublicMessage.role == "user"
+            )
+            if curr_start:
+                c_msgs_q = c_msgs_q.filter(AgentPublicMessage.created_at >= curr_start)
+            if curr_end:
+                c_msgs_q = c_msgs_q.filter(AgentPublicMessage.created_at < curr_end)
+            c_pings_count = c_msgs_q.count()
+            
+        clients_stats.append({
+            "client_id": c.client_id,
+            "name": c.name or c.business_name or "Unnamed Client",
+            "business_name": c.business_name or "",
+            "meetings_count": c_meetings_count,
+            "total_pings": c_pings_count
+        })
+        
+    res_data["clients"] = clients_stats
+
     return res_data
+

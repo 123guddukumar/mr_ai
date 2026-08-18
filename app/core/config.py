@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     VOBIZ_AUTH_TOKEN: str = ""
     VOBIZ_PHONE_NUMBER: str = ""
     VOBIZ_DEFAULT_AGENT_ID: str = "da3243d9babb9387"
+    VOBIZ_OUTBOUND_REDIRECT_URL: str = "https://diinvoicepilot.duckdns.org/api/v1/telephony/vobiz/inbound"
 
     # Anti-hallucination System Prompt
     SYSTEM_PROMPT: str = (

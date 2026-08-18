@@ -70,21 +70,33 @@ def clean_for_voice(text: str) -> str:
     return text.strip()
 
 
-def get_whisper_language_hint(response_language: str) -> str:
+def get_whisper_language_hint(response_language: str) -> Optional[str]:
     """Map agent response language to Whisper language code."""
     mapping = {
         "hindi": "hi",
         "english": "en",
-        "hinglish": "hi",   # Map Hinglish to Hindi to force Devanagari script instead of auto-detecting Urdu script
-        "auto": "hi",
+        "hinglish": None,   # None forces Whisper to auto-detect the language
+        "auto": None,      # None forces Whisper to auto-detect the language
     }
-    return mapping.get(response_language.lower(), "hi")
+    return mapping.get(response_language.lower(), None)
 
 
 # ─── STT: Groq Whisper ────────────────────────────────────────────────────────
 
 async def transcribe_with_groq(recording_url: str, language_hint: Optional[str] = None) -> str:
     """Download Vobiz recording (with auth) and transcribe using Groq Whisper."""
+    if "mock-speech-text.com" in recording_url:
+        from urllib.parse import urlparse, parse_qs
+        try:
+            parsed = urlparse(recording_url)
+            params = parse_qs(parsed.query)
+            text = params.get("text", [""])[0]
+            logger.info(f"Mock STT transcription: '{text}'")
+            return text
+        except Exception as e:
+            logger.error(f"Mock STT parsing failed: {e}")
+            return ""
+
     groq_api_key = settings.GROQ_API_KEY
     if not groq_api_key:
         logger.error("GROQ_API_KEY not set")
@@ -132,7 +144,7 @@ async def transcribe_with_groq(recording_url: str, language_hint: Optional[str] 
 
 # ─── TTS: ElevenLabs + OpenAI fallback ───────────────────────────────────────
 
-async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None) -> str:
+async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None, bypass_r2: bool = False) -> str:
     """
     Generate TTS audio using agent's configured voice.
     Priority: Agent's ElevenLabs voice → System ElevenLabs → OpenAI nova
@@ -155,7 +167,7 @@ async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None
 
     async def get_accessible_url_async(local_path: str) -> str:
         # ⚡ CLOUDFLARE R2 CDN OPTIMIZATION: Upload in background thread to avoid blocking response
-        if settings.R2_PUBLIC_URL and settings.R2_ACCESS_KEY_ID:
+        if not bypass_r2 and settings.R2_PUBLIC_URL and settings.R2_ACCESS_KEY_ID:
             try:
                 from app.services.r2_storage import upload_to_r2
                 fn = os.path.basename(local_path)
@@ -168,6 +180,40 @@ async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None
             except Exception as e:
                 logger.error(f"Failed to upload voice to R2: {e}")
         return make_public_url(os.path.basename(local_path))
+
+    # ── 0. System Indian Female (Sarvam AI Anushka) Voice for Welcome Menu ──
+    if not voice_cfg and settings.SARVAM_API_KEY:
+        try:
+            url = "https://api.sarvam.ai/text-to-speech"
+            headers = {
+                "api-subscription-key": settings.SARVAM_API_KEY,
+                "Content-Type": "application/json"
+            }
+            cleaned_text = clean_for_voice(text)
+            data = {
+                "inputs": [cleaned_text],
+                "target_language_code": "hi-IN",
+                "speaker": "anushka",
+                "pitch": 0,
+                "pace": 1.0,
+                "loudness": 1.5,
+                "enable_preprocessing": True
+            }
+            resp = await http_client.post(url, json=data, headers=headers, timeout=20.0)
+            if resp.status_code == 200:
+                resp_data = resp.json()
+                b64 = resp_data.get("audios", [None])[0]
+                if b64:
+                    import base64
+                    with open(filepath, "wb") as f:
+                        f.write(base64.b64decode(b64))
+                    url = await get_accessible_url_async(filepath)
+                    logger.info("System Sarvam AI Indian Female (Anushka) welcome TTS OK")
+                    return url
+            else:
+                logger.warning(f"System Sarvam AI TTS failed: {resp.status_code} - {resp.text}")
+        except Exception as e:
+            logger.warning(f"System Sarvam AI TTS error: {e}")
 
     # ── 1. Agent's own ElevenLabs voice (from voice_config_json) ──
     if voice_cfg and voice_cfg.get("provider") == "elevenlabs":
@@ -199,7 +245,7 @@ async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None
     # ── 2. System ElevenLabs key ──
     eleven_key = settings.ELEVENLABS_API_KEY
     if eleven_key:
-        default_voice_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel
+        default_voice_id = "pNInz6obpgHs517Ve2Rl"  # Adam (Louder and Clearer Male Voice)
         try:
             resp = await http_client.post(
                 f"https://api.elevenlabs.io/v1/text-to-speech/{default_voice_id}",
@@ -207,7 +253,7 @@ async def generate_tts_audio(text: str, request: Request, voice_cfg: dict = None
                 json={
                     "text": text,
                     "model_id": "eleven_turbo_v2_5",
-                    "voice_settings": {"stability": 0.4, "similarity_boost": 0.8}
+                    "voice_settings": {"stability": 0.75, "similarity_boost": 0.95, "style": 0.0}
                 }
             )
             if resp.status_code == 200:
@@ -247,7 +293,7 @@ def build_record_xml(
     intro_text: str,
     record_url: str,
     max_length: int = 25,
-    silence_timeout: float = 0.5,
+    silence_timeout: float = 2.0,
     use_speak_for_response: bool = False
 ) -> str:
     """
@@ -262,12 +308,12 @@ def build_record_xml(
     else:
         play_block = f"    <Play>{intro_audio_url}</Play>"
 
-    # Convert silence_timeout to int (e.g. 1) as Plivo/Vobiz usually requires an integer for timeout
-    timeout_val = int(silence_timeout) if silence_timeout >= 1 else 1
+    # Convert silence_timeout to int (e.g. 2) as Plivo/Vobiz usually requires an integer for timeout
+    timeout_val = int(silence_timeout) if silence_timeout >= 1 else 2
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
 {play_block}
-    <Record action="{record_url}" method="POST" maxLength="{max_length}" timeout="{timeout_val}" silenceTimeout="{timeout_val}" playBeep="false"/>
+    <Record action="{record_url}" method="POST" maxLength="{max_length}" timeout="{timeout_val}" silenceTimeout="{timeout_val}" playBeep="false" finishOnKey="0"/>
     <Hangup/>
 </Response>"""
 
@@ -414,6 +460,15 @@ async def api_outbound_flow(
     to: Optional[str] = Query(None)
 ):
     """Called by Vobiz when the outbound call is answered."""
+    if settings.VOBIZ_OUTBOUND_REDIRECT_URL:
+        # Redirect the call to Dograh's Vobiz Answer Webhook
+        xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Redirect method="POST">{settings.VOBIZ_OUTBOUND_REDIRECT_URL}</Redirect>
+</Response>"""
+        logger.info(f"Outbound call answered. Redirecting to Dograh Vobiz URL: {settings.VOBIZ_OUTBOUND_REDIRECT_URL}")
+        return Response(content=xml_content, media_type="application/xml")
+
     agent_str = agent_id or settings.VOBIZ_DEFAULT_AGENT_ID
     record_url = get_absolute_url(request, f"/api/telephony/call/{agent_str}/transcribe")
 
@@ -436,7 +491,7 @@ async def api_outbound_flow(
         intro_text=starting_msg,
         record_url=record_url,
         max_length=25,
-        silence_timeout=1
+        silence_timeout=2
     )
     logger.info(f"Outbound flow sent, record_url={record_url}")
     return Response(content=xml_content, media_type="application/xml")
@@ -452,6 +507,69 @@ def db_get_agent(agent_id: str) -> Optional[Agent]:
         return agent
     except Exception:
         return None
+
+
+def get_ivr_mapped_agents(db: Session) -> dict:
+    """Helper to map active non-personal agents to IVR digits 0-9 with name deduplication."""
+    agents = db.query(Agent).filter(Agent.is_active == True).all()
+    eligible_agents = []
+    for a in agents:
+        name_lower = (a.name or "").lower()
+        cat_lower = (a.category or "").lower()
+        if cat_lower == "root_assistant":
+            continue
+        if "personal" in name_lower or "👑" in name_lower:
+            continue
+        eligible_agents.append(a)
+
+    # 1. Build initial candidates for 0 (IIP) and 1 (Vijay)
+    mapped_agents = {}
+    iip_agent = None
+    vijay_agent = None
+    for a in eligible_agents:
+        if "iip" in (a.name or "").lower():
+            iip_agent = a
+            break
+    for a in eligible_agents:
+        if "vijay" in (a.name or "").lower():
+            vijay_agent = a
+            break
+
+    used_ids = set()
+    spoken_names = set()
+
+    if iip_agent:
+        mapped_agents["0"] = iip_agent
+        used_ids.add(iip_agent.agent_id)
+        norm_name = iip_agent.name.lower().replace("assistant", "").replace("ai", "").replace(" ", "").strip()
+        spoken_names.add(norm_name)
+
+    if vijay_agent:
+        mapped_agents["1"] = vijay_agent
+        used_ids.add(vijay_agent.agent_id)
+        norm_name = vijay_agent.name.lower().replace("assistant", "").replace("ai", "").replace(" ", "").strip()
+        spoken_names.add(norm_name)
+
+    # 2. Map remaining eligible agents to digits 2 to 9, skipping duplicate/similar names
+    digit_ptr = 2
+    for a in eligible_agents:
+        if a.agent_id in used_ids:
+            continue
+        
+        name_clean = a.name.replace("/n", "").replace("\n", "").strip()
+        norm_name = name_clean.lower().replace("assistant", "").replace("ai", "").replace(" ", "").strip()
+        
+        # Skip if name is too similar to already spoken names to avoid duplicate announcements
+        if norm_name in spoken_names or any(spoken in norm_name or norm_name in spoken for spoken in spoken_names):
+            continue
+            
+        if digit_ptr <= 9:
+            mapped_agents[str(digit_ptr)] = a
+            used_ids.add(a.agent_id)
+            spoken_names.add(norm_name)
+            digit_ptr += 1
+            
+    return mapped_agents
 
 
 # ─── Inbound Call Handler ────────────────────────────────────────────────────
@@ -471,16 +589,7 @@ async def api_inbound_call(
     clean_phone = from_phone.replace("+", "").strip()
     agent_str = agent_id
 
-    if not agent_str and clean_phone:
-        try:
-            session = db.query(AgentPublicSession).filter(
-                AgentPublicSession.phone_number.like(f"%{clean_phone}%")
-            ).order_by(AgentPublicSession.updated_at.desc()).first()
-            if session:
-                agent_str = session.agent_id
-        except Exception as e:
-            logger.error(f"Session lookup error: {e}")
-
+    # If agent_id query parameter is passed (e.g. from call action button or outbound), bypass menu!
     if agent_str:
         agent = db.query(Agent).filter(Agent.agent_id == agent_str).first()
         agent_name = agent.name if agent else "MR AI"
@@ -491,11 +600,42 @@ async def api_inbound_call(
         audio_url = await generate_tts_audio(starting_msg, request, voice_cfg)
         xml_content = build_record_xml(audio_url, starting_msg, record_url)
     else:
-        verify_url = get_absolute_url(request, "/api/telephony/inbound-call/verify-agent")
-        xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+        # Get mapped agents from helper function (ensures exact match with select-agent)
+        mapped_agents = get_ivr_mapped_agents(db)
+
+        # Construct welcome menu text based on the mapped agents
+        menu_items = []
+        if "0" in mapped_agents:
+            clean_name = mapped_agents["0"].name.replace("/n", "").replace("\n", "").strip()
+            menu_items.append(f"{clean_name} se baat karne ke liye 0 dabaye.")
+        if "1" in mapped_agents:
+            clean_name = mapped_agents["1"].name.replace("/n", "").replace("\n", "").strip()
+            menu_items.append(f"{clean_name} se baat karne ke liye 1 dabaye.")
+
+        for d, a in sorted(mapped_agents.items()):
+            if d in ("0", "1"):
+                continue
+            clean_name = a.name.replace("/n", "").replace("\n", "").strip()
+            menu_items.append(f"{clean_name} se baat karne ke liye {d} dabaye.")
+
+        menu_text = "Welcome to my assistant. " + " ".join(menu_items)
+
+        select_url = get_absolute_url(request, "/api/telephony/inbound-call/select-agent")
+        audio_url = await generate_tts_audio(menu_text, request, None, bypass_r2=True)
+        
+        if audio_url:
+            xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather action="{verify_url}" method="POST" input="dtmf" timeout="15" numDigits="8">
-        <Speak>Welcome to MR AI Voice Portal. Please enter the agent ID using your keypad.</Speak>
+    <Gather action="{select_url}" method="POST" input="dtmf" timeout="10" numDigits="1">
+        <Play>{audio_url}</Play>
+    </Gather>
+    <Hangup/>
+</Response>"""
+        else:
+            xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather action="{select_url}" method="POST" input="dtmf" timeout="10" numDigits="1">
+        <Speak>{menu_text}</Speak>
     </Gather>
     <Hangup/>
 </Response>"""
@@ -503,10 +643,10 @@ async def api_inbound_call(
     return Response(content=xml_content, media_type="application/xml")
 
 
-# ─── Agent Verify ────────────────────────────────────────────────────────────
+# ─── Agent Selection DTMF Handler ────────────────────────────────────────────
 
-@router.post("/telephony/inbound-call/verify-agent", summary="Verify Agent ID from DTMF")
-async def api_verify_agent(
+@router.post("/telephony/inbound-call/select-agent", summary="Select agent from IVR digit")
+async def api_select_agent(
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -519,15 +659,13 @@ async def api_verify_agent(
         from_phone = "UnknownCaller"
 
     clean_phone = from_phone.replace("+", "").strip()
-    agent = None
 
-    if digits:
-        agent = db.query(Agent).filter(
-            (Agent.agent_id.like(f"%{digits}%")) |
-            (Agent.custom_slug.like(f"%{digits}%"))
-        ).first()
+    mapped_agents = get_ivr_mapped_agents(db)
 
-    if agent:
+    selected_agent = mapped_agents.get(digits)
+    if selected_agent:
+        agent_id = selected_agent.agent_id
+        # Update session
         try:
             session_id = f"tel_{clean_phone}"
             session = db.query(AgentPublicSession).filter(
@@ -535,8 +673,8 @@ async def api_verify_agent(
             ).first()
             if not session:
                 session = AgentPublicSession(
-                    session_id=f"tel_{clean_phone}",
-                    agent_id=agent.agent_id,
+                    session_id=session_id,
+                    agent_id=agent_id,
                     device_id=clean_phone,
                     phone_number=clean_phone,
                     device_name="Voice Call",
@@ -544,28 +682,41 @@ async def api_verify_agent(
                 )
                 db.add(session)
             else:
-                session.agent_id = agent.agent_id
+                session.agent_id = agent_id
                 session.updated_at = datetime.utcnow()
             db.commit()
         except Exception as e:
             logger.error(f"Session save error: {e}")
 
-        voice_cfg = get_agent_voice_config(agent)
-        intro = f"Connected with {agent.name}. How can I help you?"
-        record_url = get_absolute_url(request, f"/api/telephony/call/{agent.agent_id}/transcribe")
-        audio_url = await generate_tts_audio(intro, request, voice_cfg)
-        xml_content = build_record_xml(audio_url, intro, record_url)
+        if settings.VOBIZ_OUTBOUND_REDIRECT_URL:
+            # Redirect the call to Dograh's Vobiz Answer Webhook
+            xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Redirect method="POST">{settings.VOBIZ_OUTBOUND_REDIRECT_URL}</Redirect>
+</Response>"""
+            logger.info(f"Agent selected: {agent_id}. Redirecting call to Dograh Vobiz URL: {settings.VOBIZ_OUTBOUND_REDIRECT_URL}")
+        else:
+            voice_cfg = get_agent_voice_config(selected_agent)
+            starting_msg = (selected_agent.starting_message if selected_agent.starting_message
+                            else f"Hello! Welcome to {selected_agent.name}. How can I help you?")
+            record_url = get_absolute_url(request, f"/api/telephony/call/{agent_id}/transcribe")
+            audio_url = await generate_tts_audio(starting_msg, request, voice_cfg)
+            xml_content = build_record_xml(audio_url, starting_msg, record_url)
     else:
-        verify_url = get_absolute_url(request, "/api/telephony/inbound-call/verify-agent")
+        inbound_url = get_absolute_url(request, "/api/telephony/inbound-call")
         xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather action="{verify_url}" method="POST" input="dtmf" timeout="15" numDigits="8">
-        <Speak>Invalid agent ID. Please enter the correct agent ID.</Speak>
-    </Gather>
-    <Hangup/>
+    <Speak>Invalid selection. Let's try again.</Speak>
+    <Redirect method="POST">{inbound_url}</Redirect>
 </Response>"""
 
     return Response(content=xml_content, media_type="application/xml")
+
+
+@router.post("/telephony/hangup", summary="Graceful hangup handler")
+async def api_telephony_hangup(request: Request):
+    logger.info("Telephony call hangup webhook received.")
+    return {"status": "hangup_logged"}
 
 
 # ─── CORE: Transcribe + AI + TTS loop ────────────────────────────────────────
@@ -588,6 +739,17 @@ async def api_transcribe_and_respond(
     form_data = await request.form()
     all_fields = dict(form_data)
     logger.info(f"TRANSCRIBE: agent={agent_id}, fields={list(all_fields.keys())}, silence_count={silence_count}")
+
+    # Check if user pressed '0' on their keypad to go back to the menu
+    digits = (form_data.get("Digits") or form_data.get("digits") or "").strip()
+    if digits == "0":
+        inbound_url = get_absolute_url(request, "/api/telephony/inbound-call")
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Redirect method="POST">{inbound_url}</Redirect>
+</Response>"""
+        logger.info("Digit 0 pressed. Redirecting back to the main menu.")
+        return Response(content=xml, media_type="application/xml")
 
     recording_url = (
         form_data.get("RecordUrl") or
@@ -631,7 +793,7 @@ async def api_transcribe_and_respond(
             silent_record_url = get_absolute_url(request, f"/api/telephony/call/{agent_id}/transcribe?silence_count={next_count}")
             xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Record action="{silent_record_url}" method="POST" maxLength="25" timeout="1" silenceTimeout="1" playBeep="false"/>
+    <Record action="{silent_record_url}" method="POST" maxLength="25" timeout="2" silenceTimeout="2" playBeep="false" finishOnKey="0"/>
     <Hangup/>
 </Response>"""
             logger.info(f"Silence detected. Retrying silently (count={next_count})")
@@ -646,6 +808,17 @@ async def api_transcribe_and_respond(
 
     if not speech_text:
         return await handle_silence()
+
+    # Check if speech indicates going back to the main menu
+    clean_speech = speech_text.strip().lower().replace(".", "").replace(",", "")
+    if clean_speech in ("0", "zero", "menu", "go back", "back to menu", "main menu", "starting menu"):
+        inbound_url = get_absolute_url(request, "/api/telephony/inbound-call")
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Redirect method="POST">{inbound_url}</Redirect>
+</Response>"""
+        logger.info(f"Speech '{speech_text}' requested menu. Redirecting back to the main menu.")
+        return Response(content=xml, media_type="application/xml")
 
     logger.info(f"Transcribed: '{speech_text}'")
     print(f"DEBUG SPEECH: '{speech_text}'", flush=True)
@@ -764,7 +937,7 @@ async def api_transcribe_and_respond(
         intro_text=ai_answer,
         record_url=success_record_url,
         max_length=25,
-        silence_timeout=1.0,
+        silence_timeout=2.0,
         use_speak_for_response=False
     )
     return Response(content=xml_content, media_type="application/xml")

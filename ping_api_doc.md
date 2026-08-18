@@ -65,6 +65,14 @@ A list of objects containing the active sub-agents:
 - `is_root` (`Boolean`): True if it is the root executive assistant.
 - `total_visitors` (`Integer`): Session visitor count for the selected period.
 
+### 5. `clients`
+A list of objects containing statistics broken down client-wise (owner client and all its sub-clients):
+- `client_id` (`String`): Unique identifier of the client.
+- `name` (`String`): Client name or business name.
+- `business_name` (`String`): Registered business name.
+- `meetings_count` (`Integer`): Total scheduled meetings for this client in the selected timeframe.
+- `total_pings` (`Integer`): Total user message pings received across all agents belonging to this client in the selected timeframe.
+
 ---
 
 ## 📝 Example JSON Response
@@ -148,6 +156,22 @@ A list of objects containing the active sub-agents:
       "is_active": true,
       "is_root": false,
       "total_visitors": 40
+    }
+  ],
+  "clients": [
+    {
+      "client_id": "c_owner_123",
+      "name": "Main Office Admin",
+      "business_name": "Acme Corp",
+      "meetings_count": 3,
+      "total_pings": 105
+    },
+    {
+      "client_id": "c_sub_456",
+      "name": "Branch Office User",
+      "business_name": "Acme Branch",
+      "meetings_count": 2,
+      "total_pings": 42
     }
   ]
 }

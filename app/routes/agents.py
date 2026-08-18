@@ -3330,6 +3330,7 @@ async def api_agent_openai_compatible_chat(
     import json
     from datetime import datetime
     from app.services.llm import get_llm_async_client
+    from app.core.models import AgentPublicSession
     
     # Extract agent ID dynamically from the system message if provided in the Dograh workflow context
     parsed_agent_id = None
@@ -3347,7 +3348,39 @@ async def api_agent_openai_compatible_chat(
                 logger.info(f"Parsed voice session ID: {parsed_session_id}")
             break
 
-    active_agent_id = parsed_agent_id or agent_id
+    # Try to map parsed_session_id to recent IVR selection if it is a new session
+    # Or load the agent_id of the existing session if it already exists
+    session_agent_id = None
+    if parsed_session_id:
+        # Check if we already have this vsession-xxxxxx mapped
+        session_exists = db.query(AgentPublicSession).filter(AgentPublicSession.session_id == parsed_session_id).first()
+        if session_exists:
+            session_agent_id = session_exists.agent_id
+            print(f"Loaded active voice session {parsed_session_id} for agent {session_agent_id}", flush=True)
+            logger.info(f"Loaded active voice session {parsed_session_id} for agent {session_agent_id}")
+
+    # Fallback: If no session was loaded (new session or greeting turn without parsed_session_id),
+    # look up any phone session ("tel_xxxx") updated in the last 40 seconds to route correctly
+    if not session_agent_id:
+        from datetime import timedelta
+        recent_time = datetime.utcnow() - timedelta(seconds=40)
+        recent_ivr = db.query(AgentPublicSession).filter(
+            AgentPublicSession.session_id.like("tel_%"),
+            AgentPublicSession.updated_at >= recent_time
+        ).order_by(AgentPublicSession.updated_at.desc()).first()
+        if recent_ivr:
+            session_agent_id = recent_ivr.agent_id
+            print(f"IVR OVERRIDE: mapped request to agent {session_agent_id} from phone session {recent_ivr.session_id}", flush=True)
+            logger.info(f"IVR OVERRIDE: mapped request to agent {session_agent_id} from phone session {recent_ivr.session_id}")
+            # Heartbeat keep-alive: update the updated_at timestamp to prevent expiration during call
+            try:
+                recent_ivr.updated_at = datetime.utcnow()
+                db.commit()
+            except Exception as commit_err:
+                db.rollback()
+                logger.warning(f"Failed to commit IVR heartbeat update: {commit_err}")
+
+    active_agent_id = session_agent_id or parsed_agent_id or agent_id
 
     # ROUTING PRIORITY 1: Model field as agent ID (most scalable approach)
     # In Dograh: set Model = <agent_id> (e.g. d6b54c1e63290e77)
@@ -3817,6 +3850,11 @@ async def api_agent_openai_compatible_chat_common(
     """
     # Extract agent ID from Authorization: Bearer <agent_id>
     import re as _re
+    import json as _json
+
+    hdr_dict = dict(request.headers)
+    print(f"DEBUG COMPLETIONS HEADERS: {_json.dumps(hdr_dict)}", flush=True)
+    print(f"DEBUG COMPLETIONS BODY: {req.json()}", flush=True)
 
     # ROUTING PRIORITY 1: Model field as agent ID
     # Dograh config per agent: Model = d6b54c1e63290e77 (Enter Custom Value)

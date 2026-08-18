@@ -44,7 +44,7 @@ def change_voice(new_voice_id):
                             "provider": "openai",
                             "api_key": llm_key,
                             "model": llm.get('model', 'd6b54c1e63290e77'),
-                            "base_url": llm.get('base_url', 'https://vectorize.diintech.com/api/agents')
+                            "base_url": "https://vectorize.diintech.com/api/agents"
                         },
                         "tts": {
                             "provider": "elevenlabs",

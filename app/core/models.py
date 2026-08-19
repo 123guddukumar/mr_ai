@@ -377,6 +377,7 @@ class Agent(Base):
     is_root    = Column(Boolean, default=False, nullable=False)
     is_active  = Column(Boolean, default=True, nullable=False)
     custom_slug = Column(String(200), unique=True, index=True, nullable=True)
+    phone_number = Column(String(50), unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     knowledge_sources = relationship("AgentKnowledgeSource", back_populates="agent", cascade="all, delete-orphan")
@@ -405,6 +406,7 @@ class Agent(Base):
             "is_root":          self.is_root or False,
             "is_active":        self.is_active,
             "custom_slug":      self.custom_slug or "",
+            "phone_number":     self.phone_number or "",
             "created_at":       self.created_at.isoformat() if self.created_at else "",
             "kb_source_count":  len(self.knowledge_sources),
         }

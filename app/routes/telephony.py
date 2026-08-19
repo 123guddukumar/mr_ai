@@ -585,19 +585,66 @@ async def api_inbound_call(
     try:
         form_data = await request.form()
         from_phone = form_data.get("From", "").strip() or form_data.get("Caller", "").strip() or ""
+        to_phone = form_data.get("To", "").strip() or form_data.get("Called", "").strip() or ""
     except Exception:
         from_phone = ""
+        to_phone = ""
 
     clean_phone = from_phone.replace("+", "").strip()
     agent_str = agent_id
 
-    # If agent_id query parameter is passed (e.g. from call action button or outbound), bypass menu!
+    # If agent_id query parameter is not passed, lookup agent by dialed phone number (To/Called)
+    if not agent_str and to_phone:
+        clean_to_phone = to_phone.replace("+", "").strip()
+        if clean_to_phone:
+            # 1. Exact match or match without plus prefix
+            agent = db.query(Agent).filter(
+                (Agent.phone_number == to_phone) | 
+                (Agent.phone_number == clean_to_phone)
+            ).first()
+            
+            # 2. Suffix match (last 10 digits) to handle carrier formatting variations
+            if not agent and len(clean_to_phone) >= 10:
+                last_10 = clean_to_phone[-10:]
+                agent = db.query(Agent).filter(Agent.phone_number.like(f"%{last_10}")).first()
+            
+            if agent:
+                agent_str = agent.agent_id
+                logger.info(f"📞 Dynamic routing matched dialed number {to_phone} to Agent: {agent.name} ({agent_str})")
+
+    # If agent_id is passed or resolved from phone mapping, bypass menu!
     if agent_str:
         agent = db.query(Agent).filter(Agent.agent_id == agent_str).first()
         agent_name = agent.name if agent else "MR AI"
         voice_cfg = get_agent_voice_config(agent) if agent else {}
         starting_msg = (agent.starting_message if agent and agent.starting_message
                         else f"Hello! Welcome to {agent_name}. How can I help you?")
+        
+        # Initialize or update session for this call
+        if clean_phone:
+            try:
+                session_id = f"tel_{clean_phone}"
+                session = db.query(AgentPublicSession).filter(
+                    AgentPublicSession.session_id == session_id
+                ).first()
+                if not session:
+                    session = AgentPublicSession(
+                        session_id=session_id,
+                        agent_id=agent_str,
+                        device_id=clean_phone,
+                        phone_number=clean_phone,
+                        device_name="Voice Call",
+                        user_name=f"Voice Caller {clean_phone[-4:] if len(clean_phone) >= 4 else clean_phone}"
+                    )
+                    db.add(session)
+                else:
+                    session.agent_id = agent_str
+                    session.updated_at = datetime.utcnow()
+                db.commit()
+            except Exception as e:
+                logger.error(f"Session save error in inbound direct route: {e}")
+                db.rollback()
+
         record_url = get_absolute_url(request, f"/api/telephony/call/{agent_str}/transcribe")
         audio_url = await generate_tts_audio(starting_msg, request, voice_cfg)
         xml_content = build_record_xml(audio_url, starting_msg, record_url)

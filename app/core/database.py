@@ -90,6 +90,7 @@ def init_db():
         "ALTER TABLE agents ADD COLUMN IF NOT EXISTS datastores_json TEXT DEFAULT '[]'",
         "ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_root BOOLEAN DEFAULT FALSE",
         "ALTER TABLE agents ADD COLUMN IF NOT EXISTS custom_slug VARCHAR(200) UNIQUE",
+        "ALTER TABLE agents ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) UNIQUE",
         "ALTER TABLE agent_public_sessions ADD COLUMN IF NOT EXISTS action_button_json TEXT",
         "ALTER TABLE datastore_sources ADD COLUMN IF NOT EXISTS raw_text TEXT",
         "ALTER TABLE agent_knowledge_sources ADD COLUMN IF NOT EXISTS raw_text TEXT",

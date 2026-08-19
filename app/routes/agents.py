@@ -44,6 +44,7 @@ class CreateAgentReq(BaseModel):
     customization: Optional[dict] = {}
     datastores: Optional[List[str]] = []
     custom_slug: Optional[str] = None
+    phone_number: Optional[str] = None
 
 class UpdateAgentReq(BaseModel):
     name: Optional[str] = None
@@ -57,6 +58,7 @@ class UpdateAgentReq(BaseModel):
     datastores: Optional[List[str]] = None
     is_active: Optional[bool] = None
     custom_slug: Optional[str] = None
+    phone_number: Optional[str] = None
 
 class IngestUrlReq(BaseModel):
     url: str

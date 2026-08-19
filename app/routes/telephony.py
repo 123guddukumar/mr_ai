@@ -608,6 +608,17 @@ async def api_inbound_call(
                 last_10 = clean_to_phone[-10:]
                 agent = db.query(Agent).filter(Agent.phone_number.like(f"%{last_10}")).first()
             
+            # 3. Fallback search inside customization_json (for unsynced agents)
+            if not agent:
+                agent = db.query(Agent).filter(
+                    Agent.customization_json.like(f'%"call_number"%"%{clean_to_phone}%')
+                ).first()
+                if not agent and len(clean_to_phone) >= 10:
+                    last_10 = clean_to_phone[-10:]
+                    agent = db.query(Agent).filter(
+                        Agent.customization_json.like(f'%"call_number"%"%{last_10}%')
+                    ).first()
+
             if agent:
                 agent_str = agent.agent_id
                 logger.info(f"📞 Dynamic routing matched dialed number {to_phone} to Agent: {agent.name} ({agent_str})")

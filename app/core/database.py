@@ -221,3 +221,30 @@ def init_db():
         
     logger.info("✅ Database tables initialized.")
 
+    # Sync existing agents: copy call_number from customization_json to phone_number
+    try:
+        from app.core.models import Agent
+        from sqlalchemy.orm import sessionmaker
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
+        agents_to_sync = db.query(Agent).filter(
+            Agent.phone_number == None,
+            Agent.customization_json.like('%"call_number"%')
+        ).all()
+        synced_count = 0
+        for agent in agents_to_sync:
+            try:
+                cfg = json.loads(agent.customization_json or "{}")
+                num = cfg.get("call_number")
+                if num:
+                    agent.phone_number = str(num).strip()
+                    synced_count += 1
+            except Exception:
+                pass
+        if synced_count > 0:
+            db.commit()
+            logger.info(f"Successfully synced phone_number for {synced_count} agents.")
+        db.close()
+    except Exception as se:
+        logger.warning(f"Failed to sync agent phone numbers on startup: {se}")
+

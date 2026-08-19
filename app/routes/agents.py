@@ -197,6 +197,11 @@ async def api_create_agent(req: CreateAgentReq, x_app_token: Optional[str] = Hea
         params['custom_slug'] = validate_custom_slug(params['custom_slug'], None, db)
         
     # Map complex fields to JSON strings
+    if not params.get('phone_number') and 'customization' in params and isinstance(params['customization'], dict):
+        call_num = params['customization'].get('call_number')
+        if call_num:
+            params['phone_number'] = str(call_num).strip()
+
     if 'voice_config' in params: params['voice_config_json'] = json.dumps(params.pop('voice_config'))
     if 'system_config' in params: params['system_config_json'] = json.dumps(params.pop('system_config'))
     if 'customization' in params: params['customization_json'] = json.dumps(params.pop('customization'))
@@ -264,6 +269,11 @@ async def api_update_agent(agent_id: str, req: UpdateAgentReq, x_app_token: Opti
         updates['custom_slug'] = validate_custom_slug(updates['custom_slug'], agent_id, db)
     
     # Convert dict fields to JSON strings for core logic
+    if 'customization' in updates and isinstance(updates['customization'], dict):
+        call_num = updates['customization'].get('call_number')
+        if call_num:
+            updates['phone_number'] = str(call_num).strip()
+
     if 'voice_config' in updates: updates['voice_config_json'] = json.dumps(updates.pop('voice_config'))
     if 'system_config' in updates: updates['system_config_json'] = json.dumps(updates.pop('system_config'))
     if 'customization' in updates: updates['customization_json'] = json.dumps(updates.pop('customization'))

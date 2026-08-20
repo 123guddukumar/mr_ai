@@ -3716,6 +3716,7 @@ async def api_agent_openai_compatible_chat(
                                             return
                                         if line.strip():
                                             yield line + "\n\n"
+                                            logger.info(f"[RAW GROQ LINE]: '{line}'")
                                             try:
                                                 if line.startswith("data: "):
                                                     data_str = line[6:]
@@ -3727,7 +3728,7 @@ async def api_agent_openai_compatible_chat(
                                                             full_reply.append(txt)
                                                             if parsed_session_id and parsed_session_id in voice_transcripts:
                                                                 voice_transcripts[parsed_session_id]["assistant"] += txt
-                                            except Exception:
+                                            except Exception as parse_e:
                                                 pass
                             if model_ok:
                                 logger.info(f"Groq stream OK (model={attempt_model}) for agent {active_agent_id}")

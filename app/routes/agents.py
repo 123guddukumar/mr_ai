@@ -3672,18 +3672,15 @@ async def api_agent_openai_compatible_chat(
                     "Content-Type": "application/json"
                 }
                 
-                # Model fallback list — same as telephony.py
-                # Put groq/compound FIRST to skip the failed llama-3.3-70b attempt and save 500ms
+                # Model fallback list — only models CONFIRMED working on this API key
+                # groq/compound is confirmed working. compound-mini returns 404 and wastes 400ms.
                 _env_model = os.getenv("GROQ_MODEL", "")
                 groq_models_to_try = list(dict.fromkeys(filter(None, [
-                    "groq/compound",             # Best available on this key — try first
-                    "groq/compound-mini",
-                    _env_model,
-                    model,                       # Agent's configured model
+                    "groq/compound",             # Confirmed working — use directly, no retry waste
+                    "openai/gpt-oss-20b",        # Fallback if compound fails
                     "openai/gpt-oss-120b",
-                    "openai/gpt-oss-20b",
-                    "qwen/qwen3.6-27b",
-                    "llama-3.1-8b-instant",
+                    _env_model,
+                    model,
                 ])))
 
                 async def groq_stream_generator():

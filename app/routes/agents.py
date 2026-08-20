@@ -3684,7 +3684,9 @@ async def api_agent_openai_compatible_chat(
                 _env_model = os.getenv("GROQ_MODEL", "")
                 groq_models_to_try = list(dict.fromkeys(filter(None, [
                     model,                       # Try user's configured model first (e.g. llama-3.3-70b-versatile)
-                    "groq/compound",             # Fallback if configured model fails
+                    "llama-3.1-8b-instant",      # Fast standard fallback
+                    "mixtral-8x7b-32768",        # Fast Mixtral fallback
+                    "groq/compound",             # Reasoning model fallback
                     "openai/gpt-oss-20b",
                     "openai/gpt-oss-120b",
                     _env_model,
@@ -3716,6 +3718,13 @@ async def api_agent_openai_compatible_chat(
                                             return
                                         if line.strip():
                                             logger.info(f"[RAW GROQ LINE]: '{line}'")
+                                            # If the line indicates a stream error (e.g. rate limit), fail this model and try next fallback
+                                            if "event: error" in line or '"error":' in line or "rate_limit" in line:
+                                                logger.warning(f"Groq stream error detected for model '{attempt_model}': {line}")
+                                                last_err = f"Stream error on {attempt_model}: {line}"
+                                                model_ok = False
+                                                break
+
                                             rewritten_line = line
                                             try:
                                                 if line.startswith("data: "):

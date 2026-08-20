@@ -3610,50 +3610,120 @@ async def api_agent_openai_compatible_chat(
                     "Content-Type": "application/json"
                 }
                 
+                # Model fallback list — same as telephony.py
+                # This key only supports: groq/compound, groq/compound-mini, openai/gpt-oss-*, qwen/qwen3.6-27b
+                _env_model = os.getenv("GROQ_MODEL", "")
+                groq_models_to_try = list(dict.fromkeys(filter(None, [
+                    _env_model,
+                    model,                       # Agent's configured model (try first)
+                    "groq/compound",
+                    "groq/compound-mini",
+                    "openai/gpt-oss-120b",
+                    "openai/gpt-oss-20b",
+                    "qwen/qwen3.6-27b",
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-8b-instant",
+                ])))
+
                 async def groq_stream_generator():
                     chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
                     created_time = int(datetime.utcnow().timestamp())
                     full_reply = []
-                    try:
-                        client = get_llm_async_client()
-                        async with client.stream("POST", "https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=payload) as response:
-                            response.raise_for_status()
-                            async for line in response.aiter_lines():
-                                if await request.is_disconnected():
-                                    logger.info("Client disconnected. Aborting Groq stream.")
-                                    break
-                                if line.strip():
-                                    yield line + "\n\n"
-                                    try:
-                                        if line.startswith("data: "):
-                                            data_str = line[6:]
-                                            if data_str.strip() != "[DONE]":
-                                                data = json.loads(data_str)
-                                                delta = data["choices"][0]["delta"]
-                                                if "content" in delta:
-                                                    txt = delta["content"]
-                                                    full_reply.append(txt)
-                                                    if parsed_session_id and parsed_session_id in voice_transcripts:
-                                                        voice_transcripts[parsed_session_id]["assistant"] += txt
-                                    except Exception:
-                                        pass
-                    except Exception as groq_err:
-                        logger.error(f"Groq streaming error for agent {active_agent_id}: {groq_err}")
-                        # Yield graceful stop so Dograh pipeline doesn't crash
-                        err_text = "I'm sorry, I had trouble processing that. Please try again."
-                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': err_text}, 'finish_reason': None}]})}\n\n"
-                        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
-                        yield "data: [DONE]\n\n"
-                        return
-                    
-                    # Stream finished, save to DB
+
+                    # Try each Groq model until one works
+                    last_err = None
+                    for attempt_model in groq_models_to_try:
+                        full_reply = []
+                        attempt_payload = {**payload, "model": attempt_model}
+                        try:
+                            client = get_llm_async_client()
+                            model_ok = True
+                            async with client.stream("POST", "https://api.groq.com/openai/v1/chat/completions", headers=hdrs, json=attempt_payload) as response:
+                                if response.status_code in (404, 400):
+                                    last_err = f"Model {attempt_model} returned {response.status_code}"
+                                    logger.warning(f"Groq model '{attempt_model}' unavailable ({response.status_code}), trying next...")
+                                    model_ok = False
+                                else:
+                                    response.raise_for_status()
+                                    async for line in response.aiter_lines():
+                                        if await request.is_disconnected():
+                                            logger.info("Client disconnected. Aborting Groq stream.")
+                                            return
+                                        if line.strip():
+                                            yield line + "\n\n"
+                                            try:
+                                                if line.startswith("data: "):
+                                                    data_str = line[6:]
+                                                    if data_str.strip() != "[DONE]":
+                                                        data = json.loads(data_str)
+                                                        delta = data["choices"][0]["delta"]
+                                                        if "content" in delta:
+                                                            txt = delta["content"]
+                                                            full_reply.append(txt)
+                                                            if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                                voice_transcripts[parsed_session_id]["assistant"] += txt
+                                            except Exception:
+                                                pass
+                            if model_ok:
+                                logger.info(f"Groq stream OK (model={attempt_model}) for agent {active_agent_id}")
+                                break  # Success — stop trying models
+                        except Exception as model_err:
+                            last_err = str(model_err)
+                            logger.warning(f"Groq model '{attempt_model}' exception: {model_err}, trying next...")
+                            continue
+
+                    else:
+                        # All Groq models failed — try OpenAI fallback
+                        logger.error(f"All Groq models failed for agent {active_agent_id}. Last error: {last_err}. Trying OpenAI fallback.")
+                        oai_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+                        if oai_key and oai_key.startswith("sk-"):
+                            oai_payload = {**payload, "model": "gpt-4o-mini"}
+                            oai_hdrs = {"Authorization": f"Bearer {oai_key}", "Content-Type": "application/json"}
+                            try:
+                                client = get_llm_async_client()
+                                async with client.stream("POST", "https://api.openai.com/v1/chat/completions", headers=oai_hdrs, json=oai_payload) as response:
+                                    response.raise_for_status()
+                                    async for line in response.aiter_lines():
+                                        if await request.is_disconnected():
+                                            return
+                                        if line.strip():
+                                            yield line + "\n\n"
+                                            try:
+                                                if line.startswith("data: "):
+                                                    data_str = line[6:]
+                                                    if data_str.strip() != "[DONE]":
+                                                        data = json.loads(data_str)
+                                                        delta = data["choices"][0]["delta"]
+                                                        if "content" in delta:
+                                                            txt = delta["content"]
+                                                            full_reply.append(txt)
+                                                            if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                                voice_transcripts[parsed_session_id]["assistant"] += txt
+                                            except Exception:
+                                                pass
+                                logger.info(f"OpenAI GPT-4o-mini fallback stream OK for agent {active_agent_id}")
+                            except Exception as oai_err:
+                                logger.error(f"OpenAI fallback stream error: {oai_err}")
+                                err_text = "I'm sorry, I had trouble processing that. Please try again."
+                                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': err_text}, 'finish_reason': None}]})}\n\n"
+                                yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                                yield "data: [DONE]\n\n"
+                                return
+                        else:
+                            err_text = "I'm sorry, I had trouble processing that. Please try again."
+                            yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': err_text}, 'finish_reason': None}]})}\n\n"
+                            yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+
+                    # Stream finished — save to DB
                     try:
                         assistant_text = "".join(full_reply)
                         if parsed_session_id:
                             save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
                     except Exception as db_err:
                         logger.warning(f"DB save error (non-fatal): {db_err}")
-                        
+
                 return StreamingResponse(groq_stream_generator(), media_type="text/event-stream")
                 
             # If using OpenAI, execute streaming directly from OpenAI API

@@ -3629,24 +3629,24 @@ async def api_agent_openai_compatible_chat(
                     f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
                 )
 
+            # Detect if this is a voice call (Dograh sends user-agent with AsyncOpenAI)
+            is_voice_call = "AsyncOpenAI" in request.headers.get("user-agent", "")
+            # Voice calls need SHORT responses (Dograh). Text chat can be longer.
+            voice_max_tokens = 80   # ~25-35 words max for voice
+            chat_max_tokens = 1024
+
+            # For voice: append strict no-markdown, short-response instruction
+            if is_voice_call:
+                system_prompt += (
+                    "\n\n[VOICE MODE] You are speaking on a phone call. Rules:\n"
+                    "- Reply in MAXIMUM 1-2 short sentences, 10-25 words only.\n"
+                    "- NEVER use markdown: no **, no -, no #, no |, no bullets, no tables.\n"
+                    "- Plain conversational text ONLY. No special characters.\n"
+                    "- If the answer is long, summarize it in 1 sentence."
+                )
+
             # If using Groq, execute real SSE stream forwarding
             if provider == "groq" and api_key:
-                # Detect if this is a voice call (Dograh sends user-agent with AsyncOpenAI)
-                is_voice_call = "AsyncOpenAI" in request.headers.get("user-agent", "")
-                # Voice calls need SHORT responses (Dograh). Text chat can be longer.
-                voice_max_tokens = 80   # ~25-35 words max for voice
-                chat_max_tokens = 1024
-
-                # For voice: append strict no-markdown, short-response instruction
-                if is_voice_call:
-                    system_prompt += (
-                        "\n\n[VOICE MODE] You are speaking on a phone call. Rules:\n"
-                        "- Reply in MAXIMUM 1-2 short sentences, 10-25 words only.\n"
-                        "- NEVER use markdown: no **, no -, no #, no |, no bullets, no tables.\n"
-                        "- Plain conversational text ONLY. No special characters.\n"
-                        "- If the answer is long, summarize it in 1 sentence."
-                    )
-
                 # Strip markdown from history messages for voice to reduce noise
                 import re as _re
                 def strip_md(text: str) -> str:
@@ -3820,8 +3820,8 @@ async def api_agent_openai_compatible_chat(
                 payload = {
                     "model": model,
                     "messages": msgs,
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
+                    "temperature": 0.3,
+                    "max_tokens": voice_max_tokens if is_voice_call else chat_max_tokens,
                     "stream": True
                 }
                 hdrs = {
@@ -3851,6 +3851,8 @@ async def api_agent_openai_compatible_chat(
                                                 delta = data["choices"][0]["delta"]
                                                 txt = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
                                                 if txt:
+                                                    if is_voice_call:
+                                                        txt = txt.replace("*", "").replace("#", "").replace("_", "")
                                                     full_reply.append(txt)
                                                     if parsed_session_id and parsed_session_id in voice_transcripts:
                                                         voice_transcripts[parsed_session_id]["assistant"] += txt

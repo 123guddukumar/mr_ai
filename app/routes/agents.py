@@ -3593,16 +3593,22 @@ async def api_agent_openai_compatible_chat(
                 
             # If using Groq, execute real SSE stream forwarding
             if provider == "groq" and api_key:
+                # Detect if this is a voice call (Dograh sends user-agent with AsyncOpenAI)
+                is_voice_call = "AsyncOpenAI" in request.headers.get("user-agent", "")
+                # Voice calls need SHORT responses (Dograh). Text chat can be longer.
+                voice_max_tokens = 80   # ~25-35 words max for voice
+                chat_max_tokens = 1024
+
                 msgs = [{"role": "system", "content": system_prompt}]
                 for t in history_override:
                     msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
                 msgs.append({"role": "user", "content": user_msg})
-                
+
                 payload = {
                     "model": model,
                     "messages": msgs,
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
+                    "temperature": 0.3,
+                    "max_tokens": voice_max_tokens if is_voice_call else chat_max_tokens,
                     "stream": True
                 }
                 hdrs = {
@@ -3611,17 +3617,16 @@ async def api_agent_openai_compatible_chat(
                 }
                 
                 # Model fallback list — same as telephony.py
-                # This key only supports: groq/compound, groq/compound-mini, openai/gpt-oss-*, qwen/qwen3.6-27b
+                # Put groq/compound FIRST to skip the failed llama-3.3-70b attempt and save 500ms
                 _env_model = os.getenv("GROQ_MODEL", "")
                 groq_models_to_try = list(dict.fromkeys(filter(None, [
-                    _env_model,
-                    model,                       # Agent's configured model (try first)
-                    "groq/compound",
+                    "groq/compound",             # Best available on this key — try first
                     "groq/compound-mini",
+                    _env_model,
+                    model,                       # Agent's configured model
                     "openai/gpt-oss-120b",
                     "openai/gpt-oss-20b",
                     "qwen/qwen3.6-27b",
-                    "llama-3.3-70b-versatile",
                     "llama-3.1-8b-instant",
                 ])))
 

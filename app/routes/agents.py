@@ -3605,7 +3605,7 @@ async def api_agent_openai_compatible_chat(
                     f"1. Prioritize answering based on the provided context if it contains the answer.\n"
                     f"2. IMPORTANT: If the context does not contain the answer, or if the user asks a general question unrelated to the context, you MUST use your general AI knowledge to provide a helpful, correct, and complete response. Do NOT say 'information not found in documents' if you can answer it using your general knowledge."
                 )
-                
+
             # If using Groq, execute real SSE stream forwarding
             if provider == "groq" and api_key:
                 # Detect if this is a voice call (Dograh sends user-agent with AsyncOpenAI)
@@ -3614,9 +3614,34 @@ async def api_agent_openai_compatible_chat(
                 voice_max_tokens = 80   # ~25-35 words max for voice
                 chat_max_tokens = 1024
 
+                # For voice: append strict no-markdown, short-response instruction
+                if is_voice_call:
+                    system_prompt += (
+                        "\n\n[VOICE MODE] You are speaking on a phone call. Rules:\n"
+                        "- Reply in MAXIMUM 1-2 short sentences, 10-25 words only.\n"
+                        "- NEVER use markdown: no **, no -, no #, no |, no bullets, no tables.\n"
+                        "- Plain conversational text ONLY. No special characters.\n"
+                        "- If the answer is long, summarize it in 1 sentence."
+                    )
+
+                # Strip markdown from history messages for voice to reduce noise
+                import re as _re
+                def strip_md(text: str) -> str:
+                    if not text:
+                        return text
+                    text = _re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)  # bold/italic
+                    text = _re.sub(r'^#{1,6}\s+', '', text, flags=_re.MULTILINE)  # headings
+                    text = _re.sub(r'^[\-\*\+]\s+', '', text, flags=_re.MULTILINE)  # bullets
+                    text = _re.sub(r'\|.*?\|', '', text)  # tables
+                    text = _re.sub(r'\n{3,}', '\n\n', text)  # extra newlines
+                    return text.strip()
+
                 msgs = [{"role": "system", "content": system_prompt}]
                 for t in history_override:
-                    msgs.append({"role": t.get("role", "user"), "content": t.get("content", "")})
+                    content = t.get("content", "")
+                    if is_voice_call and t.get("role") == "assistant":
+                        content = strip_md(content)  # clean up previous markdown responses
+                    msgs.append({"role": t.get("role", "user"), "content": content})
                 msgs.append({"role": "user", "content": user_msg})
 
                 payload = {

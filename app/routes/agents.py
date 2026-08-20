@@ -3803,7 +3803,7 @@ async def api_agent_openai_compatible_chat(
                     except Exception as db_err:
                         logger.warning(f"DB save error (non-fatal): {db_err}")
 
-                return StreamingResponse(groq_stream_generator(), media_type="text/event-stream")
+                return StreamingResponse(groq_stream_generator(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
                 
             # If using OpenAI, execute streaming directly from OpenAI API
             elif provider == "openai" and api_key:
@@ -3877,7 +3877,7 @@ async def api_agent_openai_compatible_chat(
                     except Exception as db_err:
                         logger.warning(f"DB save error (non-fatal): {db_err}")
                         
-                return StreamingResponse(openai_stream_generator(), media_type="text/event-stream")
+                return StreamingResponse(openai_stream_generator(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
                 
             # If using Gemini, execute streaming and translate to OpenAI format
             elif provider == "gemini" and api_key:
@@ -3946,7 +3946,7 @@ async def api_agent_openai_compatible_chat(
                     except Exception as db_err:
                         logger.warning(f"DB save error (non-fatal): {db_err}")
                         
-                return StreamingResponse(gemini_stream_generator(), media_type="text/event-stream")
+                return StreamingResponse(gemini_stream_generator(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
 
     # Fallback to synchronous query logic if not streaming or other provider
     ask_req = AgentPublicAskReq(
@@ -3979,7 +3979,7 @@ async def api_agent_openai_compatible_chat(
             yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': req.model, 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
             yield "data: [DONE]\n\n"
             
-        return StreamingResponse(stream_fallback_generator(), media_type="text/event-stream")
+        return StreamingResponse(stream_fallback_generator(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
     else:
         # Non-streaming response format
         return {

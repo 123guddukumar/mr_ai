@@ -3555,11 +3555,27 @@ async def api_agent_openai_compatible_chat(
             from app.services.embedder import embed_query
             from app.services.vector_store import get_vector_store
             from app.services.llm import build_context_and_sources
-            
-            query_emb = embed_query(user_msg)
-            results = get_vector_store().search_combined(query_emb, agent_id=active_agent_id, datastore_ids=ds_ids, top_k=5)
-            relevant_results = [res for res in results if res[1] > 0.35]
-            context, _ = build_context_and_sources(relevant_results)
+
+            # Skip RAG for very short/conversational messages (saves 300-500ms)
+            # These are greetings/acks that don't need document context
+            _short_msg_words = len(user_msg.strip().split())
+            _conversational_keywords = {"hello", "hi", "haan", "ha", "nahi", "ok", "okay",
+                                        "theek", "hm", "hmm", "kya", "kaun", "accha", "achha",
+                                        "bye", "thanks", "shukriya", "please", "haanji", "ji"}
+            _is_pure_conversational = (
+                _short_msg_words <= 2 and
+                any(kw in user_msg.lower() for kw in _conversational_keywords)
+            )
+
+            if _is_pure_conversational:
+                context = ""
+                relevant_results = []
+                logger.info(f"RAG skipped for short conversational message: '{user_msg}'")
+            else:
+                query_emb = embed_query(user_msg)
+                results = get_vector_store().search_combined(query_emb, agent_id=active_agent_id, datastore_ids=ds_ids, top_k=5)
+                relevant_results = [res for res in results if res[1] > 0.35]
+                context, _ = build_context_and_sources(relevant_results)
             
             if qa_pairs:
                 qa_context_parts = [f"Q: {p.get('q')}\nA: {p.get('a')}" for p in qa_pairs]

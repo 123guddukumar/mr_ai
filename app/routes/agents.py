@@ -3784,6 +3784,7 @@ async def api_agent_openai_compatible_chat(
                     # Stream finished — save to DB
                     try:
                         assistant_text = "".join(full_reply)
+                        logger.info(f"[GROQ STREAM] Generated reply for agent {active_agent_id}: '{assistant_text}'")
                         if parsed_session_id:
                             save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
                     except Exception as db_err:
@@ -3852,6 +3853,7 @@ async def api_agent_openai_compatible_chat(
                     
                     try:
                         assistant_text = "".join(full_reply)
+                        logger.info(f"[OPENAI STREAM] Generated reply for agent {active_agent_id}: '{assistant_text}'")
                         if parsed_session_id:
                             save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
                     except Exception as db_err:
@@ -3920,6 +3922,7 @@ async def api_agent_openai_compatible_chat(
                     # Stream finished, save to DB
                     try:
                         assistant_text = "".join(full_reply)
+                        logger.info(f"[GEMINI STREAM] Generated reply for agent {active_agent_id}: '{assistant_text}'")
                         if parsed_session_id:
                             save_voice_chat_to_db(db, active_agent_id, parsed_session_id, user_msg, assistant_text)
                     except Exception as db_err:

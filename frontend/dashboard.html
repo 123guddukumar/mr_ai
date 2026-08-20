@@ -37401,7 +37401,8 @@ Also include a "meta" object at the end:
       try {
         const r = await fetch(`/api/root-agent/pings/stats?start_date=${start}&end_date=${end}`, { headers: hdrs() });
         if (r.ok) {
-          const stats = await r.json();
+          const res = await r.json();
+          const stats = res.summary || res;
           renderDbPingStats(stats);
         }
       } catch (e) {
@@ -37413,7 +37414,8 @@ Also include a "meta" object at the end:
       try {
         const r = await fetch(`/api/root-agent/pings/stats?period=${period}`, { headers: hdrs() });
         if (r.ok) {
-          const stats = await r.json();
+          const res = await r.json();
+          const stats = res.summary || res;
           renderDbPingStats(stats);
         }
       } catch (e) {

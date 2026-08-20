@@ -2611,14 +2611,14 @@ async def get_root_pings_stats(
             return {
                 "count": curr,
                 "growth": f"{sign} {abs(val)}%",
-                "growth_text": f"{sign} {abs(val)}% vs {prev_label}",
+                "growth_text": f"vs {prev_label}",
                 "is_positive": is_pos
             }
         else:
             return {
                 "count": curr,
                 "growth": "↑ 100%" if curr > 0 else "0%",
-                "growth_text": f"↑ 100% vs {prev_label}" if curr > 0 else f"0% vs {prev_label}",
+                "growth_text": f"vs {prev_label}",
                 "is_positive": True
             }
 
@@ -2629,13 +2629,13 @@ async def get_root_pings_stats(
             sign = "↑" if is_pos else "↓"
             return {
                 "count": curr,
-                "growth": f"{abs(val)}% {sign}",
+                "growth": f"{sign} {abs(val)}%",
                 "is_positive": is_pos
             }
         else:
             return {
                 "count": curr,
-                "growth": "100% ↑" if curr > 0 else "0% ↑",
+                "growth": "↑ 100%" if curr > 0 else "0%",
                 "is_positive": True
             }
 
@@ -2660,7 +2660,27 @@ async def get_root_pings_stats(
             sa_sess_q = sa_sess_q.filter(AgentPublicSession.created_at >= curr_start)
         if curr_end:
             sa_sess_q = sa_sess_q.filter(AgentPublicSession.created_at < curr_end)
-        sa_sess_count = sa_sess_q.count()
+        sa_sessions = sa_sess_q.all()
+        
+        web_chat = 0
+        web_call = 0
+        meeting_req = 0
+        enquiry_cnt = 0
+        other_cnt = 0
+        
+        for s in sa_sessions:
+            src, cat = get_source_and_category(s)
+            if src == "chats":
+                web_chat += 1
+            elif src == "calls":
+                web_call += 1
+                
+            if cat == "meetings":
+                meeting_req += 1
+            elif cat == "enquiry":
+                enquiry_cnt += 1
+            else:
+                other_cnt += 1
         
         res_data["agents"].append({
             "agent_id": a.agent_id,
@@ -2668,7 +2688,13 @@ async def get_root_pings_stats(
             "category": a.category,
             "is_active": a.is_active,
             "is_root": a.is_root,
-            "total_visitors": sa_sess_count
+            "total_visitors": len(sa_sessions),
+            "totalChats": len(sa_sessions),
+            "webChat": web_chat,
+            "webCall": web_call,
+            "meetingRequest": meeting_req,
+            "enquiry": enquiry_cnt,
+            "other": other_cnt
         })
 
     # Aggregate Client-Wise Breakdown (Owner + Sub-clients)
@@ -2716,5 +2742,8 @@ async def get_root_pings_stats(
         
     res_data["clients"] = clients_stats
 
-    return res_data
+    return {
+        "success": True,
+        "summary": res_data
+    }
 

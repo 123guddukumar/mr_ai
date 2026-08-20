@@ -8966,7 +8966,8 @@
       try {
         const r = await fetch(`/api/root-agent/pings/stats?period=${period}`, { headers: hdrs() });
         if (r.ok) {
-          const stats = await r.json();
+          const res = await r.json();
+          const stats = res.summary || res;
           renderPingStats(stats);
         }
       } catch (e) {

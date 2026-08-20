@@ -33,19 +33,19 @@ You can filter stats using preset timeframes or specify custom date ranges. Cust
 
 ## 📤 Response Structure
 
-The endpoint returns a structured JSON object containing metrics with comparative indicators.
+The endpoint returns a structured JSON object containing a `success` boolean status and a `summary` object:
 
 ### 1. `total_pings` / `conversations`
 Contains aggregated totals and comparison values:
 - `count` (`Integer`): Current total count in the queried timeframe.
 - `growth` (`String`): Percentage change with comparative sign (`↑` / `↓`).
-- `growth_text` (`String`): Readable text for display (e.g. `↑ 18% vs Yesterday`).
+- `growth_text` (`String`): Readable text for display (e.g. `vs Yesterday`).
 - `is_positive` (`Boolean`): `true` if growth is zero or positive, `false` if it is negative (used for UI text coloring).
 
 ### 2. `sources`
 Object containing channel distribution for `whatsapp`, `chats` (web interface), `calls` (voice telephony), and `widgets` (embed elements).
 - `count` (`Integer`): Session counts on this channel.
-- `growth` (`String`): Percentage change indicator (e.g., `25% ↑` or `15% ↓`).
+- `growth` (`String`): Percentage change indicator with prefix arrow (e.g., `↑ 25%` or `↓ 15%`).
 - `is_positive` (`Boolean`): `true` if growth is positive, `false` if negative.
 
 ### 3. `outcomes`
@@ -64,6 +64,12 @@ A list of objects containing the active sub-agents:
 - `is_active` (`Boolean`): Activity status.
 - `is_root` (`Boolean`): True if it is the root executive assistant.
 - `total_visitors` (`Integer`): Session visitor count for the selected period.
+- `totalChats` (`Integer`): Total chats count for the selected period.
+- `webChat` (`Integer`): Chats from the standard web interface.
+- `webCall` (`Integer`): Voice calls for this agent.
+- `meetingRequest` (`Integer`): Scheduled meeting requests.
+- `enquiry` (`Integer`): Sales/marketing inquiries.
+- `other` (`Integer`): Other intent types (support, feedback, etc.).
 
 ### 5. `clients`
 A list of objects containing statistics broken down client-wise (owner client and all its sub-clients):
@@ -79,101 +85,109 @@ A list of objects containing statistics broken down client-wise (owner client an
 
 ```json
 {
-  "total_pings": {
-    "count": 147,
-    "growth": "↑ 18%",
-    "growth_text": "↑ 18% vs Yesterday",
-    "is_positive": true
-  },
-  "conversations": {
-    "count": 42,
-    "growth": "↑ 12%",
-    "growth_text": "↑ 12% vs Yesterday",
-    "is_positive": true
-  },
-  "sources": {
-    "whatsapp": {
-      "count": 20,
-      "growth": "25% ↑",
+  "success": true,
+  "summary": {
+    "total_pings": {
+      "count": 128,
+      "growth": "↑ 18%",
+      "growth_text": "vs Yesterday",
       "is_positive": true
     },
-    "chats": {
-      "count": 12,
-      "growth": "18% ↓",
-      "is_positive": false
-    },
-    "calls": {
-      "count": 8,
-      "growth": "25% ↑",
+    "conversations": {
+      "count": 24,
+      "growth": "↑ 12%",
+      "growth_text": "vs Yesterday",
       "is_positive": true
     },
-    "widgets": {
-      "count": 2,
-      "growth": "15% ↓",
-      "is_positive": false
-    }
-  },
-  "outcomes": {
-    "meetings": {
-      "count": 5,
-      "growth": "25% ↑",
-      "is_positive": true
+    "sources": {
+      "whatsapp": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      },
+      "chats": {
+        "count": 12,
+        "growth": "↓ 18%",
+        "is_positive": false
+      },
+      "calls": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      },
+      "widgets": {
+        "count": 12,
+        "growth": "↓ 15%",
+        "is_positive": false
+      }
     },
-    "enquiry": {
-      "count": 18,
-      "growth": "25% ↓",
-      "is_positive": false
+    "outcomes": {
+      "meetings": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      },
+      "enquiry": {
+        "count": 12,
+        "growth": "↓ 25%",
+        "is_positive": false
+      },
+      "support": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      },
+      "feedback": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      },
+      "others": {
+        "count": 12,
+        "growth": "↑ 25%",
+        "is_positive": true
+      }
     },
-    "support": {
-      "count": 10,
-      "growth": "25% ↑",
-      "is_positive": true
-    },
-    "feedback": {
-      "count": 4,
-      "growth": "25% ↑",
-      "is_positive": true
-    },
-    "others": {
-      "count": 5,
-      "growth": "25% ↑",
-      "is_positive": true
-    }
-  },
-  "agents": [
-    {
-      "agent_id": "ba0dbe5c60ef0007",
-      "name": "Personal Assistant 👑",
-      "category": "root_assistant",
-      "is_active": true,
-      "is_root": true,
-      "total_visitors": 2
-    },
-    {
-      "agent_id": "sa_support_agent_1",
-      "name": "Customer Support Hero 🤖",
-      "category": "support_agent",
-      "is_active": true,
-      "is_root": false,
-      "total_visitors": 40
-    }
-  ],
-  "clients": [
-    {
-      "client_id": "c_owner_123",
-      "name": "Main Office Admin",
-      "business_name": "Acme Corp",
-      "meetings_count": 3,
-      "total_pings": 105
-    },
-    {
-      "client_id": "c_sub_456",
-      "name": "Branch Office User",
-      "business_name": "Acme Branch",
-      "meetings_count": 2,
-      "total_pings": 42
-    }
-  ]
+    "agents": [
+      {
+        "agent_id": "agent-unique-uuid-1",
+        "name": "Personal Assistant 👑",
+        "category": "root_assistant",
+        "is_active": true,
+        "is_root": true,
+        "total_visitors": 45,
+        "totalChats": 45,
+        "webChat": 20,
+        "webCall": 15,
+        "meetingRequest": 10,
+        "enquiry": 12,
+        "other": 12
+      },
+      {
+        "agent_id": "agent-unique-uuid-2",
+        "name": "Customer Support Hero 🤖",
+        "category": "support_agent",
+        "is_active": true,
+        "is_root": false,
+        "total_visitors": 83,
+        "totalChats": 83,
+        "webChat": 50,
+        "webCall": 20,
+        "meetingRequest": 13,
+        "enquiry": 8,
+        "other": 15
+      }
+    ],
+    "clients": [
+      {
+        "client_id": "c_owner_123",
+        "name": "Main Office Admin",
+        "business_name": "Acme Corp",
+        "meetings_count": 3,
+        "total_pings": 105
+      }
+    ]
+  }
 }
 ```
 

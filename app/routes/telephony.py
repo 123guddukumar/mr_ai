@@ -81,10 +81,10 @@ def get_whisper_language_hint(response_language: str) -> Optional[str]:
     return mapping.get(response_language.lower(), None)
 
 
-# ─── STT: Groq Whisper ────────────────────────────────────────────────────────
+# ─── STT: Deepgram (primary) + Groq Whisper (fallback) ─────────────────────
 
 async def transcribe_with_groq(recording_url: str, language_hint: Optional[str] = None) -> str:
-    """Download Vobiz recording (with auth) and transcribe using Groq Whisper."""
+    """Download Vobiz recording and transcribe using Deepgram (primary) or Groq Whisper (fallback)."""
     if "mock-speech-text.com" in recording_url:
         from urllib.parse import urlparse, parse_qs
         try:
@@ -97,41 +97,87 @@ async def transcribe_with_groq(recording_url: str, language_hint: Optional[str] 
             logger.error(f"Mock STT parsing failed: {e}")
             return ""
 
-    groq_api_key = settings.GROQ_API_KEY
-    if not groq_api_key:
-        logger.error("GROQ_API_KEY not set")
-        return ""
-
     try:
         auth_headers = {
             "X-Auth-ID": settings.VOBIZ_AUTH_ID,
             "X-Auth-Token": settings.VOBIZ_AUTH_TOKEN,
         }
-        # Use global http_client to reuse connection keep-alive
-        audio_resp = await http_client.get(recording_url, headers=auth_headers)
+        audio_resp = await http_client.get(recording_url, headers=auth_headers, timeout=10.0)
         if audio_resp.status_code != 200:
             logger.error(f"Recording download failed: HTTP {audio_resp.status_code}")
             return ""
         audio_bytes = audio_resp.content
         logger.info(f"Downloaded {len(audio_bytes)} bytes")
 
+        # Skip recordings that are too tiny (under 3KB = less than ~0.2s = silence/noise)
+        if len(audio_bytes) < 3000:
+            logger.info(f"Recording too short ({len(audio_bytes)} bytes) — treating as silence")
+            return ""
+
+        # ── Try Deepgram first (better Hindi/Hinglish accuracy, lower latency) ──
+        deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
+        if deepgram_key:
+            try:
+                dg_lang = language_hint or "hi"  # Default to Hindi for better accuracy
+                # Deepgram nova-3 supports Hindi + English natively
+                dg_params = {
+                    "model": "nova-3",
+                    "language": dg_lang,
+                    "punctuate": "true",
+                    "smart_format": "true",
+                    "filler_words": "false",
+                }
+                dg_resp = await http_client.post(
+                    "https://api.deepgram.com/v1/listen",
+                    params=dg_params,
+                    headers={
+                        "Authorization": f"Token {deepgram_key}",
+                        "Content-Type": "audio/mpeg",
+                    },
+                    content=audio_bytes,
+                    timeout=8.0
+                )
+                if dg_resp.status_code == 200:
+                    dg_data = dg_resp.json()
+                    channels = dg_data.get("results", {}).get("channels", [])
+                    if channels:
+                        transcript = channels[0]["alternatives"][0].get("transcript", "").strip()
+                        confidence = channels[0]["alternatives"][0].get("confidence", 0)
+                        if transcript and confidence > 0.4:
+                            logger.info(f"Deepgram STT OK (conf={confidence:.2f}): '{transcript}'")
+                            print(f"DEBUG TRANSCRIPTION: '{transcript}'", flush=True)
+                            return transcript
+                        elif transcript:
+                            logger.warning(f"Deepgram low confidence ({confidence:.2f}): '{transcript}' — trying Groq Whisper")
+                        else:
+                            logger.info("Deepgram returned empty transcript — trying Groq Whisper")
+                else:
+                    logger.warning(f"Deepgram STT error {dg_resp.status_code} — falling back to Groq Whisper")
+            except Exception as dg_ex:
+                logger.warning(f"Deepgram STT exception: {dg_ex} — falling back to Groq Whisper")
+
+        # ── Groq Whisper Fallback ──
+        groq_api_key = settings.GROQ_API_KEY
+        if not groq_api_key:
+            logger.error("GROQ_API_KEY not set")
+            return ""
+
         files = {"file": ("recording.mp3", audio_bytes, "audio/mpeg")}
-        data = {
-            "model": "whisper-large-v3",
-            "prompt": "The caller is speaking in Hindi or English (Hinglish). Transcribe ONLY in Devanagari Hindi or English characters. DO NOT use Arabic or Urdu script."
-        }
+        # NOTE: No 'prompt' param — it causes echo/hallucination of our own system text
+        data = {"model": "whisper-large-v3"}
         if language_hint:
             data["language"] = language_hint
-        
+
         resp = await http_client.post(
             "https://api.groq.com/openai/v1/audio/transcriptions",
             headers={"Authorization": f"Bearer {groq_api_key}"},
             files=files,
-            data=data
+            data=data,
+            timeout=10.0
         )
         if resp.status_code == 200:
             text = resp.json().get("text", "").strip()
-            logger.info(f"Transcription: '{text}'")
+            logger.info(f"Groq Whisper STT: '{text}'")
             print(f"DEBUG TRANSCRIPTION: '{text}'", flush=True)
             return text
         else:

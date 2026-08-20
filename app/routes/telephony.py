@@ -404,7 +404,7 @@ You are on a LIVE PHONE CALL. CRITICAL rules:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": settings.GROQ_MODEL or "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": voice_system},
                     {"role": "user", "content": question}

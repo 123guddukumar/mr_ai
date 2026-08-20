@@ -3392,15 +3392,22 @@ async def api_agent_openai_compatible_chat(
                 db.rollback()
                 logger.warning(f"Failed to commit IVR heartbeat update: {commit_err}")
 
-    active_agent_id = session_agent_id or parsed_agent_id or agent_id
+    # Extract model field as explicit agent ID (highest priority after session)
+    # Model field is set intentionally by user in Dograh dashboard
+    model_from_field = None
+    _model_val = (req.model or "").strip()
+    if re.match(r'^[a-f0-9]{8,32}$', _model_val, re.IGNORECASE):
+        model_from_field = _model_val
+
+    # Priority: session (active call) > model field (Dograh config) > system comment (often stale) > URL path
+    active_agent_id = session_agent_id or model_from_field or parsed_agent_id or agent_id
 
     # ROUTING PRIORITY 1: Model field as agent ID (most scalable approach)
     # In Dograh: set Model = <agent_id> (e.g. d6b54c1e63290e77)
     # Works for 1 lakh agents with ONE shared base URL and API key
     if active_agent_id in ("chat", "v1", "models"):
-        model_val = (req.model or "").strip()
-        if re.match(r'^[a-f0-9]{8,32}$', model_val, re.IGNORECASE):
-            active_agent_id = model_val
+        if model_from_field:
+            active_agent_id = model_from_field
             logger.info(f"Routing via model-name agent ID: {active_agent_id}")
 
     # ROUTING PRIORITY 2: Bearer token as agent ID (fallback)

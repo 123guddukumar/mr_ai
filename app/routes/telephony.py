@@ -396,21 +396,23 @@ You are on a LIVE PHONE CALL. CRITICAL rules:
 - Answer directly and stop immediately.
 - {lang_instruction}"""
 
-    # Priority list of Groq models to try (most capable first, then fallbacks)
-    groq_models_to_try = [
-        os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile"),
-        "llama-3.1-70b-versatile",
+    # Priority list of Groq models (newest/available first, decommissioned models removed)
+    _env_model = os.getenv("GROQ_MODEL", "")
+    groq_models_to_try = list(dict.fromkeys(filter(None, [
+        _env_model,
+        "groq/compound",           # Groq's flagship compound model
+        "groq/compound-mini",      # Smaller compound model
+        "openai/gpt-oss-120b",     # OpenAI OSS via Groq
+        "openai/gpt-oss-20b",
+        "qwen/qwen3.6-27b",
+        "qwen-qwq-32b",
+        "llama-3.3-70b-versatile", # May work on some keys
         "llama-3.1-8b-instant",
-        "llama3-70b-8192",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it",
-    ]
-    # Deduplicate while preserving order
-    seen = set()
-    groq_models_to_try = [m for m in groq_models_to_try if not (m in seen or seen.add(m))]
+    ])))
 
     try:
         last_error = None
+        groq_answer = None
         for model_name in groq_models_to_try:
             try:
                 resp = await http_client.post(
@@ -432,11 +434,10 @@ You are on a LIVE PHONE CALL. CRITICAL rules:
                     timeout=8.0
                 )
                 if resp.status_code == 200:
-                    answer = resp.json()["choices"][0]["message"]["content"].strip()
-                    logger.info(f"Groq voice LLM OK (model={model_name}): '{answer[:80]}'")
-                    return answer
+                    groq_answer = resp.json()["choices"][0]["message"]["content"].strip()
+                    logger.info(f"Groq voice LLM OK (model={model_name}): '{groq_answer[:80]}'")
+                    return groq_answer
                 elif resp.status_code in (404, 400):
-                    # Model not available, try next
                     last_error = f"{resp.status_code}: {resp.text[:120]}"
                     logger.warning(f"Groq model '{model_name}' unavailable ({resp.status_code}), trying next...")
                     continue
@@ -449,10 +450,41 @@ You are on a LIVE PHONE CALL. CRITICAL rules:
                 logger.warning(f"Groq model '{model_name}' exception: {model_ex}")
                 continue
 
-        logger.error(f"All Groq models failed. Last error: {last_error}")
-        return "Maafi chahta hoon, abhi jawab dene mein thodi dikkat aa rahi hai. Kripya dobara poochhen."
+        # ── OpenAI Fallback when all Groq models fail ──
+        openai_key = os.getenv("OPENAI_API_KEY", "")
+        if openai_key and openai_key.startswith("sk-"):
+            logger.warning(f"All Groq models failed. Falling back to OpenAI GPT. Last error: {last_error}")
+            try:
+                oai_resp = await http_client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {openai_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": voice_system},
+                            {"role": "user", "content": question}
+                        ],
+                        "max_tokens": 120,
+                        "temperature": 0.4,
+                    },
+                    timeout=10.0
+                )
+                if oai_resp.status_code == 200:
+                    answer = oai_resp.json()["choices"][0]["message"]["content"].strip()
+                    logger.info(f"OpenAI LLM fallback OK: '{answer[:80]}'")
+                    return answer
+                else:
+                    logger.error(f"OpenAI LLM fallback error {oai_resp.status_code}: {oai_resp.text[:200]}")
+            except Exception as oai_ex:
+                logger.error(f"OpenAI LLM fallback exception: {oai_ex}")
+
+        logger.error(f"All LLM providers failed. Last Groq error: {last_error}")
+        return "Kripya thodi der mein dobara call karein. Abhi system thoda busy hai."
     except Exception as e:
-        logger.error(f"Groq LLM exception: {e}", exc_info=True)
+        logger.error(f"voice_groq_response exception: {e}", exc_info=True)
         return "Kripya ek baar aur apna sawaal poochhen."
 
 
@@ -899,8 +931,25 @@ async def api_transcribe_and_respond(
     if not speech_text:
         return await handle_silence()
 
+    # ── Whisper Hallucination Filter ──
+    # Groq Whisper often hallucinates these phrases on short/silent audio.
+    # If detected, treat as silence and retry recording.
+    WHISPER_HALLUCINATIONS = {
+        "thank you for watching", "thank you for watching.",
+        "thanks for watching", "thanks for watching.",
+        "thank you.", "thank you", "thanks.", "thanks",
+        "this is a", "this is a test", "this is a.",
+        "please subscribe", "like and subscribe",
+        "bye", "bye.", "goodbye.", "goodbye",
+        "", " ",
+    }
+    _normalized = speech_text.strip().lower()
+    if _normalized in WHISPER_HALLUCINATIONS or len(_normalized) < 3:
+        logger.warning(f"Whisper hallucination detected: '{speech_text}' — treating as silence.")
+        return await handle_silence()
+
     # Check if speech indicates going back to the main menu
-    clean_speech = speech_text.strip().lower().replace(".", "").replace(",", "")
+    clean_speech = _normalized.replace(".", "").replace(",", "")
     if clean_speech in ("0", "zero", "menu", "go back", "back to menu", "main menu", "starting menu"):
         inbound_url = get_absolute_url(request, "/api/telephony/inbound-call")
         xml = f"""<?xml version="1.0" encoding="UTF-8"?>

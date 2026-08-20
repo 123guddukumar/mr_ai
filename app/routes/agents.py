@@ -3683,11 +3683,11 @@ async def api_agent_openai_compatible_chat(
                 # groq/compound is confirmed working. compound-mini returns 404 and wastes 400ms.
                 _env_model = os.getenv("GROQ_MODEL", "")
                 groq_models_to_try = list(dict.fromkeys(filter(None, [
-                    "groq/compound",             # Confirmed working — use directly, no retry waste
-                    "openai/gpt-oss-20b",        # Fallback if compound fails
+                    model,                       # Try user's configured model first (e.g. llama-3.3-70b-versatile)
+                    "groq/compound",             # Fallback if configured model fails
+                    "openai/gpt-oss-20b",
                     "openai/gpt-oss-120b",
                     _env_model,
-                    model,
                 ])))
 
                 async def groq_stream_generator():

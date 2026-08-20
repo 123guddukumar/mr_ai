@@ -396,34 +396,64 @@ You are on a LIVE PHONE CALL. CRITICAL rules:
 - Answer directly and stop immediately.
 - {lang_instruction}"""
 
+    # Priority list of Groq models to try (most capable first, then fallbacks)
+    groq_models_to_try = [
+        os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile"),
+        "llama-3.1-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama3-70b-8192",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+    ]
+    # Deduplicate while preserving order
+    seen = set()
+    groq_models_to_try = [m for m in groq_models_to_try if not (m in seen or seen.add(m))]
+
     try:
-        resp = await http_client.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {groq_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": settings.GROQ_MODEL or "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": voice_system},
-                    {"role": "user", "content": question}
-                ],
-                "max_tokens": 100,        # 2 short sentences
-                "temperature": 0.3,       # Lower temp = more factual, less hallucination
-                "stream": False
-            }
-        )
-        if resp.status_code == 200:
-            answer = resp.json()["choices"][0]["message"]["content"].strip()
-            logger.info(f"Groq voice LLM OK: '{answer[:80]}'")
-            return answer
-        else:
-            logger.error(f"Groq LLM error {resp.status_code}: {resp.text[:200]}")
-            return "I'm sorry, I couldn't process your question. Please try again."
+        last_error = None
+        for model_name in groq_models_to_try:
+            try:
+                resp = await http_client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {groq_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": voice_system},
+                            {"role": "user", "content": question}
+                        ],
+                        "max_tokens": 120,
+                        "temperature": 0.4,
+                        "stream": False
+                    },
+                    timeout=8.0
+                )
+                if resp.status_code == 200:
+                    answer = resp.json()["choices"][0]["message"]["content"].strip()
+                    logger.info(f"Groq voice LLM OK (model={model_name}): '{answer[:80]}'")
+                    return answer
+                elif resp.status_code in (404, 400):
+                    # Model not available, try next
+                    last_error = f"{resp.status_code}: {resp.text[:120]}"
+                    logger.warning(f"Groq model '{model_name}' unavailable ({resp.status_code}), trying next...")
+                    continue
+                else:
+                    last_error = f"{resp.status_code}: {resp.text[:200]}"
+                    logger.error(f"Groq LLM error {resp.status_code}: {resp.text[:200]}")
+                    break
+            except Exception as model_ex:
+                last_error = str(model_ex)
+                logger.warning(f"Groq model '{model_name}' exception: {model_ex}")
+                continue
+
+        logger.error(f"All Groq models failed. Last error: {last_error}")
+        return "Maafi chahta hoon, abhi jawab dene mein thodi dikkat aa rahi hai. Kripya dobara poochhen."
     except Exception as e:
         logger.error(f"Groq LLM exception: {e}", exc_info=True)
-        return "I apologize for the delay. Please ask your question again."
+        return "Kripya ek baar aur apna sawaal poochhen."
 
 
 # ─── Outbound Call Trigger ────────────────────────────────────────────────────

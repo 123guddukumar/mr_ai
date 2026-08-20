@@ -3480,10 +3480,22 @@ async def api_agent_openai_compatible_chat(
             }
             
     # Non-greeting turn: Process user input
+    # Filter out Dograh-injected idle/quiet messages — these are NOT real user speech
+    DOGRAH_INJECTED_PHRASES = [
+        "the user has been quiet",
+        "user has been quiet",
+        "politely and briefly ask if they",
+        "user is silent",
+    ]
+    def is_dograh_injected(content: str) -> bool:
+        c = (content or "").lower().strip()
+        return any(phrase in c for phrase in DOGRAH_INJECTED_PHRASES)
+
+    # Find the REAL last user message (skip Dograh injected ones)
     user_msg = ""
     for msg in reversed(req.messages):
-        if msg.role == "user":
-            user_msg = msg.content
+        if msg.role == "user" and not is_dograh_injected(msg.content):
+            user_msg = msg.content.strip()
             break
     if not user_msg:
         user_msg = "hello"
@@ -3494,13 +3506,16 @@ async def api_agent_openai_compatible_chat(
             "assistant": ""
         }
         
-    # Extract history override
+    # Extract history override — also skip Dograh injected idle messages
     history_override = []
     user_skipped = False
     for msg in req.messages:
         if msg.role == "system":
             continue
-        if msg.role == "user" and msg.content == user_msg and not user_skipped:
+        # Skip Dograh-injected "user has been quiet" messages from history
+        if msg.role == "user" and is_dograh_injected(msg.content):
+            continue
+        if msg.role == "user" and msg.content.strip() == user_msg and not user_skipped:
             user_skipped = True
             continue
         history_override.append({"role": msg.role, "content": msg.content})

@@ -3716,34 +3716,23 @@ async def api_agent_openai_compatible_chat(
                                             return
                                         if line.strip():
                                             logger.info(f"[RAW GROQ LINE]: '{line}'")
-                                            
-                                            # Parse and rewrite reasoning tokens to content tokens for Dograh/TTS compatibility
-                                            processed_line = line
+                                            rewritten_line = line
                                             try:
                                                 if line.startswith("data: "):
                                                     data_str = line[6:]
                                                     if data_str.strip() != "[DONE]":
                                                         data = json.loads(data_str)
-                                                        choices = data.get("choices", [])
-                                                        if choices:
-                                                            delta = choices[0].get("delta", {})
-                                                            reasoning = delta.get("reasoning") or delta.get("reasoning_content")
-                                                            if reasoning and not delta.get("content"):
-                                                                # Map reasoning to content so Dograh reads it
-                                                                delta["content"] = reasoning
-                                                                delta.pop("reasoning", None)
-                                                                delta.pop("reasoning_content", None)
-                                                                processed_line = "data: " + json.dumps(data)
-                                                                
-                                                            txt = delta.get("content", "")
-                                                            if txt:
-                                                                full_reply.append(txt)
-                                                                if parsed_session_id and parsed_session_id in voice_transcripts:
-                                                                    voice_transcripts[parsed_session_id]["assistant"] += txt
+                                                        delta = data["choices"][0]["delta"]
+                                                        txt = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
+                                                        if txt:
+                                                            full_reply.append(txt)
+                                                            if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                                voice_transcripts[parsed_session_id]["assistant"] += txt
+                                                            data["choices"][0]["delta"] = {"content": txt}
+                                                            rewritten_line = "data: " + json.dumps(data)
                                             except Exception as parse_e:
-                                                logger.error(f"Error processing stream line: {parse_e}")
-                                                
-                                            yield processed_line + "\n\n"
+                                                pass
+                                            yield rewritten_line + "\n\n"
                             if model_ok:
                                 logger.info(f"Groq stream OK (model={attempt_model}) for agent {active_agent_id}")
                                 break  # Success — stop trying models
@@ -3844,20 +3833,23 @@ async def api_agent_openai_compatible_chat(
                                     logger.info("Client disconnected. Aborting OpenAI stream.")
                                     break
                                 if line.strip():
-                                    yield line + "\n\n"
+                                    rewritten_line = line
                                     try:
                                         if line.startswith("data: "):
                                             data_str = line[6:]
                                             if data_str.strip() != "[DONE]":
                                                 data = json.loads(data_str)
                                                 delta = data["choices"][0]["delta"]
-                                                if "content" in delta:
-                                                    txt = delta["content"]
+                                                txt = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
+                                                if txt:
                                                     full_reply.append(txt)
                                                     if parsed_session_id and parsed_session_id in voice_transcripts:
                                                         voice_transcripts[parsed_session_id]["assistant"] += txt
+                                                    data["choices"][0]["delta"] = {"content": txt}
+                                                    rewritten_line = "data: " + json.dumps(data)
                                     except Exception:
                                         pass
+                                    yield rewritten_line + "\n\n"
                     except Exception as oa_err:
                         logger.error(f"OpenAI streaming error for agent {active_agent_id}: {oa_err}")
                         err_text = "I'm sorry, I had trouble processing that. Please try again."

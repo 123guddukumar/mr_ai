@@ -3498,6 +3498,27 @@ async def api_agent_openai_compatible_chat(
         c = (content or "").lower().strip()
         return any(phrase in c for phrase in DOGRAH_INJECTED_PHRASES)
 
+    def clean_phonetics(text: str) -> str:
+        if not text:
+            return text
+        replacements = {
+            "MagnifAI": "Magnif AI",
+            "KitabAI": "Kitab AI",
+            "Aishaala": "Ai Shaala",
+            "Airuter": "Ai Router",
+            "Aitota": "Ai Tota",
+            "MyAIAds": "My AI Ads",
+            "HealthRekhaAI": "Health Rekha AI",
+            "1OPS": "One Ops",
+            "Diin Technologies": "Deen Technologies",
+            "diintech.com": "Deen Tech dot com",
+            "diintech": "Deen Tech"
+        }
+        for word, rep in replacements.items():
+            import re as _re
+            text = _re.sub(_re.escape(word), rep, text, flags=_re.IGNORECASE)
+        return text
+
     # Find the REAL last user message (skip Dograh injected ones)
     user_msg = ""
     for msg in reversed(req.messages):
@@ -3701,6 +3722,8 @@ async def api_agent_openai_compatible_chat(
                     last_err = None
                     for attempt_model in groq_models_to_try:
                         full_reply = []
+                        buffer = ""
+                        last_data = {}
                         attempt_payload = {**payload, "model": attempt_model}
                         try:
                             client = get_llm_async_client()
@@ -3725,23 +3748,47 @@ async def api_agent_openai_compatible_chat(
                                                 model_ok = False
                                                 break
 
-                                            rewritten_line = line
-                                            try:
-                                                if line.startswith("data: "):
-                                                    data_str = line[6:]
-                                                    if data_str.strip() != "[DONE]":
+                                            if line.startswith("data: "):
+                                                data_str = line[6:]
+                                                if data_str.strip() != "[DONE]":
+                                                    try:
                                                         data = json.loads(data_str)
+                                                        last_data = data
                                                         delta = data["choices"][0]["delta"]
                                                         txt = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
                                                         if txt:
-                                                            full_reply.append(txt)
-                                                            if parsed_session_id and parsed_session_id in voice_transcripts:
-                                                                voice_transcripts[parsed_session_id]["assistant"] += txt
-                                                            data["choices"][0]["delta"] = {"content": txt}
-                                                            rewritten_line = "data: " + json.dumps(data)
-                                            except Exception as parse_e:
-                                                pass
-                                            yield rewritten_line + "\n\n"
+                                                            buffer += txt
+                                                            
+                                                            # Yield when space/punctuation is hit, or buffer exceeds 12 chars to prevent lag
+                                                            if not is_voice_call or any(char in buffer for char in [" ", ",", ".", "?", "!", ":", ";", "|", "\n"]) or len(buffer) >= 12:
+                                                                yield_txt = buffer
+                                                                if is_voice_call:
+                                                                    yield_txt = clean_phonetics(yield_txt)
+                                                                full_reply.append(yield_txt)
+                                                                if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                                    voice_transcripts[parsed_session_id]["assistant"] += yield_txt
+                                                                
+                                                                data["choices"][0]["delta"] = {"content": yield_txt}
+                                                                yield "data: " + json.dumps(data) + "\n\n"
+                                                                buffer = ""
+                                                    except Exception:
+                                                        yield line + "\n\n"
+                                                else:
+                                                    # [DONE] line. Flush buffer first!
+                                                    if buffer and last_data:
+                                                        yield_txt = buffer
+                                                        if is_voice_call:
+                                                            yield_txt = clean_phonetics(yield_txt)
+                                                        full_reply.append(yield_txt)
+                                                        if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                            voice_transcripts[parsed_session_id]["assistant"] += yield_txt
+                                                        
+                                                        last_data["choices"][0]["delta"] = {"content": yield_txt}
+                                                        yield "data: " + json.dumps(last_data) + "\n\n"
+                                                        buffer = ""
+                                                    yield line + "\n\n"
+                                            else:
+                                                yield line + "\n\n"
                             if model_ok:
                                 logger.info(f"Groq stream OK (model={attempt_model}) for agent {active_agent_id}")
                                 break  # Success — stop trying models
@@ -3833,6 +3880,8 @@ async def api_agent_openai_compatible_chat(
                     chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
                     created_time = int(datetime.utcnow().timestamp())
                     full_reply = []
+                    buffer = ""
+                    last_data = {}
                     try:
                         client = get_llm_async_client()
                         async with client.stream("POST", "https://api.openai.com/v1/chat/completions", headers=hdrs, json=payload) as response:
@@ -3842,25 +3891,49 @@ async def api_agent_openai_compatible_chat(
                                     logger.info("Client disconnected. Aborting OpenAI stream.")
                                     break
                                 if line.strip():
-                                    rewritten_line = line
-                                    try:
-                                        if line.startswith("data: "):
-                                            data_str = line[6:]
-                                            if data_str.strip() != "[DONE]":
+                                    if line.startswith("data: "):
+                                        data_str = line[6:]
+                                        if data_str.strip() != "[DONE]":
+                                            try:
                                                 data = json.loads(data_str)
+                                                last_data = data
                                                 delta = data["choices"][0]["delta"]
                                                 txt = delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content") or ""
                                                 if txt:
                                                     if is_voice_call:
                                                         txt = txt.replace("*", "").replace("#", "").replace("_", "")
-                                                    full_reply.append(txt)
-                                                    if parsed_session_id and parsed_session_id in voice_transcripts:
-                                                        voice_transcripts[parsed_session_id]["assistant"] += txt
-                                                    data["choices"][0]["delta"] = {"content": txt}
-                                                    rewritten_line = "data: " + json.dumps(data)
-                                    except Exception:
-                                        pass
-                                    yield rewritten_line + "\n\n"
+                                                    buffer += txt
+                                                    
+                                                    # Yield when space/punctuation is hit, or buffer exceeds 12 chars to prevent lag
+                                                    if not is_voice_call or any(char in buffer for char in [" ", ",", ".", "?", "!", ":", ";", "|", "\n"]) or len(buffer) >= 12:
+                                                        yield_txt = buffer
+                                                        if is_voice_call:
+                                                            yield_txt = clean_phonetics(yield_txt)
+                                                        full_reply.append(yield_txt)
+                                                        if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                            voice_transcripts[parsed_session_id]["assistant"] += yield_txt
+                                                        
+                                                        data["choices"][0]["delta"] = {"content": yield_txt}
+                                                        yield "data: " + json.dumps(data) + "\n\n"
+                                                        buffer = ""
+                                            except Exception:
+                                                yield line + "\n\n"
+                                        else:
+                                            # [DONE] line. Flush buffer first!
+                                            if buffer and last_data:
+                                                yield_txt = buffer
+                                                if is_voice_call:
+                                                    yield_txt = clean_phonetics(yield_txt)
+                                                full_reply.append(yield_txt)
+                                                if parsed_session_id and parsed_session_id in voice_transcripts:
+                                                    voice_transcripts[parsed_session_id]["assistant"] += yield_txt
+                                                
+                                                last_data["choices"][0]["delta"] = {"content": yield_txt}
+                                                yield "data: " + json.dumps(last_data) + "\n\n"
+                                                buffer = ""
+                                            yield line + "\n\n"
+                                    else:
+                                        yield line + "\n\n"
                     except Exception as oa_err:
                         logger.error(f"OpenAI streaming error for agent {active_agent_id}: {oa_err}")
                         err_text = "I'm sorry, I had trouble processing that. Please try again."

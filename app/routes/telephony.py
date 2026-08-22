@@ -1008,58 +1008,67 @@ async def api_transcribe_and_respond(
     logger.info(f"Transcribed: '{speech_text}'")
     print(f"DEBUG SPEECH: '{speech_text}'", flush=True)
 
-    # ── Call Session History & Root Agent Interception ──
-    is_root_agent = agent and (agent.is_root or agent.category == "root_assistant")
+    # ── Call Session History & Agent Interception ──
     session_obj = None
     parser_history = []
 
-    if is_root_agent:
-        call_sid = (
-            form_data.get("CallUUID") or
-            form_data.get("CallSid") or
-            form_data.get("call_uuid") or
-            form_data.get("call_id") or
-            clean_phone
-        )
-        try:
+    call_sid = (
+        form_data.get("CallUUID") or
+        form_data.get("CallSid") or
+        form_data.get("call_uuid") or
+        form_data.get("call_id") or
+        clean_phone
+    )
+    try:
+        session_obj = db.query(AgentPublicSession).filter(
+            AgentPublicSession.session_id == call_sid
+        ).first()
+        if not session_obj:
+            # Fallback to tel_{clean_phone} if session_id wasn't created by inbound route
+            fallback_sid = f"tel_{clean_phone}"
             session_obj = db.query(AgentPublicSession).filter(
-                AgentPublicSession.session_id == call_sid
+                AgentPublicSession.session_id == fallback_sid
             ).first()
-            if not session_obj:
-                session_obj = AgentPublicSession(
-                    session_id=call_sid,
-                    agent_id=agent_id,
-                    device_id="voice_call",
-                    phone_number=clean_phone,
-                    user_name=f"Caller {clean_phone}",
-                    device_name="Voice Call",
-                    created_at=datetime.utcnow()
-                )
-                db.add(session_obj)
-                db.commit()
-                db.refresh(session_obj)
 
-            # Log user question
-            user_msg_db = AgentPublicMessage(
-                session_id=session_obj.session_id,
-                role="user",
-                content=speech_text,
+        if not session_obj:
+            session_obj = AgentPublicSession(
+                session_id=call_sid,
+                agent_id=agent_id,
+                device_id="voice_call",
+                phone_number=clean_phone,
+                user_name=f"Caller {clean_phone}",
+                device_name="Voice Call",
                 created_at=datetime.utcnow()
             )
-            db.add(user_msg_db)
+            db.add(session_obj)
+            db.commit()
+            db.refresh(session_obj)
+        else:
+            session_obj.updated_at = datetime.utcnow()
             db.commit()
 
-            # Retrieve last 6 messages (excluding the current user message we just saved)
-            msgs = db.query(AgentPublicMessage).filter(
-                AgentPublicMessage.session_id == session_obj.session_id
-            ).order_by(AgentPublicMessage.created_at.desc()).limit(6).all()
-            msgs.reverse()
-            for m in msgs:
-                if m.id != user_msg_db.id:
-                    parser_history.append({"role": m.role, "content": m.content})
-        except Exception as se:
-            logger.warning(f"Error handling telephony session history: {se}")
-            db.rollback()
+        # Log user question (with recording audio URL as file_url)
+        user_msg_db = AgentPublicMessage(
+            session_id=session_obj.session_id,
+            role="user",
+            content=speech_text,
+            file_url=recording_url,
+            created_at=datetime.utcnow()
+        )
+        db.add(user_msg_db)
+        db.commit()
+
+        # Retrieve last 6 messages (excluding the current user message we just saved)
+        msgs = db.query(AgentPublicMessage).filter(
+            AgentPublicMessage.session_id == session_obj.session_id
+        ).order_by(AgentPublicMessage.created_at.desc()).limit(6).all()
+        msgs.reverse()
+        for m in msgs:
+            if m.id != user_msg_db.id:
+                parser_history.append({"role": m.role, "content": m.content})
+    except Exception as se:
+        logger.warning(f"Error handling telephony session history: {se}")
+        db.rollback()
 
     ai_answer = None
     if is_root_agent:
@@ -1094,8 +1103,8 @@ async def api_transcribe_and_respond(
             datastore_ids=agent_datastore_ids
         )
 
-    # Save assistant response to session history
-    if is_root_agent and session_obj:
+    # Save assistant response to session history for all agents
+    if session_obj:
         try:
             asst_msg_db = AgentPublicMessage(
                 session_id=session_obj.session_id,

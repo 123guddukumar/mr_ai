@@ -205,6 +205,11 @@ def init_db():
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS category VARCHAR(200) DEFAULT ''",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS target_audience TEXT DEFAULT ''",
         "ALTER TABLE books ADD COLUMN IF NOT EXISTS key_lessons TEXT DEFAULT '[]'",
+        # ── Agent Action Capabilities ───────────────────────────────────────────
+        "ALTER TABLE agents ADD COLUMN IF NOT EXISTS action_config_json TEXT DEFAULT '{}'",
+        # ── Outbound Call Campaigns ─────────────────────────────────────────────
+        "CREATE TABLE IF NOT EXISTS campaigns (id SERIAL PRIMARY KEY, campaign_id VARCHAR(64) UNIQUE NOT NULL, client_id VARCHAR(64) NOT NULL, agent_id VARCHAR(64) NOT NULL, name VARCHAR(200) NOT NULL, did_number VARCHAR(50) NOT NULL, goal TEXT, status VARCHAR(30) DEFAULT 'draft', total_leads INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+        "CREATE TABLE IF NOT EXISTS campaign_leads (id SERIAL PRIMARY KEY, campaign_id VARCHAR(64) NOT NULL REFERENCES campaigns(campaign_id) ON DELETE CASCADE, phone_number VARCHAR(50) NOT NULL, customer_name VARCHAR(200), status VARCHAR(30) DEFAULT 'pending', call_duration INTEGER DEFAULT 0, call_summary TEXT, verification_status VARCHAR(30) DEFAULT 'n/a', verification_result TEXT DEFAULT '{}', whatsapp_sent BOOLEAN DEFAULT FALSE, email_sent BOOLEAN DEFAULT FALSE, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
     ]
     
     try:

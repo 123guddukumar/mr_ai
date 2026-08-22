@@ -373,6 +373,7 @@ class Agent(Base):
     system_config_json  = Column(Text, default="{}")
     customization_json  = Column(Text, default="{}")
     datastores_json     = Column(Text, default="[]") 
+    action_config_json  = Column(Text, default="{}")  # Action capabilities: whatsapp, email, kyc etc.
     
     is_root    = Column(Boolean, default=False, nullable=False)
     is_active  = Column(Boolean, default=True, nullable=False)
@@ -391,6 +392,8 @@ class Agent(Base):
         except: c_cfg = {}
         try: ds_ids = json.loads(self.datastores_json or "[]")
         except: ds_ids = []
+        try: a_cfg = json.loads(self.action_config_json or "{}")
+        except: a_cfg = {}
 
         return {
             "agent_id":         self.agent_id,
@@ -403,6 +406,7 @@ class Agent(Base):
             "system_config":    s_cfg,
             "customization":    c_cfg,
             "datastores":       ds_ids,
+            "action_config":    a_cfg,
             "is_root":          self.is_root or False,
             "is_active":        self.is_active,
             "custom_slug":      self.custom_slug or "",
@@ -1321,4 +1325,84 @@ class Book(Base):
             "target_audience": self.target_audience or "",
             "key_lessons": lessons_parsed,
             "created_at": self.created_at.isoformat() if self.created_at else "",
+        }
+
+
+# ── Outbound Call Campaign Models ──────────────────────────────────────────────
+
+class Campaign(Base):
+    """Outbound call campaign — bulk dialing a list of contacts with an AI agent."""
+    __tablename__ = "campaigns"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    campaign_id  = Column(String(64), unique=True, index=True, nullable=False)
+    client_id    = Column(String(64), ForeignKey("clients.client_id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id     = Column(String(64), nullable=False, index=True)  # Which AI agent conducts calls
+    name         = Column(String(200), nullable=False)
+    did_number   = Column(String(50), nullable=False)   # Caller ID (outbound phone number)
+    goal         = Column(Text, nullable=True)           # Campaign objective / instructions
+    status       = Column(String(30), default="draft")  # draft | running | paused | completed
+    total_leads  = Column(Integer, default=0)
+    created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    leads = relationship("CampaignLead", back_populates="campaign", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        answered = sum(1 for l in self.leads if l.status == "answered")
+        pending  = sum(1 for l in self.leads if l.status == "pending")
+        failed   = sum(1 for l in self.leads if l.status in ("no_answer", "busy", "failed"))
+        return {
+            "campaign_id":  self.campaign_id,
+            "name":         self.name,
+            "agent_id":     self.agent_id,
+            "did_number":   self.did_number,
+            "goal":         self.goal or "",
+            "status":       self.status,
+            "total_leads":  self.total_leads,
+            "answered":     answered,
+            "pending":      pending,
+            "failed":       failed,
+            "created_at":   self.created_at.isoformat() if self.created_at else "",
+            "updated_at":   self.updated_at.isoformat() if self.updated_at else "",
+        }
+
+
+class CampaignLead(Base):
+    """An individual contact/number inside a Campaign, with call outcome tracking."""
+    __tablename__ = "campaign_leads"
+
+    id                  = Column(Integer, primary_key=True, index=True)
+    campaign_id         = Column(String(64), ForeignKey("campaigns.campaign_id", ondelete="CASCADE"), nullable=False, index=True)
+    phone_number        = Column(String(50), nullable=False)
+    customer_name       = Column(String(200), nullable=True)
+    status              = Column(String(30), default="pending")   # pending | dialing | answered | no_answer | busy | failed
+    call_duration       = Column(Integer, default=0)              # Seconds
+    call_summary        = Column(Text, nullable=True)             # AI-generated brief outcome summary
+    # KYC / Verification results
+    verification_status = Column(String(30), default="n/a")      # n/a | verified | rejected | partial
+    verification_result = Column(Text, default="{}")              # JSON: aadhar / pan / cibil checks
+    # Action tracking
+    whatsapp_sent       = Column(Boolean, default=False)
+    email_sent          = Column(Boolean, default=False)
+    updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    campaign = relationship("Campaign", back_populates="leads")
+
+    def to_dict(self):
+        try: v_result = json.loads(self.verification_result or "{}")
+        except: v_result = {}
+        return {
+            "id":                  self.id,
+            "campaign_id":         self.campaign_id,
+            "phone_number":        self.phone_number,
+            "customer_name":       self.customer_name or "",
+            "status":              self.status,
+            "call_duration":       self.call_duration or 0,
+            "call_summary":        self.call_summary or "",
+            "verification_status": self.verification_status or "n/a",
+            "verification_result": v_result,
+            "whatsapp_sent":       self.whatsapp_sent or False,
+            "email_sent":          self.email_sent or False,
+            "updated_at":          self.updated_at.isoformat() if self.updated_at else "",
         }

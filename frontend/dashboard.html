@@ -4314,6 +4314,7 @@
               <div style="font-size:12px;color:var(--text3);margin-top:4px">Configure and manage your specialized AI
                 personalities</div>
             </div>
+            <button class="btn btn-secondary" onclick="openCampaignModal()" style="display:flex;align-items:center;gap:6px">📁 Call Campaigns</button>
             <button class="btn btn-primary" onclick="openCreateAgentModal()">+ Create New Agent</button>
           </div>
           <div class="agent-grid" id="agent-list">
@@ -4471,9 +4472,100 @@
                     Q&A Pair</button>
                 </div>
 
-                <!-- 5. Action -->
+                <!-- 5. Action Capabilities -->
                 <div class="tab-pane" id="tab-act">
-                  <div class="history-empty">🚀 Actions & Tools Integration coming soon.</div>
+                  <div style="margin-bottom:20px">
+                    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">⚡ Agent Action Capabilities</div>
+                    <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Enable tools that this agent can trigger automatically during a call or chat session.</div>
+
+                    <!-- WhatsApp -->
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:36px;height:36px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📱</div>
+                          <div>
+                            <div style="font-size:13px;font-weight:600">WhatsApp Notification</div>
+                            <div style="font-size:11px;color:var(--text3)">Send WhatsApp message to customer after call</div>
+                          </div>
+                        </div>
+                        <label class="toggle-switch">
+                          <input type="checkbox" id="act-whatsapp-enabled">
+                          <span class="toggle-slider"></span>
+                        </label>
+                      </div>
+                      <div id="act-whatsapp-config" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                        <label class="form-label" style="font-size:11px">Message Template</label>
+                        <textarea class="form-input" id="act-whatsapp-template" style="height:80px;font-size:12px;padding:10px" placeholder="e.g. Hello {{name}}, your loan details are received."></textarea>
+                      </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:36px;height:36px;background:linear-gradient(135deg,#4285f4,#1a73e8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📧</div>
+                          <div>
+                            <div style="font-size:13px;font-weight:600">Email Reminder</div>
+                            <div style="font-size:11px;color:var(--text3)">Send confirmation / reminder email after interaction</div>
+                          </div>
+                        </div>
+                        <label class="toggle-switch">
+                          <input type="checkbox" id="act-email-enabled">
+                          <span class="toggle-slider"></span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- KYC Verification -->
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🔍</div>
+                          <div>
+                            <div style="font-size:13px;font-weight:600">KYC Verification</div>
+                            <div style="font-size:11px;color:var(--text3)">Verify Aadhar / PAN / CIBIL score on call</div>
+                          </div>
+                        </div>
+                        <label class="toggle-switch">
+                          <input type="checkbox" id="act-kyc-enabled">
+                          <span class="toggle-slider"></span>
+                        </label>
+                      </div>
+                      <div id="act-kyc-config" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                        <label class="form-label" style="font-size:11px">Minimum CIBIL Score Threshold</label>
+                        <input type="number" class="form-input" id="act-cibil-threshold" value="650" min="300" max="900" style="font-size:13px">
+                        <div style="font-size:11px;color:var(--text3);margin-top:6px">Loan marked eligible only if CIBIL score is above this threshold.</div>
+                        <div style="margin-top:10px;display:flex;gap:10px">
+                          <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                            <input type="checkbox" id="act-verify-aadhar" checked> Verify Aadhar
+                          </label>
+                          <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                            <input type="checkbox" id="act-verify-pan" checked> Verify PAN
+                          </label>
+                          <label style="display:flex;align-items:center;gap:6px;font-size:12px">
+                            <input type="checkbox" id="act-verify-cibil" checked> Check CIBIL
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- SMS -->
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px">
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:36px;height:36px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">💬</div>
+                          <div>
+                            <div style="font-size:13px;font-weight:600">SMS Notification</div>
+                            <div style="font-size:11px;color:var(--text3)">Send SMS to customer</div>
+                          </div>
+                        </div>
+                        <label class="toggle-switch">
+                          <input type="checkbox" id="act-sms-enabled">
+                          <span class="toggle-slider"></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- 6. Customization -->
@@ -19441,6 +19533,19 @@
       updateAgentModelOptions();
       updateAgentVoiceOptions();
       loadDSSelector();
+      
+      // Reset action config toggles
+      if (document.getElementById('act-whatsapp-enabled')) document.getElementById('act-whatsapp-enabled').checked = false;
+      if (document.getElementById('act-whatsapp-template')) document.getElementById('act-whatsapp-template').value = '';
+      if (document.getElementById('act-whatsapp-config')) document.getElementById('act-whatsapp-config').style.display = 'none';
+      if (document.getElementById('act-email-enabled')) document.getElementById('act-email-enabled').checked = false;
+      if (document.getElementById('act-sms-enabled')) document.getElementById('act-sms-enabled').checked = false;
+      if (document.getElementById('act-kyc-enabled')) document.getElementById('act-kyc-enabled').checked = false;
+      if (document.getElementById('act-cibil-threshold')) document.getElementById('act-cibil-threshold').value = 650;
+      if (document.getElementById('act-verify-aadhar')) document.getElementById('act-verify-aadhar').checked = true;
+      if (document.getElementById('act-verify-pan')) document.getElementById('act-verify-pan').checked = true;
+      if (document.getElementById('act-verify-cibil')) document.getElementById('act-verify-cibil').checked = true;
+      if (document.getElementById('act-kyc-config')) document.getElementById('act-kyc-config').style.display = 'none';
       updateAgProgress();
     }
 
@@ -20668,7 +20773,18 @@
             return qaPairs;
           })()
         },
-        datastores: Array.from(document.querySelectorAll('.ag-ds-checkbox:checked')).map(cb => cb.value)
+        datastores: Array.from(document.querySelectorAll('.ag-ds-checkbox:checked')).map(cb => cb.value),
+        action_config: {
+          whatsapp_enabled: document.getElementById('act-whatsapp-enabled') ? document.getElementById('act-whatsapp-enabled').checked : false,
+          whatsapp_template: document.getElementById('act-whatsapp-template') ? document.getElementById('act-whatsapp-template').value.trim() : '',
+          email_enabled: document.getElementById('act-email-enabled') ? document.getElementById('act-email-enabled').checked : false,
+          sms_enabled: document.getElementById('act-sms-enabled') ? document.getElementById('act-sms-enabled').checked : false,
+          kyc_enabled: document.getElementById('act-kyc-enabled') ? document.getElementById('act-kyc-enabled').checked : false,
+          verify_aadhar: document.getElementById('act-verify-aadhar') ? document.getElementById('act-verify-aadhar').checked : true,
+          verify_pan: document.getElementById('act-verify-pan') ? document.getElementById('act-verify-pan').checked : true,
+          verify_cibil: document.getElementById('act-verify-cibil') ? document.getElementById('act-verify-cibil').checked : true,
+          cibil_threshold: document.getElementById('act-cibil-threshold') ? parseInt(document.getElementById('act-cibil-threshold').value) || 650 : 650,
+        }
       };
 
       // Validation
@@ -20815,6 +20931,24 @@
         `;
         qaList.appendChild(div);
       });
+
+      // Load action config toggles
+      const act = a.action_config || {};
+      if (document.getElementById('act-whatsapp-enabled')) {
+        document.getElementById('act-whatsapp-enabled').checked = !!act.whatsapp_enabled;
+        document.getElementById('act-whatsapp-template').value = act.whatsapp_template || '';
+        document.getElementById('act-whatsapp-config').style.display = act.whatsapp_enabled ? '' : 'none';
+      }
+      if (document.getElementById('act-email-enabled')) document.getElementById('act-email-enabled').checked = !!act.email_enabled;
+      if (document.getElementById('act-sms-enabled')) document.getElementById('act-sms-enabled').checked = !!act.sms_enabled;
+      if (document.getElementById('act-kyc-enabled')) {
+        document.getElementById('act-kyc-enabled').checked = !!act.kyc_enabled;
+        document.getElementById('act-cibil-threshold').value = act.cibil_threshold !== undefined ? act.cibil_threshold : 650;
+        document.getElementById('act-verify-aadhar').checked = act.verify_aadhar !== false;
+        document.getElementById('act-verify-pan').checked = act.verify_pan !== false;
+        document.getElementById('act-verify-cibil').checked = act.verify_cibil !== false;
+        document.getElementById('act-kyc-config').style.display = act.kyc_enabled ? '' : 'none';
+      }
 
       await loadDSSelector();
       const linked = a.datastores || [];
@@ -38235,6 +38369,349 @@ Also include a "meta" object at the end:
       </div>
     </div>
   </div>
+
+
+<!-- =========================================================
+     CALL CAMPAIGN MANAGER MODAL
+========================================================= -->
+<div id="campaign-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);overflow-y:auto">
+  <div style="max-width:900px;margin:40px auto;background:var(--bg2);border-radius:20px;border:1px solid var(--border);overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.5)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:24px 28px;border-bottom:1px solid var(--border);background:var(--bg3)">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">&#128193; Call Campaign Manager</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Create and manage outbound call campaigns</div>
+      </div>
+      <button onclick="closeCampaignModal()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px">&#10005; Close</button>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border);background:var(--bg3)">
+      <button id="camp-tab-list" onclick="switchCampTab('list')" style="padding:14px 24px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--accent);border-bottom:2px solid var(--accent)">&#128203; My Campaigns</button>
+      <button id="camp-tab-create" onclick="switchCampTab('create')" style="padding:14px 24px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--text2);border-bottom:2px solid transparent">&#10133; New Campaign</button>
+      <button id="camp-tab-report" onclick="switchCampTab('report')" style="padding:14px 24px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--text2);border-bottom:2px solid transparent;display:none">&#128202; Report</button>
+    </div>
+    <div style="padding:28px">
+      <!-- LIST -->
+      <div id="camp-pane-list">
+        <div id="camp-list-container" style="display:flex;flex-direction:column;gap:12px">
+          <div style="text-align:center;color:var(--text3);padding:40px;font-size:14px">&#9203; Loading campaigns...</div>
+        </div>
+      </div>
+      <!-- CREATE -->
+      <div id="camp-pane-create" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div>
+            <label class="form-label">Campaign Name *</label>
+            <input type="text" class="form-input" id="camp-name" placeholder="e.g. Loan Recovery Q3 2026">
+          </div>
+          <div>
+            <label class="form-label">Select Agent *</label>
+            <select class="form-input" id="camp-agent-id"><option value="">-- Select Agent --</option></select>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label class="form-label">Caller ID / DID Number *</label>
+          <input type="text" class="form-input" id="camp-did" placeholder="e.g. +919876543210">
+        </div>
+        <div style="margin-bottom:16px">
+          <label class="form-label">Campaign Goal (AI Instructions)</label>
+          <textarea class="form-input" id="camp-goal" style="height:80px;padding:14px" placeholder="e.g. Collect overdue EMI or schedule callback."></textarea>
+        </div>
+        <div style="margin-bottom:20px">
+          <label class="form-label">Contact List * (one per line)</label>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Format: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">9876543210, Rahul Sharma</code></div>
+          <textarea class="form-input" id="camp-contacts" style="height:150px;padding:14px;font-family:monospace;font-size:12px" placeholder="9876543210, Rahul Sharma&#10;8765432109, Priya Singh"></textarea>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end">
+          <button onclick="switchCampTab('list')" class="btn btn-secondary">&#8592; Back to List</button>
+          <button onclick="createCampaign()" class="btn btn-primary" id="camp-create-btn">&#128190; Create Campaign</button>
+        </div>
+      </div>
+      <!-- REPORT -->
+      <div id="camp-pane-report" style="display:none">
+        <div id="camp-report-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px"></div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Individual Call Details</div>
+        <div id="camp-report-leads" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="margin-top:20px;text-align:right">
+          <button onclick="switchCampTab('list')" class="btn btn-secondary">&#8592; Back to Campaigns</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .toggle-switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:24px;transition:.3s}
+  .toggle-slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+  .toggle-switch input:checked + .toggle-slider{background:var(--accent)}
+  .toggle-switch input:checked + .toggle-slider:before{transform:translateX(20px)}
+  .camp-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  .camp-badge.draft{background:rgba(100,116,139,.2);color:#94a3b8}
+  .camp-badge.running{background:rgba(52,211,153,.15);color:#34d399}
+  .camp-badge.paused{background:rgba(251,191,36,.15);color:#fbbf24}
+  .camp-badge.completed{background:rgba(96,165,250,.15);color:#60a5fa}
+  .report-stat{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .report-stat .rs-val{font-size:24px;font-weight:800;color:var(--accent)}
+  .report-stat .rs-label{font-size:11px;color:var(--text3);margin-top:4px}
+  .lead-row{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:1fr 100px 80px 1fr 100px;gap:8px;align-items:center;font-size:12px}
+  .lead-status{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;text-transform:uppercase}
+  .lead-status.answered{background:rgba(52,211,153,.15);color:#34d399}
+  .lead-status.pending,.lead-status.dialing{background:rgba(251,191,36,.15);color:#fbbf24}
+  .lead-status.no_answer,.lead-status.busy,.lead-status.failed{background:rgba(248,113,113,.15);color:#f87171}
+  .camp-card{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:border-color .2s}
+  .camp-card:hover{border-color:var(--accent)}
+</style>
+
+<script>
+(function() {
+  "use strict";
+
+  // Action tab toggle listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    var whatsappCb = document.getElementById('act-whatsapp-enabled');
+    var kycCb = document.getElementById('act-kyc-enabled');
+    if (whatsappCb) {
+      whatsappCb.addEventListener('change', function() {
+        var cfg = document.getElementById('act-whatsapp-config');
+        if (cfg) cfg.style.display = whatsappCb.checked ? '' : 'none';
+      });
+    }
+    if (kycCb) {
+      kycCb.addEventListener('change', function() {
+        var cfg = document.getElementById('act-kyc-config');
+        if (cfg) cfg.style.display = kycCb.checked ? '' : 'none';
+      });
+    }
+  });
+
+  var _currentCampaignId = null;
+
+  window.openCampaignModal = function() {
+    document.getElementById('campaign-modal').style.display = '';
+    switchCampTab('list');
+    loadCampaigns();
+    populateCampaignAgentDropdown();
+  };
+
+  window.closeCampaignModal = function() {
+    document.getElementById('campaign-modal').style.display = 'none';
+  };
+
+  window.switchCampTab = function(tab) {
+    ['list','create','report'].forEach(function(t) {
+      var pane = document.getElementById('camp-pane-' + t);
+      var btn = document.getElementById('camp-tab-' + t);
+      if (pane) pane.style.display = t === tab ? '' : 'none';
+      if (btn) {
+        btn.style.color = t === tab ? 'var(--accent)' : 'var(--text2)';
+        btn.style.borderBottomColor = t === tab ? 'var(--accent)' : 'transparent';
+      }
+    });
+    if (tab === 'report') {
+      var r = document.getElementById('camp-tab-report');
+      if (r) r.style.display = '';
+    }
+  };
+
+  function populateCampaignAgentDropdown() {
+    var sel = document.getElementById('camp-agent-id');
+    // FIXED: Directly check typeof _agents instead of window._agents
+    if (!sel || typeof _agents === 'undefined') return;
+    sel.innerHTML = '<option value="">Select Agent</option>' +
+      (_agents || []).map(function(a) {
+        return '<option value="' + a.agent_id + '">' + escHtml(a.name) + '</option>';
+      }).join('');
+  }
+  window.populateCampaignAgentDropdown = populateCampaignAgentDropdown;
+
+  async function loadCampaigns() {
+    var container = document.getElementById('camp-list-container');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">Loading...</div>';
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : {};
+      var r = await fetch('/api/campaigns', { headers: headers });
+      var data = await r.json();
+      if (!data.success) throw new Error(data.detail || 'Load failed');
+      var campaigns = data.campaigns || [];
+      if (!campaigns.length) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:50px;font-size:14px">No campaigns yet.<br><br><button class="btn btn-primary" onclick="switchCampTab(\'create\')">+ Create First Campaign</button></div>';
+        return;
+      }
+      container.innerHTML = campaigns.map(function(c) {
+        var runBtn = '';
+        if (c.status === 'running') {
+          runBtn = '<button class="btn btn-secondary" style="font-size:11px;padding:6px 10px;color:var(--yellow)" onclick="pauseCampaign(\'' + c.campaign_id + '\')">Pause</button>';
+        } else if (c.status !== 'completed') {
+          runBtn = '<button class="btn btn-primary" style="font-size:11px;padding:6px 10px" onclick="runCampaign(\'' + c.campaign_id + '\')">Run</button>';
+        }
+        return '<div class="camp-card">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">' +
+              '<span style="font-size:14px;font-weight:700;color:var(--text)">' + escHtml(c.name) + '</span>' +
+              '<span class="camp-badge ' + c.status + '">' + c.status + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text3)">DID: ' + escHtml(c.did_number) + ' | ' + c.total_leads + ' leads | ' + c.answered + ' answered | ' + c.pending + ' pending</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;flex-shrink:0">' +
+            '<button class="btn btn-secondary" style="font-size:11px;padding:6px 10px" onclick="viewCampaignReport(\'' + c.campaign_id + '\')">Report</button>' +
+            runBtn +
+            '<button class="btn btn-secondary" style="font-size:11px;padding:6px 10px;color:var(--red)" onclick="deleteCampaign(\'' + c.campaign_id + '\')">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } catch(e) {
+      container.innerHTML = '<div style="text-align:center;color:var(--red);padding:30px">Error: ' + e.message + '</div>';
+    }
+  }
+  window.loadCampaigns = loadCampaigns;
+
+  async function createCampaign() {
+    var name = document.getElementById('camp-name').value.trim();
+    var agent_id = document.getElementById('camp-agent-id').value;
+    var did_number = document.getElementById('camp-did').value.trim();
+    var goal = document.getElementById('camp-goal').value.trim();
+    var raw = document.getElementById('camp-contacts').value.trim();
+
+    if (!name) return toast('Campaign name is required', 'error');
+    if (!agent_id) return toast('Please select an agent', 'error');
+    if (!did_number) return toast('Caller ID / DID number is required', 'error');
+    if (!raw) return toast('At least one contact is required', 'error');
+
+    var contacts = raw.split('\n').map(function(line) {
+      var parts = line.split(',').map(function(p) { return p.trim(); });
+      return { phone: parts[0] || '', name: parts[1] || '' };
+    }).filter(function(c) { return c.phone; });
+
+    if (!contacts.length) return toast('No valid contacts found', 'error');
+
+    var btn = document.getElementById('camp-create-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : { 'Content-Type': 'application/json' };
+      var r = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ name: name, agent_id: agent_id, did_number: did_number, goal: goal, contacts: contacts })
+      });
+      var data = await r.json();
+      if (!r.ok) throw new Error(data.detail || 'Create failed');
+      toast('Campaign created with ' + contacts.length + ' contacts!', 'success');
+      ['camp-name','camp-did','camp-goal','camp-contacts'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      var sel = document.getElementById('camp-agent-id');
+      if (sel) sel.value = '';
+      switchCampTab('list');
+      loadCampaigns();
+    } catch(e) {
+      toast('Error: ' + e.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Campaign'; }
+    }
+  }
+  window.createCampaign = createCampaign;
+
+  async function runCampaign(campaign_id) {
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : {};
+      var r = await fetch('/api/campaigns/' + campaign_id + '/run', { method: 'POST', headers: headers });
+      var data = await r.json();
+      if (!r.ok) throw new Error(data.detail || 'Run failed');
+      toast(data.message || 'Campaign started!', 'success');
+      loadCampaigns();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+  }
+  window.runCampaign = runCampaign;
+
+  async function pauseCampaign(campaign_id) {
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : {};
+      var r = await fetch('/api/campaigns/' + campaign_id + '/pause', { method: 'POST', headers: headers });
+      var data = await r.json();
+      if (!r.ok) throw new Error(data.detail || 'Pause failed');
+      toast('Campaign paused.', 'success');
+      loadCampaigns();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+  }
+  window.pauseCampaign = pauseCampaign;
+
+  async function deleteCampaign(campaign_id) {
+    if (!confirm('Delete this campaign? This cannot be undone.')) return;
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : {};
+      var r = await fetch('/api/campaigns/' + campaign_id, { method: 'DELETE', headers: headers });
+      var data = await r.json();
+      if (!r.ok) throw new Error(data.detail || 'Delete failed');
+      toast('Campaign deleted.', 'success');
+      loadCampaigns();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+  }
+  window.deleteCampaign = deleteCampaign;
+
+  async function viewCampaignReport(campaign_id) {
+    _currentCampaignId = campaign_id;
+    switchCampTab('report');
+    var summaryEl = document.getElementById('camp-report-summary');
+    var leadsEl = document.getElementById('camp-report-leads');
+    if (summaryEl) summaryEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:20px">Loading...</div>';
+    if (leadsEl) leadsEl.innerHTML = '';
+    try {
+      // FIXED: Directly check typeof hdrs instead of window.hdrs
+      var headers = typeof hdrs !== 'undefined' ? hdrs() : {};
+      var r = await fetch('/api/campaigns/' + campaign_id + '/report', { headers: headers });
+      var data = await r.json();
+      if (!r.ok) throw new Error(data.detail || 'Load failed');
+      var rep = data.report;
+      if (summaryEl) {
+        summaryEl.innerHTML =
+          statCard(rep.total_leads, 'Total Leads', 'var(--accent)') +
+          statCard(rep.answered, 'Answered (' + rep.answer_rate + ')', '#34d399') +
+          statCard(rep.no_answer + rep.failed, 'No Answer / Failed', '#f87171') +
+          statCard(rep.pending, 'Pending', '#fbbf24') +
+          statCard(rep.avg_call_duration_sec + 's', 'Avg Duration', '#60a5fa') +
+          statCard(rep.kyc_verified, 'KYC Verified', '#34d399') +
+          statCard(rep.whatsapp_sent, 'WhatsApp Sent', 'var(--text)') +
+          statCard(rep.email_sent, 'Emails Sent', 'var(--text)');
+      }
+      if (leadsEl) {
+        var leads = data.leads || [];
+        if (!leads.length) {
+          leadsEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:20px">No lead data yet.</div>';
+        } else {
+          leadsEl.innerHTML = leads.map(function(l) {
+            var vcolor = l.verification_status === 'verified' ? '#34d399' : (l.verification_status === 'rejected' ? '#f87171' : '#94a3b8');
+            var statusClass = l.status.replace(/_/g, '-');
+            return '<div class="lead-row">' +
+              '<div><div style="font-weight:600;font-family:monospace">' + escHtml(l.phone_number) + '</div>' +
+              '<div style="color:var(--text3);font-size:11px">' + escHtml(l.customer_name || '') + '</div></div>' +
+              '<span class="lead-status ' + statusClass + '">' + l.status + '</span>' +
+              '<div>' + (l.call_duration ? l.call_duration + 's' : '--') + '</div>' +
+              '<div style="color:var(--text3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (escHtml(l.call_summary) || '--') + '</div>' +
+              '<span style="font-size:10px;font-weight:700;color:' + vcolor + '">' + (l.verification_status || 'n/a').toUpperCase() + '</span>' +
+              '</div>';
+          }).join('');
+        }
+      }
+    } catch(e) {
+      if (summaryEl) summaryEl.innerHTML = '<div style="grid-column:1/-1;color:var(--red)">Error: ' + e.message + '</div>';
+    }
+  }
+  window.viewCampaignReport = viewCampaignReport;
+
+  function statCard(val, label, color) {
+    return '<div class="report-stat"><div class="rs-val" style="color:' + color + '">' + val + '</div><div class="rs-label">' + label + '</div></div>';
+  }
+
+})();
+</script>
 
 </body>
 
